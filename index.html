@@ -76,6 +76,17 @@ h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
 .plus small{font-size:11px;font-weight:600;color:var(--muted)}
 .plus.ok{background:var(--good-soft);color:var(--good);border-color:var(--good)} .plus.ok small{color:var(--good)}
 .plus[disabled]{opacity:.4;cursor:not-allowed}
+.names{padding:2px 12px 10px 12px;border-bottom:1px solid var(--line)}
+.names:last-child{border-bottom:0}
+.names .lab{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.names .lst{font-weight:500;line-height:1.5;overflow-wrap:anywhere}
+.names .sep{color:var(--muted);padding:0 5px}
+.names .miss{font-size:12px;color:var(--plan)}
+.nact{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.nchip{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:999px;padding:3px 4px 3px 10px;font-size:13px;font-weight:600;margin:2px 4px 2px 0}
+.nchip button{border:0;background:transparent;font-size:14px;color:var(--muted);width:24px;height:24px;border-radius:50%}
+.mini{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 11px;font-size:13px;font-weight:600}
+.irow.can + .names, .irow + .names{}
 .row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar{height:8px;background:var(--surface2);border-radius:99px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
@@ -212,22 +223,27 @@ function paliers(c){
   return{stage:'Légendaire',gauges:[],total:0,done:true,blocked:false};
 }
 const clone=o=>JSON.parse(JSON.stringify(o));
-function buy(c,key,to,today){
+const NOMRE=/^\s*(atouts?\s+f[ée]eriques?|sp[ée]cialit[ée]s?)\s*\((.+)\)\s*$/i;
+function nameList(c,kind){const out=[];for(const a of c.achats||[]){const m=NOMRE.exec(a.label||'');if(!m)continue;const k=/^atout/i.test(m[1])?'atout':'spec';const n=m[2].trim();if(k!==kind||/^\d+\s*(→|->)\s*\d+$/.test(n))continue;out.push(n);}return out.concat((c.noms&&c.noms[kind])||[]);}
+function normNoms(c){for(const k of ['atout','spec']){if(c[k]){const n=nameList(c,k).length;if((c[k].cur||0)<n)c[k].cur=n;}}return c;}
+function buy(c,key,to,today,nom){
   const n=clone(c),r=ref(n,key),from=r.o.cur||0,cost=cum(r.kind,from,to);r.o.cur=to;
-  const label=(r.kind==='atout'||r.kind==='spec')?`${r.nom} (${from}→${to})`:`${r.nom} ${to}`;
+  const label=nom?(r.kind==='atout'?`Atout féerique (${nom})`:`Spécialité (${nom})`):(r.kind==='atout'||r.kind==='spec')?`${r.nom} (${from}→${to})`:`${r.nom} ${to}`;
   n.achats=n.achats||[];n.achats.push({id:'a'+Date.now().toString(36)+Math.floor(Math.random()*1e3),date:today,label,cout:cost,key,from,to});
   if(n.plan&&n.plan[key]!==undefined&&n.plan[key]<=to)delete n.plan[key];
   return n;
 }
 function canUndo(c,a){if(!a||!a.key)return false;const r=ref(c,a.key);return !!r&&(r.o.cur||0)===a.to;}
-function lastBuy(c,key){const r=ref(c,key);if(!r)return null;const cur=r.o.cur||0;const A=c.achats||[];for(let i=A.length-1;i>=0;i--){const a=A[i];if(a.key===key&&a.to===cur&&a.from<cur)return a;}return null;}
+function lastBuy(c,key){const r=ref(c,key);if(!r)return null;const cur=r.o.cur||0;const A=c.achats||[];
+  if(r.kind==='atout'||r.kind==='spec'){if(cur<1)return null;for(let i=A.length-1;i>=0;i--)if(A[i].key===key&&A[i].from<A[i].to)return A[i];return null;}
+ for(let i=A.length-1;i>=0;i--){const a=A[i];if(a.key===key&&a.to===cur&&a.from<cur)return a;}return null;}
 function undoLevel(c,key){const a=lastBuy(c,key);if(!a)return null;const n=clone(c),r=ref(n,key),cur=r.o.cur||0,na=n.achats.find(x=>x.id===a.id);let refund;
   if(a.to-a.from<=1){refund=na.cout||0;n.achats=n.achats.filter(x=>x.id!==a.id);}
   else{refund=Math.min(na.cout||0,lvlCost(r.kind,cur));na.cout=(na.cout||0)-refund;na.to=cur-1;na.label=(r.kind==='atout'||r.kind==='spec')?`${r.nom} (${na.from}→${na.to})`:`${r.nom} ${na.to}`;}
   r.o.cur=cur-1;return{c:n,refund,from:cur,to:cur-1};}
 function undo(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(!a||!canUndo(n,a))return n;ref(n,a.key).o.cur=a.from;n.achats=n.achats.filter(x=>x.id!==id);return n;}
 
-function cancelAchat(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(!a)return{c:n,reverted:false};let rev=false;if(a.key){const r=ref(n,a.key);if(r&&(r.o.cur||0)===a.to){r.o.cur=a.from;rev=true;}}n.achats=n.achats.filter(x=>x.id!==id);return{c:n,reverted:rev};}
+function cancelAchat(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(!a)return{c:n,reverted:false};let rev=false;if(a.key){const r=ref(n,a.key);if(r&&(r.kind==='atout'||r.kind==='spec')){if((r.o.cur||0)>0){r.o.cur=r.o.cur-1;rev=true;}}else if(r&&(r.o.cur||0)===a.to){r.o.cur=a.from;rev=true;}}n.achats=n.achats.filter(x=>x.id!==id);return{c:n,reverted:rev};}
 function editAchat(c,id,p){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(a){if(p.label!==undefined)a.label=p.label;if(p.cout!==undefined)a.cout=p.cout;if(p.date!==undefined)a.date=p.date||null;}return n;}
 function gainsTable(list,events){
   const part=list.filter(c=>(c.statut||'actif')==='actif'&&!c.cache&&!c.horsMoyenne);
@@ -250,7 +266,7 @@ function starCount(events,delta){return Math.max(0,Math.min(STARS,scenarioCount(
 /* ---------- Application ---------- */
 const ORDER=['kerian','massetoc','rowen','sloan','theodule','maral','ismael','anselme'];
 let ME=null;try{ME=localStorage.getItem('xp.me')||null;}catch(e){}
-const S={chars:{},players:{},events:[],ready:false,view:'gains',sel:null,sheet:null,asheet:null,dlg:null,confirm:null,heritage:{score:'',delta:0},
+const S={chars:{},players:{},events:[],ready:false,view:'gains',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
   futForm:{open:false,nom:'',max:'6'},pnjForm:{titre:'',montant:''},newP:{nom:'',role:'Joueur'},newC:{court:'',nom:'',type:'PJ',owner:''},
   form:{titre:'',type:'Scénario',date:'',lines:[{nature:'Scénario',montant:'',persos:[]}]},hist:{},dirty:false,sync:'loading'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -292,6 +308,20 @@ function itemRow(c,key,dispo){
   const tail=atMax?`<span class="pill plan" style="grid-column:2/4;justify-self:end">★ max</span>`:
     `<button class="heart${planned?' on':''}" data-act="heart" data-key="${esc(key)}" aria-pressed="${planned}" aria-label="Prévoir un niveau de ${esc(r.nom)}">${planned?'♥':'♡'}</button><button class="plus${can?' ok':''}" data-act="quick" data-key="${esc(key)}"${can?'':' disabled'} aria-label="Acheter un niveau de ${esc(r.nom)} pour ${k} XP">+<small>${k}</small></button>`;
   return `<div class="irow${atMax?' max':can?' can':''}"><button class="rmain" data-act="open" data-key="${esc(key)}"><span class="nm">${esc(r.nom)}</span>${max!=null?bar(cur,max,planned):'<span></span>'}<span class="lv">${lvTxt}</span></button>${tail}</div>`;
+}
+function namesBlock(c,kind){
+  const lab=kind==='atout'?'Atouts féeriques':'Spécialités',un=kind==='atout'?'atout':'spécialité';
+  const list=nameList(c,kind),o=c[kind]||{cur:0},cur=o.cur||0,manual=(c.noms&&c.noms[kind])||[],miss=Math.max(0,cur-list.length);
+  const full=kind==='atout'&&o.max!=null&&cur>=o.max,open=S.nameForm.kind===kind;
+  let h=`<div class="names"><span class="lab">${lab}</span><div class="lst">${list.length?list.map(x=>esc(x)).join('<span class="sep">-</span>'):'<span class="muted">Aucun nom renseigné</span>'}</div>`;
+  if(miss)h+=`<div class="miss">${miss} ${un}${miss>1?'s':''} sans nom</div>`;
+  if(open){
+    h+=`<div style="margin-top:6px">${manual.map((x,i)=>`<span class="nchip">${esc(x)}<button data-act="nameDel" data-kind="${kind}" data-i="${i}" aria-label="Retirer ${esc(x)}">✕</button></span>`).join('')}</div>
+    <div class="frow" style="margin-top:8px"><div class="field"><label for="nm-${kind}">Nom de ${kind==='atout'?"l'atout":'la spécialité'}</label><input id="nm-${kind}" type="text" data-nm="${kind}" value="${esc(S.nameForm.nom)}"></div></div>
+    <div class="actions"><button class="btn pri" data-act="nameAdd" data-full="${full?1:0}"${S.nameForm.nom.trim()&&!full?'':' disabled'}>Ajouter</button><button class="btn ghost" data-act="nameClose">Fermer</button></div>
+    <div class="muted small" style="margin-top:6px">${full?'Maximum atteint : impossible d\'ajouter.':'Ne dépense aucun XP, mais ajoute 1 au total.'}</div>`;
+  }else h+=`<div class="nact"><button class="mini" data-act="nameOpen" data-kind="${kind}">+ Ajouter un nom</button></div>`;
+  return h+`</div>`;
 }
 function staticRow(nom,val,note){return `<div class="irow"><div class="rmain" style="cursor:default"><span class="nm">${esc(nom)}</span><span></span><span class="lv">${val}</span></div><span class="muted small" style="grid-column:2/4;justify-self:end">${esc(note||'')}</span></div>`;}
 function whoLine(c){if(c.type==='PNJ')return 'PNJ';const o=owners(c);return o.length?'joué par '+esc(o.map(p=>p.nom).join(', ')):'Personnage joueur';}
@@ -338,7 +368,7 @@ function viewSheet(){
   h+=`<h2>Caractéristiques dérivées</h2><div class="derived">`+derived(c).map(([n,v,b])=>`<div><b class="num">${v}</b><span>${esc(n)}${b?' (dont '+(b>0?'+':'')+b+' de bonus)':''}</span></div>`).join('')+`</div>`;
   if(c.type==='PJ'){
     h+=`<h2>Ressources</h2><div class="card">`;
-    h+=itemRow(c,'feerie',s.dispo)+itemRow(c,'masque',s.dispo)+staticRow('Tricherie',tricherie(c),'calculée')+itemRow(c,'fortune',s.dispo)+itemRow(c,'atout',s.dispo)+itemRow(c,'spec',s.dispo);
+    h+=itemRow(c,'feerie',s.dispo)+itemRow(c,'masque',s.dispo)+staticRow('Tricherie',tricherie(c),'calculée')+itemRow(c,'fortune',s.dispo)+itemRow(c,'atout',s.dispo)+namesBlock(c,'atout')+itemRow(c,'spec',s.dispo)+namesBlock(c,'spec');
     h+=`</div>`;
   }
   h+=`<h2>Caractéristiques</h2><div class="card">`+CARACS.map(n=>itemRow(c,'carac:'+n,s.dispo)).join('')+`</div>`;
@@ -356,7 +386,7 @@ function viewSheet(){
     }
     h+=`</div>`;
   }
-  if(c.type==='PNJ')h+=`<div class="card" style="margin-top:10px">${itemRow(c,'spec',s.dispo)}</div>`;
+  if(c.type==='PNJ')h+=`<div class="card" style="margin-top:10px">${itemRow(c,'spec',s.dispo)}${namesBlock(c,'spec')}</div>`;
   if(c.type==='PJ'){
     h+=`<h2>Compétences futiles</h2><div class="card">`+((c.futiles||[]).map(f=>itemRow(c,'fut:'+f.nom,s.dispo)).join('')||'<div class="muted">Aucune.</div>');
     if(S.futForm.open)h+=`<div class="frow" style="margin-top:10px"><div class="field"><label for="fn">Nom</label><input id="fn" type="text" data-fut="nom" value="${esc(S.futForm.nom)}"></div><div class="field"><label for="fm">Niveau max</label><input id="fm" type="number" min="1" max="12" data-fut="max" value="${esc(S.futForm.max)}"></div></div><div class="actions"><button class="btn pri" data-act="futSave">Ajouter</button><button class="btn" data-act="futCancel">Annuler</button></div>`;
@@ -445,13 +475,15 @@ function viewRules(){
 }
 function renderSheet(){
   const root=document.getElementById('sheetRoot');
+  {const ae0=document.activeElement;if(S.dlg&&S.dlg.kind==='b'&&ae0&&ae0.id==='dn'&&root.contains(ae0))return;}
   if(S.dlg){
     const g=S.dlg;let titre='',txt='';
     if(g.kind==='c'){const c=S.chars[g.id];if(!c){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+c.court+' ?';txt="La fiche, les achats et les gains de ce personnage seront supprimés définitivement. Pour garder l'historique, passe plutôt son statut à « Décédé » ou « Retiré ».";}
     else if(g.kind==='p'){const p=S.players[g.id];if(!p){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+p.nom+' ?';txt="Le joueur disparaît de la liste. Ses personnages ne sont pas supprimés.";}
     else if(g.kind==='b'){const c=S.chars[g.id],r=c&&ref(c,g.key);if(!r){S.dlg=null;root.innerHTML='';return;}const k=lvlCost(r.kind,g.from+1),dispo=summary(c,S.events).dispo;
-      const lab=(r.kind==='atout'||r.kind==='spec')?`${r.nom} (${g.from}→${g.from+1})`:`${r.nom} ${g.from+1}`;
-      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="alertdialog" aria-modal="true" aria-label="Confirmer l'achat"><div class="in"><div><h2>Acheter ${esc(lab)} ?</h2><div class="muted small">${esc(c.court)}</div></div><div class="calc"><span>Coût</span><b>${k} XP</b><span>Disponible</span><b>${dispo} XP</b><span>Après achat</span><b>${dispo-k} XP</b></div><div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="dlgOk">Acheter</button></div></div></div>`;
+      const named=r.kind==='atout'||r.kind==='spec',lab=named?(r.kind==='atout'?"un atout féerique":'une spécialité'):`${r.nom} ${g.from+1}`;
+      const field=named?`<div class="field"><label for="dn">Nom de ${r.kind==='atout'?"l'atout":'la spécialité'}</label><input id="dn" type="text" data-dn="1" autocomplete="off" value="${esc(g.nom||'')}"></div>`:'';
+      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="alertdialog" aria-modal="true" aria-label="Confirmer l'achat"><div class="in"><div><h2>Acheter ${esc(lab)} ?</h2><div class="muted small">${esc(c.court)}</div></div>${field}<div class="calc"><span>Coût</span><b>${k} XP</b><span>Disponible</span><b>${dispo} XP</b><span>Après achat</span><b>${dispo-k} XP</b></div><div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="dlgOk"${named&&!(g.nom||'').trim()?' disabled':''}>Acheter</button></div></div></div>`;
       return;}
     else{const e=S.events.find(x=>x.id===g.id);if(!e){S.dlg=null;root.innerHTML='';return;}titre='Supprimer « '+e.titre+' » ?';txt="Ce gain d'XP est retiré pour tous les personnages concernés.";}
     root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="alertdialog" aria-modal="true" aria-label="Confirmation"><div class="in"><h2>${esc(titre)}</h2><div class="muted">${esc(txt)}</div><div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn" style="background:var(--bad);border-color:var(--bad);color:#fff" data-act="dlgOk">Supprimer définitivement</button></div></div></div>`;
@@ -499,11 +531,15 @@ document.addEventListener('click',ev=>{
   const a=t.dataset.act,d=t.dataset;S._force=true;
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
   if(a==='tab'){S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
-  else if(a==='sel'){S.sel=d.id;S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
+  else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max};}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;}
+  else if(a==='nameOpen'){S.nameForm={kind:d.kind,nom:''};}
+  else if(a==='nameClose'){S.nameForm={kind:null,nom:''};}
+  else if(a==='nameAdd'){const k=S.nameForm.kind,nom=S.nameForm.nom.trim(),c0=S.chars[S.sel];if(!k||!nom||!c0)return;const c=clone(c0);if(k==='atout'&&c.atout.max!=null&&(c.atout.cur||0)>=c.atout.max)return;c.noms=c.noms||{atout:[],spec:[]};c.noms[k]=c.noms[k]||[];c.noms[k].push(nom);c[k].cur=(c[k].cur||0)+1;S.nameForm.nom='';saveChar(c);return;}
+  else if(a==='nameDel'){const c=clone(S.chars[S.sel]),k=d.kind;if(!c.noms||!c.noms[k])return;c.noms[k].splice(+d.i,1);c[k].cur=Math.max(0,(c[k].cur||0)-1);saveChar(c);return;}
   else if(a==='heart'){const c=clone(S.chars[S.sel]),r=ref(c,d.key);if(!r)return;const cu=r.o.cur||0;c.plan=c.plan||{};if((c.plan[d.key]||0)>cu)delete c.plan[d.key];else if(r.max==null||cu<r.max)c.plan[d.key]=cu+1;saveChar(c);return;}
-  else if(a==='quick'){const c=S.chars[S.sel],r=c&&ref(c,d.key);if(!r)return;const cu=r.o.cur||0;if(r.max!=null&&cu>=r.max)return;if(lvlCost(r.kind,cu+1)>summary(c,S.events).dispo)return;S.dlg={kind:'b',id:c.id,key:d.key,from:cu};}
+  else if(a==='quick'){const c=S.chars[S.sel],r=c&&ref(c,d.key);if(!r)return;const cu=r.o.cur||0;if(r.max!=null&&cu>=r.max)return;if(lvlCost(r.kind,cu+1)>summary(c,S.events).dispo)return;S.dlg={kind:'b',id:c.id,key:d.key,from:cu,nom:''};}
   else if(a==='undoLvl'){const u=undoLevel(cur(),S.sheet.key);S.sheet=null;if(u)saveChar(u.c);return;}
   else if(a==='step'){S.sheet.to+= +d.d;}
   else if(a==='fixToggle'){S.sheet.fix=!S.sheet.fix;}
@@ -549,7 +585,7 @@ document.addEventListener('click',ev=>{
   else if(a==='pDel')S.dlg={kind:'p',id:d.pid};
   else if(a==='cDel')S.dlg={kind:'c',id:d.id};
   else if(a==='logout'){try{localStorage.removeItem('xp.code');}catch(e){}location.reload();return;}
-  else if(a==='dlgOk'){const g=S.dlg;S.dlg=null;if(g.kind==='b'){const c=S.chars[g.id],r=c&&ref(c,g.key);if(r&&(r.o.cur||0)===g.from&&lvlCost(r.kind,g.from+1)<=summary(c,S.events).dispo&&(r.max==null||g.from<r.max))saveChar(buy(c,g.key,g.from+1,today()));else render();return;}if(g.kind==='c')removeChar(g.id);else if(g.kind==='p')removePlayer(g.id);else if(g.kind==='g')saveEvents(S.events.filter(e=>e.id!==g.id));return;}
+  else if(a==='dlgOk'){const g=S.dlg;S.dlg=null;if(g.kind==='b'){const c=S.chars[g.id],r=c&&ref(c,g.key),nm=(g.nom||'').trim(),named=r&&(r.kind==='atout'||r.kind==='spec');if(r&&(!named||nm)&&(r.o.cur||0)===g.from&&lvlCost(r.kind,g.from+1)<=summary(c,S.events).dispo&&(r.max==null||g.from<r.max))saveChar(buy(c,g.key,g.from+1,today(),named?nm:undefined));else render();return;}if(g.kind==='c')removeChar(g.id);else if(g.kind==='p')removePlayer(g.id);else if(g.kind==='g')saveEvents(S.events.filter(e=>e.id!==g.id));return;}
   else if(a==='star'){const n=+d.n,auto=scenarioCount(S.events),cs=starCount(S.events,S.heritage.delta);const h={score:S.heritage.score,delta:(n===cs?n-1:n)-auto};S.heritage=h;persist('meta/heritage',h);}
   else if(a==='starReset'){S.heritage={score:S.heritage.score,delta:0};persist('meta/heritage',S.heritage);}
   else if(a==='addP'){const n=S.newP.nom.trim();if(n){const p={id:slug(n),nom:n,role:S.newP.role,parti:false,persos:[]};S.newP={nom:'',role:'Joueur'};savePlayer(p);return;}}
@@ -566,9 +602,13 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.nc){S.newC[t.dataset.nc]=t.value;}
   else if(t.dataset.as){S.asheet[t.dataset.as]=t.value;}
   else if(t.dataset.sh){S.sheet[t.dataset.sh]=t.value;}
+  else if(t.dataset.nm!==undefined){S.nameForm.nom=t.value;}
+  else if(t.dataset.dn!==undefined){S.dlg.nom=t.value;}
   const q=s=>document.querySelector(s);
   if(t.dataset.f==='titre'||t.dataset.k==='montant'){const b=q('[data-act="gainSave"]');if(b){const f=S.form;b.disabled=!(f.titre.trim()&&(f.lines.some(l=>+l.montant>0&&l.persos.length)||(f.editId&&(f.keep||[]).length)));}}
   if(t.dataset.pnj){const b=q('[data-act="pnjXp"]');if(b)b.disabled=!(S.pnjForm.titre.trim()&&+S.pnjForm.montant>0);}
+  if(t.dataset.nm!==undefined){const b=q('[data-act="nameAdd"]');if(b)b.disabled=!S.nameForm.nom.trim()||b.dataset.full==='1';}
+  if(t.dataset.dn!==undefined){const b=q('[data-act="dlgOk"]');if(b)b.disabled=!(S.dlg.nom||'').trim();}
   if(t.dataset.np){const b=q('[data-act="addP"]');if(b)b.disabled=!S.newP.nom.trim();}
   if(t.dataset.nc){const b=q('[data-act="addC"]');if(b)b.disabled=!S.newC.court.trim();}
 });
@@ -642,7 +682,7 @@ function start(){
     DB=db;
     db.collection('chars').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
-      const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=x;});
+      const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=normNoms(x);});
       S.chars=m;S.ready=true;clearTimeout(timer);if(!snap.metadata.fromCache)setSync('ok');render();
     },e=>{setSync('err','Lecture impossible');});
     db.collection('players').onSnapshot(snap=>{
