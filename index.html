@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#efe5cf">
 <script>try{var t=localStorage.getItem('xp.theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-<title>Registre d'XP</title>
+<title>Le bel XP de la Belle Époque</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Cinzel:wght@500;600&family=Inter:wght@400;500;600&display=swap">
 <style>
 /* Layout : en-tête collant + 4 vues (Équipe, Fiche, Gains, Règles), feuille de saisie en bas d'écran */
@@ -221,7 +221,7 @@ th{font-size:11px;text-transform:uppercase}
 </head><body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1>Registre d'XP</h1><div class="brandr"><span class="sync" id="sync"><i></i><span>Connexion…</span></span><button type="button" class="themebtn" id="themeBtn" aria-label="Changer de thème"></button></div></div>
+    <div class="brand"><h1>Le bel XP de la Belle Époque</h1><div class="brandr"><span class="sync" id="sync"><i></i><span>Connexion…</span></span><button type="button" class="themebtn" id="themeBtn" aria-label="Changer de thème"></button></div></div>
     <nav class="tabs" id="tabs"></nav>
   </header>
   <main id="app"></main>
@@ -294,6 +294,11 @@ function paliers(c){
   return{stage:'Légendaire',gauges:[],total:0,done:true,blocked:false};
 }
 const clone=o=>JSON.parse(JSON.stringify(o));
+const AUTRES=['Domaine','Triche','PNJ'];
+function autreTotal(c,nom){return (c.achats||[]).filter(a=>a.key==='autre:'+nom).reduce((s,a)=>s+(a.cout||0),0);}
+function lastAutre(c,nom){const A=c.achats||[];for(let i=A.length-1;i>=0;i--)if(A[i].key==='autre:'+nom)return A[i];return null;}
+function spendAutre(c,nom,pts,today){const n=clone(c);n.achats=n.achats||[];n.achats.push({id:'a'+Date.now().toString(36)+Math.floor(Math.random()*1e3),date:today,label:'Dépense · '+nom,cout:pts,key:'autre:'+nom});return n;}
+function undoAutre(c,nom){const a=lastAutre(c,nom);if(!a)return null;const n=clone(c);n.achats=n.achats.filter(x=>x.id!==a.id);return{c:n,refund:a.cout||0};}
 const NOMRE=/^\s*(atouts?\s+f[ée]eriques?|sp[ée]cialit[ée]s?)\s*\((.+)\)\s*$/i;
 function nameList(c,kind){const out=[];for(const a of c.achats||[]){const m=NOMRE.exec(a.label||'');if(!m)continue;const k=/^atout/i.test(m[1])?'atout':'spec';const n=m[2].trim();if(k!==kind||/^\d+\s*(→|->)\s*\d+$/.test(n))continue;out.push(n);}return out.concat((c.noms&&c.noms[kind])||[]);}
 function normNoms(c){for(const k of ['atout','spec']){if(c[k]){const n=nameList(c,k).length;if((c[k].cur||0)<n)c[k].cur=n;}}return c;}
@@ -339,7 +344,7 @@ const ORDER=['kerian','massetoc','rowen','sloan','theodule','maral','ismael','an
 let ME=null;try{ME=localStorage.getItem('xp.me')||null;}catch(e){}
 const S={chars:{},players:{},events:[],ready:false,view:'gains',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
   futForm:{open:false,nom:'',max:'6'},pnjForm:{titre:'',montant:''},newP:{nom:'',role:'Joueur'},newC:{court:'',nom:'',type:'PJ',owner:''},
-  form:{titre:'',type:'Scénario',date:'',lines:[{nature:'Scénario',montant:'',persos:[]}]},hist:{},dirty:false,sync:'loading'};
+  form:{titre:'',type:'Scénario',date:'',lines:[{nature:'Scénario',montant:'',persos:null}]},hist:{},dirty:false,sync:'loading'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const fmtDate=d=>{if(!d)return '';const [y,m,j]=d.split('-');return `${j}/${m}/${y.slice(2)}`;};
@@ -464,6 +469,9 @@ function viewSheet(){
     else h+=`<div style="margin-top:10px"><button class="btn" data-act="futOpen">+ Ajouter une compétence futile</button></div>`;
     h+=`</div>`;
   }
+  if(c.type==='PJ'){
+    h+=`<h2>Autres dépenses</h2><div class="card">`+AUTRES.map(n=>`<div class="irow" style="grid-template-columns:minmax(0,1fr) 60px"><button class="rmain" data-act="openAutre" data-nom="${n}" style="grid-template-columns:minmax(0,1fr) auto"><span class="nm">${n}</span><span class="lv">${autreTotal(c,n)}<small> XP</small></span></button><button class="plus${s.dispo>0?' ok':''}" data-act="autrePlus" data-nom="${n}"${s.dispo>0?'':' disabled'} aria-label="Dépenser des XP en ${n}">+</button></div>`).join('')+`</div>`;
+  }
   const p=paliers(c);
   if(p){
     h+=`<h2>Chemin vers ${p.done?'Légendaire':p.stage}</h2><div class="card">`;
@@ -485,6 +493,9 @@ function viewSheet(){
   h+=`</div>`;
   return h;
 }
+const allPJ=()=>Object.values(S.chars).filter(c=>c.type==='PJ'&&actif(c)&&!c.cache).map(c=>c.id);
+const lp=l=>l.persos!=null?l.persos:(l.nature==='Scénario'||l.nature==='Groupe')?allPJ():[];
+const lockedLine=l=>l.nature==='Groupe'&&l.persos==null;
 function viewGains(){
   if(!ids().length)return emptyState();
   let h='';
@@ -494,10 +505,10 @@ function viewGains(){
   h+=`<h2 style="margin-top:4px">${editing?'Modifier le gain':'Nouveau gain d\'XP'}</h2><div class="card"${editing?' style="border-color:var(--accent)"':''}><div class="frow"><div class="field"><label for="gty">Type</label><select id="gty" data-f="type">${TYPES.map(t=>`<option${t===(f.type||'Scénario')?' selected':''}>${t}</option>`).join('')}</select></div><div class="field"><label for="gt">Intitulé</label><input id="gt" type="text" data-f="titre" placeholder="ex. S12. Titre du scénario" value="${esc(f.titre)}"></div><div class="field"><label for="gd">Date</label><input id="gd" type="date" data-f="date" value="${esc(f.date)}"></div></div>`;
   f.lines.forEach((ln,i)=>{
     h+=`<div style="border-top:1px solid var(--line);padding-top:10px;margin-top:10px"><div class="frow"><div class="field"><label for="gn${i}">Nature</label><select id="gn${i}" data-l="${i}" data-k="nature">${NATURES.map(n=>`<option${n===ln.nature?' selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label for="gm${i}">XP par personnage</label><input id="gm${i}" type="number" inputmode="numeric" min="0" data-l="${i}" data-k="montant" value="${esc(ln.montant)}"></div></div>
-    <div class="chips" style="flex-wrap:wrap;overflow:visible">${formChars.map(id=>`<button class="chip" data-act="lineChar" data-l="${i}" data-id="${id}" aria-pressed="${ln.persos.includes(id)}">${esc(S.chars[id].court)}</button>`).join('')}</div>
-    <div class="actions" style="margin-bottom:4px"><button class="btn ghost" data-act="lineAll" data-l="${i}">Tous les PJ</button><button class="btn ghost" data-act="lineNone" data-l="${i}">Aucun</button>${f.lines.length>1?`<button class="btn ghost" data-act="lineDel" data-l="${i}">Retirer la ligne</button>`:''}</div></div>`;
+    <div class="chips" style="flex-wrap:wrap;overflow:visible">${formChars.map(id=>`<button class="chip" data-act="lineChar" data-l="${i}" data-id="${id}" aria-pressed="${lp(ln).includes(id)}"${lockedLine(ln)?' disabled':''}>${esc(S.chars[id].court)}</button>`).join('')}</div>${lockedLine(ln)?'<div class="muted small">Groupe : s\'applique à tous les PJ.</div>':''}
+    <div class="actions" style="margin-bottom:4px">${lockedLine(ln)?'':`<button class="btn ghost" data-act="lineAll" data-l="${i}">Tous les PJ</button><button class="btn ghost" data-act="lineNone" data-l="${i}">Aucun</button>`}${f.lines.length>1?`<button class="btn ghost" data-act="lineDel" data-l="${i}">Retirer la ligne</button>`:''}</div></div>`;
   });
-  const valid=f.titre.trim()&&(f.lines.some(l=>+l.montant>0&&l.persos.length)||(editing&&(f.keep||[]).length));
+  const valid=f.titre.trim()&&(f.lines.some(l=>+l.montant>0&&lp(l).length)||(editing&&(f.keep||[]).length));
   h+=`<div class="actions" style="margin-top:10px"><button class="btn" data-act="lineAdd">+ Autre nature</button>${editing?'<button class="btn ghost" data-act="gainCancel">Annuler</button>':''}<button class="btn pri" data-act="gainSave"${valid?'':' disabled'}>${editing?'Enregistrer les modifications':'Enregistrer le gain'}</button></div></div>`;
   const list=pjIds().map(i=>S.chars[i]);
   const gt=gainsTable(list,S.events);
@@ -540,17 +551,23 @@ function viewPlayers(){
   return h;
 }
 function viewRules(){
-  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
+  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
   return `<h2 style="margin-top:4px">Règles appliquées</h2><div class="card">${rows.map(r=>`<div class="ev"><div class="t" style="min-width:140px">${esc(r[0])}</div><div class="muted" style="text-align:right">${esc(r[1])}</div></div>`).join('')}</div>
   <div class="muted small" style="margin-top:12px">Dans ce prototype, les coefficients sont fixés dans la page. Dans la version définitive, ils seront modifiables depuis cet écran.</div><div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="logout">Changer de code (se déconnecter)</button></div>`;
 }
 function renderSheet(){
   const root=document.getElementById('sheetRoot');
-  {const ae0=document.activeElement;if(S.dlg&&S.dlg.kind==='b'&&ae0&&ae0.id==='dn'&&root.contains(ae0))return;}
+  {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a')&&ae0&&(ae0.id==='dn'||ae0.id==='dp')&&root.contains(ae0))return;}
   if(S.dlg){
     const g=S.dlg;let titre='',txt='';
     if(g.kind==='c'){const c=S.chars[g.id];if(!c){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+c.court+' ?';txt="La fiche, les achats et les gains de ce personnage seront supprimés définitivement. Pour garder l'historique, passe plutôt son statut à « Décédé » ou « Retiré ».";}
     else if(g.kind==='p'){const p=S.players[g.id];if(!p){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+p.nom+' ?';txt="Le joueur disparaît de la liste. Ses personnages ne sont pas supprimés.";}
+    else if(g.kind==='a'){const c=S.chars[g.id];if(!c){S.dlg=null;root.innerHTML='';return;}const dispo=summary(c,S.events).dispo,p=Math.floor(+g.pts)||0,ok=p>=1&&p<=dispo;
+      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Dépenser des XP"><div class="in"><div><h2>Dépenser en ${esc(g.nom)}</h2><div class="muted small">${esc(c.court)}</div></div><div class="field"><label for="dp">XP à dépenser</label><input id="dp" type="number" inputmode="numeric" min="1" data-dp="1" autocomplete="off" value="${esc(g.pts)}"></div><div class="calc"><span>Disponible</span><b>${dispo} XP</b><span>Après dépense</span><b id="dafter">${dispo-p} XP</b></div><div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="dlgOk"${ok?'':' disabled'}>Dépenser</button></div></div></div>`;
+      return;}
+    else if(g.kind==='u'){const c=S.chars[g.id];if(!c){S.dlg=null;root.innerHTML='';return;}const l=lastAutre(c,g.nom);
+      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Annuler une dépense"><div class="in"><div><h2>${esc(g.nom)}</h2><div class="muted small">${esc(c.court)} · ${autreTotal(c,g.nom)} XP dépensés au total</div></div>${l?`<div class="muted small">Annule la dernière saisie : ${l.cout} XP${l.date?' du '+fmtDate(l.date):''}. Les XP sont rendus.</div><div class="actions"><button class="btn pri" data-act="dlgOk">Annuler la dernière saisie</button></div>`:'<div class="muted">Aucune saisie à annuler.</div>'}<div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;
+      return;}
     else if(g.kind==='b'){const c=S.chars[g.id],r=c&&ref(c,g.key);if(!r){S.dlg=null;root.innerHTML='';return;}const k=lvlCost(r.kind,g.from+1),dispo=summary(c,S.events).dispo;
       const named=r.kind==='atout'||r.kind==='spec',lab=named?(r.kind==='atout'?"un atout féerique":'une spécialité'):`${r.nom} ${g.from+1}`;
       const field=named?`<div class="field"><label for="dn">Nom de ${r.kind==='atout'?"l'atout":'la spécialité'}</label><input id="dn" type="text" data-dn="1" autocomplete="off" value="${esc(g.nom||'')}"></div>`:'';
@@ -564,7 +581,7 @@ function renderSheet(){
     const a=S.asheet,c=S.chars[a.cid],x=c&&(c.achats||[]).find(y=>y.id===a.id);
     if(!x){S.asheet=null;root.innerHTML='';return;}
     const r=x.key?ref(c,x.key):null,canRev=!!r&&(r.o.cur||0)===x.to;
-    const info=x.key?(canRev?`Annuler cet achat rend ${x.cout} XP et fait redescendre ${esc(r.nom)} de ${x.to} à ${x.from}.`:`Le niveau de cet élément a changé depuis l'achat : annuler rend seulement les XP. Corrige le niveau à la main si besoin.`):`Achat importé du tableur : annuler rend les XP, mais ne change pas le niveau sur la fiche. Corrige le niveau ensuite avec « Corriger le niveau ou le maximum ».`;
+    const info=(x.key||'').startsWith('autre:')?`Annuler cette dépense rend ${x.cout} XP.`:x.key?(canRev?`Annuler cet achat rend ${x.cout} XP et fait redescendre ${esc(r.nom)} de ${x.to} à ${x.from}.`:`Le niveau de cet élément a changé depuis l'achat : annuler rend seulement les XP. Corrige le niveau à la main si besoin.`):`Achat importé du tableur : annuler rend les XP, mais ne change pas le niveau sur la fiche. Corrige le niveau ensuite avec « Corriger le niveau ou le maximum ».`;
     root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Achat"><div class="in"><div><h2>Modifier l'achat</h2><div class="muted small">${esc(c.court)}</div></div>
       <div class="field"><label for="al">Libellé</label><input id="al" type="text" data-as="label" value="${esc(a.label)}"></div>
       <div class="frow" style="margin:0"><div class="field"><label for="ac">Coût (XP)</label><input id="ac" type="number" inputmode="numeric" min="0" data-as="cout" value="${esc(a.cout)}"></div><div class="field"><label for="ad">Date</label><input id="ad" type="date" data-as="date" value="${esc(a.date||'')}"></div></div>
@@ -605,6 +622,8 @@ document.addEventListener('click',ev=>{
   else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max};}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;}
+  else if(a==='autrePlus'){S.dlg={kind:'a',id:S.sel,nom:d.nom,pts:''};}
+  else if(a==='openAutre'){S.dlg={kind:'u',id:S.sel,nom:d.nom};}
   else if(a==='nameOpen'){S.nameForm={kind:d.kind,nom:''};}
   else if(a==='nameClose'){S.nameForm={kind:null,nom:''};}
   else if(a==='nameAdd'){const k=S.nameForm.kind,nom=S.nameForm.nom.trim(),c0=S.chars[S.sel];if(!k||!nom||!c0)return;const c=clone(c0);if(k==='atout'&&c.atout.max!=null&&(c.atout.cur||0)>=c.atout.max)return;c.noms=c.noms||{atout:[],spec:[]};c.noms[k]=c.noms[k]||[];c.noms[k].push(nom);c[k].cur=(c[k].cur||0)+1;S.nameForm.nom='';saveChar(c);return;}
@@ -627,26 +646,26 @@ document.addEventListener('click',ev=>{
   else if(a==='futCancel')S.futForm.open=false;
   else if(a==='futSave'){const nom=S.futForm.nom.trim();if(nom){const c=clone(S.chars[S.sel]);c.futiles=c.futiles||[];c.futiles.push({nom,max:Math.max(1,+S.futForm.max||6),cur:0});S.futForm={open:false,nom:'',max:'6'};saveChar(c);return;}}
   else if(a==='pnjXp'){const f=S.pnjForm,m=+f.montant;if(f.titre.trim()&&m>0){const e={id:'g'+Date.now().toString(36),date:today(),titre:f.titre.trim(),type:'Autre',entries:[{perso:S.sel,nature:'Individuel',montant:m}]};S.pnjForm={titre:'',montant:''};saveEvents([...S.events,e]);return;}}
-  else if(a==='lineChar'){const l=S.form.lines[+d.l];l.persos=l.persos.includes(d.id)?l.persos.filter(x=>x!==d.id):[...l.persos,d.id];}
-  else if(a==='lineAll'){S.form.lines[+d.l].persos=pjIds().filter(i=>actif(S.chars[i]));}
+  else if(a==='lineChar'){const l=S.form.lines[+d.l];if(lockedLine(l))return;const cp=lp(l);l.persos=cp.includes(d.id)?cp.filter(x=>x!==d.id):[...cp,d.id];}
+  else if(a==='lineAll'){S.form.lines[+d.l].persos=allPJ();}
   else if(a==='lineNone')S.form.lines[+d.l].persos=[];
-  else if(a==='lineAdd')S.form.lines.push({nature:'Individuel',montant:'',persos:[]});
+  else if(a==='lineAdd')S.form.lines.push({nature:'Individuel',montant:'',persos:null});
   else if(a==='lineDel')S.form.lines.splice(+d.l,1);
   else if(a==='gainSave'){
-    const f=S.form,entries=[];for(const l of f.lines){const m=+l.montant;if(m>0)for(const p of l.persos)entries.push({perso:p,nature:l.nature,montant:m});}
+    const f=S.form,entries=[];for(const l of f.lines){const m=+l.montant;if(m>0)for(const p of lp(l))entries.push({perso:p,nature:l.nature,montant:m});}
     if(f.editId){const all=entries.concat(f.keep||[]);
       if(f.titre.trim()&&all.length){const evs=S.events.map(x=>x.id===f.editId?{...x,date:f.date||x.date||today(),titre:f.titre.trim(),type:f.type||'Scénario',entries:all}:x);
-        S.form={titre:'',type:'Scénario',date:today(),lines:[{nature:'Scénario',montant:'',persos:[]}]};saveEvents(evs);window.scrollTo(0,document.body.scrollHeight);return;}
+        S.form={titre:'',type:'Scénario',date:today(),lines:[{nature:'Scénario',montant:'',persos:null}]};saveEvents(evs);window.scrollTo(0,document.body.scrollHeight);return;}
     }
-    else if(f.titre.trim()&&entries.length){const e={id:'g'+Date.now().toString(36),date:f.date||today(),titre:f.titre.trim(),type:f.type||'Scénario',entries};S.form={titre:'',type:'Scénario',date:today(),lines:[{nature:'Scénario',montant:'',persos:[]}]};saveEvents([...S.events,e]);return;}
+    else if(f.titre.trim()&&entries.length){const e={id:'g'+Date.now().toString(36),date:f.date||today(),titre:f.titre.trim(),type:f.type||'Scénario',entries};S.form={titre:'',type:'Scénario',date:today(),lines:[{nature:'Scénario',montant:'',persos:null}]};saveEvents([...S.events,e]);return;}
   }
   else if(a==='gainEdit'){const e=S.events.find(x=>x.id===d.id);if(e){
     const rep=new Set(pjIds().filter(i=>actif(S.chars[i])));const lines=[],keep=[];
     for(const en of e.entries){if(!rep.has(en.perso)){keep.push(en);continue;}
       let l=lines.find(x=>x.nature===en.nature&&+x.montant===+en.montant);if(!l){l={nature:en.nature,montant:String(en.montant),persos:[]};lines.push(l);}l.persos.push(en.perso);}
-    if(!lines.length)lines.push({nature:'Scénario',montant:'',persos:[]});
+    if(!lines.length)lines.push({nature:'Scénario',montant:'',persos:null});
     S.form={editId:e.id,keep,titre:e.titre,type:evType(e),date:e.date||today(),lines};window.scrollTo(0,0);}}
-  else if(a==='gainCancel'){S.form={titre:'',type:'Scénario',date:today(),lines:[{nature:'Scénario',montant:'',persos:[]}]};}
+  else if(a==='gainCancel'){S.form={titre:'',type:'Scénario',date:today(),lines:[{nature:'Scénario',montant:'',persos:null}]};}
   else if(a==='gainDel')S.dlg={kind:'g',id:d.id};
   else if(a==='assign'){const p=clone(S.players[d.pid]);p.persos=p.persos||[];p.persos=p.persos.includes(d.id)?p.persos.filter(x=>x!==d.id):[...p.persos,d.id];savePlayer(p);return;}
   else if(a==='hideAll'){const p=S.players[d.pid];const mine=ids().map(i=>S.chars[i]).filter(c=>(p.persos||[]).includes(c.id));const target=!mine.every(c=>c.cache);mine.forEach(c=>setCache(c,target));}
@@ -656,7 +675,10 @@ document.addEventListener('click',ev=>{
   else if(a==='pDel')S.dlg={kind:'p',id:d.pid};
   else if(a==='cDel')S.dlg={kind:'c',id:d.id};
   else if(a==='logout'){try{localStorage.removeItem('xp.code');}catch(e){}location.reload();return;}
-  else if(a==='dlgOk'){const g=S.dlg;S.dlg=null;if(g.kind==='b'){const c=S.chars[g.id],r=c&&ref(c,g.key),nm=(g.nom||'').trim(),named=r&&(r.kind==='atout'||r.kind==='spec');if(r&&(!named||nm)&&(r.o.cur||0)===g.from&&lvlCost(r.kind,g.from+1)<=summary(c,S.events).dispo&&(r.max==null||g.from<r.max))saveChar(buy(c,g.key,g.from+1,today(),named?nm:undefined));else render();return;}if(g.kind==='c')removeChar(g.id);else if(g.kind==='p')removePlayer(g.id);else if(g.kind==='g')saveEvents(S.events.filter(e=>e.id!==g.id));return;}
+  else if(a==='dlgOk'){const g=S.dlg;S.dlg=null;
+    if(g.kind==='a'){const c=S.chars[g.id],p=Math.floor(+g.pts);if(c&&p>=1&&p<=summary(c,S.events).dispo)saveChar(spendAutre(c,g.nom,p,today()));else render();return;}
+    if(g.kind==='u'){const c=S.chars[g.id],u=c&&undoAutre(c,g.nom);if(u)saveChar(u.c);else render();return;}
+    if(g.kind==='b'){const c=S.chars[g.id],r=c&&ref(c,g.key),nm=(g.nom||'').trim(),named=r&&(r.kind==='atout'||r.kind==='spec');if(r&&(!named||nm)&&(r.o.cur||0)===g.from&&lvlCost(r.kind,g.from+1)<=summary(c,S.events).dispo&&(r.max==null||g.from<r.max))saveChar(buy(c,g.key,g.from+1,today(),named?nm:undefined));else render();return;}if(g.kind==='c')removeChar(g.id);else if(g.kind==='p')removePlayer(g.id);else if(g.kind==='g')saveEvents(S.events.filter(e=>e.id!==g.id));return;}
   else if(a==='star'){const n=+d.n,auto=scenarioCount(S.events),cs=starCount(S.events,S.heritage.delta);const h={score:S.heritage.score,delta:(n===cs?n-1:n)-auto};S.heritage=h;persist('meta/heritage',h);}
   else if(a==='starReset'){S.heritage={score:S.heritage.score,delta:0};persist('meta/heritage',S.heritage);}
   else if(a==='addP'){const n=S.newP.nom.trim();if(n){const p={id:slug(n),nom:n,role:S.newP.role,parti:false,persos:[]};S.newP={nom:'',role:'Joueur'};savePlayer(p);return;}}
@@ -675,10 +697,12 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.sh){S.sheet[t.dataset.sh]=t.value;}
   else if(t.dataset.nm!==undefined){S.nameForm.nom=t.value;}
   else if(t.dataset.dn!==undefined){S.dlg.nom=t.value;}
+  else if(t.dataset.dp!==undefined){S.dlg.pts=t.value;}
   const q=s=>document.querySelector(s);
-  if(t.dataset.f==='titre'||t.dataset.k==='montant'){const b=q('[data-act="gainSave"]');if(b){const f=S.form;b.disabled=!(f.titre.trim()&&(f.lines.some(l=>+l.montant>0&&l.persos.length)||(f.editId&&(f.keep||[]).length)));}}
+  if(t.dataset.f==='titre'||t.dataset.k==='montant'){const b=q('[data-act="gainSave"]');if(b){const f=S.form;b.disabled=!(f.titre.trim()&&(f.lines.some(l=>+l.montant>0&&lp(l).length)||(f.editId&&(f.keep||[]).length)));}}
   if(t.dataset.pnj){const b=q('[data-act="pnjXp"]');if(b)b.disabled=!(S.pnjForm.titre.trim()&&+S.pnjForm.montant>0);}
   if(t.dataset.nm!==undefined){const b=q('[data-act="nameAdd"]');if(b)b.disabled=!S.nameForm.nom.trim()||b.dataset.full==='1';}
+  if(t.dataset.dp!==undefined){const c=S.chars[S.dlg.id],dispo=summary(c,S.events).dispo,p=Math.floor(+t.value)||0,b=q('#sheetRoot [data-act="dlgOk"]'),af=document.getElementById('dafter');if(b)b.disabled=!(p>=1&&p<=dispo);if(af)af.textContent=(dispo-p)+' XP';}
   if(t.dataset.dn!==undefined){const b=q('[data-act="dlgOk"]');if(b)b.disabled=!(S.dlg.nom||'').trim();}
   if(t.dataset.np){const b=q('[data-act="addP"]');if(b)b.disabled=!S.newP.nom.trim();}
   if(t.dataset.nc){const b=q('[data-act="addC"]');if(b)b.disabled=!S.newC.court.trim();}
@@ -687,7 +711,7 @@ document.addEventListener('change',ev=>{
   const t=ev.target;S._force=true;
   if(t.dataset.her){S.heritage={score:t.value,delta:S.heritage.delta};persist('meta/heritage',S.heritage);render();}
   else if(t.dataset.note!==undefined){const c=clone(S.chars[S.sel]);const p=c.profils.find(x=>x.nom===t.dataset.note);const v=t.value.trim();p.note=v===''?null:(isNaN(+v)?v:+v);saveChar(c);}
-  else if(t.dataset.k==='nature'){render();}
+  else if(t.dataset.k==='nature'){S.form.lines[+t.dataset.l].persos=null;render();}
   else if(t.dataset.me){ME=t.value||null;try{if(ME)localStorage.setItem('xp.me',ME);else localStorage.removeItem('xp.me');}catch(e){}render();}
   else if(t.dataset.pf){const p=clone(S.players[t.dataset.pid]);p[t.dataset.pf]=t.dataset.pf==='nom'?(t.value.trim()||p.nom):t.value;savePlayer(p);}
   else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'?t.value:(t.value.trim()||c[k]);saveChar(c);}
