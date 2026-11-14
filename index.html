@@ -310,6 +310,40 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sess:last-child{border-bottom:0}
 .shead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px}
 .sline{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0 8px 12px;border-left:2px solid var(--line);margin-left:2px}
+.pmonth{display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:420px;margin:0 0 12px}
+.pmonth b{font-family:var(--font-display);font-style:italic;font-size:24px}
+.pmonth button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--accent);font-size:20px}
+.pdays{display:flex;flex-direction:column;gap:2px;max-width:640px}
+.pday{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:12px}
+.pday.we,.prow2.we,tr.we td{background:var(--plan-soft)}
+.pday.wk,.prow2.wk{margin-top:8px}
+.pd{width:44px;flex:none;line-height:1.05}.pd small{display:block;font-family:var(--font-label);font-size:11px;text-transform:uppercase;color:var(--muted)}.pd b{font-size:21px}
+.pslot{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:14px;padding:0 6px}
+.pslot.pref{border:2px solid var(--brass)}
+.pslot.on{background:var(--accent);color:var(--accent-fg);border-color:var(--brass)}
+.pc{width:34px;flex:none;text-align:right;font-size:11px;color:var(--muted);line-height:1.3;font-variant-numeric:tabular-nums}
+.plist{display:flex;flex-direction:column;gap:4px}
+.prow2{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.prow2.open{border-color:var(--brass)}
+.phead{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;padding:8px 10px;min-height:48px;text-align:left}
+.pd2{width:56px;flex:none;font-family:var(--font-label);font-size:12px}.pd2 small{color:var(--muted);text-transform:uppercase}.pd2 b{font-size:15px}
+.pgs{flex:1;display:flex;flex-direction:column;gap:3px;font-size:12px}.pgs>span{display:flex;align-items:center;gap:6px}.pgs small{color:var(--muted)}
+.pg{display:inline-flex;gap:2px}.pg i{display:block;width:6px;height:13px;border-radius:2px;background:var(--line)}.pg i.on{background:var(--accent)}.pg i.full{background:var(--good)}
+.pst{color:var(--brass);font-size:18px;width:18px}
+.pwho{padding:6px 12px 10px 12px;border-top:1px solid var(--line);font-size:13px;line-height:1.6}
+.pgrid{display:none;overflow-x:auto}
+.pgrid table th{font-family:var(--font-label);font-size:11px;padding:6px 4px;text-align:center}
+.pgrid td{text-align:center;padding:3px;white-space:nowrap}
+.pgrid td.pf{background:var(--plan-soft);box-shadow:inset 0 0 0 1px var(--brass)}
+.pgrid tr.wk td{border-top:2px solid var(--line)}
+.pd3{text-align:left!important;font-family:var(--font-label);font-size:12px;padding:4px 10px!important}
+.pbox{width:28px;height:28px;border-radius:6px;border:1.5px solid var(--line);background:var(--surface);color:var(--accent-fg);font-size:14px;padding:0;line-height:1}
+.pbox.on{background:var(--accent);border-color:var(--accent)}
+.pcom{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);margin-bottom:8px;max-width:560px}
+.pcom.pref{background:var(--plan-soft);border-color:var(--brass)}
+.pcom .pi{width:44px;height:44px;border-radius:50%;border:1px solid var(--brass);display:flex;align-items:center;justify-content:center;font-size:20px;flex:none;background:var(--surface)}
+.pcom b{font-family:var(--font-display);font-size:19px}
+@media (min-width:641px){.plist{display:none}.pgrid{display:block}}
 /* ===== Barre de navigation mobile ===== */
 .bnav{display:none}
 .menulist{display:flex;flex-direction:column}
@@ -463,7 +497,7 @@ const ORDER=['kerian','massetoc','rowen','sloan','theodule','maral','ismael','an
 let ME=null;try{ME=localStorage.getItem('xp.me')||null;}catch(e){}
 const S={chars:{},players:{},events:[],ready:false,view:'gains',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
   futForm:{open:false,nom:'',max:'6'},pnjForm:{titre:'',montant:''},newP:{nom:'',role:'Joueur'},newC:{court:'',nom:'',type:'PJ',owner:''},
-  secrets:[],secretsReady:false,curSess:null,creatures:[],creaturesReady:false,uni:'secrets',sec:null,secFilter:'all',
+  secrets:[],secretsReady:false,plan:{view:'mes',y:new Date().getFullYear(),m:new Date().getMonth(),open:null},curSess:null,creatures:[],creaturesReady:false,uni:'secrets',sec:null,secFilter:'all',
   form:{titre:'',type:'Scénario',date:'',lines:[{nature:'Scénario',montant:'',persos:null}]},hist:{},dirty:false,sync:'loading'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -728,7 +762,7 @@ function viewPlayers(){
   return h;
 }
 function viewRules(){
-  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Créatures de l\'univers','+1 quand toutes nos connaissances sur un type de créature sont réunies (case cochée). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Créature de l\'univers »)'],['Sessions de jeu','chaque gain d\'XP est saisi dans une session (type, intitulé, date) ; les secrets et créatures peuvent y être rattachés. Une session ne peut être supprimée tant que des découvertes y sont rattachées'],['Part des PNJ','PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s\'il a participé activement, 25 % sinon, arrondi à l\'inférieur ; sessions datées à partir du rattachement'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
+  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Créatures de l\'univers','+1 quand toutes nos connaissances sur un type de créature sont réunies (case cochée). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Créature de l\'univers »)'],['Sessions de jeu','chaque gain d\'XP est saisi dans une session (type, intitulé, date) ; les secrets et créatures peuvent y être rattachés. Une session ne peut être supprimée tant que des découvertes y sont rattachées'],['Part des PNJ','PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s\'il a participé activement, 25 % sinon, arrondi à l\'inférieur ; sessions datées à partir du rattachement'],['Planning','chaque joueur coche ses disponibilités en journée et en soirée ; les créneaux préférés sont le samedi soir et le dimanche journée ; « Dates communes » liste les créneaux où toute la table est libre'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
   return `<h2 style="margin-top:4px">Règles appliquées</h2><div class="card">${rows.map(r=>`<div class="ev"><div class="t" style="min-width:140px">${esc(r[0])}</div><div class="muted" style="text-align:right">${esc(r[1])}</div></div>`).join('')}</div>
   <div class="muted small" style="margin-top:12px">Dans ce prototype, les coefficients sont fixés dans la page. Dans la version définitive, ils seront modifiables depuis cet écran.</div><div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="logout">Changer de code (se déconnecter)</button></div>`;
 }
@@ -741,6 +775,7 @@ const ICON={
   equipe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M3 20c1-3.5 3.5-5 6-5s5 1.5 6 5"/><path d="M15.5 14.6c2.6-.3 4.6 1.2 5.5 4.4"/></svg>',
   menu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
   joueurs:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M5 20c1.2-3.6 4-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>',
+  cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
   regles:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg>'
 };
 const SEC_TYPE="Secret de l'univers";
@@ -889,12 +924,58 @@ function creToggle(id,sid){
   else{c.done=false;delete c.date;evs=evs.filter(e=>!(e.creature&&e.creature.id===id));}
   saveCreatures(list);if(evs!==S.events)saveEvents(evs);else render();
 }
+
+/* ---------- Planning (menu ≡) ---------- */
+const PJOURS=['dim','lun','mar','mer','jeu','ven','sam'],PJOURSL=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+const PMOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const pkey=(y,m,d,sl)=>''+y+String(m+1).padStart(2,'0')+String(d).padStart(2,'0')+sl;
+const planPlayers=()=>playersSorted().filter(p=>!p.parti);
+const isPref=(wd,sl)=>(wd===6&&sl==='S')||(wd===0&&sl==='J');
+function planCount(y,m,d,sl){const P=planPlayers(),k=pkey(y,m,d,sl);return{n:P.filter(p=>p.dispo&&p.dispo[k]).length,who:P.filter(p=>p.dispo&&p.dispo[k]).map(p=>p.nom),total:P.length};}
+function viewPlanning(){
+  const P=S.plan,y=P.y,m=P.m,nd=new Date(y,m+1,0).getDate(),pl=planPlayers(),T=pl.length;
+  let h=`<h2 style="margin-top:4px">Planning</h2><div class="subtabs" role="group" aria-label="Vues du planning" style="max-width:520px">${[['mes','Mes dispos'],['tous','Tout le monde'],['com','Dates communes']].map(([k,l])=>`<button data-act="planView" data-v="${k}" aria-pressed="${P.view===k}">${l}</button>`).join('')}</div>`;
+  h+=`<div class="pmonth"><button data-act="planMonth" data-d="-1" aria-label="Mois précédent">‹</button><b>${PMOIS[m].replace(/^./,c=>c.toUpperCase())} ${y}</b><button data-act="planMonth" data-d="1" aria-label="Mois suivant">›</button></div>`;
+  if(!T)return h+`<div class="card empty">Aucun joueur : ajoute-les dans l'onglet Joueurs.</div>`;
+  if(P.view==='mes'){
+    const me=ME&&S.players[ME]&&!S.players[ME].parti?S.players[ME]:null;
+    h+=`<div class="card" style="display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:10px"><label for="pme" class="small" style="white-space:nowrap">Je suis</label><select id="pme" data-me="1" style="flex:1"><option value="">— choisir —</option>${pl.map(p=>`<option value="${p.id}"${me&&me.id===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}</select></div>`;
+    if(!me)return h+`<div class="card empty">Choisis ton nom pour remplir tes disponibilités.</div>`;
+    h+=`<div class="muted small" style="margin-bottom:8px">Touche un créneau pour te dire disponible. Week-ends en orangé, ★ = créneau préféré (samedi soir, dimanche journée). À droite : dispos de la table, journée puis soirée.</div><div class="pdays">`;
+    for(let d=1;d<=nd;d++){const wd=new Date(y,m,d).getDay(),we=wd===0||wd===6;
+      const b=sl=>{const k=pkey(y,m,d,sl),on=!!(me.dispo&&me.dispo[k]),pf=isPref(wd,sl);return `<button class="pslot${on?' on':''}${pf?' pref':''}" data-act="planSet" data-p="${me.id}" data-k="${k}" aria-pressed="${on}">${sl==='J'?'☀ Journée':'☾ Soirée'}${pf?' ★':''}</button>`;};
+      const cj=planCount(y,m,d,'J').n,cs=planCount(y,m,d,'S').n;
+      h+=`<div class="pday${we?' we':''}${wd===1&&d>1?' wk':''}"><span class="pd"><small>${PJOURS[wd]}</small><b>${d}</b></span>${b('J')}${b('S')}<span class="pc">${cj}/${T}<br>${cs}/${T}</span></div>`;}
+    return h+`</div>`;
+  }
+  if(P.view==='tous'){
+    /* liste (téléphone) */
+    h+=`<div class="plist">`;
+    for(let d=1;d<=nd;d++){const wd=new Date(y,m,d).getDay(),we=wd===0||wd===6,J=planCount(y,m,d,'J'),Sx=planCount(y,m,d,'S'),open=P.open===pkey(y,m,d,'');
+      const gauge=c=>`<span class="pg">${Array.from({length:T},(_,i)=>`<i class="${i<c.n?(c.n===T?'full':'on'):''}"></i>`).join('')}</span>`;
+      const star=(wd===6&&Sx.n===T)||(wd===0&&J.n===T);
+      h+=`<div class="prow2${we?' we':''}${open?' open':''}${wd===1&&d>1?' wk':''}"><button class="phead" data-act="planOpen" data-k="${pkey(y,m,d,'')}" aria-expanded="${open}"><span class="pd2"><small>${PJOURS[wd]}</small> <b>${d}</b></span><span class="pgs"><span>☀ ${gauge(J)} <small>${J.n}/${T}</small></span><span>☾ ${gauge(Sx)} <small>${Sx.n}/${T}</small></span></span><span class="pst">${star?'★':''}</span></button>${open?`<div class="pwho"><div><b>☀ Journée</b> · ${J.n===T?'tout le monde':esc(J.who.join(', '))||'personne'}</div><div><b>☾ Soirée</b> · ${Sx.n===T?'tout le monde':esc(Sx.who.join(', '))||'personne'}</div></div>`:''}</div>`;}
+    h+=`</div>`;
+    /* grille (ordinateur) */
+    h+=`<div class="pgrid card" style="padding:0"><table><thead><tr><th rowspan="2" style="text-align:left">Date</th>${pl.map(p=>`<th colspan="2">${esc(p.nom)}</th>`).join('')}<th rowspan="2">Dispos</th></tr><tr>${pl.map(()=>'<th>☀</th><th>☾</th>').join('')}</tr></thead><tbody>`;
+    for(let d=1;d<=nd;d++){const wd=new Date(y,m,d).getDay(),we=wd===0||wd===6;
+      h+=`<tr class="${we?'we':''}${wd===1&&d>1?' wk':''}"><td class="pd3">${PJOURS[wd]} ${d}</td>`+pl.map(p=>['J','S'].map(sl=>{const k=pkey(y,m,d,sl),on=!!(p.dispo&&p.dispo[k]);return `<td class="${isPref(wd,sl)?'pf':''}"><button class="pbox${on?' on':''}" role="checkbox" aria-checked="${on}" aria-label="${esc(p.nom)}, ${PJOURSL[wd]} ${d}, ${sl==='J'?'journée':'soirée'}" data-act="planSet" data-p="${p.id}" data-k="${k}">${on?'✓':''}</button></td>`;}).join('')).join('')+
+        `<td style="white-space:nowrap">${['J','S'].map(sl=>{const c=planCount(y,m,d,sl).n;return `<span class="pill${c===T?' good':''}">${sl==='J'?'☀':'☾'} ${c}/${T}</span>`;}).join(' ')}</td></tr>`;}
+    return h+`</tbody></table></div>`;
+  }
+  const slots=[];for(let d=1;d<=nd;d++){const wd=new Date(y,m,d).getDay();for(const sl of ['J','S'])if(planCount(y,m,d,sl).n===T)slots.push({d,wd,sl,pf:isPref(wd,sl)});}
+  const card=x=>`<div class="pcom${x.pf?' pref':''}"><span class="pi">${x.sl==='J'?'☀':'☾'}</span><span style="flex:1"><b>${PJOURSL[x.wd].replace(/^./,c=>c.toUpperCase())} ${x.d} ${PMOIS[m]}</b><br><span class="muted small">${x.sl==='J'?'Journée':'Soirée'} · toute la table (${T}/${T})</span></span>${x.pf?'<span class="pst">★</span>':''}</div>`;
+  const pf=slots.filter(x=>x.pf),ot=slots.filter(x=>!x.pf);
+  h+=`<h3 style="margin-top:14px">★ Créneaux préférés</h3>`+(pf.map(card).join('')||'<div class="muted">Aucun pour l\'instant.</div>');
+  h+=`<h3 style="margin-top:18px">Autres dates où tout le monde est libre</h3>`+(ot.map(card).join('')||'<div class="muted">Aucune pour l\'instant.</div>');
+  return h;
+}
 function renderSheet(){
   const root=document.getElementById('sheetRoot');
   {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se'||S.dlg.kind==='ca'||S.dlg.kind==='ce'||S.dlg.kind==='sn'||S.dlg.kind==='sm')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt'||ae0.id==='crn'||ae0.id==='sdi')&&root.contains(ae0))return;}
   if(S.dlg){
     const g=S.dlg;let titre='',txt='';
-    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button><button data-act="tab" data-v="planning"${S.view==='planning'?' aria-current="page"':''}>${ICON.cal}Planning</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='sn'||g.kind==='sm'){const kids=g.kind==='sm'?sessChildren(g.id).filter(k=>!(k.secret&&k.secret.k==='bonus')).length:0;
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Session de jeu"><div class="in"><h2>${g.kind==='sn'?'Nouvelle session de jeu':'Modifier la session'}</h2>
       <div class="field"><label for="sdt">Type</label><select id="sdt" data-sd="type">${TYPES.map(t=>`<option${t===g.type?' selected':''}>${t}</option>`).join('')}</select></div>
@@ -946,17 +1027,17 @@ function renderSheet(){
   root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(r.nom)}"><div class="in"><div><h2>${esc(r.nom)}</h2><div class="muted small">${esc(c.court)}</div></div>${body}${fix}<div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;
 }
 function render(){
-  const tabs=[['gains','XP'],['sheet','Personnages'],['univers','Univers'],['team','Équipe'],['players','Joueurs'],['rules','Règles']];
+  const tabs=[['gains','XP'],['sheet','Personnages'],['univers','Univers'],['team','Équipe'],['players','Joueurs'],['rules','Règles'],['planning','Planning']];
   document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${S.view===k}">${l}</button>`).join('');
   const bn=[['gains','XP','xp'],['sheet','Personnages','perso'],['univers','Univers','univers'],['team','Équipe','equipe']];
-  const inMenu=S.view==='players'||S.view==='rules';
+  const inMenu=S.view==='players'||S.view==='rules'||S.view==='planning';
   document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${S.view===k}">${ICON[ic]}<span>${l}</span></button>`).join('')+
-    `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
+    `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles, Planning" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
   const ae=document.activeElement;
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;
   const v=S.view,app=document.getElementById('app');
-  app.innerHTML=v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():viewRules();
+  app.innerHTML=v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():viewRules();
   renderSheet();
 }
 
@@ -971,6 +1052,10 @@ document.addEventListener('click',ev=>{
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max};}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;}
   else if(a==='menu'){S.dlg={kind:'menu'};}
+  else if(a==='planView'){S.plan.view=d.v;}
+  else if(a==='planMonth'){let m=S.plan.m+(+d.d),y=S.plan.y;if(m<0){m=11;y--;}if(m>11){m=0;y++;}S.plan.m=m;S.plan.y=y;S.plan.open=null;}
+  else if(a==='planOpen'){S.plan.open=S.plan.open===d.k?null:d.k;}
+  else if(a==='planSet'){const p0=S.players[d.p];if(!p0)return;const pl=clone(p0);pl.dispo=pl.dispo||{};if(pl.dispo[d.k])delete pl.dispo[d.k];else pl.dispo[d.k]=true;savePlayer(pl);return;}
   else if(a==='sessNew'){S.dlg={kind:'sn',type:'Scénario',titre:'',date:today()};}
   else if(a==='sessEdit'||a==='sessEditId'){const e=a==='sessEdit'?curSession():sessById(d.id);if(!e)return;S.dlg={kind:'sm',id:e.id,type:evType(e),titre:e.titre||'',date:e.date||'',confirm:false};}
   else if(a==='sessCreate'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;const e={id:'g'+Date.now().toString(36),session:true,date:g.date||today(),titre:t,type:g.type||'Scénario',entries:[],pnj:{}};S.curSess=e.id;saveEvents([...S.events,e]);return;}
