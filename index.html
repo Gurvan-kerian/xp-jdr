@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#efe5cf">
 <script>try{var t=localStorage.getItem('xp.theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-<title>Le bel XP de la Belle Époque</title>
+<title>La belle appli de la Belle Époque</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Cinzel:wght@500;600&family=Inter:wght@400;500;600&display=swap">
 <style>
 /* Layout : en-tête collant + 4 vues (Équipe, Fiche, Gains, Règles), feuille de saisie en bas d'écran */
@@ -217,15 +217,83 @@ th{font-size:11px;text-transform:uppercase}
 .brandr{display:flex;align-items:center;gap:10px}
 .themebtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--brass);background:var(--surface);color:var(--brass);display:flex;align-items:center;justify-content:center;padding:0;box-shadow:inset 0 0 0 2px var(--surface),inset 0 0 0 3px var(--line)}
 .themebtn svg{width:20px;height:20px}
+/* ===== Univers › Secrets ===== */
+:root{--s-vm:#7d5a1c;--s-vmin:#46607a;--s-h:#8c4f2b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--s-vm:#e2b955;--s-vmin:#a9c0d6;--s-h:#d9a073}}
+:root[data-theme="dark"]{--s-vm:#e2b955;--s-vmin:#a9c0d6;--s-h:#d9a073}
+.subtabs{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--surface);border:1px solid var(--line);max-width:360px;margin:4px 0 14px}
+.subtabs button{flex:1;border:0;background:transparent;border-radius:999px;padding:9px 12px;min-height:40px;font-family:var(--font-label);font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.subtabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);box-shadow:inset 0 0 0 1px var(--brass-hi)}
+.secsum{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.secsum .big{font-family:var(--font-display);font-size:40px;font-weight:700;line-height:1;color:var(--accent)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:10px 0 12px}
+.g-vm{color:var(--s-vm)} .g-vmin{color:var(--s-vmin)} .g-h{color:var(--s-h)}
+.secgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+.sec{text-align:left;display:flex;flex-direction:column;gap:8px;padding:12px}
+.sec.sealed{background:transparent;box-shadow:none;border:1px dashed var(--line)}
+.sec .hd{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.sec .rn{font-family:var(--font-label);font-weight:600;letter-spacing:.08em;color:var(--brass-lo)}
+:root[data-theme="dark"] .sec .rn{color:var(--brass)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sec .rn{color:var(--brass)}}
+.sec .tt{font-family:var(--font-display);font-weight:700;font-size:20px;line-height:1.1;min-height:44px}
+.sec.sealed .tt{font-style:italic;font-weight:600;color:var(--muted)}
+.sec .pp{display:flex;justify-content:space-between;gap:6px;font-size:13px}
+.sec .pp span:first-child{overflow:hidden;white-space:nowrap;letter-spacing:.05em}
+.sec .pp .g-h{font-size:11px;letter-spacing:.12em}
+.sec .done{color:var(--good);font-weight:600}
+.back{border:0;background:transparent;color:var(--accent);font-weight:600;padding:8px 0;min-height:44px;display:inline-flex;align-items:center;gap:4px}
+.sechead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:2px 0 4px}
+.sechead .rn{font-family:var(--font-label);letter-spacing:.16em;font-size:12px;color:var(--muted)}
+.sechead h2{margin:4px 0 0}
+.sechead h2::before,.sechead h2::after{display:none}
+.sechead .pts{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--accent);white-space:nowrap}
+.bgauge{display:grid;gap:6px;margin:8px 0 6px}
+.bgauge i{display:block;height:9px;border-radius:99px;background:var(--surface2);box-shadow:inset 0 1px 3px rgba(0,0,0,.2)}
+.bgauge i.on{background:linear-gradient(180deg,var(--brass-hi),var(--brass) 55%,var(--brass-lo))}
+.sk{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:22px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.sk h3{margin:0;font-size:13px}
+.found{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 4px;border-bottom:1px solid var(--line);font-size:16px;line-height:1.35}
+.found:last-child{border-bottom:0}
+.found small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.sealedbox{border:1px dashed var(--line);border-radius:12px;padding:12px 14px;color:var(--muted);font-style:italic;margin-top:8px}
+.kinds{display:flex;flex-direction:column;gap:6px}
+.kind{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 12px;min-height:52px}
+.kind[aria-pressed="true"]{border:2px solid var(--accent);background:var(--accent-soft)}
+.kind[disabled]{opacity:.45;cursor:not-allowed}
+.kind small{display:block;color:var(--muted);font-size:12px}
+.kind b{font-family:var(--font-display);font-size:20px;color:var(--accent)}
+textarea{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-height:84px;resize:vertical;box-shadow:inset 0 1px 3px rgba(60,40,10,.15)}
+textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cta{width:100%;margin-top:18px;min-height:48px;font-size:16px}
+.locked{font-size:12px;color:var(--muted);font-style:italic}
+/* ===== Barre de navigation mobile ===== */
+.bnav{display:none}
+.menulist{display:flex;flex-direction:column}
+.menulist button{display:flex;align-items:center;gap:12px;border:0;border-bottom:1px solid var(--line);background:transparent;min-height:56px;padding:0 8px;font-family:var(--font-label);font-size:15px;letter-spacing:.07em;text-transform:uppercase;text-align:left}
+.menulist button:last-child{border-bottom:0}
+.menulist svg{width:22px;height:22px;color:var(--accent)}
+@media (max-width:640px){
+  nav.tabs{display:none}
+  .brand h1{font-size:22px}
+  .bnav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--surface);
+    border-top:1px solid var(--brass);box-shadow:0 -3px 0 -2px var(--brass),0 -6px 18px rgba(40,25,10,.12);padding:2px 4px env(safe-area-inset-bottom,0px)}
+  .bnav button{border:0;background:transparent;min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);
+    font-family:var(--font-label);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:600;padding:4px 0;border-radius:0}
+  .bnav button[aria-current="true"]{color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
+  .bnav svg{width:24px;height:24px}
+  body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  .secgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 </style>
 </head><body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1>Le bel XP de la Belle Époque</h1><div class="brandr"><span class="sync" id="sync"><i></i><span>Connexion…</span></span><button type="button" class="themebtn" id="themeBtn" aria-label="Changer de thème"></button></div></div>
+    <div class="brand"><h1>La belle appli de la Belle Époque</h1><div class="brandr"><span class="sync" id="sync"><i></i><span>Connexion…</span></span><button type="button" class="themebtn" id="themeBtn" aria-label="Changer de thème"></button></div></div>
     <nav class="tabs" id="tabs"></nav>
   </header>
   <main id="app"></main>
 </div>
+<nav class="bnav" id="bnav" aria-label="Navigation principale"></nav>
 <div id="sheetRoot"></div>
 <script>
 /*ENGINE*/
@@ -344,6 +412,7 @@ const ORDER=['kerian','massetoc','rowen','sloan','theodule','maral','ismael','an
 let ME=null;try{ME=localStorage.getItem('xp.me')||null;}catch(e){}
 const S={chars:{},players:{},events:[],ready:false,view:'gains',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
   futForm:{open:false,nom:'',max:'6'},pnjForm:{titre:'',montant:''},newP:{nom:'',role:'Joueur'},newC:{court:'',nom:'',type:'PJ',owner:''},
+  secrets:[],secretsReady:false,uni:'secrets',sec:null,secFilter:'all',
   form:{titre:'',type:'Scénario',date:'',lines:[{nature:'Scénario',montant:'',persos:null}]},hist:{},dirty:false,sync:'loading'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -524,7 +593,7 @@ function viewGains(){
     const grp={};for(const en of ents){const k=en.nature+' +'+en.montant;(grp[k]=grp[k]||[]).push(S.chars[en.perso].court);}
     const tags=Object.keys(grp).map(k=>`<span class="pill acc">${esc(k)}</span><span class="muted small">${esc(grp[k].join(', '))}</span>`).join(' ');
     const armed=S.confirm==='g:'+e.id;
-    return `<div class="ev"><div style="min-width:0"><div class="t">${esc(e.titre)}</div><div class="muted small">${e.date?fmtDate(e.date):'sans date'} · ${evType(e)}</div><div class="tags">${tags}</div></div><span style="display:flex;gap:6px;flex:none"><button class="btn ghost" style="padding:4px 10px" data-act="gainEdit" data-id="${e.id}">Modifier</button><button class="btn ghost" style="padding:4px 10px" data-act="gainDel" data-id="${e.id}">Supprimer</button></span></div>`;}).join('')||'<div class="muted">Aucun gain enregistré.</div>';
+    return `<div class="ev"><div style="min-width:0"><div class="t">${esc(e.titre)}</div><div class="muted small">${e.date?fmtDate(e.date):'sans date'} · ${evType(e)}</div><div class="tags">${tags}</div></div>${e.secret?`<span class="locked" style="flex:none;max-width:120px;text-align:right">Se corrige depuis Univers › Secrets</span>`:`<span style="display:flex;gap:6px;flex:none"><button class="btn ghost" style="padding:4px 10px" data-act="gainEdit" data-id="${e.id}">Modifier</button><button class="btn ghost" style="padding:4px 10px" data-act="gainDel" data-id="${e.id}">Supprimer</button></span>`}</div>`;}).join('')||'<div class="muted">Aucun gain enregistré.</div>';
   h+=`</div>`;
   return h;
 }
@@ -551,15 +620,115 @@ function viewPlayers(){
   return h;
 }
 function viewRules(){
-  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
+  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
   return `<h2 style="margin-top:4px">Règles appliquées</h2><div class="card">${rows.map(r=>`<div class="ev"><div class="t" style="min-width:140px">${esc(r[0])}</div><div class="muted" style="text-align:right">${esc(r[1])}</div></div>`).join('')}</div>
   <div class="muted small" style="margin-top:12px">Dans ce prototype, les coefficients sont fixés dans la page. Dans la version définitive, ils seront modifiables depuis cet écran.</div><div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="logout">Changer de code (se déconnecter)</button></div>`;
 }
+
+/* ---------- Univers › Secrets ---------- */
+const ICON={
+  xp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>',
+  perso:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>',
+  univers:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4a8 8 0 1 0 5 13.5A7 7 0 0 1 15 4z"/><path d="M18 3v4M16 5h4"/></svg>',
+  equipe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M3 20c1-3.5 3.5-5 6-5s5 1.5 6 5"/><path d="M15.5 14.6c2.6-.3 4.6 1.2 5.5 4.4"/></svg>',
+  menu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+  joueurs:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M5 20c1.2-3.6 4-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>',
+  regles:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg>'
+};
+const SEC_TYPE="Secret de l'univers";
+const SEC_BONUS=4;
+const SKIND={titre:{nom:'Titre',pts:1},vm:{nom:'Vérité majeure',pl:'Vérités majeures',pts:3,g:'◆',o:'◇'},vmin:{nom:'Vérité mineure',pl:'Vérités mineures',pts:2,g:'●',o:'○'},h:{nom:'Indice',pl:'Indices',pts:1,g:'■',o:'□'}};
+const ROMAN=['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI','XXII'];
+/* Contenu repris du tableur « Secrets d'Héritiers » : emplacements fixes, null = encore scellé */
+const SECRETS_SEED=[{"n":1,"titre":"Alliance","slots":{"vm":[{"txt":"L'histoire a connu 2 alliances, la Première et la Seconde","pts":4},null,null,null,null,null,null,null],"vmin":[null,null],"h":[{"txt":"La première alliance est une croyance importante dans les sociétés féeriques et humaines","pts":1},{"txt":"Il subisiste de nombreuses traces de la Seconde Alliance, notamment à travers l'imaginaire Arthurien","pts":1},null,null,null]},"bonus":false},{"n":2,"titre":"Avalon","slots":{"vm":[{"txt":"Avalon est le lieu de la féérie. Si Avalon disparaît, la féérie disparaît aussi","pts":3},{"txt":"L'île était autrefois reliée au monde, seuls les druides savent désormais s'y rendre grâce a un rituel compliqué","pts":3},null],"vmin":[null,null],"h":[{"txt":"il n'y a pas de résident humain a Avalon","pts":1},{"txt":"La technologie tend a s'enrayer à Avalon","pts":1},{"txt":"L'inadaptation des faux-semblants devient évidente s'ils résident trop longtemps à Avalon","pts":1},{"txt":"Chacun peut constater l'érosion d'Avalon dans le vide","pts":1},{"txt":"Lorsque une fée moderne nait, un morceau d'Avalon réapparaît","pts":1},null,null]},"bonus":false},{"n":3,"titre":null,"slots":{"vm":[null,null,null,null],"vmin":[null,null],"h":[null,null,null,null]},"bonus":false},{"n":4,"titre":null,"slots":{"vm":[null,null,null,null,null],"vmin":[null,null],"h":[{"txt":"Les Héritiers font des rêves prémonitoires leur annonçant la fin de l’Univers.","pts":1},{"txt":"De nombreux mythes et légendes font mention de dragons et notamment d’un Grand Dragon primordial qui ne serait autre que l’Univers.","pts":1},null,null]},"bonus":false},{"n":5,"titre":"Féérie","slots":{"vm":[{"txt":"La féérie est une partie de l'ordonnancement du monde, elle est régit par des règles plus souples, plus créatives et moins normées que sur Terre.","pts":3},{"txt":"Les fées et Avalon sont l'incarnation du principe de Féerie : si les fées disparaissent, Avalon s'écroule. Inversement, quand Avalon s'écroulera, les fées disparaîtront. La Féerie s'éteindra et avec elle une partie des rêves des humains. Si une nouvelle fée apparaît, Avalon se reconstitue","pts":3},null,null],"vmin":[{"txt":"Viviane est la créatrice des fées","pts":2},{"txt":"Les fées dites modernes sont liées aux rêves humains et féeriques et elles incarnent la Féerie qui naît de la modernité","pts":2},null,null],"h":[{"txt":"Les fées modernes sont l'incarnation des rêves, humains ou fées, à propos de la modernité","pts":1},{"txt":"La naissance des fées modernes en Avalon est accompagnée de la création d'une langue de terre","pts":1},{"txt":"Les hauts lieux de la modernité sont souvent déserte par mes fées. Lorsqu'ils sont récupérés par ces dernières leur efficience et leur utilité diminue au profit d'un réenchantement féerique. c'est un symptôme de la féérie","pts":1},null,null,null]},"bonus":false},{"n":6,"titre":"Fluide","slots":{"vm":[null,null,null,null,null],"vmin":[{"txt":"Les spirites le nomme \"éther\"","pts":2},{"txt":"Tous les mages utilisent le fluide sauf les fées qui font partie de l'ordonnancement du monde. Leurs pouvoirs n'utilisent pas le Fluide à l'exception de certains pouvoirs profonds et légendaires.","pts":2},null],"h":[{"txt":"Les nécromanciens peuvent percevoir le Fluide (qu'ils apellent Od) grâce à leur drogue nommée euthocaïne.","pts":1},{"txt":"Toute utilisation de magie utilise le Fluide.","pts":1},{"txt":"Le Fluide est également le lieu de vie des esprits des morts que manipulent les spirites.","pts":1},{"txt":"Les nécromanciens pensent que la mort provient du Fluide et qu'elle n'est qu'une panne mécanique et qu'on peut la réparer en agissant sur le fluide","pts":1},null]},"bonus":false},{"n":7,"titre":"Grande Hérésie","slots":{"vm":[null,null,null,null,null,null,null],"vmin":[],"h":[null,null,null,null]},"bonus":false},{"n":8,"titre":null,"slots":{"vm":[null,null],"vmin":[null,null],"h":[{"txt":"De nombreuses cultures érigent le langage en matériau créateur et ordonnateur de l’Univers","pts":1},{"txt":"Toutes les magies humaines utilisent, d'une manière ou d'une autre, le langage","pts":1},null]},"bonus":false},{"n":9,"titre":null,"slots":{"vm":[null,null,null,null,null],"vmin":[null,null,null],"h":[{"txt":"Au cours de ses pérégrinations, il a laissé des traces plus directes de l’Histoire secrète du monde sur des stèles dont l’ensemble est intitulé Dit du Marcheur, cachées dans des vestiges archéologiques. Certains druides en connaissent parfois des bribes par cœur, jamais sous forme écrite, transmises oralement depuis des siècles.","pts":1},null,null,null,null,null]},"bonus":false},{"n":10,"titre":"Héritiers","slots":{"vm":[{"txt":"les Héritiers sont apparus au XIXe siècle","pts":3},{"txt":"Les héritiers sont tous des Faux-semblants","pts":3},null,null,null],"vmin":[{"txt":"Certains Héritiers sont hantés par leurs rêves prémonitoires et deviennent fous","pts":2},null],"h":[{"txt":"Les héritiers ont tous des rêves prémonitoires.","pts":1},{"txt":"Les héritiers sont tous des Fées.","pts":1},{"txt":"Les héritiers sont assassinés par les \"Chasseurs\".","pts":1},{"txt":"Les métaphysiciens font des recherches sur les héritiers.","pts":1},null,null]},"bonus":false},{"n":11,"titre":"Malédiction des faux-semblants","slots":{"vm":[null,null,null],"vmin":[null],"h":[{"txt":"Les fées, animaux fabuleux et habitants d'Avalon ne sont pas allergique à l'argent","pts":1},{"txt":"D'après les érudits le masque et l'allergie à l'argent sont apparus peu après l'instauration de la monarchie.","pts":1},{"txt":"Un faux semblants vivant trop longtemps parmi les humains perd sa féérie","pts":1},null,null]},"bonus":false},{"n":12,"titre":"Merlin","slots":{"vm":[{"txt":"Merlin est la plus haute autorité chez les druides","pts":4},null,null,null,null],"vmin":[{"txt":"Il s’intéresse depuis la seconde moitié du XIXème siècle aux machines merveilleuses qui fonctionnent en Avalon dans l’espoir de trouver un moyen de libérer Viviane grâce à elles.","pts":2},{"txt":"Il possède des connaissances d’autres disciplines magiques (nécromancie, spiritisme, théurgie) et entrevoit la possibilité d’une théorie globale de la magie en lien avec le Fluide.","pts":2},null,null,null],"h":[{"txt":"Merlin est présent dans toutes les versions et variantes du mythe arthurien","pts":1},{"txt":"Merlin peut être rencontré dans certaines céremonie de la monarchie ou dans son esplumoir","pts":1}]},"bonus":false},{"n":13,"titre":"Morgane","slots":{"vm":[null,null,null],"vmin":[null,null,null],"h":[{"txt":"De nombreux récits, bla bla bla...","pts":1},null,null,null]},"bonus":false},{"n":14,"titre":null,"slots":{"vm":[null,null,null],"vmin":[null],"h":[{"txt":"Les héritiers ont une faction opposée les \"Chasseurs\" qui les traquent et les assassinent.","pts":1},{"txt":"les Héritiers font des rêves prémonitoires qui leur annonce la fin du monde tel qu'ils le connaissent","pts":1}]},"bonus":false},{"n":15,"titre":"Prescience","slots":{"vm":[null,null,null,null],"vmin":[{"txt":"Les héritiers ont une capacité presciente et incontrôlée et,leur rêves prophétiques","pts":2},null,null],"h":[{"txt":"Les héritiers font régulièrement l'expérience de la prescience à travers leurs reves","pts":1},null,null,null]},"bonus":false},{"n":16,"titre":"Seth le félon","slots":{"vm":[null,null,null,null,null],"vmin":[null,null],"h":[{"txt":"Seth est un personnage important de la religion égyptienne antique, aux côtés d’Osiris et d’Isis.","pts":1},null,null,null]},"bonus":false},{"n":17,"titre":null,"slots":{"vm":[null,null,null,null,null],"vmin":[null,null,null,null,null],"h":[{"txt":"L'étude du fluide par les nécromanciens permet d'en connaitre les propriétés","pts":1},null,null,null,null]},"bonus":false},{"n":18,"titre":"Univers","slots":{"vm":[null,null,null,null],"vmin":[],"h":[{"txt":"Les Héritiers rêvent du Grand Dragon et peuvent sentir son lien avec l’Univers.","pts":1},{"txt":"Certains mythes cosmogoniques font mention d'un gouffre, du chaos, de Ça et d'un grand dragon.","pts":1}]},"bonus":false},{"n":19,"titre":"Viviane la fée","slots":{"vm":[null,null,null,null,null,null],"vmin":[{"txt":"Créatrice des fées lors de l'Ordonnancement","pts":2},null,null,null,null,null],"h":[{"txt":"Elle est présente dans les légendes féériques et dans la littérature arthurienne. Toutefois, ces témoignages brassent le vrai et le faux.","pts":1},{"txt":"Certains documents archéologiques la représentent sous la forme d'une fée en compagnie des dieux d'autres civilisations, en particulier des dieux égyptiens comme isis osiris ou seth","pts":1},null,null]},"bonus":false},{"n":20,"titre":"Voyages","slots":{"vm":[null,null,null,null,null],"vmin":[null,null],"h":[{"txt":"Plusieurs fées européennes posséderaient des variantes dans d'autres régions du monde","pts":1},{"txt":"De nombreuses cultures étrangères abritent des fées propres à leurs croyances et mythologies","pts":1},null,null]},"bonus":false},{"n":21,"titre":null,"slots":{"vm":[null,null,null],"vmin":[null],"h":[null,null,null]},"bonus":false},{"n":22,"titre":"Ys","slots":{"vm":[{"txt":"Ys a été construite en des temps immémoriaux, pendant la première Alliance","pts":3},null,null,null],"vmin":[{"txt":"Ys est une cité sous-marine d'or et de plomb","pts":2}],"h":[{"txt":"Il existe de nombreux mythes humains ou féeriques qui mentionne la cité d'Ys","pts":1},{"txt":"On peut trouver sa représentation, toujours la même, sur de nombreux sites archéologiques partout autour de la planète.","pts":1},{"txt":"Il existe une cité sous-marine nommée l'Observatrice (Lathaniëlle en ancien Celte) qui avait pour but d'observer Ys. Cette ville est mentionnée dans quelques légendes celtiques","pts":1}]},"bonus":false}];
+const secLabel=s=>'Secret '+(ROMAN[s.n-1]||s.n)+(s.titre?' - '+s.titre:'');
+const secCount=(s,k)=>{const a=(s.slots&&s.slots[k])||[];return [a.filter(Boolean).length,a.length];};
+const secFree=(s,k)=>k==='titre'?(s.titre?0:1):secCount(s,k)[1]-secCount(s,k)[0];
+const secComplete=s=>{const [f,t]=secCount(s,'vm');return t>0&&f===t;};
+function secPts(s){let p=s.titre?(s.titrePts||1):0;for(const k of ['vm','vmin','h'])for(const x of (s.slots[k]||[]))if(x)p+=x.pts||0;if(s.bonus)p+=SEC_BONUS;return p;}
+function secPips(s,k){const [f,t]=secCount(s,k),K=SKIND[k];return t?K.g.repeat(f)+K.o.repeat(t-f):'—';}
+const secById=n=>S.secrets.find(s=>s.n===n);
+function viewUnivers(){
+  let h=`<div class="subtabs" role="group" aria-label="Sections de l'univers"><button data-act="uni" data-v="secrets" aria-pressed="${S.uni!=='creatures'}">Secrets</button><button data-act="uni" data-v="creatures" aria-pressed="${S.uni==='creatures'}">Créatures</button></div>`;
+  if(S.uni==='creatures')return h+`<div class="card empty">Les créatures arriveront ici prochainement.</div>`;
+  if(!S.secretsReady)return h+`<div class="card empty">Chargement des secrets…</div>`;
+  const s=S.sec!=null&&secById(S.sec);
+  return h+(s?viewSecret(s):viewSecretList());
+}
+function viewSecretList(){
+  const L=S.secrets,tot=L.reduce((a,s)=>a+secPts(s),0),nt=L.filter(s=>s.titre).length,nb=L.filter(s=>s.bonus).length,f=S.secFilter||'all';
+  let h=`<div class="card secsum"><div style="display:flex;align-items:baseline;gap:10px"><span class="big num">${tot}</span><span>XP de groupe<br>issue des secrets</span></div><div class="muted small" style="text-align:right">${nt}/${L.length} titres<br>${nb} bonus de secret complété</div></div>`;
+  h+=`<div class="chips" style="margin-top:12px">${[['all','Tous',L.length],['open','Révélés',nt],['sealed','Scellés',L.length-nt]].map(([k,l,n])=>`<button class="chip" data-act="secFilter" data-v="${k}" aria-pressed="${f===k}">${l} · ${n}</button>`).join('')}</div>`;
+  h+=`<div class="legend"><span><span class="g-vm">◆</span> vérité majeure +3</span><span><span class="g-vmin">●</span> mineure +2</span><span><span class="g-h">■</span> indice +1</span><span>titre +1 · bonus +${SEC_BONUS}</span></div>`;
+  const shown=L.filter(s=>f==='all'||(f==='open'?!!s.titre:!s.titre));
+  h+=`<div class="secgrid">`+shown.map(s=>{
+    const row=k=>{const [a,t]=secCount(s,k);return `<span class="pp"><span class="g-${k}" aria-hidden="true">${secPips(s,k)}</span><span class="muted">${t?a+'/'+t:''}</span></span>`;};
+    return `<button class="card sec${s.titre?'':' sealed'}" data-act="secOpen" data-n="${s.n}" aria-label="${esc(secLabel(s))}, ${secPts(s)} XP"><span class="hd"><span class="rn">${ROMAN[s.n-1]}</span><span class="num">${secPts(s)} XP</span></span><span class="tt">${s.titre?esc(s.titre):'Titre à découvrir'}</span>${row('vm')}${row('vmin')}${row('h')}${s.bonus?'<span class="small done">Bonus remporté</span>':''}</button>`;
+  }).join('')+`</div>`;
+  return h;
+}
+function viewSecret(s){
+  const [vf,vt]=secCount(s,'vm');
+  let h=`<button class="back" data-act="secBack"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Tous les secrets</button>`;
+  h+=`<div class="sechead"><div><div class="rn">SECRET ${ROMAN[s.n-1]}</div><h2>${s.titre?esc(s.titre):'<span class="muted">Titre à découvrir</span>'}</h2></div><span class="pts num">${secPts(s)} XP</span></div>`;
+  h+=s.titre?`<button class="found" style="padding-top:2px" data-act="secEntry" data-k="titre" data-i="0"><span class="muted small">Titre découvert · +${s.titrePts||1} XP</span></button>`:`<div class="muted small">Le titre n'est pas encore connu (+1 XP).</div>`;
+  if(vt){h+=`<div class="card" style="margin-top:14px"><div class="prof-head"><b>Bonus du secret complété</b><span class="pill ${s.bonus?'good':'plan'}">+${SEC_BONUS}</span></div><div class="bgauge" style="grid-template-columns:repeat(${vt},minmax(0,1fr))">${Array.from({length:vt},(_,i)=>`<i class="${i<vf?'on':''}"></i>`).join('')}</div><div class="muted small">${s.bonus?'Remporté : toutes les vérités majeures sont découvertes.':`${vf} vérité${vf>1?'s':''} majeure${vf>1?'s':''} sur ${vt}. Encore ${vt-vf} pour remporter le bonus.`}</div></div>`;}
+  for(const k of ['vm','vmin','h']){
+    const a=s.slots[k]||[];if(!a.length)continue;const [f,t]=secCount(s,k),K=SKIND[k];
+    h+=`<div class="sk"><h3><span class="g-${k}">${K.g}</span> ${K.pl}</h3><span class="muted small">${f}/${t} · ${K.pts} XP ${k==='h'?'chacun':'chacune'}</span></div>`;
+    const found=a.map((x,i)=>x?`<button class="found" data-act="secEntry" data-k="${k}" data-i="${i}">${esc(x.txt)}<small>+${x.pts} XP${x.date?' · '+fmtDate(x.date):''}</small></button>`:'').join('');
+    if(found)h+=`<div class="card" style="padding:2px 12px">${found}</div>`;
+    if(t-f)h+=`<div class="sealedbox">${t-f===1?`${k==='h'?'1 indice encore scellé':'1 '+K.nom.toLowerCase()+' encore scellée'}`:`${t-f} ${K.pl.toLowerCase()} encore ${k==='h'?'scellés':'scellées'}`}</div>`;
+  }
+  const any=['titre','vm','vmin','h'].some(k=>secFree(s,k));
+  h+=`<button class="btn pri cta" data-act="secAdd"${any?'':' disabled'}>${any?'+ Consigner une découverte':'Tout est découvert'}</button>`;
+  return h;
+}
+function secGainPreview(s,k){const p=SKIND[k].pts;const bonus=k==='vm'&&!s.bonus&&secCount(s,'vm')[1]-secCount(s,'vm')[0]===1;return{p,bonus,total:p+(bonus?SEC_BONUS:0)};}
+function secSheet(g){
+  const s=secById(g.n);if(!s)return null;
+  if(g.kind==='sx'){
+    const kinds=['titre','vm','vmin','h'].filter(k=>k==='titre'?!s.titre:secCount(s,k)[1]>0);
+    const pv=secGainPreview(s,g.k),targets=allPJ().length;
+    return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Nouvelle découverte"><div class="in"><div><h2>Nouvelle découverte</h2><div class="muted small">${esc(secLabel(s))}</div></div>
+      <div class="field"><label>Nature de la découverte</label><div class="kinds">${kinds.map(k=>{const fr=secFree(s,k),t=k==='titre'?1:secCount(s,k)[1];return `<button class="kind" data-act="sxKind" data-k="${k}" aria-pressed="${g.k===k}"${fr?'':' disabled'}><span>${k==='titre'?'':`<span class="g-${k}">${SKIND[k].g}</span> `}${SKIND[k].nom}<small>${fr?fr+' emplacement'+(fr>1?'s':'')+' libre'+(fr>1?'s':'')+' sur '+t:'tout est découvert'}</small></span><b>+${SKIND[k].pts}</b></button>`;}).join('')}</div></div>
+      <div class="field"><label for="sxt">${g.k==='titre'?'Titre du secret':'Ce que nous avons appris'}</label>${g.k==='titre'?`<input id="sxt" type="text" data-sx="1" autocomplete="off" value="${esc(g.txt)}">`:`<textarea id="sxt" data-sx="1">${esc(g.txt)}</textarea>`}</div>
+      <div class="calc"><span>XP de groupe, par PJ actif</span><b>+${pv.total}</b>${pv.bonus?`<span style="grid-column:1/3" class="small">Dernière vérité majeure : bonus du secret complété +${SEC_BONUS} inclus.</span>`:''}<span style="grid-column:1/3" class="small muted">Ajouté au journal d'XP : « ${esc(g.k==='titre'&&g.txt.trim()?'Secret '+ROMAN[s.n-1]+' - '+g.txt.trim():secLabel(s))} », nature Groupe, ${targets} PJ actif${targets>1?'s':''}.</span></div>
+      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="sxOk"${g.txt.trim()?'':' disabled'}>Consigner</button></div></div></div>`;
+  }
+  const x=g.k==='titre'?{txt:s.titre,pts:s.titrePts||1}:(s.slots[g.k]||[])[g.i];if(!x)return null;
+  const lost=x.pts+(g.k==='vm'&&s.bonus?SEC_BONUS:0);
+  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Modifier la découverte"><div class="in"><div><h2>${SKIND[g.k].nom}</h2><div class="muted small">${esc(secLabel(s))} · +${x.pts} XP</div></div>
+    <div class="field"><label for="sxt">Texte</label>${g.k==='titre'?`<input id="sxt" type="text" data-sx="1" autocomplete="off" value="${esc(g.txt)}">`:`<textarea id="sxt" data-sx="1">${esc(g.txt)}</textarea>`}</div>
+    <div class="muted small">${g.confirm?`Retirer cette découverte enlève ${lost} XP de groupe${g.k==='vm'&&s.bonus?' (bonus du secret compris)':''} et les lignes correspondantes du journal d'XP. Les découvertes reprises du tableur n'ont pas de ligne dans le journal.`:'Modifier le texte ne change pas l\'XP.'}</div>
+    <div class="actions"><button class="btn pri" data-act="seSave"${g.txt.trim()?'':' disabled'}>Enregistrer</button>${g.confirm?`<button class="btn" style="color:var(--bad)" data-act="seDelOk">Confirmer le retrait</button>`:`<button class="btn" data-act="seDel">Retirer la découverte</button>`}<button class="btn ghost" data-act="closeSheet">Fermer</button></div></div></div>`;
+}
+function saveSecrets(list){S.secrets=list;persist('meta/secrets',{list});}
+function secEvent(n,k,i,montant,titre,date){const t=allPJ();if(!t.length)return null;return{id:'g'+Date.now().toString(36)+'-s'+n+k+i,date,titre,type:SEC_TYPE,secret:{n,k,i},entries:t.map(p=>({perso:p,nature:'Groupe',montant}))};}
+function secConsign(n,k,txt){
+  const list=clone(S.secrets),s=list.find(x=>x.n===n);if(!s||!txt||!secFree(s,k))return;
+  const d=today(),evs=[...S.events];let ev;
+  if(k==='titre'){s.titre=txt;s.titrePts=SKIND.titre.pts;ev=secEvent(n,'titre',0,SKIND.titre.pts,secLabel(s),d);if(ev)evs.push(ev);}
+  else{const i=s.slots[k].findIndex(x=>!x);s.slots[k][i]={txt,pts:SKIND[k].pts,date:d};ev=secEvent(n,k,i,SKIND[k].pts,secLabel(s),d);if(ev)evs.push(ev);
+    if(k==='vm'&&!s.bonus&&secComplete(s)){s.bonus=true;const b=secEvent(n,'bonus',0,SEC_BONUS,secLabel(s)+' (bonus secret complété)',d);if(b)evs.push(b);}}
+  saveSecrets(list);saveEvents(evs);
+}
+function secRemove(n,k,i){
+  const list=clone(S.secrets),s=list.find(x=>x.n===n);if(!s)return;
+  const drop=[[k,k==='titre'?0:i]];
+  if(k==='titre'){s.titre=null;delete s.titrePts;}else s.slots[k][i]=null;
+  if(k==='vm'&&s.bonus){s.bonus=false;drop.push(['bonus',0]);}
+  const evs=S.events.filter(e=>!(e.secret&&e.secret.n===n&&drop.some(([dk,di])=>e.secret.k===dk&&e.secret.i===di)));
+  saveSecrets(list);saveEvents(evs);
+}
+function secEdit(n,k,i,txt){const list=clone(S.secrets),s=list.find(x=>x.n===n);if(!s||!txt)return;if(k==='titre')s.titre=txt;else if(s.slots[k][i])s.slots[k][i].txt=txt;saveSecrets(list);render();}
 function renderSheet(){
   const root=document.getElementById('sheetRoot');
-  {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a')&&ae0&&(ae0.id==='dn'||ae0.id==='dp')&&root.contains(ae0))return;}
+  {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt')&&root.contains(ae0))return;}
   if(S.dlg){
     const g=S.dlg;let titre='',txt='';
+    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='sx'||g.kind==='se'){const html=secSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='c'){const c=S.chars[g.id];if(!c){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+c.court+' ?';txt="La fiche, les achats et les gains de ce personnage seront supprimés définitivement. Pour garder l'historique, passe plutôt son statut à « Décédé » ou « Retiré ».";}
     else if(g.kind==='p'){const p=S.players[g.id];if(!p){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+p.nom+' ?';txt="Le joueur disparaît de la liste. Ses personnages ne sont pas supprimés.";}
     else if(g.kind==='a'){const c=S.chars[g.id];if(!c){S.dlg=null;root.innerHTML='';return;}const dispo=summary(c,S.events).dispo,p=Math.floor(+g.pts)||0,ok=p>=1&&p<=dispo;
@@ -602,13 +771,17 @@ function renderSheet(){
   root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(r.nom)}"><div class="in"><div><h2>${esc(r.nom)}</h2><div class="muted small">${esc(c.court)}</div></div>${body}${fix}<div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;
 }
 function render(){
-  const tabs=[['gains','Gains'],['sheet','Fiche'],['team','Équipe'],['players','Joueurs'],['rules','Règles']];
+  const tabs=[['gains','XP'],['sheet','Personnages'],['univers','Univers'],['team','Équipe'],['players','Joueurs'],['rules','Règles']];
   document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${S.view===k}">${l}</button>`).join('');
+  const bn=[['gains','XP','xp'],['sheet','Personnages','perso'],['univers','Univers','univers'],['team','Équipe','equipe']];
+  const inMenu=S.view==='players'||S.view==='rules';
+  document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${S.view===k}">${ICON[ic]}<span>${l}</span></button>`).join('')+
+    `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
   const ae=document.activeElement;
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;
   const v=S.view,app=document.getElementById('app');
-  app.innerHTML=v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='players'?viewPlayers():viewRules();
+  app.innerHTML=v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():viewRules();
   renderSheet();
 }
 
@@ -618,10 +791,22 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]');if(!t)return;
   const a=t.dataset.act,d=t.dataset;S._force=true;
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
-  if(a==='tab'){S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
+  if(a==='tab'){if(d.v==='univers')S.sec=null;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
   else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max};}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;}
+  else if(a==='menu'){S.dlg={kind:'menu'};}
+  else if(a==='uni'){S.uni=d.v;S.sec=null;}
+  else if(a==='secFilter'){S.secFilter=d.v;}
+  else if(a==='secOpen'){S.sec=+d.n;window.scrollTo(0,0);}
+  else if(a==='secBack'){S.sec=null;}
+  else if(a==='secAdd'){const s=secById(S.sec);if(!s)return;const k=!s.titre?'titre':['vm','vmin','h'].find(x=>secFree(s,x));if(!k)return;S.dlg={kind:'sx',n:s.n,k,txt:''};}
+  else if(a==='sxKind'){S.dlg.k=d.k;}
+  else if(a==='sxOk'){const g=S.dlg,txt=(g.txt||'').trim();S.dlg=null;if(txt)secConsign(g.n,g.k,txt);else render();return;}
+  else if(a==='secEntry'){const s=secById(S.sec);if(!s)return;const x=d.k==='titre'?s.titre:(s.slots[d.k][+d.i]||{}).txt;S.dlg={kind:'se',n:s.n,k:d.k,i:+d.i,txt:x||'',confirm:false};}
+  else if(a==='seSave'){const g=S.dlg,txt=(g.txt||'').trim();S.dlg=null;if(txt)secEdit(g.n,g.k,g.i,txt);else render();return;}
+  else if(a==='seDel'){S.dlg.confirm=true;}
+  else if(a==='seDelOk'){const g=S.dlg;S.dlg=null;secRemove(g.n,g.k,g.i);return;}
   else if(a==='autrePlus'){S.dlg={kind:'a',id:S.sel,nom:d.nom,pts:''};}
   else if(a==='openAutre'){S.dlg={kind:'u',id:S.sel,nom:d.nom};}
   else if(a==='nameOpen'){S.nameForm={kind:d.kind,nom:''};}
@@ -685,6 +870,7 @@ document.addEventListener('click',ev=>{
   else if(a==='addC'){const f=S.newC,court=f.court.trim();if(court){const c=newChar(slug(court),court,f.nom.trim(),f.type);S.newC={court:'',nom:'',type:'PJ',owner:f.owner};S.chars[c.id]=c;persist('chars/'+c.id,c);if(f.owner&&S.players[f.owner]){const p=clone(S.players[f.owner]);p.persos=[...(p.persos||[]),c.id];S.players[p.id]=p;persist('players/'+p.id,p);}render();return;}}
   render();
 });
+const q0=s=>document.querySelector(s);
 document.addEventListener('input',ev=>{
   const t=ev.target;
   if(t.dataset.f){S.form[t.dataset.f]=t.value;}
@@ -698,6 +884,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.nm!==undefined){S.nameForm.nom=t.value;}
   else if(t.dataset.dn!==undefined){S.dlg.nom=t.value;}
   else if(t.dataset.dp!==undefined){S.dlg.pts=t.value;}
+  else if(t.dataset.sx!==undefined&&S.dlg){S.dlg.txt=t.value;const b=q0('#sheetRoot [data-act="sxOk"],#sheetRoot [data-act="seSave"]');if(b)b.disabled=!t.value.trim();}
   const q=s=>document.querySelector(s);
   if(t.dataset.f==='titre'||t.dataset.k==='montant'){const b=q('[data-act="gainSave"]');if(b){const f=S.form;b.disabled=!(f.titre.trim()&&(f.lines.some(l=>+l.montant>0&&lp(l).length)||(f.editId&&(f.keep||[]).length)));}}
   if(t.dataset.pnj){const b=q('[data-act="pnjXp"]');if(b)b.disabled=!(S.pnjForm.titre.trim()&&+S.pnjForm.montant>0);}
@@ -802,6 +989,13 @@ function start(){
     db.doc('meta/heritage').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
       const x=snap.data();S.heritage={score:x&&x.score!=null?x.score:'',delta:(x&&x.delta)||0};render();
+    },()=>{});
+    db.doc('meta/secrets').onSnapshot(snap=>{
+      if(snap.metadata.hasPendingWrites)return;
+      const x=snap.data();
+      if(x&&Array.isArray(x.list)&&x.list.length)S.secrets=x.list;
+      else{S.secrets=clone(SECRETS_SEED);persist('meta/secrets',{list:S.secrets});}
+      S.secretsReady=true;render();
     },()=>{});
     db.doc('gains/all').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
