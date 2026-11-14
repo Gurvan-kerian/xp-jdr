@@ -449,6 +449,10 @@ function renderSheet(){
     const g=S.dlg;let titre='',txt='';
     if(g.kind==='c'){const c=S.chars[g.id];if(!c){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+c.court+' ?';txt="La fiche, les achats et les gains de ce personnage seront supprimés définitivement. Pour garder l'historique, passe plutôt son statut à « Décédé » ou « Retiré ».";}
     else if(g.kind==='p'){const p=S.players[g.id];if(!p){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+p.nom+' ?';txt="Le joueur disparaît de la liste. Ses personnages ne sont pas supprimés.";}
+    else if(g.kind==='b'){const c=S.chars[g.id],r=c&&ref(c,g.key);if(!r){S.dlg=null;root.innerHTML='';return;}const k=lvlCost(r.kind,g.from+1),dispo=summary(c,S.events).dispo;
+      const lab=(r.kind==='atout'||r.kind==='spec')?`${r.nom} (${g.from}→${g.from+1})`:`${r.nom} ${g.from+1}`;
+      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="alertdialog" aria-modal="true" aria-label="Confirmer l'achat"><div class="in"><div><h2>Acheter ${esc(lab)} ?</h2><div class="muted small">${esc(c.court)}</div></div><div class="calc"><span>Coût</span><b>${k} XP</b><span>Disponible</span><b>${dispo} XP</b><span>Après achat</span><b>${dispo-k} XP</b></div><div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="dlgOk">Acheter</button></div></div></div>`;
+      return;}
     else{const e=S.events.find(x=>x.id===g.id);if(!e){S.dlg=null;root.innerHTML='';return;}titre='Supprimer « '+e.titre+' » ?';txt="Ce gain d'XP est retiré pour tous les personnages concernés.";}
     root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="alertdialog" aria-modal="true" aria-label="Confirmation"><div class="in"><h2>${esc(titre)}</h2><div class="muted">${esc(txt)}</div><div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn" style="background:var(--bad);border-color:var(--bad);color:#fff" data-act="dlgOk">Supprimer définitivement</button></div></div></div>`;
     return;
@@ -499,7 +503,7 @@ document.addEventListener('click',ev=>{
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max};}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;}
   else if(a==='heart'){const c=clone(S.chars[S.sel]),r=ref(c,d.key);if(!r)return;const cu=r.o.cur||0;c.plan=c.plan||{};if((c.plan[d.key]||0)>cu)delete c.plan[d.key];else if(r.max==null||cu<r.max)c.plan[d.key]=cu+1;saveChar(c);return;}
-  else if(a==='quick'){const c=S.chars[S.sel],r=c&&ref(c,d.key);if(!r)return;const cu=r.o.cur||0;if(r.max!=null&&cu>=r.max)return;if(lvlCost(r.kind,cu+1)>summary(c,S.events).dispo)return;saveChar(buy(c,d.key,cu+1,today()));return;}
+  else if(a==='quick'){const c=S.chars[S.sel],r=c&&ref(c,d.key);if(!r)return;const cu=r.o.cur||0;if(r.max!=null&&cu>=r.max)return;if(lvlCost(r.kind,cu+1)>summary(c,S.events).dispo)return;S.dlg={kind:'b',id:c.id,key:d.key,from:cu};}
   else if(a==='undoLvl'){const u=undoLevel(cur(),S.sheet.key);S.sheet=null;if(u)saveChar(u.c);return;}
   else if(a==='step'){S.sheet.to+= +d.d;}
   else if(a==='fixToggle'){S.sheet.fix=!S.sheet.fix;}
@@ -545,7 +549,7 @@ document.addEventListener('click',ev=>{
   else if(a==='pDel')S.dlg={kind:'p',id:d.pid};
   else if(a==='cDel')S.dlg={kind:'c',id:d.id};
   else if(a==='logout'){try{localStorage.removeItem('xp.code');}catch(e){}location.reload();return;}
-  else if(a==='dlgOk'){const g=S.dlg;S.dlg=null;if(g.kind==='c')removeChar(g.id);else if(g.kind==='p')removePlayer(g.id);else if(g.kind==='g')saveEvents(S.events.filter(e=>e.id!==g.id));return;}
+  else if(a==='dlgOk'){const g=S.dlg;S.dlg=null;if(g.kind==='b'){const c=S.chars[g.id],r=c&&ref(c,g.key);if(r&&(r.o.cur||0)===g.from&&lvlCost(r.kind,g.from+1)<=summary(c,S.events).dispo&&(r.max==null||g.from<r.max))saveChar(buy(c,g.key,g.from+1,today()));else render();return;}if(g.kind==='c')removeChar(g.id);else if(g.kind==='p')removePlayer(g.id);else if(g.kind==='g')saveEvents(S.events.filter(e=>e.id!==g.id));return;}
   else if(a==='star'){const n=+d.n,auto=scenarioCount(S.events),cs=starCount(S.events,S.heritage.delta);const h={score:S.heritage.score,delta:(n===cs?n-1:n)-auto};S.heritage=h;persist('meta/heritage',h);}
   else if(a==='starReset'){S.heritage={score:S.heritage.score,delta:0};persist('meta/heritage',S.heritage);}
   else if(a==='addP'){const n=S.newP.nom.trim();if(n){const p={id:slug(n),nom:n,role:S.newP.role,parti:false,persos:[]};S.newP={nom:'',role:'Joueur'};savePlayer(p);return;}}
