@@ -274,6 +274,14 @@ textarea{font:inherit;color:var(--fg);background:var(--surface);border:1px solid
 textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .cta{width:100%;margin-top:18px;min-height:48px;font-size:16px}
 .locked{font-size:12px;color:var(--muted);font-style:italic}
+.crow{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+.crow:last-child{border-bottom:0}
+.cname{flex:1;min-width:0;text-align:left;border:0;background:transparent;padding:11px 4px;font-size:16px;min-height:48px}
+.cname small{display:block;font-size:12px;color:var(--muted)}
+.crow.done .cname{font-weight:600}
+.ccheck{width:44px;height:44px;flex:none;border-radius:12px;border:2px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;padding:0;color:#2a1d08}
+.ccheck svg{width:24px;height:24px}
+.crow.done .ccheck{border-color:var(--brass-lo);background:linear-gradient(180deg,var(--brass-hi),var(--brass));box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
 /* ===== Barre de navigation mobile ===== */
 .bnav{display:none}
 .menulist{display:flex;flex-direction:column}
@@ -420,7 +428,7 @@ const ORDER=['kerian','massetoc','rowen','sloan','theodule','maral','ismael','an
 let ME=null;try{ME=localStorage.getItem('xp.me')||null;}catch(e){}
 const S={chars:{},players:{},events:[],ready:false,view:'gains',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
   futForm:{open:false,nom:'',max:'6'},pnjForm:{titre:'',montant:''},newP:{nom:'',role:'Joueur'},newC:{court:'',nom:'',type:'PJ',owner:''},
-  secrets:[],secretsReady:false,uni:'secrets',sec:null,secFilter:'all',
+  secrets:[],secretsReady:false,creatures:[],creaturesReady:false,uni:'secrets',sec:null,secFilter:'all',
   form:{titre:'',type:'Scénario',date:'',lines:[{nature:'Scénario',montant:'',persos:null}]},hist:{},dirty:false,sync:'loading'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -601,7 +609,7 @@ function viewGains(){
     const grp={};for(const en of ents){const k=en.nature+' +'+en.montant;(grp[k]=grp[k]||[]).push(S.chars[en.perso].court);}
     const tags=Object.keys(grp).map(k=>`<span class="pill acc">${esc(k)}</span><span class="muted small">${esc(grp[k].join(', '))}</span>`).join(' ');
     const armed=S.confirm==='g:'+e.id;
-    return `<div class="ev"><div style="min-width:0"><div class="t">${esc(e.titre)}</div><div class="muted small">${e.date?fmtDate(e.date):'sans date'} · ${evType(e)}</div><div class="tags">${tags}</div></div>${e.secret?`<span class="locked" style="flex:none;max-width:120px;text-align:right">Se corrige depuis Univers › Secrets</span>`:`<span style="display:flex;gap:6px;flex:none"><button class="btn ghost" style="padding:4px 10px" data-act="gainEdit" data-id="${e.id}">Modifier</button><button class="btn ghost" style="padding:4px 10px" data-act="gainDel" data-id="${e.id}">Supprimer</button></span>`}</div>`;}).join('')||'<div class="muted">Aucun gain enregistré.</div>';
+    return `<div class="ev"><div style="min-width:0"><div class="t">${esc(e.titre)}</div><div class="muted small">${e.date?fmtDate(e.date):'sans date'} · ${evType(e)}</div><div class="tags">${tags}</div></div>${e.secret||e.creature?`<span class="locked" style="flex:none;max-width:120px;text-align:right">Se corrige depuis Univers › ${e.creature?'Créatures':'Secrets'}</span>`:`<span style="display:flex;gap:6px;flex:none"><button class="btn ghost" style="padding:4px 10px" data-act="gainEdit" data-id="${e.id}">Modifier</button><button class="btn ghost" style="padding:4px 10px" data-act="gainDel" data-id="${e.id}">Supprimer</button></span>`}</div>`;}).join('')||'<div class="muted">Aucun gain enregistré.</div>';
   h+=`</div>`;
   return h;
 }
@@ -628,7 +636,7 @@ function viewPlayers(){
   return h;
 }
 function viewRules(){
-  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
+  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Créatures de l\'univers','+1 quand toutes nos connaissances sur un type de créature sont réunies (case cochée). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Créature de l\'univers »)'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
   return `<h2 style="margin-top:4px">Règles appliquées</h2><div class="card">${rows.map(r=>`<div class="ev"><div class="t" style="min-width:140px">${esc(r[0])}</div><div class="muted" style="text-align:right">${esc(r[1])}</div></div>`).join('')}</div>
   <div class="muted small" style="margin-top:12px">Dans ce prototype, les coefficients sont fixés dans la page. Dans la version définitive, ils seront modifiables depuis cet écran.</div><div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="logout">Changer de code (se déconnecter)</button></div>`;
 }
@@ -658,7 +666,7 @@ function secPips(s,k){const [f,t]=secCount(s,k),K=SKIND[k];return t?K.g.repeat(f
 const secById=n=>S.secrets.find(s=>s.n===n);
 function viewUnivers(){
   let h=`<div class="subtabs" role="group" aria-label="Sections de l'univers"><button data-act="uni" data-v="secrets" aria-pressed="${S.uni!=='creatures'}">Secrets</button><button data-act="uni" data-v="creatures" aria-pressed="${S.uni==='creatures'}">Créatures</button></div>`;
-  if(S.uni==='creatures')return h+`<div class="card empty">Les créatures arriveront ici prochainement.</div>`;
+  if(S.uni==='creatures')return h+viewCreatures();
   if(!S.secretsReady)return h+`<div class="card empty">Chargement des secrets…</div>`;
   const s=S.sec!=null&&secById(S.sec);
   return h+(s?viewSecret(s):viewSecretList());
@@ -743,12 +751,55 @@ function secRemove(n,k,i){
   saveSecrets(list);saveEvents(evs);
 }
 function secEdit(n,k,i,txt){const list=clone(S.secrets),s=list.find(x=>x.n===n);if(!s||!txt)return;if(k==='titre')s.titre=txt;else if(s.slots[k][i])s.slots[k][i].txt=txt;saveSecrets(list);render();}
+
+/* ---------- Univers › Créatures ---------- */
+const CRE_TYPE="Créature de l'univers";
+const CFAM=[['trad','Traditionnelles'],['mod','Modernes'],['exo','Exotiques']];
+/* Reprise du tableur : les créatures cochées l'ont été avant l'appli, leur XP est déjà au journal */
+const CREATURES_SEED=[{"id":"anges","nom":"Anges","fam":"trad","done":false},{"id":"bastets","nom":"Bastets","fam":"trad","done":true},{"id":"elfes","nom":"Elfes","fam":"trad","done":false},{"id":"farfadets","nom":"Farfadets","fam":"trad","done":false},{"id":"gnomes","nom":"Gnomes","fam":"trad","done":true},{"id":"gobelins","nom":"Gobelins","fam":"trad","done":false},{"id":"korrigans","nom":"Korrigans","fam":"trad","done":true},{"id":"leporides","nom":"Léporides","fam":"trad","done":false},{"id":"loups-garous","nom":"Loups-garous","fam":"trad","done":false},{"id":"ogres","nom":"Ogres","fam":"trad","done":false},{"id":"ondines","nom":"Ondines","fam":"trad","done":false},{"id":"orcs","nom":"Orcs","fam":"trad","done":false},{"id":"phenix","nom":"Phénix","fam":"trad","done":true},{"id":"succubes","nom":"Succubes","fam":"trad","done":false},{"id":"sylves","nom":"Sylves","fam":"trad","done":false},{"id":"trolls","nom":"Trolls","fam":"trad","done":true},{"id":"vampyrs","nom":"Vampyrs","fam":"trad","done":true},{"id":"fees-electricite","nom":"Fées électricité","fam":"mod","done":true},{"id":"fleurs-de-metal","nom":"Fleurs de métal","fam":"mod","done":false},{"id":"fouinards","nom":"Fouinards","fam":"mod","done":true},{"id":"gargouilles","nom":"Gargouilles","fam":"mod","done":false},{"id":"golems","nom":"Golems","fam":"mod","done":false},{"id":"gremelins","nom":"Gremelins","fam":"mod","done":false},{"id":"protys","nom":"Protys","fam":"mod","done":false},{"id":"smogs","nom":"Smogs","fam":"mod","done":true},{"id":"djinns","nom":"Djinns","fam":"exo","done":false},{"id":"banshees","nom":"Banshees","fam":"exo","done":false},{"id":"domovois","nom":"Domovoïs","fam":"exo","done":false},{"id":"gorgones","nom":"Gorgones","fam":"exo","done":false},{"id":"centaures","nom":"Centaures","fam":"exo","done":false},{"id":"minotaures","nom":"Minotaures","fam":"exo","done":false},{"id":"harpies","nom":"Harpies","fam":"exo","done":false},{"id":"satyres","nom":"Satyres","fam":"exo","done":false}];
+function viewCreatures(){
+  if(!S.creaturesReady)return `<div class="card empty">Chargement des créatures…</div>`;
+  const L=S.creatures,n=L.filter(c=>c.done).length;
+  let h=`<div class="card secsum"><div style="display:flex;align-items:baseline;gap:10px"><span class="big num">${n}</span><span>XP de groupe<br>issue des créatures</span></div><div class="muted small" style="text-align:right">${n} complète${n>1?'s':''} sur ${L.length}<br>1 XP par créature complète</div></div>`;
+  for(const [f,lab] of CFAM){
+    const items=L.filter(c=>c.fam===f).sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+    h+=`<h2>${lab}</h2><div class="card" style="padding:2px 12px">`+(items.map(c=>`<div class="crow${c.done?' done':''}"><button class="cname" data-act="creEdit" data-id="${esc(c.id)}">${esc(c.nom)}${c.done?'<small>Complète · +1 XP</small>':''}</button><button class="ccheck" data-act="creToggle" data-id="${esc(c.id)}" role="checkbox" aria-checked="${!!c.done}" aria-label="${esc(c.nom)} : ${c.done?'complète':'à compléter'}">${c.done?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>':''}</button></div>`).join('')||'<div class="muted" style="padding:12px 0">Aucune créature pour l\'instant.</div>')+`</div>`;
+  }
+  h+=`<button class="btn pri cta" data-act="creAdd">+ Ajouter une créature</button>`;
+  return h;
+}
+function creSheet(g){
+  const head=(t,sub)=>`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(t)}"><div class="in"><div><h2>${esc(t)}</h2>${sub?`<div class="muted small">${sub}</div>`:''}</div>`;
+  const famPick=`<div class="field"><label>Famille</label><div class="kinds">${CFAM.map(([f,l])=>`<button class="kind" data-act="creFam" data-f="${f}" aria-pressed="${g.fam===f}"><span>${l}</span></button>`).join('')}</div></div>`;
+  const nameField=`<div class="field"><label for="crn">Nom de la créature</label><input id="crn" type="text" data-cr="1" autocomplete="off" value="${esc(g.nom)}"></div>`;
+  g.nom=g.nom||'';const dup=g.nom.trim()&&S.creatures.some(c=>c.id!==g.id&&c.nom.toLowerCase()===g.nom.trim().toLowerCase());
+  const warn=`<div class="small" id="crdup" style="color:var(--bad)${dup?'':';display:none'}">Cette créature est déjà dans la liste.</div>`;
+  if(g.kind==='ca')return head('Nouvelle créature','Ajoutée à la liste, sans XP : le point viendra quand elle sera complète.')+nameField+warn+famPick+`<div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="creAddOk"${g.nom.trim()&&!dup?'':' disabled'}>Ajouter</button></div></div></div>`;
+  const c=S.creatures.find(x=>x.id===g.id);if(!c)return null;
+  const n=allPJ().length;
+  if(g.kind==='ct'){
+    if(!c.done)return head(c.nom+' complète ?','Toutes nos connaissances sur cette créature sont réunies.')+`<div class="calc"><span>XP de groupe, par PJ actif</span><b>+1</b><span style="grid-column:1/3" class="small muted">Ajouté au journal d'XP : « ${esc(c.nom)} complété », nature Groupe, ${n} PJ actif${n>1?'s':''}.</span></div><div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="creToggleOk">Marquer comme complète</button></div></div></div>`;
+    return head('Décocher '+c.nom+' ?','')+`<div class="muted">${c.date?'La créature redevient à compléter : la ligne « '+esc(c.nom)+' complété » est retirée du journal d\'XP (−1 XP de groupe).':'Cette créature a été cochée dans le tableur : il n\'y a pas de ligne au journal à retirer, seul le compteur change.'}</div><div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn" style="color:var(--bad)" data-act="creToggleOk">Décocher</button></div></div></div>`;
+  }
+  /* ce : modifier */
+  if(c.done)return head(c.nom,'Complète'+(c.date?' depuis le '+fmtDate(c.date):'')+' · +1 XP')+`<div class="muted small">Pour la renommer ou la supprimer, décoche-la d'abord.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;
+  return head('Modifier la créature','')+nameField+warn+famPick+`<div class="actions"><button class="btn pri" data-act="creSave"${g.nom.trim()&&!dup?'':' disabled'}>Enregistrer</button>${g.confirm?`<button class="btn" style="color:var(--bad)" data-act="creDelOk">Confirmer la suppression</button>`:`<button class="btn" data-act="creDel">Supprimer</button>`}<button class="btn ghost" data-act="closeSheet">Fermer</button></div></div></div>`;
+}
+function saveCreatures(list){S.creatures=list;persist('meta/creatures',{list});}
+function creSlug(n){return slug(n);}
+function creToggle(id){
+  const list=clone(S.creatures),c=list.find(x=>x.id===id);if(!c)return;let evs=S.events;
+  if(!c.done){c.done=true;c.date=today();const t=allPJ();if(t.length)evs=[...evs,{id:'g'+Date.now().toString(36)+'-c',date:c.date,titre:c.nom+' complété',type:CRE_TYPE,creature:{id},entries:t.map(p=>({perso:p,nature:'Groupe',montant:1}))}];}
+  else{c.done=false;delete c.date;evs=evs.filter(e=>!(e.creature&&e.creature.id===id));}
+  saveCreatures(list);if(evs!==S.events)saveEvents(evs);else render();
+}
 function renderSheet(){
   const root=document.getElementById('sheetRoot');
-  {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt')&&root.contains(ae0))return;}
+  {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se'||S.dlg.kind==='ca'||S.dlg.kind==='ce')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt'||ae0.id==='crn')&&root.contains(ae0))return;}
   if(S.dlg){
     const g=S.dlg;let titre='',txt='';
     if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='ca'||g.kind==='ct'||g.kind==='ce'){const html=creSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='sx'||g.kind==='se'){const html=secSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='c'){const c=S.chars[g.id];if(!c){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+c.court+' ?';txt="La fiche, les achats et les gains de ce personnage seront supprimés définitivement. Pour garder l'historique, passe plutôt son statut à « Décédé » ou « Retiré ».";}
     else if(g.kind==='p'){const p=S.players[g.id];if(!p){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+p.nom+' ?';txt="Le joueur disparaît de la liste. Ses personnages ne sont pas supprimés.";}
@@ -817,6 +868,15 @@ document.addEventListener('click',ev=>{
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max};}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;}
   else if(a==='menu'){S.dlg={kind:'menu'};}
+  else if(a==='creAdd'){S.dlg={kind:'ca',nom:'',fam:'trad'};}
+  else if(a==='creFam'){S.dlg.fam=d.f;}
+  else if(a==='creAddOk'){const g=S.dlg,nom=(g.nom||'').trim();if(!nom||S.creatures.some(c=>c.nom.toLowerCase()===nom.toLowerCase()))return;S.dlg=null;saveCreatures([...clone(S.creatures),{id:creSlug(nom),nom,fam:g.fam,done:false}]);render();return;}
+  else if(a==='creToggle'){S.dlg={kind:'ct',id:d.id};}
+  else if(a==='creToggleOk'){const id=S.dlg.id;S.dlg=null;creToggle(id);return;}
+  else if(a==='creEdit'){const c=S.creatures.find(x=>x.id===d.id);if(!c)return;S.dlg={kind:'ce',id:c.id,nom:c.nom,fam:c.fam,confirm:false};}
+  else if(a==='creSave'){const g=S.dlg,nom=(g.nom||'').trim();if(!nom||S.creatures.some(c=>c.id!==g.id&&c.nom.toLowerCase()===nom.toLowerCase()))return;S.dlg=null;saveCreatures(clone(S.creatures).map(c=>c.id===g.id&&!c.done?{...c,nom,fam:g.fam}:c));render();return;}
+  else if(a==='creDel'){S.dlg.confirm=true;}
+  else if(a==='creDelOk'){const id=S.dlg.id;S.dlg=null;saveCreatures(S.creatures.filter(c=>!(c.id===id&&!c.done)));render();return;}
   else if(a==='uni'){S.uni=d.v;S.sec=null;}
   else if(a==='secFilter'){S.secFilter=d.v;}
   else if(a==='secOpen'){S.sec=+d.n;window.scrollTo(0,0);}
@@ -905,6 +965,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.nm!==undefined){S.nameForm.nom=t.value;}
   else if(t.dataset.dn!==undefined){S.dlg.nom=t.value;}
   else if(t.dataset.dp!==undefined){S.dlg.pts=t.value;}
+  else if(t.dataset.cr!==undefined&&S.dlg){S.dlg.nom=t.value;const v=t.value.trim(),dup=!!v&&S.creatures.some(c=>c.id!==S.dlg.id&&c.nom.toLowerCase()===v.toLowerCase());const b=q0('#sheetRoot [data-act="creAddOk"],#sheetRoot [data-act="creSave"]');if(b)b.disabled=!v||dup;const w=document.getElementById('crdup');if(w)w.style.display=dup?'':'none';}
   else if(t.dataset.sx!==undefined&&S.dlg){S.dlg.txt=t.value;const b=q0('#sheetRoot [data-act="sxOk"],#sheetRoot [data-act="seSave"]');if(b)b.disabled=!t.value.trim();}
   const q=s=>document.querySelector(s);
   if(t.dataset.f==='titre'||t.dataset.k==='montant'){const b=q('[data-act="gainSave"]');if(b){const f=S.form;b.disabled=!(f.titre.trim()&&(f.lines.some(l=>+l.montant>0&&lp(l).length)||(f.editId&&(f.keep||[]).length)));}}
@@ -1017,6 +1078,13 @@ function start(){
       if(x&&Array.isArray(x.list)&&x.list.length){S.secrets=x.list;S.secretsFix1=!!x.fix1;}
       else{S.secrets=clone(SECRETS_SEED);S.secretsFix1=true;persist('meta/secrets',{list:S.secrets,fix1:true});}
       S.secretsReady=true;fixOnce();render();
+    },()=>{});
+    db.doc('meta/creatures').onSnapshot(snap=>{
+      if(snap.metadata.hasPendingWrites)return;
+      const x=snap.data();
+      if(x&&Array.isArray(x.list))S.creatures=x.list;
+      else{S.creatures=clone(CREATURES_SEED);persist('meta/creatures',{list:S.creatures});}
+      S.creaturesReady=true;render();
     },()=>{});
     db.doc('gains/all').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
