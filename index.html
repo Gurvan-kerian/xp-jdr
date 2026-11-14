@@ -1,7 +1,8 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#5a3a8f">
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#efe5cf">
+<script>try{var t=localStorage.getItem('xp.theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 <title>Registre d'XP</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Cinzel:wght@500;600&family=Inter:wght@400;500;600&display=swap">
 <style>
 /* Layout : en-tête collant + 4 vues (Équipe, Fiche, Gains, Règles), feuille de saisie en bas d'écran */
 :root{
@@ -146,11 +147,81 @@ tr.avg td{border-top:2px solid var(--line);font-style:italic}
 .stars{display:flex;flex-wrap:wrap;gap:2px}
 .star{border:0;background:transparent;font-size:24px;line-height:1;padding:3px 4px;color:var(--muted)}
 .star.on{color:var(--plan)}
-html{color-scheme:light}body{margin:0}</style>
+html{color-scheme:light}body{margin:0}
+/* ===== Skin « Belle Époque féerique » : parchemin, laiton, vert-de-gris ===== */
+:root{
+  --bg:#efe5cf; --surface:#fbf6e8; --surface2:#e8dcc0; --fg:#2a2017; --muted:#766650; --line:#cdb98f;
+  --accent:#1d6b66; --accent-fg:#fbf6e8; --accent-soft:#cde3dc;
+  --brass:#b0852f; --brass-hi:#e6c46e; --brass-lo:#7d5a1c;
+  --bar-hi:#46a198; --bar:#1d6b66; --bar-lo:#134a46;
+  --plan:#9c5a18; --plan-soft:#f0d9b0;
+  --good:#43763a; --good-soft:#dbe7c6; --bad:#9a2c32; --bad-soft:#f0d2ca;
+  --paper:rgba(255,255,255,.45); --grain:rgba(120,90,40,.04);
+  --font-display:'Cormorant Garamond','Cormorant',Georgia,'Times New Roman',serif; --font-label:'Cinzel',Georgia,serif;
+  --shadow:0 -8px 30px rgba(40,25,10,.3);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1b1e; --surface:#172a2e; --surface2:#203a3f; --fg:#f0e4c8; --muted:#a99c80; --line:#35504f;
+  --accent:#e2b955; --accent-fg:#10201f; --accent-soft:#3b3920;
+  --brass:#e2b955; --brass-hi:#f6dc94; --brass-lo:#a07a28;
+  --bar-hi:#f6dc94; --bar:#e2b955; --bar-lo:#a07a28;
+  --plan:#e8934a; --plan-soft:#42301a; --good:#93d08a; --good-soft:#1f3a2a; --bad:#ff9382; --bad-soft:#47231f;
+  --paper:rgba(226,185,85,.07); --grain:rgba(226,185,85,.025); --shadow:0 -8px 30px rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1b1e; --surface:#172a2e; --surface2:#203a3f; --fg:#f0e4c8; --muted:#a99c80; --line:#35504f;
+  --accent:#e2b955; --accent-fg:#10201f; --accent-soft:#3b3920;
+  --brass:#e2b955; --brass-hi:#f6dc94; --brass-lo:#a07a28;
+  --bar-hi:#f6dc94; --bar:#e2b955; --bar-lo:#a07a28;
+  --plan:#e8934a; --plan-soft:#42301a; --good:#93d08a; --good-soft:#1f3a2a; --bad:#ff9382; --bad-soft:#47231f;
+  --paper:rgba(226,185,85,.07); --grain:rgba(226,185,85,.025); --shadow:0 -8px 30px rgba(0,0,0,.6); color-scheme:dark}
+
+body{background-color:var(--bg);background-image:radial-gradient(ellipse at 15% 0%,var(--paper),transparent 55%),repeating-linear-gradient(45deg,var(--grain) 0 2px,transparent 2px 7px)}
+h1,h2,.num,.strip b,.team .big,.team .nm,.derived b,.stepper .v,.prof-head b{font-variant-numeric:lining-nums tabular-nums}
+header.top{border-bottom:0;padding-bottom:10px}
+header.top::after{content:"";display:block;height:4px;margin-top:10px;border-top:1px solid var(--brass);border-bottom:1px solid var(--brass);opacity:.8}
+.brand h1{font-family:var(--font-display);font-style:italic;font-weight:700;font-size:30px;line-height:1;letter-spacing:0}
+.brand h1::before{content:"";display:inline-block;width:26px;height:26px;margin-right:9px;vertical-align:-4px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='7.2' fill='none' stroke='%23b0852f' stroke-width='3.4' stroke-dasharray='2.7 2.1'/%3E%3Ccircle cx='12' cy='12' r='5.4' fill='none' stroke='%23b0852f' stroke-width='1.6'/%3E%3Ccircle cx='12' cy='12' r='1.9' fill='%23b0852f'/%3E%3C/svg%3E") center/contain no-repeat}
+nav.tabs button{font-family:var(--font-label);font-weight:600;font-size:12.5px;letter-spacing:.07em;text-transform:uppercase}
+nav.tabs button[aria-current="true"]{background:var(--accent);color:var(--accent-fg);box-shadow:inset 0 0 0 1px var(--brass-hi),0 1px 3px rgba(0,0,0,.25)}
+h2{font-family:var(--font-display);font-style:italic;font-weight:700;font-size:25px;line-height:1.1}
+h2::before{content:"✦";font-style:normal;font-size:12px;color:var(--brass);margin-right:8px;vertical-align:3px}
+h2::after{content:"";display:block;height:1px;margin-top:6px;background:linear-gradient(90deg,var(--brass),transparent 75%)}
+.sheet h2::before,.sheet h2::after{display:none}
+h3,.field label,.names .lab,th,.strip span{font-family:var(--font-label);letter-spacing:.08em}
+.field label{font-size:11px;text-transform:uppercase}
+.card{border-radius:14px;box-shadow:inset 0 0 0 3px var(--surface),inset 0 0 0 4px var(--line),0 2px 6px rgba(60,40,10,.10)}
+.card.team .nm{font-family:var(--font-display);font-style:italic;font-size:22px}
+.team .big{font-size:38px;color:var(--accent)}
+.strip div{border:1px solid var(--line);border-radius:12px}
+.strip b{font-family:var(--font-display);font-size:28px}
+.strip span{font-size:10px}
+.strip .hi{border-color:var(--brass);background:var(--accent-soft)}
+.derived div{border:1px solid var(--line);border-radius:12px}
+.derived b{font-size:26px;color:var(--accent)}
+.prof-head b{font-family:var(--font-display);font-style:italic;font-size:21px}
+.bar{height:9px;box-shadow:inset 0 1px 3px rgba(0,0,0,.28)}
+.bar i{background:linear-gradient(180deg,var(--bar-hi),var(--bar) 55%,var(--bar-lo))}
+.bar.plan i{background:linear-gradient(180deg,#e9a85a,var(--plan) 60%,#6b3c0b)}
+.gauge.done .bar i{background:linear-gradient(180deg,#8fc57f,var(--good) 60%,#2a4d24)}
+.irow.max{box-shadow:inset 3px 0 0 var(--brass)} .irow.max .bar i{background:linear-gradient(180deg,var(--brass-hi),var(--brass) 55%,var(--brass-lo))}
+.pill{letter-spacing:.03em}
+.plus.ok{background:linear-gradient(180deg,var(--brass-hi),var(--brass));color:#2a1d08;border-color:var(--brass-lo);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 1px 2px rgba(0,0,0,.3)}
+.plus.ok small{color:#4a3510}
+.btn.pri{border-color:var(--brass);box-shadow:inset 0 0 0 1px var(--brass-hi)}
+.chip[aria-pressed="true"]{box-shadow:inset 0 0 0 1px var(--brass-hi)}
+.star{color:var(--line)}
+.star.on{color:var(--brass);text-shadow:0 0 9px rgba(230,196,110,.65)}
+input[type=text],input[type=number],input[type=date],select{background:var(--surface);box-shadow:inset 0 1px 3px rgba(60,40,10,.15)}
+.sheet{border-radius:22px 22px 0 0;border-top:2px solid var(--brass)}
+th{font-size:11px;text-transform:uppercase}
+.brandr{display:flex;align-items:center;gap:10px}
+.themebtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--brass);background:var(--surface);color:var(--brass);display:flex;align-items:center;justify-content:center;padding:0;box-shadow:inset 0 0 0 2px var(--surface),inset 0 0 0 3px var(--line)}
+.themebtn svg{width:20px;height:20px}
+</style>
 </head><body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1>Registre d'XP</h1><span class="sync" id="sync"><i></i><span>Connexion…</span></span></div>
+    <div class="brand"><h1>Registre d'XP</h1><div class="brandr"><span class="sync" id="sync"><i></i><span>Connexion…</span></span><button type="button" class="themebtn" id="themeBtn" aria-label="Changer de thème"></button></div></div>
     <nav class="tabs" id="tabs"></nav>
   </header>
   <main id="app"></main>
@@ -672,6 +743,20 @@ async function getDb(){
   if(c){const db=sbDb(c);try{await db.check();return db;}catch(e){if(!(e&&e.status))throw e;}}
   return askCode(c?'Le code a changé, saisis-le à nouveau.':'');
 }
+
+/* --- thème clair / nuit --- */
+(function(){
+  const btn=document.getElementById('themeBtn');if(!btn)return;
+  const mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  const MOON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>';
+  const SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>';
+  const eff=()=>{const t=document.documentElement.getAttribute('data-theme');return t||(mq&&mq.matches?'dark':'light');};
+  function paint(){const d=eff()==='dark';btn.innerHTML=d?SUN:MOON;btn.setAttribute('aria-label',d?'Passer au thème clair':'Passer au thème nuit');
+    const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',d?'#0f1b1e':'#efe5cf');}
+  btn.addEventListener('click',()=>{const n=eff()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('xp.theme',n);}catch(e){}paint();});
+  if(mq&&mq.addEventListener)mq.addEventListener('change',paint);
+  paint();
+})();
 
 /* --- données partagées --- */
 function start(){
