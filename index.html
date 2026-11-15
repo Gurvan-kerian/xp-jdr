@@ -44,6 +44,12 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background
 .brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .brand h1{font-family:var(--font-display);font-weight:700;font-size:22px;margin:0;letter-spacing:.01em}
 .sync{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sync.ok{display:none}
+.sync.err{color:var(--bad)}
+.sync.err i{background:var(--bad)}
+.mebtn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px 0 8px;border-radius:20px;border:1px solid var(--brass);background:var(--surface);color:var(--accent);font-family:var(--font-label);font-size:12.5px;font-weight:700;letter-spacing:.04em;max-width:44vw}
+.mebtn svg{width:20px;height:20px;flex:none}
+.mebtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sync i{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
 .sync.ok i{background:var(--good)} .sync.err i{background:var(--bad)}
 nav.tabs{display:flex;gap:4px;margin-top:10px;overflow-x:auto}
@@ -377,6 +383,9 @@ body.home{padding-bottom:24px}
 .who-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .who-grid .btn{min-height:56px;font-family:var(--font-display);font-size:19px;font-weight:600}
 @media (min-width:641px){.htile{min-height:160px}.hgrid{gap:14px}}
+.bdg{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--bad);color:#fff;font:700 11px/1 system-ui,sans-serif;margin-left:6px;vertical-align:middle}
+.bnav .bdg{position:absolute;top:6px;right:calc(50% - 22px);margin:0}
+.hic .bdg{position:absolute;top:-4px;right:-4px;margin:0}
 /* ===== Barre de navigation mobile ===== */
 .bnav{display:none}
 .menulist{display:flex;flex-direction:column}
@@ -399,7 +408,7 @@ body.home{padding-bottom:24px}
 </head><body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1><a href="#" class="homelink" data-act="tab" data-v="home" aria-label="La belle appli de la Belle Époque, retour à l'accueil">La belle appli de la Belle Époque</a></h1><div class="brandr"><span class="sync" id="sync"><i></i><span>Connexion…</span></span><button type="button" class="themebtn" id="themeBtn" aria-label="Changer de thème"></button></div></div>
+    <div class="brand"><h1><a href="#" class="homelink" data-act="tab" data-v="home" aria-label="La belle appli de la Belle Époque, retour à l'accueil">La belle appli de la Belle Époque</a></h1><div class="brandr"><span class="sync" id="sync"><i></i><span>Connexion…</span></span><button type="button" class="mebtn" id="meBtn" data-act="meOpen" aria-haspopup="dialog"></button><button type="button" class="themebtn" id="themeBtn" aria-label="Changer de thème"></button></div></div>
     <nav class="tabs" id="tabs"></nav>
   </header>
   <main id="app"></main>
@@ -527,10 +536,11 @@ function starCount(events,delta){return Math.max(0,Math.min(STARS,scenarioCount(
 
 /* ---------- Application ---------- */
 const ORDER=['kerian','massetoc','rowen','sloan','theodule','maral','ismael','anselme'];
+if(location.hash==='#dates'){try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}window.__openDates=true;}
 let ME=null;try{ME=localStorage.getItem('xp.me')||null;}catch(e){}
-const S={chars:{},players:{},events:[],ready:false,view:'home',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
+const S={chars:{},players:{},events:[],ready:false,view:window.__openDates?'planning':'home',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
   futForm:{open:false,nom:'',max:'6'},pnjForm:{titre:'',montant:''},newP:{nom:'',role:'Joueur'},newC:{court:'',nom:'',type:'PJ',owner:''},
-  secrets:[],secretsReady:false,dates:[],datesReady:false,plan:{view:'mes',y:new Date().getFullYear(),m:new Date().getMonth(),open:null},curSess:null,creatures:[],creaturesReady:false,uni:'secrets',sec:null,secFilter:'all',
+  secrets:[],secretsReady:false,dates:[],datesReady:false,plan:{view:window.__openDates?'com':'mes',y:new Date().getFullYear(),m:new Date().getMonth(),open:null},curSess:null,creatures:[],creaturesReady:false,uni:'secrets',sec:null,secFilter:'all',
   form:{titre:'',type:'Scénario',date:'',lines:[{nature:'Scénario',montant:'',persos:null}]},hist:{},dirty:false,sync:'loading'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -775,7 +785,7 @@ function gainsTableAndJournal(){
 function viewPlayers(){
   const pl=playersSorted(),chars=ids().map(i=>S.chars[i]);
   let h=`<h2 style="margin-top:4px">Joueurs</h2>`;
-  h+=`<div class="card"><div class="field"><label for="me">Je suis</label><select id="me" data-me="1"><option value="">— invité —</option>${pl.map(p=>`<option value="${p.id}"${p.id===ME?' selected':''}>${esc(p.nom)}</option>`).join('')}</select></div><div class="muted small" style="margin-top:6px">Sert à retrouver tes personnages masqués, sur cet appareil seulement.</div></div>`;
+  h+=`<div class="card"><div class="field"><label for="me">Je suis</label><select id="me" data-me="1"><option value="">— invité —</option>${pl.map(p=>`<option value="${p.id}"${p.id===ME?' selected':''}>${esc(p.nom)}</option>`).join('')}</select></div><div class="muted small" style="margin-top:6px">Sert à retrouver tes personnages masqués, sur cet appareil seulement.</div></div>`+pushCard();
   h+=pl.map(p=>{
     const mine=chars.filter(c=>(p.persos||[]).includes(c.id));
     const armed=S.confirm==='p:'+p.id;
@@ -1049,7 +1059,7 @@ function dateSheet(g){
 function viewHome(){
   const V=validDates()[0],np=propDates().length;
   const tile=(v,ic,l)=>`<button class="htile" data-act="tab" data-v="${v}"><span class="hic">${ICON[ic]}</span><span class="hl">${l}</span></button>`;
-  return `<div class="home-in"><button class="htile hplan" data-act="tab" data-v="planning" data-pv="com"><span class="hic">${ICON.cal}</span><span class="ht"><span class="hl">Planning</span><span class="muted small">${V?'Prochaine partie validée':'Prochaine partie'}</span><b>${V?fmtLong(V.date,V.sl):'Aucune partie validée'}</b>${V?`<span class="muted small">${esc(V.type||'Scénario')}${np?' · '+np+' date'+(np>1?'s':'')+' proposée'+(np>1?'s':'')+' en attente':''}</span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''} en attente</span>`:''}</span></button>
+  return `<div class="home-in"><button class="htile hplan" data-act="tab" data-v="planning" data-pv="com"><span class="hic" style="position:relative">${ICON.cal}${unseenProps()?`<span class="bdg">${unseenProps()}</span>`:''}</span><span class="ht"><span class="hl">Planning</span><span class="muted small">${V?'Prochaine partie validée':'Prochaine partie'}</span><b>${V?fmtLong(V.date,V.sl):'Aucune partie validée'}</b>${V?`<span class="muted small">${esc(V.type||'Scénario')}${np?' · '+np+' date'+(np>1?'s':'')+' proposée'+(np>1?'s':'')+' en attente':''}</span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''} en attente</span>`:''}</span></button>
   <div class="hgrid">${tile('gains','xp','XP')}${tile('team','perso','Personnages')}${tile('univers','univers','Univers')}</div>
   <div class="hlinks"><button class="btn ghost" data-act="tab" data-v="players">Joueurs</button><button class="btn ghost" data-act="tab" data-v="rules">Règles</button></div></div>`;
 }
@@ -1059,6 +1069,42 @@ function whoGate(){
   if(!S.ready||!pl.length||(ME&&S.players[ME]))return '';
   return `<div class="who" role="dialog" aria-modal="true" aria-label="Qui es-tu ?"><div class="who-in"><div class="who-g">${ICON.gear||''}</div><h2>Bienvenue dans La belle appli</h2><p>Qui es-tu ?</p><div class="who-grid">${pl.map(p=>`<button class="btn" data-act="setMe" data-id="${p.id}">${esc(p.nom)}</button>`).join('')}</div><p class="muted small">Demandé une seule fois sur cet appareil. Tu pourras changer dans l'onglet Joueurs. Ton nom sert pour tes disponibilités et tes réponses aux dates proposées.</p></div></div>`;
 }
+
+/* ---------- Notifications ---------- */
+const VAPID_PUBLIC='BLowWIABcAd_agMkxhjSDsAYQaSDl7ufVWrEEyKnsx_tCxjoOdf30Qszlbw6q_Hl9BrjtcIn97ZjWj5ZRMA4Pgw';
+const pushOK=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+let SWREG=null;
+if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').then(r=>{SWREG=r;return r.pushManager&&r.pushManager.getSubscription();}).then(sub=>{S.pushSub=sub||null;S._force=true;render();}).catch(()=>{});}
+function b64u(s){const p='='.repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(b,c=>c.charCodeAt(0));}
+async function pushEnable(){
+  if(!ME||!S.players[ME]){alertMsg('Choisis d\'abord ton nom dans « Je suis ».');return;}
+  try{
+    const perm=await Notification.requestPermission();if(perm!=='granted'){S.pushMsg='Notifications refusées. Tu peux les autoriser dans les réglages du navigateur.';render();return;}
+    const reg=SWREG||await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(VAPID_PUBLIC)});
+    const js=sub.toJSON(),pl=clone(S.players[ME]);pl.push=(pl.push||[]).filter(x=>x.endpoint!==js.endpoint);pl.push.push({endpoint:js.endpoint,keys:js.keys});
+    S.pushSub=sub;S.pushMsg='Notifications activées sur cet appareil.';savePlayer(pl);
+  }catch(e){console.error(e);S.pushMsg='Activation impossible sur cet appareil.';render();}
+}
+async function pushDisable(){
+  try{const sub=S.pushSub;if(sub){const ep=sub.endpoint;await sub.unsubscribe();for(const p of Object.values(S.players)){if((p.push||[]).some(x=>x.endpoint===ep)){const n=clone(p);n.push=n.push.filter(x=>x.endpoint!==ep);savePlayer(n);}}}
+    S.pushSub=null;S.pushMsg='Notifications désactivées sur cet appareil.';render();}catch(e){console.error(e);}
+}
+function alertMsg(m){S.pushMsg=m;render();}
+function notify(payload){let code=null;try{code=localStorage.getItem('xp.code');}catch(e){}if(!code)return;
+  fetch(SB.url+'/functions/v1/notify',{method:'POST',headers:{'apikey':SB.key,'Authorization':'Bearer '+SB.key,'Content-Type':'application/json'},body:JSON.stringify(Object.assign({code},payload))}).catch(()=>{});}
+function pushCard(){
+  let st,act='';
+  if(!pushOK())st=isIOS()&&!isStandalone()?'Sur iPhone, ajoute d\'abord l\'appli à l\'écran d\'accueil (Partager › Sur l\'écran d\'accueil), puis ouvre-la depuis le raccourci.':'Ce navigateur ne gère pas les notifications.';
+  else if(!ME||!S.players[ME])st='Choisis ton nom ci-dessus pour activer les notifications.';
+  else if(Notification.permission==='denied')st='Notifications bloquées pour ce site : autorise-les dans les réglages du navigateur.';
+  else if(S.pushSub){st='Activées sur cet appareil.';act=`<button class="btn" data-act="pushOff">Désactiver</button>`;}
+  else{st='Reçois une notification quand une date est proposée, et un rappel la veille d\'une partie validée.';act=`<button class="btn pri" data-act="pushOn">Activer les notifications</button>`;}
+  return `<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Notifications</h3><div class="muted small">${st}</div>${S.pushMsg?`<div class="small" style="margin-top:6px">${esc(S.pushMsg)}</div>`:''}${act?`<div class="actions">${act}</div>`:''}</div>`;
+}
+const unseenProps=()=>{if(!ME||!S.players[ME])return 0;const r=S.players[ME].rep||{};return propDates().filter(x=>!r[x.id]&&x.by!==ME).length;};
 function renderSheet(){
   const root=document.getElementById('sheetRoot');
   {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se'||S.dlg.kind==='ca'||S.dlg.kind==='ce'||S.dlg.kind==='sn'||S.dlg.kind==='sm'||S.dlg.kind==='pd')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt'||ae0.id==='crn'||ae0.id==='sdi'||ae0.id==='pdn'||ae0.id==='pdd')&&root.contains(ae0))return;}
@@ -1066,6 +1112,7 @@ function renderSheet(){
     const g=S.dlg;let titre='',txt='';
     if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
+    if(g.kind==='me'){const pl=planPlayers();root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Changer de joueur"><div class="in"><h2>Qui es-tu ?</h2><div class="who-grid">${pl.map(p=>`<button class="btn${p.id===ME?' sel':''}" aria-pressed="${p.id===ME}" data-act="setMe" data-id="${p.id}">${esc(p.nom)}</button>`).join('')}</div><div class="muted small">Mémorisé sur cet appareil. Sert pour tes disponibilités, tes réponses aux dates proposées et tes notifications.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='sn'||g.kind==='sm'){const kids=g.kind==='sm'?sessChildren(g.id).filter(k=>!(k.secret&&k.secret.k==='bonus')).length:0;
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Session de jeu"><div class="in"><h2>${g.kind==='sn'?'Nouvelle session de jeu':'Modifier la session'}</h2>
       <div class="field"><label for="sdt">Type</label><select id="sdt" data-sd="type">${TYPES.map(t=>`<option${t===g.type?' selected':''}>${t}</option>`).join('')}</select></div>
@@ -1119,12 +1166,14 @@ function renderSheet(){
 function render(){
   const cur=k=>S.view===k||(k==='team'&&S.view==='sheet');
   const tabs=[['gains','XP'],['team','Personnages'],['univers','Univers'],['planning','Planning'],['players','Joueurs'],['rules','Règles']];
-  document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${l}</button>`).join('');
+  const nb=unseenProps(),bdg=k=>k==='planning'&&nb?`<span class="bdg" aria-label="${nb} date${nb>1?'s':''} proposée${nb>1?'s':''} sans réponse">${nb}</span>`:'';
+  document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${l}${bdg(k)}</button>`).join('');
   const bn=[['gains','XP','xp'],['team','Personnages','perso'],['univers','Univers','univers'],['planning','Planning','cal']];
   const inMenu=S.view==='players'||S.view==='rules';
-  document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${ICON[ic]}<span>${l}</span></button>`).join('')+
+  document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}" style="position:relative">${ICON[ic]}<span>${l}</span>${bdg(k)}</button>`).join('')+
     `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
   document.body.classList.toggle('home',S.view==='home');
+  {const mb=document.getElementById('meBtn');if(mb){const me=ME&&S.players[ME];const lab=me?esc(me.nom):'Qui es-tu ?';const html=`${ICON.perso}<span>${lab}</span>`;if(mb.innerHTML!==html)mb.innerHTML=html;mb.setAttribute('aria-label',me?'Connecté en tant que '+me.nom+', changer de joueur':'Choisir qui tu es');}}
   const ae=document.activeElement;
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;
@@ -1145,11 +1194,16 @@ document.addEventListener('click',ev=>{
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max};}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;}
   else if(a==='menu'){S.dlg={kind:'menu'};}
-  else if(a==='setMe'){ME=d.id;try{localStorage.setItem('xp.me',ME);}catch(e){}S._force=true;}
+  else if(a==='pushOn'){pushEnable();return;}
+  else if(a==='pushOff'){pushDisable();return;}
+  else if(a==='setMe'){const old=ME;ME=d.id;try{localStorage.setItem('xp.me',ME);}catch(e){}S.dlg=null;S._force=true;
+    if(S.pushSub&&old!==ME){const js=S.pushSub.toJSON(),ep=js.endpoint;for(const pp of Object.values(S.players)){if(pp.id!==ME&&(pp.push||[]).some(x=>x.endpoint===ep)){const n=clone(pp);n.push=n.push.filter(x=>x.endpoint!==ep);savePlayer(n);}}
+      const me=S.players[ME];if(me&&!(me.push||[]).some(x=>x.endpoint===ep)){const n=clone(me);n.push=[...(n.push||[]),{endpoint:ep,keys:js.keys}];savePlayer(n);}}}
+  else if(a==='meOpen'){S.dlg={kind:'me'};}
   else if(a==='dPropose'){S.dlg={kind:'pd',date:'',sl:'S',type:'Scénario',note:''};}
   else if(a==='pdSl'){S.dlg.sl=d.sl;}
   else if(a==='pdOk'){const g=S.dlg;if(!g.date||g.date<today())return;S.dlg=null;const x={id:'d'+Date.now().toString(36),date:g.date,sl:g.sl,type:g.type,note:(g.note||'').trim(),by:ME||null,status:'prop'};
-    if(ME&&S.players[ME]){const pl=clone(S.players[ME]);pl.rep={...(pl.rep||{}),[x.id]:'ok'};savePlayer(pl);}saveDates([...S.dates,x]);return;}
+    if(ME&&S.players[ME]){const pl=clone(S.players[ME]);pl.rep={...(pl.rep||{}),[x.id]:'ok'};savePlayer(pl);}saveDates([...S.dates,x]);setTimeout(()=>notify({kind:'prop',dateId:x.id,from:ME||null}),2500);return;}
   else if(a==='dValidFree'){saveDates([...S.dates,{id:'d'+Date.now().toString(36),date:d.date,sl:d.sl,type:'Scénario',note:'',by:ME||null,status:'valid'}]);return;}
   else if(a==='dValid'){saveDates(S.dates.map(x=>x.id===d.id?{...x,status:'valid'}:x));return;}
   else if(a==='dUnvalid'){saveDates(S.dates.map(x=>x.id===d.id?{...x,status:'prop'}:x));return;}
