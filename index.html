@@ -807,7 +807,7 @@ function viewPlayers(){
   return h;
 }
 function viewRules(){
-  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Créatures de l\'univers','+1 quand toutes nos connaissances sur un type de créature sont réunies (case cochée). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Créature de l\'univers »)'],['Sessions de jeu','chaque gain d\'XP est saisi dans une session (type, intitulé, date) ; les secrets et créatures peuvent y être rattachés. Une session ne peut être supprimée tant que des découvertes y sont rattachées'],['Part des PNJ','PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s\'il a participé activement, 25 % sinon, arrondi à l\'inférieur ; sessions datées à partir du rattachement'],['Planning','chaque joueur coche ses disponibilités en journée et en soirée ; créneaux préférés : samedi soir et dimanche journée. « Prochaines dates » : dates validées, créneaux où toute la table est libre, dates proposées que chacun accepte ou décline ; la prochaine date validée s\'affiche sur l\'accueil. Si un MJ décline une proposition, elle est refusée et ne peut pas être validée'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
+  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Créatures de l\'univers','+1 quand toutes nos connaissances sur un type de créature sont réunies (case cochée). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Créature de l\'univers »)'],['Sessions de jeu','chaque gain d\'XP est saisi dans une session (type, intitulé, date) ; les secrets et créatures peuvent y être rattachés. Une session ne peut être supprimée tant que des découvertes y sont rattachées'],['Part des PNJ','PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s\'il a participé activement, 25 % sinon, arrondi à l\'inférieur ; sessions datées à partir du rattachement'],['Planning','chaque joueur coche ses disponibilités en journée et en soirée ; créneaux préférés : samedi soir et dimanche journée. « Prochaines dates » : dates validées, créneaux où toute la table est libre, dates proposées que chacun accepte ou décline ; la prochaine date validée s\'affiche sur l\'accueil. Si un MJ décline une proposition, elle est refusée et ne peut pas être validée. Des créneaux consécutifs libres pour toute la table (par exemple samedi soir et dimanche journée) forment une seule date'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
   return `<h2 style="margin-top:4px">Règles appliquées</h2><div class="card">${rows.map(r=>`<div class="ev"><div class="t" style="min-width:140px">${esc(r[0])}</div><div class="muted" style="text-align:right">${esc(r[1])}</div></div>`).join('')}</div>
   <div class="muted small" style="margin-top:12px">Dans ce prototype, les coefficients sont fixés dans la page. Dans la version définitive, ils seront modifiables depuis cet écran.</div><div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="logout">Changer de code (se déconnecter)</button></div>`;
 }
@@ -1015,8 +1015,27 @@ function viewPlanning(){
 /* ---------- Prochaines dates ---------- */
 const todayKey=()=>today().replace(/-/g,'');
 const dkey=d=>d.replace(/-/g,'');
-const fmtLong=(iso,sl)=>{const [y,m,d]=iso.split('-').map(Number),wd=new Date(y,m-1,d).getDay();return PJOURSL[wd].replace(/^./,c=>c.toUpperCase())+' '+d+' '+PMOIS[m-1]+(sl?' · '+(sl==='J'?'journée':'soirée'):'');};
-const futDates=()=>S.dates.filter(x=>x.date>=today()).sort((a,b)=>(a.date+a.sl).localeCompare(b.date+b.sl));
+const fmtLong=(iso,sl)=>{const [y,m,d]=iso.split('-').map(Number),wd=new Date(y,m-1,d).getDay();if(sl==='WE'||(sl===undefined&&false))return 'Week-end du '+d+' '+PMOIS[m-1];return PJOURSL[wd].replace(/^./,c=>c.toUpperCase())+' '+d+' '+PMOIS[m-1]+(sl?' · '+(sl==='J'?'journée':'soirée'):'');};
+const slLabel=sl=>sl==='WE'?'Samedi soir et dimanche journée':sl==='J'?'Journée':'Soirée';
+const isoAdd=(iso,n)=>{const [y,m,d]=iso.split('-').map(Number),t=new Date(y,m-1,d+n);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');};
+/* Une date = un créneau ou une plage de créneaux consécutifs (date/sl → endDate/endSl). 'WE' = ancien format samedi soir → dimanche journée */
+const norm=x=>x.sl==='WE'?{date:x.date,sl:'S',endDate:isoAdd(x.date,1),endSl:'J'}:{date:x.date,sl:x.sl,endDate:x.endDate||x.date,endSl:x.endSl||x.sl};
+const isRange=x=>{const n=norm(x);return n.endDate!==n.date||n.endSl!==n.sl;};
+const dEnd=x=>norm(x).endDate;
+const wdOf=iso=>new Date(iso+'T12:00').getDay();
+const capi=t=>t.replace(/^./,c=>c.toUpperCase());
+function dTitle(x){const n=norm(x);if(!isRange(x))return fmtLong(n.date);
+  if(n.date===n.endDate)return fmtLong(n.date);
+  const [,m1,d1]=n.date.split('-').map(Number),[,m2,d2]=n.endDate.split('-').map(Number);
+  if(wdOf(n.date)===6&&n.sl==='S'&&n.endDate===isoAdd(n.date,1)&&n.endSl==='J')return 'Week-end du '+d1+' '+PMOIS[m1-1];
+  return 'Du '+PJOURSL[wdOf(n.date)]+' '+d1+(m1!==m2?' '+PMOIS[m1-1]:'')+' au '+PJOURSL[wdOf(n.endDate)]+' '+d2+' '+PMOIS[m2-1];}
+function dSub(x){const n=norm(x);if(!isRange(x))return n.sl==='J'?'Journée':'Soirée';
+  if(n.date===n.endDate)return 'Journée et soirée';
+  const a=PJOURSL[wdOf(n.date)]+(n.sl==='J'?' journée':' soir'),b=PJOURSL[wdOf(n.endDate)]+(n.endSl==='J'?' journée':' soir');
+  return capi(a)+(slotsOf(x).length===2?' et ':' → ')+b;}
+function dLine(x){const n=norm(x);if(!isRange(x))return fmtLong(n.date,n.sl);return n.date===n.endDate?fmtLong(n.date)+' · journée et soirée':dTitle(x);}
+function slotsOf(x){const n=norm(x),out=[];let d=n.date,sl=n.sl;for(let i=0;i<400;i++){out.push(d+'|'+sl);if(d===n.endDate&&sl===n.endSl)break;if(sl==='J')sl='S';else{sl='J';d=isoAdd(d,1);}}return out;}
+const futDates=()=>S.dates.filter(x=>dEnd(x)>=today()).sort((a,b)=>(a.date+a.sl).localeCompare(b.date+b.sl));
 const validDates=()=>futDates().filter(x=>x.status==='valid');
 const propDates=()=>futDates().filter(x=>x.status!=='valid');
 const isMJ=p=>p&&p.role==='MJ'&&!p.parti;
@@ -1024,26 +1043,33 @@ const mjRefus=x=>Object.values(S.players).some(p=>isMJ(p)&&(p.rep||{})[x.id]==='
 const openProps=()=>propDates().filter(x=>!mjRefus(x));
 function saveDates(list){S.dates=list;persist('meta/planning',{dates:list});render();}
 function freeSlots(){const pl=planPlayers(),T=pl.length,out=[];if(!T)return out;const t=new Date();
+  const used=new Set();for(const x of S.dates)for(const k of slotsOf(x))used.add(k);
+  /* créneaux consécutifs libres pour toute la table → une seule date (plage) */
+  let run=null;const close=()=>{if(run){out.push(run);run=null;}};
   for(let i=0;i<=90;i++){const dt=new Date(t.getFullYear(),t.getMonth(),t.getDate()+i),y=dt.getFullYear(),m=dt.getMonth(),d=dt.getDate(),wd=dt.getDay();
-    for(const sl of ['J','S']){const k=pkey(y,m,d,sl);if(pl.every(p=>p.dispo&&p.dispo[k])){const iso=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');if(!S.dates.some(x=>x.date===iso&&x.sl===sl))out.push({date:iso,sl,pf:isPref(wd,sl)});}}}
+    const iso=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    for(const sl of ['J','S']){const free=pl.every(p=>p.dispo&&p.dispo[pkey(y,m,d,sl)])&&!used.has(iso+'|'+sl);
+      if(!free){close();continue;}
+      if(!run)run={date:iso,sl,endDate:iso,endSl:sl,pf:isPref(wd,sl)};else{run.endDate=iso;run.endSl=sl;run.pf=run.pf||isPref(wd,sl);}}}
+  close();
   return out.sort((a,b)=>(b.pf-a.pf)||(a.date+a.sl).localeCompare(b.date+b.sl));}
-const dIcon=sl=>`<span class="pi">${sl==='J'?'☀':'☾'}</span>`;
+const dIcon=x=>{const r=isRange(x),n=norm(x);return `<span class="pi"${r?' style="font-size:15px"':''}>${r?(n.sl==='J'?'☀☾':'☾☀'):n.sl==='J'?'☀':'☾'}</span>`;};
 function viewNextDates(){
   if(!S.datesReady)return `<div class="card empty">Chargement…</div>`;
   const pl=planPlayers(),T=pl.length,me=ME&&S.players[ME]?S.players[ME]:null;
   let h=`<h3 class="nd-h good">✓ Dates validées</h3>`;
   const V=validDates();
-  h+=V.map(x=>`<div class="pcom pref"><div class="pcrow">${dIcon(x.sl)}<span style="flex:1"><b>${fmtLong(x.date)}</b><br><span class="muted small">${x.sl==='J'?'Journée':'Soirée'} · ${esc(x.type||'Scénario')}${x.note?' · '+esc(x.note):''}</span></span><span class="pill good">Validée</span></div><div class="pcact"><button class="btn ghost" data-act="dUnvalid" data-id="${x.id}">Annuler la validation</button></div></div>`).join('')||'<div class="muted" style="margin-bottom:8px">Aucune date validée pour l\'instant.</div>';
+  h+=V.map(x=>`<div class="pcom pref"><div class="pcrow">${dIcon(x)}<span style="flex:1"><b>${dTitle(x)}</b><br><span class="muted small">${dSub(x)} · ${esc(x.type||'Scénario')}${x.note?' · '+esc(x.note):''}</span></span><span class="pill good">Validée</span></div><div class="pcact"><button class="btn ghost" data-act="dUnvalid" data-id="${x.id}">Annuler la validation</button></div></div>`).join('')||'<div class="muted" style="margin-bottom:8px">Aucune date validée pour l\'instant.</div>';
   h+=`<h3 class="nd-h brass">★ Toute la table est libre</h3><div class="muted small" style="margin-bottom:8px">Calculé à partir des disponibilités des 3 prochains mois, créneaux préférés en premier.</div>`;
   const F=freeSlots();
-  h+=F.map(x=>`<div class="pcom${x.pf?' pref':''}"><div class="pcrow">${dIcon(x.sl)}<span style="flex:1"><b>${fmtLong(x.date)}</b>${x.pf?' <span class="pst">★</span>':''}<br><span class="muted small">${x.sl==='J'?'Journée':'Soirée'} · toute la table (${T}/${T})</span></span><button class="btn pri" data-act="dValidFree" data-date="${x.date}" data-sl="${x.sl}">Valider</button></div></div>`).join('')||'<div class="muted" style="margin-bottom:8px">Aucun créneau où toute la table est libre.</div>';
+  h+=F.map(x=>`<div class="pcom${x.pf?' pref':''}"><div class="pcrow">${dIcon(x)}<span style="flex:1"><b>${dTitle(x)}</b>${x.pf?' <span class="pst">★</span>':''}<br><span class="muted small">${dSub(x)} · toute la table (${T}/${T})</span></span><button class="btn pri" data-act="dValidFree" data-date="${x.date}" data-sl="${x.sl}" data-end="${x.endDate}" data-endsl="${x.endSl}">Valider</button></div></div>`).join('')||'<div class="muted" style="margin-bottom:8px">Aucun créneau où toute la table est libre.</div>';
   h+=`<h3 class="nd-h">Dates proposées</h3><button class="btn pri" style="width:100%;margin-bottom:10px" data-act="dPropose">+ Proposer une date</button>`;
   h+=propDates().map(x=>{
     const R=pl.map(p=>({p,r:(p.rep||{})[x.id]||null}));
     const nok=R.filter(r=>r.r==='ok').length,nno=R.filter(r=>r.r==='no').length,nq=T-nok-nno;
     const mine=me?((me.rep||{})[x.id]||null):null,by=S.players[x.by];
     const armed=S.confirm==='dd:'+x.id,ref=mjRefus(x);
-    return `<div class="pcom prop${ref?' refused':''}"><div class="pcrow">${dIcon(x.sl)}<span style="flex:1"><b>${fmtLong(x.date)}</b><br><span class="muted small">${x.sl==='J'?'Journée':'Soirée'} · ${esc(x.type||'Scénario')}${by?' · proposée par '+esc(by.nom):''}</span></span><span class="pill${ref?' bad':''}">${ref?'Refusée':'Proposée'}</span></div>${ref?'<div class="small" style="color:var(--bad);margin-top:6px">Le MJ n\'est pas disponible sur ce créneau.</div>':''}
+    return `<div class="pcom prop${ref?' refused':''}"><div class="pcrow">${dIcon(x)}<span style="flex:1"><b>${dTitle(x)}</b><br><span class="muted small">${dSub(x)} · ${esc(x.type||'Scénario')}${by?' · proposée par '+esc(by.nom):''}</span></span><span class="pill${ref?' bad':''}">${ref?'Refusée':'Proposée'}</span></div>${ref?'<div class="small" style="color:var(--bad);margin-top:6px">Le MJ n\'est pas disponible sur ce créneau.</div>':''}
       ${x.note?`<div style="font-style:italic;margin:6px 0">« ${esc(x.note)} »</div>`:''}
       <div class="rsp">${R.map(({p,r})=>`<span class="rp ${r||'q'}">${r==='ok'?'✓':r==='no'?'✗':'?'} ${esc(p.nom)}</span>`).join('')}</div>
       <div class="small" style="margin:6px 0">${nok} accepte${nok>1?'nt':''} · ${nno} décline${nno>1?'nt':''} · ${nq} sans réponse</div>
@@ -1064,7 +1090,7 @@ function dateSheet(g){
 function viewHome(){
   const V=validDates()[0],np=openProps().length;
   const tile=(v,ic,l)=>`<button class="htile" data-act="tab" data-v="${v}"><span class="hic">${ICON[ic]}</span><span class="hl">${l}</span></button>`;
-  return `<div class="home-in"><button class="htile hplan" data-act="tab" data-v="planning" data-pv="com"><span class="hic" style="position:relative">${ICON.cal}${unseenProps()?`<span class="bdg">${unseenProps()}</span>`:''}</span><span class="ht"><span class="hl">Planning</span><span class="muted small">${V?'Prochaine partie validée':'Prochaine partie'}</span><b>${V?fmtLong(V.date,V.sl):'Aucune partie validée'}</b>${V?`<span class="muted small">${esc(V.type||'Scénario')}${np?' · '+np+' date'+(np>1?'s':'')+' proposée'+(np>1?'s':'')+' en attente':''}</span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''} en attente</span>`:''}</span></button>
+  return `<div class="home-in"><button class="htile hplan" data-act="tab" data-v="planning" data-pv="com"><span class="hic" style="position:relative">${ICON.cal}${unseenProps()?`<span class="bdg">${unseenProps()}</span>`:''}</span><span class="ht"><span class="hl">Planning</span><span class="muted small">${V?'Prochaine partie validée':'Prochaine partie'}</span><b>${V?dLine(V):'Aucune partie validée'}</b>${V?`<span class="muted small">${esc(V.type||'Scénario')}${np?' · '+np+' date'+(np>1?'s':'')+' proposée'+(np>1?'s':'')+' en attente':''}</span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''} en attente</span>`:''}</span></button>
   <div class="hgrid">${tile('gains','xp','XP')}${tile('team','perso','Personnages')}${tile('univers','univers','Univers')}</div>
   <div class="hlinks"><button class="btn ghost" data-act="tab" data-v="players">Joueurs</button><button class="btn ghost" data-act="tab" data-v="rules">Règles</button></div></div>`;
 }
@@ -1209,7 +1235,7 @@ document.addEventListener('click',ev=>{
   else if(a==='pdSl'){S.dlg.sl=d.sl;}
   else if(a==='pdOk'){const g=S.dlg;if(!g.date||g.date<today())return;S.dlg=null;const x={id:'d'+Date.now().toString(36),date:g.date,sl:g.sl,type:g.type,note:(g.note||'').trim(),by:ME||null,status:'prop'};
     if(ME&&S.players[ME]){const pl=clone(S.players[ME]);pl.rep={...(pl.rep||{}),[x.id]:'ok'};savePlayer(pl);}saveDates([...S.dates,x]);setTimeout(()=>notify({kind:'prop',dateId:x.id,from:ME||null}),2500);return;}
-  else if(a==='dValidFree'){saveDates([...S.dates,{id:'d'+Date.now().toString(36),date:d.date,sl:d.sl,type:'Scénario',note:'',by:ME||null,status:'valid'}]);return;}
+  else if(a==='dValidFree'){const x={id:'d'+Date.now().toString(36),date:d.date,sl:d.sl,type:'Scénario',note:'',by:ME||null,status:'valid'};if(d.end&&(d.end!==d.date||d.endsl!==d.sl)){x.endDate=d.end;x.endSl=d.endsl;}saveDates([...S.dates,x]);return;}
   else if(a==='dValid'){const x0=S.dates.find(x=>x.id===d.id);if(x0&&mjRefus(x0))return;saveDates(S.dates.map(x=>x.id===d.id?{...x,status:'valid'}:x));return;}
   else if(a==='dUnvalid'){saveDates(S.dates.map(x=>x.id===d.id?{...x,status:'prop'}:x));return;}
   else if(a==='dDel'){const k='dd:'+d.id;if(S.confirm!==k){S.confirm=k;}else{S.confirm=null;saveDates(S.dates.filter(x=>x.id!==d.id));return;}}
