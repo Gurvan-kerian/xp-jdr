@@ -316,6 +316,8 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sess{padding:12px 0;border-bottom:1px solid var(--line)}
 .sess:last-child{border-bottom:0}
 .shead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px}
+.shead.tg{cursor:pointer;align-items:center}.shead.tg>div{flex:1}.sess:not(.open) .shead{margin-bottom:0}
+.chev{flex:none;width:24px;height:24px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:20px;line-height:1;transition:transform .2s}.sess.open .chev{transform:rotate(90deg)}
 .sline{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0 8px 12px;border-left:2px solid var(--line);margin-left:2px}
 .pmonth{display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:420px;margin:0 0 12px}
 .pmonth b{font-family:var(--font-display);font-style:italic;font-size:24px}
@@ -721,6 +723,12 @@ function viewLegacyForm(){
 const sessList=()=>S.events.filter(e=>e.session&&!e.rattrapage).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||S.events.indexOf(b)-S.events.indexOf(a));
 const sessById=id=>S.events.find(e=>e.id===id&&e.session);
 function curSession(){const L=sessList();if(S.curSess&&L.some(e=>e.id===S.curSess))return sessById(S.curSess);return L[0]||null;}
+/* Début d'intitulé proposé : numéro suivant le plus grand déjà utilisé pour ce type */
+function sessPrefix(type){
+  const re=type==='Scénario'?/^S\.?\s*0*(\d+)/i:type==='Interscénario'?/^\[\s*Int\.?\s*0*(\d+)/i:null;if(!re)return '';
+  let n=0;for(const e of S.events)if(e.session&&evType(e)===type){const m=(e.titre||'').match(re);if(m)n=Math.max(n,+m[1]);}
+  return type==='Scénario'?'S'+String(n+1).padStart(2,'0')+'. ':'[Int. '+String(n+1).padStart(3,'0')+'] ';
+}
 const sessLabel=e=>e?esc(e.titre)+(e.date?' · '+fmtDate(e.date):e.textuelle?' · Session textuelle':''):'';
 const sessChildren=id=>S.events.filter(e=>e.sessionId===id);
 function sessOptions(sel){return `<option value="">Aucune session</option>`+sessList().map(e=>`<option value="${e.id}"${e.id===sel?' selected':''}>${sessLabel(e)}</option>`).join('');}
@@ -770,8 +778,11 @@ function gainsTableAndJournal(){
   const pv=c=>{const ch=S.chars[c];return ch&&ch.type==='PJ'&&vis(ch);};
   const grpTags=ents=>{const grp={};for(const en of ents){const k=en.nature+' +'+en.montant;(grp[k]=grp[k]||[]).push(S.chars[en.perso].court);}return grp;};
   const top=[...S.events].reverse().filter(e=>!e.sessionId||!sessById(e.sessionId));
+  const first=top.find(e=>e.session);S.jOpen=S.jOpen||{};
   h+=top.map(e=>{
     if(e.session){
+      const open=e.id in S.jOpen?S.jOpen[e.id]:e===first;
+      if(!open)return `<div class="sess"><div class="shead tg" data-act="sessToggle" data-id="${e.id}" role="button" tabindex="0" aria-expanded="false"><span class="chev" aria-hidden="true">›</span><div style="min-width:0"><div class="t" style="font-size:17px">${esc(e.titre)}</div><div class="muted small">${[e.date?fmtDate(e.date):e.textuelle?'Session textuelle':'',esc(evType(e))].filter(Boolean).join(' · ')}</div></div></div></div>`;
       const kids=sessChildren(e.id);
       let body='';
       const grp={};for(const en of e.entries.filter(en=>pv(en.perso))){const k=en.nature+'|'+en.montant;(grp[k]=grp[k]||[]).push(S.chars[en.perso].court);}
@@ -781,7 +792,7 @@ function gainsTableAndJournal(){
         for(const k of Object.keys(pg)){const [id,n]=k.split('|');if(pg[k])body+=`<div class="sline"><div style="min-width:0"><div>Part des PNJ</div><div class="tags"><span class="pill plan">${esc(n)} +${pg[k]}</span><span class="muted small">${esc(S.chars[id].court)}</span></div></div><span class="locked" style="max-width:110px;text-align:right">Reprise de l'ancien journal</span></div>`;}}
       for(const c of Object.values(S.chars)){if(c.type!=='PNJ'||!vis(c))continue;const sh=pnjShares(c,S.events).find(x=>x.sess===e.id);if(sh&&sh.montant)body+=`<div class="sline"><div style="min-width:0"><div>Part des PNJ</div><div class="tags"><span class="pill plan">${esc(sh.nature)} +${sh.montant}</span><span class="muted small">${esc(c.court)}</span></div></div><span class="locked" style="max-width:110px;text-align:right">Calculée automatiquement</span></div>`;}
       const blocked=kids.filter(k=>!(k.secret&&k.secret.k==='bonus')).length;
-      return `<div class="sess"><div class="shead"><div style="min-width:0"><div class="t" style="font-size:17px">${esc(e.titre)}</div><div class="muted small">${[e.date?fmtDate(e.date):e.textuelle?'Session textuelle':'',esc(evType(e))].filter(Boolean).join(' · ')}</div></div><button class="btn ghost" style="padding:4px 10px;flex:none" data-act="sessEditId" data-id="${e.id}">Modifier</button></div>${body||'<div class="muted small" style="padding:6px 0">Aucun gain pour l\'instant.</div>'}${blocked?`<div class="muted small" style="margin-top:6px">Suppression impossible tant que ${blocked} découverte${blocked>1?'s sont rattachées':' est rattachée'} à cette session.</div>`:''}</div>`;
+      return `<div class="sess open"><div class="shead tg" data-act="sessToggle" data-id="${e.id}" role="button" tabindex="0" aria-expanded="true"><span class="chev" aria-hidden="true">›</span><div style="min-width:0"><div class="t" style="font-size:17px">${esc(e.titre)}</div><div class="muted small">${[e.date?fmtDate(e.date):e.textuelle?'Session textuelle':'',esc(evType(e))].filter(Boolean).join(' · ')}</div></div><button class="btn ghost" style="padding:4px 10px;flex:none" data-act="sessEditId" data-id="${e.id}">Modifier</button></div>${body||'<div class="muted small" style="padding:6px 0">Aucun gain pour l\'instant.</div>'}${blocked?`<div class="muted small" style="margin-top:6px">Suppression impossible tant que ${blocked} découverte${blocked>1?'s sont rattachées':' est rattachée'} à cette session.</div>`:''}</div>`;
     }
     const ents=e.entries.filter(en=>pv(en.perso));if(!ents.length)return '';
     const g=grpTags(ents);
@@ -1261,12 +1272,13 @@ document.addEventListener('click',ev=>{
   else if(a==='planMonth'){let m=S.plan.m+(+d.d),y=S.plan.y;if(m<0){m=11;y--;}if(m>11){m=0;y++;}S.plan.m=m;S.plan.y=y;S.plan.open=null;}
   else if(a==='planOpen'){S.plan.open=S.plan.open===d.k?null:d.k;}
   else if(a==='planSet'){const p0=S.players[d.p];if(!p0)return;const pl=clone(p0);pl.dispo=pl.dispo||{};if(pl.dispo[d.k])delete pl.dispo[d.k];else pl.dispo[d.k]=true;savePlayer(pl);return;}
+  else if(a==='sessToggle'){S.jOpen=S.jOpen||{};const e=sessById(d.id);const first=[...S.events].reverse().find(x=>x.session&&(!x.sessionId||!sessById(x.sessionId)));const was=d.id in S.jOpen?S.jOpen[d.id]:e===first;S.jOpen[d.id]=!was;}
   else if(a==='ratOpen'){const list=pjIds().map(i=>S.chars[i]),gt=gainsTable(list,S.events),r=gt.rows.find(x=>x.c.id===d.id);if(!r)return;const rt=rattrapage(gt.rows,r);if(!rt)return;
     S.dlg={kind:'rat',id:d.id,type:'Autre',titre:"Rattrapage d'XP pour "+r.c.court,date:today(),nature:'Individuel',montant:String(rt.montant),who:[d.id],total:r.total,ecart:Math.round(gt.avg-r.total),avg:Math.round(gt.avg*10)/10,base:rt.montant,cible:rt.c.court,cibleTotal:rt.total};}
   else if(a==='ratChar'){const w=S.dlg.who;S.dlg.who=w.includes(d.id)?w.filter(x=>x!==d.id):[...w,d.id];}
   else if(a==='ratOk'){const g=S.dlg,t=(g.titre||'').trim(),n=Math.floor(+g.montant||0);if(!t||n<=0||!g.who.length)return;S.dlg=null;
     const e={id:'g'+Date.now().toString(36),session:true,rattrapage:true,date:g.date||today(),titre:t,type:g.type||'Autre',entries:g.who.map(p=>({perso:p,nature:g.nature||'Individuel',montant:n})),pnj:{}};saveEvents([...S.events,e]);return;}
-  else if(a==='sessNew'){S.dlg={kind:'sn',type:'Scénario',titre:'',date:today()};}
+  else if(a==='sessNew'){S.dlg={kind:'sn',type:'Scénario',titre:sessPrefix('Scénario'),date:today()};}
   else if(a==='sessEdit'||a==='sessEditId'){const e=a==='sessEdit'?curSession():sessById(d.id);if(!e)return;S.dlg={kind:'sm',id:e.id,type:evType(e),titre:e.titre||'',date:e.date||'',confirm:false};}
   else if(a==='sessCreate'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;const e={id:'g'+Date.now().toString(36),session:true,date:g.date||today(),titre:t,type:g.type||'Scénario',entries:[],pnj:{}};S.curSess=e.id;saveEvents([...S.events,e]);return;}
   else if(a==='sessSave'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;saveEvents(S.events.map(e=>e.id===g.id?{...e,titre:t,type:g.type,date:g.date||e.date}:e));return;}
@@ -1364,6 +1376,7 @@ document.addEventListener('click',ev=>{
   render();
 });
 const q0=s=>document.querySelector(s);
+document.addEventListener('keydown',ev=>{const t=ev.target;if((ev.key==='Enter'||ev.key===' ')&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset.act){ev.preventDefault();t.click();}});
 document.addEventListener('input',ev=>{
   const t=ev.target;
   if(t.dataset.f){S.form[t.dataset.f]=t.value;}
@@ -1378,7 +1391,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.dn!==undefined){S.dlg.nom=t.value;}
   else if(t.dataset.dp!==undefined){S.dlg.pts=t.value;}
   else if(t.dataset.pd!==undefined&&S.dlg){S.dlg[t.dataset.pd]=t.value;if(t.dataset.pd==='date'){const b=q0('#sheetRoot [data-act="pdOk"]');if(b)b.disabled=!(t.value&&t.value>=today());}}
-  else if(t.dataset.sd!==undefined&&S.dlg){S.dlg[t.dataset.sd]=t.value;if(t.dataset.sd==='titre'){const b=q0('#sheetRoot [data-act="sessCreate"],#sheetRoot [data-act="sessSave"]');if(b)b.disabled=!t.value.trim();}if(S.dlg.kind==='rat'){const g=S.dlg,b=q0('#sheetRoot [data-act="ratOk"]'),n=Math.floor(+g.montant||0);if(b){b.disabled=!(n>0&&g.who.length&&(g.titre||'').trim());b.textContent='Attribuer '+n+' XP';}}}
+  else if(t.dataset.sd!==undefined&&S.dlg){if(t.dataset.sd==='type'&&S.dlg.kind==='sn'){const old=S.dlg.titre||'';if(!old.trim()||old===sessPrefix(S.dlg.type)){S.dlg.titre=sessPrefix(t.value);const i=q0('#sdi');if(i)i.value=S.dlg.titre;const b=q0('#sheetRoot [data-act="sessCreate"]');if(b)b.disabled=!S.dlg.titre.trim();}}S.dlg[t.dataset.sd]=t.value;if(t.dataset.sd==='titre'){const b=q0('#sheetRoot [data-act="sessCreate"],#sheetRoot [data-act="sessSave"]');if(b)b.disabled=!t.value.trim();}if(S.dlg.kind==='rat'){const g=S.dlg,b=q0('#sheetRoot [data-act="ratOk"]'),n=Math.floor(+g.montant||0);if(b){b.disabled=!(n>0&&g.who.length&&(g.titre||'').trim());b.textContent='Attribuer '+n+' XP';}}}
   else if(t.dataset.sxs!==undefined&&S.dlg){S.dlg.sess=t.value;}
   else if(t.dataset.cr!==undefined&&S.dlg){S.dlg.nom=t.value;const v=t.value.trim(),dup=!!v&&S.creatures.some(c=>c.id!==S.dlg.id&&c.nom.toLowerCase()===v.toLowerCase());const b=q0('#sheetRoot [data-act="creAddOk"],#sheetRoot [data-act="creSave"]');if(b)b.disabled=!v||dup;const w=document.getElementById('crdup');if(w)w.style.display=dup?'':'none';}
   else if(t.dataset.sx!==undefined&&S.dlg){S.dlg.txt=t.value;const b=q0('#sheetRoot [data-act="sxOk"],#sheetRoot [data-act="seSave"]');if(b)b.disabled=!t.value.trim();}
