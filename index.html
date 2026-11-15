@@ -67,6 +67,7 @@ h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute
 .pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;background:var(--surface2);color:var(--muted)}
 .pill.good{background:var(--good-soft);color:var(--good)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.plan{background:var(--plan-soft);color:var(--plan)} .pill.acc{background:var(--accent-soft);color:var(--accent)}
 .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px}
+.ratbtn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin-left:6px;padding:0;border-radius:15px;border:1px solid var(--brass);background:var(--surface);color:var(--accent);font-size:16px;font-weight:700;line-height:1;vertical-align:middle;cursor:pointer}
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;white-space:nowrap}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .strip{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center}
@@ -429,6 +430,7 @@ const TYPES=['Scénario','Interscénario','Autre'];
 const STARS=30;
 const LABEL={feerie:'Féerie',masque:'Masque',fortune:'Fortune',atout:'Atouts féeriques',spec:'Spécialités'};
 const STAGES=[{nom:'Profond',feerie:7,carac:6,comp:6,atout:4},{nom:'Légendaire',feerie:8,carac:7,comp:7,atout:5}];
+const PALIER_MAX=7; /* seules les compétences dont le niveau max est ≥ 7 comptent pour Profond et Légendaire */
 function lvlCost(kind,l){if(kind==='atout'||kind==='spec')return RULES[kind];if(kind==='carac'&&l===2)return 12;return l*RULES[kind];}
 function cum(kind,from,to){let s=0;for(let l=from+1;l<=to;l++)s+=lvlCost(kind,l);return s;}
 function ref(c,key){
@@ -462,7 +464,7 @@ function sessTotal(events,sid,pj){let t=0;for(const e of events)if(e.id===sid||e
 /* Part d'un PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s'il a participé, 25 % sinon, arrondi à l'inférieur.
    Ne s'applique qu'aux sessions datées à partir du jour du rattachement. */
 function pnjShares(c,events){if(!c||c.type!=='PNJ'||!c.pj||!c.pjDate)return [];const out=[];
-  for(const e of events){if(!e.session||(e.date||'')<c.pjDate)continue;const on=!!(e.pnj&&e.pnj[c.id]),pct=on?50:25,base=sessTotal(events,e.id,c.pj),m=Math.floor(base*pct/100);
+  for(const e of events){if(!e.session||e.rattrapage||(e.date||'')<c.pjDate)continue;const on=!!(e.pnj&&e.pnj[c.id]),pct=on?50:25,base=sessTotal(events,e.id,c.pj),m=Math.floor(base*pct/100);
     out.push({sess:e.id,on,pct,base,montant:m,nature:'PNJ ('+pct+' %)'});}return out;}
 function gainsOf(c,events){const by={};let t=0;for(const e of events)for(const en of e.entries)if(en.perso===c.id){by[en.nature]=(by[en.nature]||0)+en.montant;t+=en.montant;}
   for(const sh of pnjShares(c,events))if(sh.montant){by[sh.nature]=(by[sh.nature]||0)+sh.montant;t+=sh.montant;}return{by,total:t};}
@@ -471,7 +473,7 @@ function planItems(c){const out=[];for(const key of Object.keys(c.plan||{})){con
 function summary(c,events){const g=gainsOf(c,events).total,d=spent(c),dispo=g-d,pl=planItems(c),prevu=pl.reduce((s,x)=>s+x.cost,0);return{gains:g,spent:d,dispo,prevu,manque:Math.max(0,prevu-dispo),plan:pl};}
 function bestOf(c,kind,keys,label,target){
   let best=0,cheap=null;
-  for(const k of keys){const r=ref(c,k);if(!r)continue;const cur=r.o.cur||0;best=Math.max(best,cur);if(cur>=target||r.max<target)continue;const cost=cum(kind,cur,target);if(!cheap||cost<cheap.cost)cheap={cost,nom:r.nom};}
+  for(const k of keys){const r=ref(c,k);if(!r||(kind==='comp'&&(r.max||0)<PALIER_MAX))continue;const cur=r.o.cur||0;best=Math.max(best,cur);if(cur>=target||r.max<target)continue;const cost=cum(kind,cur,target);if(!cheap||cost<cheap.cost)cheap={cost,nom:r.nom};}
   if(best>=target)return{label,cur:best,target,cost:0,via:null,blocked:false};
   return{label,cur:best,target,cost:cheap?cheap.cost:null,via:cheap?cheap.nom:null,blocked:!cheap};
 }
@@ -518,6 +520,8 @@ function undo(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(!a||
 
 function cancelAchat(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(!a)return{c:n,reverted:false};let rev=false;if(a.key){const r=ref(n,a.key);if(r&&(r.kind==='atout'||r.kind==='spec')){if((r.o.cur||0)>0){r.o.cur=r.o.cur-1;rev=true;}}else if(r&&(r.o.cur||0)===a.to){r.o.cur=a.from;rev=true;}}n.achats=n.achats.filter(x=>x.id!==id);return{c:n,reverted:rev};}
 function editAchat(c,id,p){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(a){if(p.label!==undefined)a.label=p.label;if(p.cout!==undefined)a.cout=p.cout;if(p.date!==undefined)a.date=p.date||null;}return n;}
+/* Rattrapage : XP à attribuer pour rejoindre le PJ juste devant (parmi ceux comptés dans la moyenne) */
+function rattrapage(rows,r){const up=rows.filter(x=>(x.c.statut||'actif')==='actif'&&!x.c.cache&&!x.c.horsMoyenne&&x.total>r.total).sort((a,b)=>a.total-b.total)[0];return up?{c:up.c,total:up.total,montant:up.total-r.total}:null;}
 function gainsTable(list,events){
   const part=list.filter(c=>(c.statut||'actif')==='actif'&&!c.cache&&!c.horsMoyenne);
   const avg=part.length?part.reduce((s,c)=>s+gainsOf(c,events).total,0)/part.length:0;
@@ -714,7 +718,7 @@ function viewLegacyForm(){
   return h;
 }
 
-const sessList=()=>S.events.filter(e=>e.session).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||S.events.indexOf(b)-S.events.indexOf(a));
+const sessList=()=>S.events.filter(e=>e.session&&!e.rattrapage).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||S.events.indexOf(b)-S.events.indexOf(a));
 const sessById=id=>S.events.find(e=>e.id===id&&e.session);
 function curSession(){const L=sessList();if(S.curSess&&L.some(e=>e.id===S.curSess))return sessById(S.curSess);return L[0]||null;}
 const sessLabel=e=>e?esc(e.titre)+(e.date?' · '+fmtDate(e.date):''):'';
@@ -758,7 +762,8 @@ function gainsTableAndJournal(){
   const nat=NATURES.concat(extra);
   h+=`<h2>XP gagnée par nature</h2><div class="card"><div class="muted small" style="margin-bottom:8px">⚠ signale un PJ dont le total est inférieur d'au moins ${GAP} XP à la moyenne du groupe (${(Math.round(gt.avg*10)/10).toString().replace('.',',')}).</div><div class="tbl"><table><thead><tr><th>Perso</th>${nat.map(n=>`<th>${esc(n)}</th>`).join('')}<th>Total</th><th>Écart</th></tr></thead><tbody>`+
     gt.rows.map(r=>{const c=r.c,off=!actif(c)||c.horsMoyenne;const d=Math.round(r.delta);
-      return `<tr class="${r.alert?'alert':off?'off':''}"><td>${r.alert?'<span aria-label="Alerte">⚠</span> ':''}${esc(c.court)}${!actif(c)?' <span class="pill">'+(STATUTS[c.statut]||'')+'</span>':''}${c.horsMoyenne&&actif(c)?' <span class="pill">hors moyenne</span>':''}</td>${nat.map(n=>`<td>${r.by[n]||'·'}</td>`).join('')}<td><b>${r.total}</b></td><td>${off?'·':(d>0?'+'+d:d<0?'−'+(-d):'0')}</td></tr>`;}).join('')+
+      const rt=r.alert?rattrapage(gt.rows,r):null;
+      return `<tr class="${r.alert?'alert':off?'off':''}"><td>${r.alert?'<span aria-label="Alerte">⚠</span> ':''}${esc(c.court)}${rt?` <button class="ratbtn" data-act="ratOpen" data-id="${c.id}" title="Rattrapage d'XP" aria-label="Rattrapage d'XP pour ${esc(c.court)}">↑</button>`:''}${!actif(c)?' <span class="pill">'+(STATUTS[c.statut]||'')+'</span>':''}${c.horsMoyenne&&actif(c)?' <span class="pill">hors moyenne</span>':''}</td>${nat.map(n=>`<td>${r.by[n]||'·'}</td>`).join('')}<td><b>${r.total}</b></td><td>${off?'·':(d>0?'+'+d:d<0?'−'+(-d):'0')}</td></tr>`;}).join('')+
     `<tr class="avg"><td>Moyenne du groupe</td>${nat.map(()=>'<td></td>').join('')}<td><b>${Math.round(gt.avg*10)/10}</b></td><td></td></tr></tbody></table></div></div>`;
 
   h+=`<h2>Journal</h2><div class="card">`;
@@ -807,7 +812,7 @@ function viewPlayers(){
   return h;
 }
 function viewRules(){
-  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Créatures de l\'univers','+1 quand toutes nos connaissances sur un type de créature sont réunies (case cochée). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Créature de l\'univers »)'],['Sessions de jeu','chaque gain d\'XP est saisi dans une session (type, intitulé, date) ; les secrets et créatures peuvent y être rattachés. Une session ne peut être supprimée tant que des découvertes y sont rattachées'],['Part des PNJ','PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s\'il a participé activement, 25 % sinon, arrondi à l\'inférieur ; sessions datées à partir du rattachement'],['Planning','chaque joueur coche ses disponibilités en journée et en soirée ; créneaux préférés : samedi soir et dimanche journée. « Prochaines dates » : dates validées, créneaux où toute la table est libre, dates proposées que chacun accepte ou décline ; la prochaine date validée s\'affiche sur l\'accueil. Si un MJ décline une proposition, elle est refusée et ne peut pas être validée. Des créneaux consécutifs libres pour toute la table (par exemple samedi soir et dimanche journée) forment une seule date'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
+  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Paliers : éligibilité','seules les compétences dont le niveau max est de 7 ou plus comptent pour Profond et Légendaire'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Créatures de l\'univers','+1 quand toutes nos connaissances sur un type de créature sont réunies (case cochée). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Créature de l\'univers »)'],['Sessions de jeu','chaque gain d\'XP est saisi dans une session (type, intitulé, date) ; les secrets et créatures peuvent y être rattachés. Une session ne peut être supprimée tant que des découvertes y sont rattachées'],['Part des PNJ','PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s\'il a participé activement, 25 % sinon, arrondi à l\'inférieur ; sessions datées à partir du rattachement'],['Planning','chaque joueur coche ses disponibilités en journée et en soirée ; créneaux préférés : samedi soir et dimanche journée. « Prochaines dates » : dates validées, créneaux où toute la table est libre, dates proposées que chacun accepte ou décline ; la prochaine date validée s\'affiche sur l\'accueil. Si un MJ décline une proposition, elle est refusée et ne peut pas être validée. Des créneaux consécutifs libres pour toute la table (par exemple samedi soir et dimanche journée) forment une seule date'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe'],['Rattrapage d\'XP','sur la ligne d\'un PJ en alerte, la flèche ↑ ouvre une attribution pré-remplie (type Autre, nature Individuel, date du jour) du nombre d\'XP qui le ramène au total du PJ juste devant. Rien n\'est attribué automatiquement, tout reste modifiable. Hors session de jeu, sans part pour les PNJ rattachés']];
   return `<h2 style="margin-top:4px">Règles appliquées</h2><div class="card">${rows.map(r=>`<div class="ev"><div class="t" style="min-width:140px">${esc(r[0])}</div><div class="muted" style="text-align:right">${esc(r[1])}</div></div>`).join('')}</div>
   <div class="muted small" style="margin-top:12px">Dans ce prototype, les coefficients sont fixés dans la page. Dans la version définitive, ils seront modifiables depuis cet écran.</div><div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="logout">Changer de code (se déconnecter)</button></div>`;
 }
@@ -1144,6 +1149,15 @@ function renderSheet(){
     if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
     if(g.kind==='me'){const pl=planPlayers();root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Changer de joueur"><div class="in"><h2>Qui es-tu ?</h2><div class="who-grid">${pl.map(p=>`<button class="btn${p.id===ME?' sel':''}" aria-pressed="${p.id===ME}" data-act="setMe" data-id="${p.id}">${esc(p.nom)}</button>`).join('')}</div><div class="muted small">Mémorisé sur cet appareil. Sert pour tes disponibilités, tes réponses aux dates proposées et tes notifications.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='rat'){const c=S.chars[g.id],n=+g.montant||0,ok=n>0&&g.who.length&&(g.titre||'').trim();
+      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Rattrapage d'XP"><div class="in"><div><h2>Rattrapage d'XP</h2><div class="muted small">${esc(c.court)} · ${g.total} XP · ${g.ecart} sous la moyenne du groupe (${String(g.avg).replace('.',',')})</div></div>
+      <div class="field"><label for="rty">Type</label><select id="rty" data-sd="type">${TYPES.map(t=>`<option${t===g.type?' selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><label for="rti">Intitulé</label><input id="rti" type="text" data-sd="titre" autocomplete="off" value="${esc(g.titre)}"></div>
+      <div class="field"><label for="rda">Date</label><input id="rda" type="date" data-sd="date" value="${esc(g.date)}"></div>
+      <div class="frow"><div class="field"><label for="rna">Nature</label><select id="rna" data-sd="nature">${NATURES.map(t=>`<option${t===g.nature?' selected':''}>${t}</option>`).join('')}</select></div><div class="field"><label for="rmo">XP par personnage</label><input id="rmo" type="number" inputmode="numeric" min="0" data-sd="montant" value="${esc(g.montant)}"></div></div>
+      <div class="chips" style="flex-wrap:wrap;overflow:visible">${pjIds().filter(i=>actif(S.chars[i])).map(i=>`<button class="chip" data-act="ratChar" data-id="${i}" aria-pressed="${g.who.includes(i)}">${esc(S.chars[i].court)}</button>`).join('')}</div>
+      <div class="muted small">${g.cible?`${g.base} XP pour rejoindre ${esc(g.cible)} (${g.cibleTotal} XP), le joueur juste devant. `:''}Les PNJ rattachés ne touchent pas de part sur ce rattrapage.</div>
+      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="ratOk"${ok?'':' disabled'}>Attribuer ${n} XP</button></div></div></div>`;return;}
     if(g.kind==='sn'||g.kind==='sm'){const kids=g.kind==='sm'?sessChildren(g.id).filter(k=>!(k.secret&&k.secret.k==='bonus')).length:0;
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Session de jeu"><div class="in"><h2>${g.kind==='sn'?'Nouvelle session de jeu':'Modifier la session'}</h2>
       <div class="field"><label for="sdt">Type</label><select id="sdt" data-sd="type">${TYPES.map(t=>`<option${t===g.type?' selected':''}>${t}</option>`).join('')}</select></div>
@@ -1245,6 +1259,11 @@ document.addEventListener('click',ev=>{
   else if(a==='planMonth'){let m=S.plan.m+(+d.d),y=S.plan.y;if(m<0){m=11;y--;}if(m>11){m=0;y++;}S.plan.m=m;S.plan.y=y;S.plan.open=null;}
   else if(a==='planOpen'){S.plan.open=S.plan.open===d.k?null:d.k;}
   else if(a==='planSet'){const p0=S.players[d.p];if(!p0)return;const pl=clone(p0);pl.dispo=pl.dispo||{};if(pl.dispo[d.k])delete pl.dispo[d.k];else pl.dispo[d.k]=true;savePlayer(pl);return;}
+  else if(a==='ratOpen'){const list=pjIds().map(i=>S.chars[i]),gt=gainsTable(list,S.events),r=gt.rows.find(x=>x.c.id===d.id);if(!r)return;const rt=rattrapage(gt.rows,r);if(!rt)return;
+    S.dlg={kind:'rat',id:d.id,type:'Autre',titre:"Rattrapage d'XP pour "+r.c.court,date:today(),nature:'Individuel',montant:String(rt.montant),who:[d.id],total:r.total,ecart:Math.round(gt.avg-r.total),avg:Math.round(gt.avg*10)/10,base:rt.montant,cible:rt.c.court,cibleTotal:rt.total};}
+  else if(a==='ratChar'){const w=S.dlg.who;S.dlg.who=w.includes(d.id)?w.filter(x=>x!==d.id):[...w,d.id];}
+  else if(a==='ratOk'){const g=S.dlg,t=(g.titre||'').trim(),n=Math.floor(+g.montant||0);if(!t||n<=0||!g.who.length)return;S.dlg=null;
+    const e={id:'g'+Date.now().toString(36),session:true,rattrapage:true,date:g.date||today(),titre:t,type:g.type||'Autre',entries:g.who.map(p=>({perso:p,nature:g.nature||'Individuel',montant:n})),pnj:{}};saveEvents([...S.events,e]);return;}
   else if(a==='sessNew'){S.dlg={kind:'sn',type:'Scénario',titre:'',date:today()};}
   else if(a==='sessEdit'||a==='sessEditId'){const e=a==='sessEdit'?curSession():sessById(d.id);if(!e)return;S.dlg={kind:'sm',id:e.id,type:evType(e),titre:e.titre||'',date:e.date||'',confirm:false};}
   else if(a==='sessCreate'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;const e={id:'g'+Date.now().toString(36),session:true,date:g.date||today(),titre:t,type:g.type||'Scénario',entries:[],pnj:{}};S.curSess=e.id;saveEvents([...S.events,e]);return;}
@@ -1357,7 +1376,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.dn!==undefined){S.dlg.nom=t.value;}
   else if(t.dataset.dp!==undefined){S.dlg.pts=t.value;}
   else if(t.dataset.pd!==undefined&&S.dlg){S.dlg[t.dataset.pd]=t.value;if(t.dataset.pd==='date'){const b=q0('#sheetRoot [data-act="pdOk"]');if(b)b.disabled=!(t.value&&t.value>=today());}}
-  else if(t.dataset.sd!==undefined&&S.dlg){S.dlg[t.dataset.sd]=t.value;if(t.dataset.sd==='titre'){const b=q0('#sheetRoot [data-act="sessCreate"],#sheetRoot [data-act="sessSave"]');if(b)b.disabled=!t.value.trim();}}
+  else if(t.dataset.sd!==undefined&&S.dlg){S.dlg[t.dataset.sd]=t.value;if(t.dataset.sd==='titre'){const b=q0('#sheetRoot [data-act="sessCreate"],#sheetRoot [data-act="sessSave"]');if(b)b.disabled=!t.value.trim();}if(S.dlg.kind==='rat'){const g=S.dlg,b=q0('#sheetRoot [data-act="ratOk"]'),n=Math.floor(+g.montant||0);if(b){b.disabled=!(n>0&&g.who.length&&(g.titre||'').trim());b.textContent='Attribuer '+n+' XP';}}}
   else if(t.dataset.sxs!==undefined&&S.dlg){S.dlg.sess=t.value;}
   else if(t.dataset.cr!==undefined&&S.dlg){S.dlg.nom=t.value;const v=t.value.trim(),dup=!!v&&S.creatures.some(c=>c.id!==S.dlg.id&&c.nom.toLowerCase()===v.toLowerCase());const b=q0('#sheetRoot [data-act="creAddOk"],#sheetRoot [data-act="creSave"]');if(b)b.disabled=!v||dup;const w=document.getElementById('crdup');if(w)w.style.display=dup?'':'none';}
   else if(t.dataset.sx!==undefined&&S.dlg){S.dlg.txt=t.value;const b=q0('#sheetRoot [data-act="sxOk"],#sheetRoot [data-act="seSave"]');if(b)b.disabled=!t.value.trim();}
