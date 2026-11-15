@@ -344,6 +344,39 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .pcom .pi{width:44px;height:44px;border-radius:50%;border:1px solid var(--brass);display:flex;align-items:center;justify-content:center;font-size:20px;flex:none;background:var(--surface)}
 .pcom b{font-family:var(--font-display);font-size:19px}
 @media (min-width:641px){.plist{display:none}.pgrid{display:block}}
+.homelink{color:inherit;text-decoration:none}
+.homelink:hover{color:var(--accent)}
+body.home nav.tabs{display:none}
+body.home .bnav{display:none!important}
+body.home{padding-bottom:24px}
+.home-in{display:flex;flex-direction:column;gap:12px;max-width:900px;margin:8px auto 0}
+.htile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:124px;padding:12px 6px;border-radius:16px;border:1px solid var(--line);background:var(--surface);box-shadow:0 2px 0 var(--line);color:var(--fg)}
+.htile:hover{border-color:var(--brass)}
+.htile .hic{width:54px;height:54px;border-radius:50%;border:1px solid var(--brass);display:flex;align-items:center;justify-content:center;color:var(--accent);background:var(--bg)}
+.htile .hic svg{width:28px;height:28px}
+.htile .hl{font-family:var(--font-label);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:12.5px}
+.hplan{flex-direction:row;justify-content:flex-start;gap:14px;padding:16px;text-align:left;border:2px solid var(--brass);background:var(--plan-soft)}
+.hplan .ht{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hplan b{font-family:var(--font-display);font-size:22px;line-height:1.15}
+.hgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.hlinks{display:flex;justify-content:center;gap:16px}
+.nd-h{margin:18px 0 8px}.nd-h.good{color:var(--good)}.nd-h.brass{color:var(--brass-lo)}
+.pcrow{display:flex;align-items:center;gap:12px}
+.pcact{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-top:8px}
+.pcact .btn{flex:1;min-width:110px}
+.pcom.prop{border-style:dashed;border-color:var(--brass);flex-direction:column;align-items:stretch;display:block}
+.pcom{display:block}
+.rsp{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.rp{padding:2px 9px;border-radius:10px;font-size:12px;font-weight:600;background:var(--surface2);color:var(--muted)}
+.rp.ok{background:var(--accent-soft);color:var(--accent)}
+.rp.no{background:rgba(140,47,30,.15);color:var(--bad)}
+.btn.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.who{position:fixed;inset:0;z-index:40;background:var(--bg);overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px}
+.who-in{max-width:460px;width:100%;text-align:center;display:flex;flex-direction:column;gap:14px}
+.who-in h2{margin:0}.who-in h2::before,.who-in h2::after{display:none}
+.who-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.who-grid .btn{min-height:56px;font-family:var(--font-display);font-size:19px;font-weight:600}
+@media (min-width:641px){.htile{min-height:160px}.hgrid{gap:14px}}
 /* ===== Barre de navigation mobile ===== */
 .bnav{display:none}
 .menulist{display:flex;flex-direction:column}
@@ -366,7 +399,7 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </head><body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1>La belle appli de la Belle Époque</h1><div class="brandr"><span class="sync" id="sync"><i></i><span>Connexion…</span></span><button type="button" class="themebtn" id="themeBtn" aria-label="Changer de thème"></button></div></div>
+    <div class="brand"><h1><a href="#" class="homelink" data-act="tab" data-v="home" aria-label="La belle appli de la Belle Époque, retour à l'accueil">La belle appli de la Belle Époque</a></h1><div class="brandr"><span class="sync" id="sync"><i></i><span>Connexion…</span></span><button type="button" class="themebtn" id="themeBtn" aria-label="Changer de thème"></button></div></div>
     <nav class="tabs" id="tabs"></nav>
   </header>
   <main id="app"></main>
@@ -495,9 +528,9 @@ function starCount(events,delta){return Math.max(0,Math.min(STARS,scenarioCount(
 /* ---------- Application ---------- */
 const ORDER=['kerian','massetoc','rowen','sloan','theodule','maral','ismael','anselme'];
 let ME=null;try{ME=localStorage.getItem('xp.me')||null;}catch(e){}
-const S={chars:{},players:{},events:[],ready:false,view:'gains',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
+const S={chars:{},players:{},events:[],ready:false,view:'home',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
   futForm:{open:false,nom:'',max:'6'},pnjForm:{titre:'',montant:''},newP:{nom:'',role:'Joueur'},newC:{court:'',nom:'',type:'PJ',owner:''},
-  secrets:[],secretsReady:false,plan:{view:'mes',y:new Date().getFullYear(),m:new Date().getMonth(),open:null},curSess:null,creatures:[],creaturesReady:false,uni:'secrets',sec:null,secFilter:'all',
+  secrets:[],secretsReady:false,dates:[],datesReady:false,plan:{view:'mes',y:new Date().getFullYear(),m:new Date().getMonth(),open:null},curSess:null,creatures:[],creaturesReady:false,uni:'secrets',sec:null,secFilter:'all',
   form:{titre:'',type:'Scénario',date:'',lines:[{nature:'Scénario',montant:'',persos:null}]},hist:{},dirty:false,sync:'loading'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -577,7 +610,7 @@ function viewTeam(){
   const hc=heritageCard();
   if(!ids().length)return hc+emptyState();
   const act=ids().filter(i=>actif(S.chars[i])),arc=ids().filter(i=>!actif(S.chars[i]));
-  let h=hc+`<h2>L'équipe</h2><div class="grid">${act.map(i=>teamCard(S.chars[i])).join('')}</div>`;
+  let h=`<h2 style="margin-top:4px">Personnages</h2>`+hc+`<div class="grid">${act.map(i=>teamCard(S.chars[i])).join('')}</div>`;
   if(arc.length)h+=`<h2>Archives</h2><div class="grid">${arc.map(i=>teamCard(S.chars[i])).join('')}</div>`;
   return h;
 }
@@ -591,7 +624,7 @@ function viewSheet(){
   if(!ids().length)return emptyState();
   const id=S.sel&&S.chars[S.sel]&&vis(S.chars[S.sel])?S.sel:ids()[0];S.sel=id;const c=S.chars[id],s=summary(c,S.events);
   const chips=ids().map(i=>{const c=S.chars[i],img=portrait(c);return `<button class="pchip" data-act="sel" data-id="${i}" aria-pressed="${i===id}" aria-label="${esc(c.court)}"><span class="ph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span class="pn">${esc(c.court)}</span></button>`;}).join('');
-  let h=`<div class="pchips">${chips}</div>`;
+  let h=`<button class="back" data-act="tab" data-v="team"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Tous les personnages</button><div class="pchips">${chips}</div>`;
   h+=`<div style="margin-bottom:12px"><div style="font-family:var(--font-display);font-size:24px;font-weight:700">${esc(c.nom)}</div><div class="muted small">${whoLine(c)}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div></div>`;
   h+=`<div class="strip"><div><b class="num">${s.gains}</b><span>Gains</span></div><div><b class="num">${s.spent}</b><span>Dépensé</span></div><div class="hi"><b class="num">${s.dispo}</b><span>Dispo</span></div><div><b class="num">${s.prevu}</b><span>Prévu</span></div><div class="${s.manque?'warn':''}"><b class="num">${s.manque}</b><span>Manque</span></div></div>`;
   if(c.type==='PNJ'){
@@ -762,7 +795,7 @@ function viewPlayers(){
   return h;
 }
 function viewRules(){
-  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Créatures de l\'univers','+1 quand toutes nos connaissances sur un type de créature sont réunies (case cochée). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Créature de l\'univers »)'],['Sessions de jeu','chaque gain d\'XP est saisi dans une session (type, intitulé, date) ; les secrets et créatures peuvent y être rattachés. Une session ne peut être supprimée tant que des découvertes y sont rattachées'],['Part des PNJ','PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s\'il a participé activement, 25 % sinon, arrondi à l\'inférieur ; sessions datées à partir du rattachement'],['Planning','chaque joueur coche ses disponibilités en journée et en soirée ; les créneaux préférés sont le samedi soir et le dimanche journée ; « Dates communes » liste les créneaux où toute la table est libre'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
+  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2'],['Atout féerique','8 points par atout'],['Spécialité','8 points par spécialité'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Créatures de l\'univers','+1 quand toutes nos connaissances sur un type de créature sont réunies (case cochée). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Créature de l\'univers »)'],['Sessions de jeu','chaque gain d\'XP est saisi dans une session (type, intitulé, date) ; les secrets et créatures peuvent y être rattachés. Une session ne peut être supprimée tant que des découvertes y sont rattachées'],['Part des PNJ','PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s\'il a participé activement, 25 % sinon, arrondi à l\'inférieur ; sessions datées à partir du rattachement'],['Planning','chaque joueur coche ses disponibilités en journée et en soirée ; créneaux préférés : samedi soir et dimanche journée. « Prochaines dates » : dates validées, créneaux où toute la table est libre, dates proposées que chacun accepte ou décline ; la prochaine date validée s\'affiche sur l\'accueil'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe']];
   return `<h2 style="margin-top:4px">Règles appliquées</h2><div class="card">${rows.map(r=>`<div class="ev"><div class="t" style="min-width:140px">${esc(r[0])}</div><div class="muted" style="text-align:right">${esc(r[1])}</div></div>`).join('')}</div>
   <div class="muted small" style="margin-top:12px">Dans ce prototype, les coefficients sont fixés dans la page. Dans la version définitive, ils seront modifiables depuis cet écran.</div><div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="logout">Changer de code (se déconnecter)</button></div>`;
 }
@@ -934,7 +967,8 @@ const isPref=(wd,sl)=>(wd===6&&sl==='S')||(wd===0&&sl==='J');
 function planCount(y,m,d,sl){const P=planPlayers(),k=pkey(y,m,d,sl);return{n:P.filter(p=>p.dispo&&p.dispo[k]).length,who:P.filter(p=>p.dispo&&p.dispo[k]).map(p=>p.nom),total:P.length};}
 function viewPlanning(){
   const P=S.plan,y=P.y,m=P.m,nd=new Date(y,m+1,0).getDate(),pl=planPlayers(),T=pl.length;
-  let h=`<h2 style="margin-top:4px">Planning</h2><div class="subtabs" role="group" aria-label="Vues du planning" style="max-width:520px">${[['mes','Mes dispos'],['tous','Tout le monde'],['com','Dates communes']].map(([k,l])=>`<button data-act="planView" data-v="${k}" aria-pressed="${P.view===k}">${l}</button>`).join('')}</div>`;
+  let h=`<h2 style="margin-top:4px">Planning</h2><div class="subtabs" role="group" aria-label="Vues du planning" style="max-width:520px">${[['mes','Mes dispos'],['tous','Tout le monde'],['com','Prochaines dates']].map(([k,l])=>`<button data-act="planView" data-v="${k}" aria-pressed="${P.view===k}">${l}</button>`).join('')}</div>`;
+  if(P.view==='com')return h+viewNextDates();
   h+=`<div class="pmonth"><button data-act="planMonth" data-d="-1" aria-label="Mois précédent">‹</button><b>${PMOIS[m].replace(/^./,c=>c.toUpperCase())} ${y}</b><button data-act="planMonth" data-d="1" aria-label="Mois suivant">›</button></div>`;
   if(!T)return h+`<div class="card empty">Aucun joueur : ajoute-les dans l'onglet Joueurs.</div>`;
   if(P.view==='mes'){
@@ -963,19 +997,75 @@ function viewPlanning(){
         `<td style="white-space:nowrap">${['J','S'].map(sl=>{const c=planCount(y,m,d,sl).n;return `<span class="pill${c===T?' good':''}">${sl==='J'?'☀':'☾'} ${c}/${T}</span>`;}).join(' ')}</td></tr>`;}
     return h+`</tbody></table></div>`;
   }
-  const slots=[];for(let d=1;d<=nd;d++){const wd=new Date(y,m,d).getDay();for(const sl of ['J','S'])if(planCount(y,m,d,sl).n===T)slots.push({d,wd,sl,pf:isPref(wd,sl)});}
-  const card=x=>`<div class="pcom${x.pf?' pref':''}"><span class="pi">${x.sl==='J'?'☀':'☾'}</span><span style="flex:1"><b>${PJOURSL[x.wd].replace(/^./,c=>c.toUpperCase())} ${x.d} ${PMOIS[m]}</b><br><span class="muted small">${x.sl==='J'?'Journée':'Soirée'} · toute la table (${T}/${T})</span></span>${x.pf?'<span class="pst">★</span>':''}</div>`;
-  const pf=slots.filter(x=>x.pf),ot=slots.filter(x=>!x.pf);
-  h+=`<h3 style="margin-top:14px">★ Créneaux préférés</h3>`+(pf.map(card).join('')||'<div class="muted">Aucun pour l\'instant.</div>');
-  h+=`<h3 style="margin-top:18px">Autres dates où tout le monde est libre</h3>`+(ot.map(card).join('')||'<div class="muted">Aucune pour l\'instant.</div>');
+  return h+viewNextDates();
+}
+
+/* ---------- Prochaines dates ---------- */
+const todayKey=()=>today().replace(/-/g,'');
+const dkey=d=>d.replace(/-/g,'');
+const fmtLong=(iso,sl)=>{const [y,m,d]=iso.split('-').map(Number),wd=new Date(y,m-1,d).getDay();return PJOURSL[wd].replace(/^./,c=>c.toUpperCase())+' '+d+' '+PMOIS[m-1]+(sl?' · '+(sl==='J'?'journée':'soirée'):'');};
+const futDates=()=>S.dates.filter(x=>x.date>=today()).sort((a,b)=>(a.date+a.sl).localeCompare(b.date+b.sl));
+const validDates=()=>futDates().filter(x=>x.status==='valid');
+const propDates=()=>futDates().filter(x=>x.status!=='valid');
+function saveDates(list){S.dates=list;persist('meta/planning',{dates:list});render();}
+function freeSlots(){const pl=planPlayers(),T=pl.length,out=[];if(!T)return out;const t=new Date();
+  for(let i=0;i<=90;i++){const dt=new Date(t.getFullYear(),t.getMonth(),t.getDate()+i),y=dt.getFullYear(),m=dt.getMonth(),d=dt.getDate(),wd=dt.getDay();
+    for(const sl of ['J','S']){const k=pkey(y,m,d,sl);if(pl.every(p=>p.dispo&&p.dispo[k])){const iso=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');if(!S.dates.some(x=>x.date===iso&&x.sl===sl))out.push({date:iso,sl,pf:isPref(wd,sl)});}}}
+  return out.sort((a,b)=>(b.pf-a.pf)||(a.date+a.sl).localeCompare(b.date+b.sl));}
+const dIcon=sl=>`<span class="pi">${sl==='J'?'☀':'☾'}</span>`;
+function viewNextDates(){
+  if(!S.datesReady)return `<div class="card empty">Chargement…</div>`;
+  const pl=planPlayers(),T=pl.length,me=ME&&S.players[ME]?S.players[ME]:null;
+  let h=`<h3 class="nd-h good">✓ Dates validées</h3>`;
+  const V=validDates();
+  h+=V.map(x=>`<div class="pcom pref"><div class="pcrow">${dIcon(x.sl)}<span style="flex:1"><b>${fmtLong(x.date)}</b><br><span class="muted small">${x.sl==='J'?'Journée':'Soirée'} · ${esc(x.type||'Scénario')}${x.note?' · '+esc(x.note):''}</span></span><span class="pill good">Validée</span></div><div class="pcact"><button class="btn ghost" data-act="dUnvalid" data-id="${x.id}">Annuler la validation</button></div></div>`).join('')||'<div class="muted" style="margin-bottom:8px">Aucune date validée pour l\'instant.</div>';
+  h+=`<h3 class="nd-h brass">★ Toute la table est libre</h3><div class="muted small" style="margin-bottom:8px">Calculé à partir des disponibilités des 3 prochains mois, créneaux préférés en premier.</div>`;
+  const F=freeSlots();
+  h+=F.map(x=>`<div class="pcom${x.pf?' pref':''}"><div class="pcrow">${dIcon(x.sl)}<span style="flex:1"><b>${fmtLong(x.date)}</b>${x.pf?' <span class="pst">★</span>':''}<br><span class="muted small">${x.sl==='J'?'Journée':'Soirée'} · toute la table (${T}/${T})</span></span><button class="btn pri" data-act="dValidFree" data-date="${x.date}" data-sl="${x.sl}">Valider</button></div></div>`).join('')||'<div class="muted" style="margin-bottom:8px">Aucun créneau où toute la table est libre.</div>';
+  h+=`<h3 class="nd-h">Dates proposées</h3><button class="btn pri" style="width:100%;margin-bottom:10px" data-act="dPropose">+ Proposer une date</button>`;
+  h+=propDates().map(x=>{
+    const R=pl.map(p=>({p,r:(p.rep||{})[x.id]||null}));
+    const nok=R.filter(r=>r.r==='ok').length,nno=R.filter(r=>r.r==='no').length,nq=T-nok-nno;
+    const mine=me?((me.rep||{})[x.id]||null):null,by=S.players[x.by];
+    const armed=S.confirm==='dd:'+x.id;
+    return `<div class="pcom prop"><div class="pcrow">${dIcon(x.sl)}<span style="flex:1"><b>${fmtLong(x.date)}</b><br><span class="muted small">${x.sl==='J'?'Journée':'Soirée'} · ${esc(x.type||'Scénario')}${by?' · proposée par '+esc(by.nom):''}</span></span><span class="pill">Proposée</span></div>
+      ${x.note?`<div style="font-style:italic;margin:6px 0">« ${esc(x.note)} »</div>`:''}
+      <div class="rsp">${R.map(({p,r})=>`<span class="rp ${r||'q'}">${r==='ok'?'✓':r==='no'?'✗':'?'} ${esc(p.nom)}</span>`).join('')}</div>
+      <div class="small" style="margin:6px 0">${nok} accepte${nok>1?'nt':''} · ${nno} décline${nno>1?'nt':''} · ${nq} sans réponse</div>
+      <div class="pcact">${me?`<button class="btn${mine==='ok'?' sel':''}" aria-pressed="${mine==='ok'}" data-act="dRep" data-id="${x.id}" data-r="ok">✓ J'accepte</button><button class="btn${mine==='no'?' sel':''}" aria-pressed="${mine==='no'}" data-act="dRep" data-id="${x.id}" data-r="no">✗ Je décline</button>`:''}<button class="btn pri" data-act="dValid" data-id="${x.id}">Valider</button></div>
+      <div class="pcact" style="margin-top:4px"><button class="btn ghost" style="${armed?'color:var(--bad)':''}" data-act="dDel" data-id="${x.id}">${armed?'Confirmer la suppression':'Supprimer la proposition'}</button></div></div>`;}).join('')||'<div class="muted">Aucune proposition en cours.</div>';
   return h;
+}
+function dateSheet(g){
+  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Proposer une date"><div class="in"><h2>Proposer une date</h2>
+    <div class="field"><label for="pdd">Date</label><input id="pdd" type="date" data-pd="date" min="${today()}" value="${esc(g.date)}"></div>
+    <div class="field"><label>Créneau</label><div style="display:flex;gap:8px"><button class="pslot${g.sl==='J'?' on':''}" data-act="pdSl" data-sl="J" aria-pressed="${g.sl==='J'}">☀ Journée</button><button class="pslot${g.sl==='S'?' on':''}" data-act="pdSl" data-sl="S" aria-pressed="${g.sl==='S'}">☾ Soirée</button></div></div>
+    <div class="field"><label for="pdt">Type</label><select id="pdt" data-pd="type">${TYPES.map(t=>`<option${t===g.type?' selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label for="pdn">Note (facultatif)</label><input id="pdn" type="text" data-pd="note" autocomplete="off" value="${esc(g.note)}" placeholder="ex. pour boucler l'enquête"></div>
+    <div class="muted small">Toute la table la voit et peut accepter ou décliner.${ME&&S.players[ME]?' Tu acceptes automatiquement ta propre proposition.':''}</div>
+    <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pdOk"${g.date&&g.date>=today()?'':' disabled'}>Proposer</button></div></div></div>`;
+}
+/* ---------- Accueil ---------- */
+function viewHome(){
+  const V=validDates()[0],np=propDates().length;
+  const tile=(v,ic,l)=>`<button class="htile" data-act="tab" data-v="${v}"><span class="hic">${ICON[ic]}</span><span class="hl">${l}</span></button>`;
+  return `<div class="home-in"><button class="htile hplan" data-act="tab" data-v="planning" data-pv="com"><span class="hic">${ICON.cal}</span><span class="ht"><span class="hl">Planning</span><span class="muted small">${V?'Prochaine partie validée':'Prochaine partie'}</span><b>${V?fmtLong(V.date,V.sl):'Aucune partie validée'}</b>${V?`<span class="muted small">${esc(V.type||'Scénario')}${np?' · '+np+' date'+(np>1?'s':'')+' proposée'+(np>1?'s':'')+' en attente':''}</span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''} en attente</span>`:''}</span></button>
+  <div class="hgrid">${tile('gains','xp','XP')}${tile('team','perso','Personnages')}${tile('univers','univers','Univers')}</div>
+  <div class="hlinks"><button class="btn ghost" data-act="tab" data-v="players">Joueurs</button><button class="btn ghost" data-act="tab" data-v="rules">Règles</button></div></div>`;
+}
+/* ---------- Qui es-tu ? ---------- */
+function whoGate(){
+  const pl=planPlayers();
+  if(!S.ready||!pl.length||(ME&&S.players[ME]))return '';
+  return `<div class="who" role="dialog" aria-modal="true" aria-label="Qui es-tu ?"><div class="who-in"><div class="who-g">${ICON.gear||''}</div><h2>Bienvenue dans La belle appli</h2><p>Qui es-tu ?</p><div class="who-grid">${pl.map(p=>`<button class="btn" data-act="setMe" data-id="${p.id}">${esc(p.nom)}</button>`).join('')}</div><p class="muted small">Demandé une seule fois sur cet appareil. Tu pourras changer dans l'onglet Joueurs. Ton nom sert pour tes disponibilités et tes réponses aux dates proposées.</p></div></div>`;
 }
 function renderSheet(){
   const root=document.getElementById('sheetRoot');
-  {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se'||S.dlg.kind==='ca'||S.dlg.kind==='ce'||S.dlg.kind==='sn'||S.dlg.kind==='sm')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt'||ae0.id==='crn'||ae0.id==='sdi')&&root.contains(ae0))return;}
+  {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se'||S.dlg.kind==='ca'||S.dlg.kind==='ce'||S.dlg.kind==='sn'||S.dlg.kind==='sm'||S.dlg.kind==='pd')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt'||ae0.id==='crn'||ae0.id==='sdi'||ae0.id==='pdn'||ae0.id==='pdd')&&root.contains(ae0))return;}
   if(S.dlg){
     const g=S.dlg;let titre='',txt='';
-    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button><button data-act="tab" data-v="planning"${S.view==='planning'?' aria-current="page"':''}>${ICON.cal}Planning</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
     if(g.kind==='sn'||g.kind==='sm'){const kids=g.kind==='sm'?sessChildren(g.id).filter(k=>!(k.secret&&k.secret.k==='bonus')).length:0;
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Session de jeu"><div class="in"><h2>${g.kind==='sn'?'Nouvelle session de jeu':'Modifier la session'}</h2>
       <div class="field"><label for="sdt">Type</label><select id="sdt" data-sd="type">${TYPES.map(t=>`<option${t===g.type?' selected':''}>${t}</option>`).join('')}</select></div>
@@ -1027,18 +1117,21 @@ function renderSheet(){
   root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(r.nom)}"><div class="in"><div><h2>${esc(r.nom)}</h2><div class="muted small">${esc(c.court)}</div></div>${body}${fix}<div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;
 }
 function render(){
-  const tabs=[['gains','XP'],['sheet','Personnages'],['univers','Univers'],['team','Équipe'],['players','Joueurs'],['rules','Règles'],['planning','Planning']];
-  document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${S.view===k}">${l}</button>`).join('');
-  const bn=[['gains','XP','xp'],['sheet','Personnages','perso'],['univers','Univers','univers'],['team','Équipe','equipe']];
-  const inMenu=S.view==='players'||S.view==='rules'||S.view==='planning';
-  document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${S.view===k}">${ICON[ic]}<span>${l}</span></button>`).join('')+
-    `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles, Planning" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
+  const cur=k=>S.view===k||(k==='team'&&S.view==='sheet');
+  const tabs=[['gains','XP'],['team','Personnages'],['univers','Univers'],['planning','Planning'],['players','Joueurs'],['rules','Règles']];
+  document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${l}</button>`).join('');
+  const bn=[['gains','XP','xp'],['team','Personnages','perso'],['univers','Univers','univers'],['planning','Planning','cal']];
+  const inMenu=S.view==='players'||S.view==='rules';
+  document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${ICON[ic]}<span>${l}</span></button>`).join('')+
+    `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
+  document.body.classList.toggle('home',S.view==='home');
   const ae=document.activeElement;
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;
   const v=S.view,app=document.getElementById('app');
-  app.innerHTML=v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():viewRules();
+  app.innerHTML=v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():viewRules();
   renderSheet();
+  const w=whoGate();let wr=document.getElementById('whoRoot');if(!wr){wr=document.createElement('div');wr.id='whoRoot';document.body.appendChild(wr);}if(wr.innerHTML!==w)wr.innerHTML=w;
 }
 
 /* --- interactions --- */
@@ -1047,11 +1140,21 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]');if(!t)return;
   const a=t.dataset.act,d=t.dataset;S._force=true;
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
-  if(a==='tab'){if(d.v==='univers')S.sec=null;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
+  if(a==='tab'){ev.preventDefault();if(d.v==='univers')S.sec=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
   else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max};}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;}
   else if(a==='menu'){S.dlg={kind:'menu'};}
+  else if(a==='setMe'){ME=d.id;try{localStorage.setItem('xp.me',ME);}catch(e){}S._force=true;}
+  else if(a==='dPropose'){S.dlg={kind:'pd',date:'',sl:'S',type:'Scénario',note:''};}
+  else if(a==='pdSl'){S.dlg.sl=d.sl;}
+  else if(a==='pdOk'){const g=S.dlg;if(!g.date||g.date<today())return;S.dlg=null;const x={id:'d'+Date.now().toString(36),date:g.date,sl:g.sl,type:g.type,note:(g.note||'').trim(),by:ME||null,status:'prop'};
+    if(ME&&S.players[ME]){const pl=clone(S.players[ME]);pl.rep={...(pl.rep||{}),[x.id]:'ok'};savePlayer(pl);}saveDates([...S.dates,x]);return;}
+  else if(a==='dValidFree'){saveDates([...S.dates,{id:'d'+Date.now().toString(36),date:d.date,sl:d.sl,type:'Scénario',note:'',by:ME||null,status:'valid'}]);return;}
+  else if(a==='dValid'){saveDates(S.dates.map(x=>x.id===d.id?{...x,status:'valid'}:x));return;}
+  else if(a==='dUnvalid'){saveDates(S.dates.map(x=>x.id===d.id?{...x,status:'prop'}:x));return;}
+  else if(a==='dDel'){const k='dd:'+d.id;if(S.confirm!==k){S.confirm=k;}else{S.confirm=null;saveDates(S.dates.filter(x=>x.id!==d.id));return;}}
+  else if(a==='dRep'){if(!ME||!S.players[ME])return;const pl=clone(S.players[ME]);pl.rep={...(pl.rep||{})};if(pl.rep[d.id]===d.r)delete pl.rep[d.id];else pl.rep[d.id]=d.r;savePlayer(pl);return;}
   else if(a==='planView'){S.plan.view=d.v;}
   else if(a==='planMonth'){let m=S.plan.m+(+d.d),y=S.plan.y;if(m<0){m=11;y--;}if(m>11){m=0;y++;}S.plan.m=m;S.plan.y=y;S.plan.open=null;}
   else if(a==='planOpen'){S.plan.open=S.plan.open===d.k?null:d.k;}
@@ -1167,6 +1270,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.nm!==undefined){S.nameForm.nom=t.value;}
   else if(t.dataset.dn!==undefined){S.dlg.nom=t.value;}
   else if(t.dataset.dp!==undefined){S.dlg.pts=t.value;}
+  else if(t.dataset.pd!==undefined&&S.dlg){S.dlg[t.dataset.pd]=t.value;if(t.dataset.pd==='date'){const b=q0('#sheetRoot [data-act="pdOk"]');if(b)b.disabled=!(t.value&&t.value>=today());}}
   else if(t.dataset.sd!==undefined&&S.dlg){S.dlg[t.dataset.sd]=t.value;if(t.dataset.sd==='titre'){const b=q0('#sheetRoot [data-act="sessCreate"],#sheetRoot [data-act="sessSave"]');if(b)b.disabled=!t.value.trim();}}
   else if(t.dataset.sxs!==undefined&&S.dlg){S.dlg.sess=t.value;}
   else if(t.dataset.cr!==undefined&&S.dlg){S.dlg.nom=t.value;const v=t.value.trim(),dup=!!v&&S.creatures.some(c=>c.id!==S.dlg.id&&c.nom.toLowerCase()===v.toLowerCase());const b=q0('#sheetRoot [data-act="creAddOk"],#sheetRoot [data-act="creSave"]');if(b)b.disabled=!v||dup;const w=document.getElementById('crdup');if(w)w.style.display=dup?'':'none';}
@@ -1285,6 +1389,10 @@ function start(){
       if(x&&Array.isArray(x.list)&&x.list.length){S.secrets=x.list;S.secretsFix1=!!x.fix1;}
       else{S.secrets=clone(SECRETS_SEED);S.secretsFix1=true;persist('meta/secrets',{list:S.secrets,fix1:true});}
       S.secretsReady=true;fixOnce();render();
+    },()=>{});
+    db.doc('meta/planning').onSnapshot(snap=>{
+      if(snap.metadata.hasPendingWrites)return;
+      const x=snap.data();S.dates=(x&&Array.isArray(x.dates))?x.dates:[];S.datesReady=true;render();
     },()=>{});
     db.doc('meta/creatures').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
