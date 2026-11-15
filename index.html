@@ -464,7 +464,7 @@ function sessTotal(events,sid,pj){let t=0;for(const e of events)if(e.id===sid||e
 /* Part d'un PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s'il a participé, 25 % sinon, arrondi à l'inférieur.
    Ne s'applique qu'aux sessions datées à partir du jour du rattachement. */
 function pnjShares(c,events){if(!c||c.type!=='PNJ'||!c.pj||!c.pjDate)return [];const out=[];
-  for(const e of events){if(!e.session||e.rattrapage||(e.date||'')<c.pjDate)continue;const on=!!(e.pnj&&e.pnj[c.id]),pct=on?50:25,base=sessTotal(events,e.id,c.pj),m=Math.floor(base*pct/100);
+  for(const e of events){if(!e.session||e.rattrapage||e.reprise||(e.date||'')<c.pjDate)continue;const on=!!(e.pnj&&e.pnj[c.id]),pct=on?50:25,base=sessTotal(events,e.id,c.pj),m=Math.floor(base*pct/100);
     out.push({sess:e.id,on,pct,base,montant:m,nature:'PNJ ('+pct+' %)'});}return out;}
 function gainsOf(c,events){const by={};let t=0;for(const e of events)for(const en of e.entries)if(en.perso===c.id){by[en.nature]=(by[en.nature]||0)+en.montant;t+=en.montant;}
   for(const sh of pnjShares(c,events))if(sh.montant){by[sh.nature]=(by[sh.nature]||0)+sh.montant;t+=sh.montant;}return{by,total:t};}
@@ -721,7 +721,7 @@ function viewLegacyForm(){
 const sessList=()=>S.events.filter(e=>e.session&&!e.rattrapage).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||S.events.indexOf(b)-S.events.indexOf(a));
 const sessById=id=>S.events.find(e=>e.id===id&&e.session);
 function curSession(){const L=sessList();if(S.curSess&&L.some(e=>e.id===S.curSess))return sessById(S.curSess);return L[0]||null;}
-const sessLabel=e=>e?esc(e.titre)+(e.date?' · '+fmtDate(e.date):''):'';
+const sessLabel=e=>e?esc(e.titre)+(e.date?' · '+fmtDate(e.date):e.textuelle?' · Session textuelle':''):'';
 const sessChildren=id=>S.events.filter(e=>e.sessionId===id);
 function sessOptions(sel){return `<option value="">Aucune session</option>`+sessList().map(e=>`<option value="${e.id}"${e.id===sel?' selected':''}>${sessLabel(e)}</option>`).join('');}
 function pnjAttached(){return Object.values(S.chars).filter(c=>c.type==='PNJ'&&c.pj&&S.chars[c.pj]&&vis(c)).sort((a,b)=>(a.court||'').localeCompare(b.court||''));}
@@ -758,7 +758,7 @@ function gainsTableAndJournal(){
   let h='';
   const list=pjIds().map(i=>S.chars[i]);
   const gt=gainsTable(list,S.events);
-  const extra=[];for(const e of S.events)for(const en of e.entries)if(!NATURES.includes(en.nature)&&!extra.includes(en.nature))extra.push(en.nature);
+  const extra=[];for(const e of S.events)for(const en of e.entries){const ch=S.chars[en.perso];if(ch&&ch.type==='PJ'&&!NATURES.includes(en.nature)&&!extra.includes(en.nature))extra.push(en.nature);}
   const nat=NATURES.concat(extra);
   h+=`<h2>XP gagnée par nature</h2><div class="card"><div class="muted small" style="margin-bottom:8px">⚠ signale un PJ dont le total est inférieur d'au moins ${GAP} XP à la moyenne du groupe (${(Math.round(gt.avg*10)/10).toString().replace('.',',')}).</div><div class="tbl"><table><thead><tr><th>Perso</th>${nat.map(n=>`<th>${esc(n)}</th>`).join('')}<th>Total</th><th>Écart</th></tr></thead><tbody>`+
     gt.rows.map(r=>{const c=r.c,off=!actif(c)||c.horsMoyenne;const d=Math.round(r.delta);
@@ -777,9 +777,11 @@ function gainsTableAndJournal(){
       const grp={};for(const en of e.entries.filter(en=>pv(en.perso))){const k=en.nature+'|'+en.montant;(grp[k]=grp[k]||[]).push(S.chars[en.perso].court);}
       body+=Object.keys(grp).map(k=>{const [n,m]=k.split('|'),armed=S.confirm==='l:'+e.id+':'+k;return `<div class="sline"><div style="min-width:0"><div>${esc(n)}</div><div class="tags"><span class="pill acc">${esc(n)} +${m}</span><span class="muted small">${esc(grp[k].join(', '))}</span></div></div><button class="btn ghost" style="padding:4px 10px${armed?';color:var(--bad)':''}" data-act="sessLineDel" data-id="${e.id}" data-k="${esc(k)}">${armed?'Confirmer':'Retirer'}</button></div>`;}).join('');
       body+=kids.map(k=>{const ents=k.entries.filter(en=>pv(en.perso));if(!ents.length)return '';const g=grpTags(ents);return `<div class="sline"><div style="min-width:0"><div>${esc(k.titre)}</div><div class="tags">${Object.keys(g).map(x=>`<span class="pill acc">${esc(x)}</span><span class="muted small">${g[x].length===allPJ().length?'tous les PJ actifs':esc(g[x].join(', '))}</span>`).join(' ')}</div></div><span class="locked" style="max-width:110px;text-align:right">Se corrige depuis Univers › ${k.creature?'Créatures':'Secrets'}</span></div>`;}).join('');
+      {const pg={};for(const en of e.entries){const ch=S.chars[en.perso];if(!ch||ch.type!=='PNJ'||!vis(ch))continue;const k=en.perso+'|'+en.nature;pg[k]=(pg[k]||0)+en.montant;}
+        for(const k of Object.keys(pg)){const [id,n]=k.split('|');if(pg[k])body+=`<div class="sline"><div style="min-width:0"><div>Part des PNJ</div><div class="tags"><span class="pill plan">${esc(n)} +${pg[k]}</span><span class="muted small">${esc(S.chars[id].court)}</span></div></div><span class="locked" style="max-width:110px;text-align:right">Reprise de l'ancien journal</span></div>`;}}
       for(const c of Object.values(S.chars)){if(c.type!=='PNJ'||!vis(c))continue;const sh=pnjShares(c,S.events).find(x=>x.sess===e.id);if(sh&&sh.montant)body+=`<div class="sline"><div style="min-width:0"><div>Part des PNJ</div><div class="tags"><span class="pill plan">${esc(sh.nature)} +${sh.montant}</span><span class="muted small">${esc(c.court)}</span></div></div><span class="locked" style="max-width:110px;text-align:right">Calculée automatiquement</span></div>`;}
       const blocked=kids.filter(k=>!(k.secret&&k.secret.k==='bonus')).length;
-      return `<div class="sess"><div class="shead"><div style="min-width:0"><div class="t" style="font-size:17px">${esc(e.titre)}</div><div class="muted small">${e.date?fmtDate(e.date):'sans date'} · ${esc(evType(e))}</div></div><button class="btn ghost" style="padding:4px 10px;flex:none" data-act="sessEditId" data-id="${e.id}">Modifier</button></div>${body||'<div class="muted small" style="padding:6px 0">Aucun gain pour l\'instant.</div>'}${blocked?`<div class="muted small" style="margin-top:6px">Suppression impossible tant que ${blocked} découverte${blocked>1?'s sont rattachées':' est rattachée'} à cette session.</div>`:''}</div>`;
+      return `<div class="sess"><div class="shead"><div style="min-width:0"><div class="t" style="font-size:17px">${esc(e.titre)}</div><div class="muted small">${[e.date?fmtDate(e.date):e.textuelle?'Session textuelle':'',esc(evType(e))].filter(Boolean).join(' · ')}</div></div><button class="btn ghost" style="padding:4px 10px;flex:none" data-act="sessEditId" data-id="${e.id}">Modifier</button></div>${body||'<div class="muted small" style="padding:6px 0">Aucun gain pour l\'instant.</div>'}${blocked?`<div class="muted small" style="margin-top:6px">Suppression impossible tant que ${blocked} découverte${blocked>1?'s sont rattachées':' est rattachée'} à cette session.</div>`:''}</div>`;
     }
     const ents=e.entries.filter(en=>pv(en.perso));if(!ents.length)return '';
     const g=grpTags(ents);
