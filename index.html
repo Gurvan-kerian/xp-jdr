@@ -728,6 +728,17 @@ function viewLegacyForm(){
 const sessList=()=>S.events.filter(e=>e.session&&!e.rattrapage).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||S.events.indexOf(b)-S.events.indexOf(a));
 const sessById=id=>S.events.find(e=>e.id===id&&e.session);
 function curSession(){const L=sessList();if(S.curSess&&L.some(e=>e.id===S.curSess))return sessById(S.curSess);return L[0]||null;}
+/* PJ présents d'une session : liste enregistrée, sinon déduite (PJ ayant du Scénario, à défaut un gain quelconque) */
+function presents(e){if(!e)return [];const isPJ=i=>S.chars[i]&&S.chars[i].type==='PJ';if(Array.isArray(e.pj))return e.pj.filter(isPJ);
+  const sc=[...new Set(e.entries.filter(x=>x.nature==='Scénario'&&x.montant&&isPJ(x.perso)).map(x=>x.perso))];if(sc.length)return sc;
+  return [...new Set(e.entries.filter(x=>x.montant&&isPJ(x.perso)).map(x=>x.perso))];}
+const orderPJ=a=>{const o=pjIds();return [...a].sort((x,y)=>{const i=o.indexOf(x),j=o.indexOf(y);return (i<0?99:i)-(j<0?99:j);});};
+/* Destinataires d'une ligne de saisie dans une session : Scénario → présents, Groupe → PJ actifs, Individuel → choix parmi les présents */
+function slp(l,cs){if(l.nature==='Scénario')return presents(cs);if(l.nature==='Groupe')return allPJ();const pr=presents(cs);return (l.persos||[]).filter(p=>pr.includes(p));}
+/* Modifier par nature : Scénario → présents ; Groupe → PJ qui l'ont déjà (sinon PJ actifs) ; Individuel → présents + ceux qui en ont */
+function natTargets(e,n){if(n==='Scénario')return presents(e);const has=[...new Set(e.entries.filter(x=>x.nature===n&&x.montant&&S.chars[x.perso]&&S.chars[x.perso].type==='PJ').map(x=>x.perso))];return has.length?has:allPJ();}
+function natList(e,g){return orderPJ([...new Set([...presents(e),...Object.keys(g.vals).filter(i=>+g.vals[i])])]).filter(i=>S.chars[i]&&vis(S.chars[i]));}
+function modeOf(a){const c={};let b=null;for(const v of a){c[v]=(c[v]||0)+1;if(b===null||c[v]>c[b])b=v;}return b;}
 /* Début d'intitulé proposé : numéro suivant le plus grand déjà utilisé pour ce type */
 function sessPrefix(type){
   const re=type==='Scénario'?/^S\.?\s*0*(\d+)/i:type==='Interscénario'?/^\[\s*Int\.?\s*0*(\d+)/i:null;if(!re)return '';
@@ -749,12 +760,16 @@ function viewGains(){
   if(cs){
     const f=S.form,formChars=pjIds().filter(i=>actif(S.chars[i]));
     h+=`<h2>Ajouter de l'XP à la session</h2><div class="card">`;
+    const pr=orderPJ(presents(cs)),nmL=a=>a.map(i=>esc(S.chars[i].court)).join(', ');
     f.lines.forEach((ln,i)=>{
-      h+=`<div style="${i?'border-top:1px solid var(--line);padding-top:10px;margin-top:10px':''}"><div class="frow"><div class="field"><label for="gn${i}">Nature</label><select id="gn${i}" data-l="${i}" data-k="nature">${NATURES.map(n=>`<option${n===ln.nature?' selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label for="gm${i}">XP par personnage</label><input id="gm${i}" type="number" inputmode="numeric" min="0" data-l="${i}" data-k="montant" value="${esc(ln.montant)}"></div></div>
-      <div class="chips" style="flex-wrap:wrap;overflow:visible">${formChars.map(id=>`<button class="chip" data-act="lineChar" data-l="${i}" data-id="${id}" aria-pressed="${lp(ln).includes(id)}"${lockedLine(ln)?' disabled':''}>${esc(S.chars[id].court)}</button>`).join('')}</div>${lockedLine(ln)?'<div class="muted small">Groupe : s\'applique à tous les PJ.</div>':''}
-      <div class="actions" style="margin-bottom:4px">${lockedLine(ln)?'':`<button class="btn ghost" data-act="lineAll" data-l="${i}">Tous les PJ</button><button class="btn ghost" data-act="lineNone" data-l="${i}">Aucun</button>`}${f.lines.length>1?`<button class="btn ghost" data-act="lineDel" data-l="${i}">Retirer la ligne</button>`:''}</div></div>`;
+      h+=`<div style="${i?'border-top:1px solid var(--line);padding-top:10px;margin-top:10px':''}"><div class="frow"><div class="field"><label for="gn${i}">Nature</label><select id="gn${i}" data-l="${i}" data-k="nature">${NATURES.map(n=>`<option${n===ln.nature?' selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label for="gm${i}">XP par personnage</label><input id="gm${i}" type="number" inputmode="numeric" min="0" data-l="${i}" data-k="montant" value="${esc(ln.montant)}"></div></div>`;
+      if(ln.nature==='Scénario')h+=`<div class="muted small" style="margin:6px 0 4px">${pr.length?`Attribuée aux ${pr.length} PJ présents : ${nmL(pr)}.`:'Aucun PJ présent : coche-les dans « Modifier la session ».'}</div>`;
+      else if(ln.nature==='Groupe')h+=`<div class="muted small" style="margin:6px 0 4px">Attribuée à tous les PJ actifs (${allPJ().length}).</div>`;
+      else{const sel=slp(ln,cs);h+=`<div class="chips" style="flex-wrap:wrap;overflow:visible;margin-top:6px">${pr.map(id=>`<button class="chip" data-act="slChar" data-l="${i}" data-id="${id}" aria-pressed="${sel.includes(id)}">${esc(S.chars[id].court)}</button>`).join('')}</div><div class="muted small" style="margin-top:4px">${pr.length?'Seuls les PJ présents sont proposés.':'Aucun PJ présent : coche-les dans « Modifier la session ».'}</div>`;}
+      h+=f.lines.length>1?`<div class="actions" style="margin-bottom:4px"><button class="btn ghost" data-act="lineDel" data-l="${i}">Retirer la ligne</button></div>`:'';
+      h+=`</div>`;
     });
-    const valid=f.lines.some(l=>+l.montant>0&&lp(l).length);
+    const valid=f.lines.some(l=>+l.montant>0&&slp(l,cs).length);
     h+=`<div class="actions" style="margin-top:10px"><button class="btn" data-act="lineAdd">+ Autre nature</button><button class="btn pri" data-act="sessAdd"${valid?'':' disabled'}>Ajouter à la session</button></div>`;
     const P=pnjAttached();
     if(P.length){
@@ -787,7 +802,7 @@ function gainsTableAndJournal(){
   h+=top.map(e=>{
     if(e.session){
       const open=e.id in S.jOpen?S.jOpen[e.id]:e===first;
-      if(!open)return `<div class="sess"><div class="shead tg" data-act="sessToggle" data-id="${e.id}" role="button" tabindex="0" aria-expanded="false"><span class="chev" aria-hidden="true">›</span><div style="min-width:0"><div class="t" style="font-size:17px">${esc(e.titre)}</div><div class="muted small">${[e.date?fmtDate(e.date):e.textuelle?'Session textuelle':'',esc(evType(e))].filter(Boolean).join(' · ')}</div></div></div></div>`;
+      if(!open)return `<div class="sess"><div class="shead tg" data-act="sessToggle" data-id="${e.id}" role="button" tabindex="0" aria-expanded="false"><span class="chev" aria-hidden="true">›</span><div style="min-width:0"><div class="t" style="font-size:17px">${esc(e.titre)}</div><div class="muted small">${[e.date?fmtDate(e.date):e.textuelle?'Session textuelle':'',esc(evType(e))].filter(Boolean).join(' · ')}</div>${(()=>{const pr=orderPJ(presents(e));return pr.length?`<div class="muted small" style="margin-top:2px">👥 ${pr.map(i=>esc(S.chars[i].court)).join(', ')}</div>`:'';})()}</div></div></div>`;
       const kids=sessChildren(e.id);
       let body='';
       const NCL={Scénario:'n-sc',Groupe:'n-gr',Individuel:'n-in'},ord=pjIds(),by={};
@@ -804,7 +819,7 @@ function gainsTableAndJournal(){
         for(const c of Object.values(S.chars)){if(c.type!=='PNJ'||!vis(c))continue;const sh=pnjShares(c,S.events).find(x=>x.sess===e.id);if(sh&&sh.montant){pn.push({id:c.id,n:sh.nature,m:sh.montant});calc=true;}}
         if(pn.length)body+=`<div class="nb"><div class="nbh"><b>PNJ</b><span class="locked" style="text-align:right">${calc&&rep?'Calculée ou reprise':calc?'Calculée automatiquement':'Reprise de l\'ancien journal'}</span></div><div class="nbl"><div class="tags">${pn.map(x=>{const m=(x.n||'').match(/\((\d+) %\)/);return `<span class="pill ${m?(m[1]==='50'?'n-p50':'n-p25'):''}">+${x.m}${m?' ('+m[1]+' %)':''} ${esc(S.chars[x.id].court)}</span>`;}).join('')}</div></div></div>`;}
       const blocked=kids.filter(k=>!(k.secret&&k.secret.k==='bonus')).length;
-      return `<div class="sess open"><div class="shead tg" data-act="sessToggle" data-id="${e.id}" role="button" tabindex="0" aria-expanded="true"><span class="chev" aria-hidden="true">›</span><div style="min-width:0"><div class="t" style="font-size:17px">${esc(e.titre)}</div><div class="muted small">${[e.date?fmtDate(e.date):e.textuelle?'Session textuelle':'',esc(evType(e))].filter(Boolean).join(' · ')}</div></div><button class="btn ghost" style="padding:4px 10px;flex:none" data-act="sessEditId" data-id="${e.id}">Modifier</button></div>${body||'<div class="muted small" style="padding:6px 0">Aucun gain pour l\'instant.</div>'}${blocked?`<div class="muted small" style="margin-top:6px">Suppression impossible tant que ${blocked} découverte${blocked>1?'s sont rattachées':' est rattachée'} à cette session.</div>`:''}</div>`;
+      return `<div class="sess open"><div class="shead tg" data-act="sessToggle" data-id="${e.id}" role="button" tabindex="0" aria-expanded="true"><span class="chev" aria-hidden="true">›</span><div style="min-width:0"><div class="t" style="font-size:17px">${esc(e.titre)}</div><div class="muted small">${[e.date?fmtDate(e.date):e.textuelle?'Session textuelle':'',esc(evType(e))].filter(Boolean).join(' · ')}</div>${(()=>{const pr=orderPJ(presents(e));return pr.length?`<div class="muted small" style="margin-top:2px">👥 ${pr.map(i=>esc(S.chars[i].court)).join(', ')}</div>`:'';})()}</div><button class="btn ghost" style="padding:4px 10px;flex:none" data-act="sessEditId" data-id="${e.id}">Modifier</button></div>${body||'<div class="muted small" style="padding:6px 0">Aucun gain pour l\'instant.</div>'}${blocked?`<div class="muted small" style="margin-top:6px">Suppression impossible tant que ${blocked} découverte${blocked>1?'s sont rattachées':' est rattachée'} à cette session.</div>`:''}</div>`;
     }
     const ents=e.entries.filter(en=>pv(en.perso));if(!ents.length)return '';
     const g=grpTags(ents);
@@ -1174,10 +1189,13 @@ function renderSheet(){
     if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
     if(g.kind==='me'){const pl=planPlayers();root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Changer de joueur"><div class="in"><h2>Qui es-tu ?</h2><div class="who-grid">${pl.map(p=>`<button class="btn${p.id===ME?' sel':''}" aria-pressed="${p.id===ME}" data-act="setMe" data-id="${p.id}">${esc(p.nom)}</button>`).join('')}</div><div class="muted small">Mémorisé sur cet appareil. Sert pour tes disponibilités, tes réponses aux dates proposées et tes notifications.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
-    if(g.kind==='ne'){const e=sessById(g.id);if(!e){S.dlg=null;root.innerHTML='';return;}const list=pjIds().filter(i=>actif(S.chars[i])||g.vals[i]);
+    if(g.kind==='ne'){const e=sessById(g.id);if(!e){S.dlg=null;root.innerHTML='';return;}
+      let body;
+      if(g.one){const tg=orderPJ(natTargets(e,g.n));body=`<div class="field"><label for="ne-m">XP par personnage</label><input id="ne-m" type="number" inputmode="numeric" min="0" data-nem="1" value="${esc(g.m)}" placeholder="0"></div>
+        <div class="muted small">${g.n==='Scénario'?'Pour les PJ présents':'Pour'} : ${tg.map(i=>esc(S.chars[i].court)).join(', ')||'aucun PJ'}.${g.mixed?' Les montants actuels diffèrent : enregistrer alignera tout le monde sur ce montant.':''} Mets 0 pour retirer cette nature de la session.</div>`;}
+      else body=natList(e,g).map(i=>`<div class="ped"><label for="ne-${i}">${esc(S.chars[i].court)}</label><input id="ne-${i}" type="number" inputmode="numeric" min="0" data-nv="${i}" value="${g.vals[i]?g.vals[i]:''}" placeholder="0"></div>`).join('')+`<div class="muted small">PJ présents à la session. Mets 0 ou laisse vide pour retirer le gain d'un personnage.</div>`;
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Modifier ${esc(g.n)}"><div class="in"><div><h2>${esc(g.n)}</h2><div class="muted small">${esc(e.titre)}</div></div>
-      ${list.map(i=>`<div class="ped"><label for="ne-${i}">${esc(S.chars[i].court)}</label><input id="ne-${i}" type="number" inputmode="numeric" min="0" data-nv="${i}" value="${g.vals[i]?g.vals[i]:''}" placeholder="0"></div>`).join('')}
-      <div class="muted small">Mets 0 ou laisse vide pour retirer le gain d'un personnage.</div>
+      ${body}
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="natSave">Enregistrer</button></div></div></div>`;return;}
     if(g.kind==='rat'){const c=S.chars[g.id],n=+g.montant||0,ok=n>0&&g.who.length&&(g.titre||'').trim();
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Rattrapage d'XP"><div class="in"><div><h2>Rattrapage d'XP</h2><div class="muted small">${esc(c.court)} · ${g.total} XP · ${g.ecart} sous la moyenne du groupe (${String(g.avg).replace('.',',')})</div></div>
@@ -1193,6 +1211,7 @@ function renderSheet(){
       <div class="field"><label for="sdt">Type</label><select id="sdt" data-sd="type">${TYPES.map(t=>`<option${t===g.type?' selected':''}>${t}</option>`).join('')}</select></div>
       <div class="field"><label for="sdi">Intitulé</label><input id="sdi" type="text" data-sd="titre" autocomplete="off" placeholder="ex. S14. Titre du scénario" value="${esc(g.titre)}"></div>
       <div class="field"><label for="sdd">Date</label><input id="sdd" type="date" data-sd="date" value="${esc(g.date)}"></div>
+      <div class="field"><label>PJ présents</label><div class="chips" style="flex-wrap:wrap;overflow:visible">${orderPJ([...new Set([...pjIds().filter(i=>actif(S.chars[i])),...(g.pj||[])])]).map(i=>`<button class="chip" data-act="sdPj" data-id="${i}" aria-pressed="${(g.pj||[]).includes(i)}">${esc(S.chars[i].court)}</button>`).join('')}</div><div class="muted small" style="margin-top:4px">L'XP de Scénario va aux PJ présents ; l'Individuel se choisit parmi eux.</div></div>
       ${g.kind==='sn'?'<div class="muted small">La nouvelle session devient la session proposée par défaut pour l\'XP, les secrets et les créatures.</div>':kids?`<div class="muted small">Suppression impossible : ${kids} découverte${kids>1?'s sont rattachées':' est rattachée'} à cette session. Change d'abord leur session ou retire-les.</div>`:g.confirm?'<div class="muted small">La session et l\'XP saisie dedans seront supprimées pour tous les personnages.</div>':''}
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button>${g.kind==='sm'?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="sessDelOk">Confirmer la suppression</button>`:`<button class="btn" data-act="sessDel"${kids?' disabled':''}>Supprimer</button>`):''}<button class="btn pri" data-act="${g.kind==='sn'?'sessCreate':'sessSave'}"${g.titre.trim()?'':' disabled'}>${g.kind==='sn'?'Créer la session':'Enregistrer'}</button></div></div></div>`;return;}
     if(g.kind==='ca'||g.kind==='ct'||g.kind==='ce'){const html=creSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
@@ -1289,23 +1308,33 @@ document.addEventListener('click',ev=>{
   else if(a==='planMonth'){let m=S.plan.m+(+d.d),y=S.plan.y;if(m<0){m=11;y--;}if(m>11){m=0;y++;}S.plan.m=m;S.plan.y=y;S.plan.open=null;}
   else if(a==='planOpen'){S.plan.open=S.plan.open===d.k?null:d.k;}
   else if(a==='planSet'){const p0=S.players[d.p];if(!p0)return;const pl=clone(p0);pl.dispo=pl.dispo||{};if(pl.dispo[d.k])delete pl.dispo[d.k];else pl.dispo[d.k]=true;savePlayer(pl);return;}
-  else if(a==='natEdit'){const e=sessById(d.id);if(!e)return;const vals={};for(const en of e.entries){const ch=S.chars[en.perso];if(ch&&ch.type==='PJ'&&vis(ch)&&en.nature===d.n)vals[en.perso]=(vals[en.perso]||0)+en.montant;}S.dlg={kind:'ne',id:d.id,n:d.n,vals};}
-  else if(a==='natSave'){const g=S.dlg,e=sessById(g.id);if(!e)return;const list=pjIds().filter(i=>actif(S.chars[i])||g.vals[i]);S.dlg=null;
-    const keep=e.entries.filter(en=>!(en.nature===g.n&&list.includes(en.perso)));const add=list.map(i=>({perso:i,nature:g.n,montant:Math.max(0,Math.floor(+g.vals[i]||0))})).filter(x=>x.montant>0);
+  else if(a==='natEdit'){const e=sessById(d.id);if(!e)return;const vals={};for(const en of e.entries){const ch=S.chars[en.perso];if(ch&&ch.type==='PJ'&&vis(ch)&&en.nature===d.n)vals[en.perso]=(vals[en.perso]||0)+en.montant;}
+    const one=d.n==='Scénario'||d.n==='Groupe',vs=Object.values(vals).filter(Boolean);
+    S.dlg={kind:'ne',id:d.id,n:d.n,vals,one,m:one&&vs.length?String(modeOf(vs)):'',mixed:one&&new Set(vs).size>1};}
+  else if(a==='natSave'){const g=S.dlg,e=sessById(g.id);if(!e)return;S.dlg=null;let list,add;
+    if(g.one){const m=Math.max(0,Math.floor(+g.m||0)),tg=natTargets(e,g.n);list=pjIds().filter(i=>S.chars[i].type==='PJ');add=m>0?tg.map(i=>({perso:i,nature:g.n,montant:m})):[];}
+    else{list=natList(e,g);add=list.map(i=>({perso:i,nature:g.n,montant:Math.max(0,Math.floor(+g.vals[i]||0))})).filter(x=>x.montant>0);}
+    const keep=e.entries.filter(en=>!(en.nature===g.n&&list.includes(en.perso)));
     saveEvents(S.events.map(x=>x.id===g.id?{...x,entries:[...keep,...add]}:x));return;}
   else if(a==='sessToggle'){S.jOpen=S.jOpen||{};const e=sessById(d.id);const first=[...S.events].reverse().find(x=>x.session&&(!x.sessionId||!sessById(x.sessionId)));const was=d.id in S.jOpen?S.jOpen[d.id]:e===first;S.jOpen[d.id]=!was;}
   else if(a==='ratOpen'){const list=pjIds().map(i=>S.chars[i]),gt=gainsTable(list,S.events),r=gt.rows.find(x=>x.c.id===d.id);if(!r)return;const rt=rattrapage(gt.rows,r);if(!rt)return;
     S.dlg={kind:'rat',id:d.id,type:'Autre',titre:"Rattrapage d'XP pour "+r.c.court,date:today(),nature:'Individuel',montant:String(rt.montant),who:[d.id],total:r.total,ecart:Math.round(gt.avg-r.total),avg:Math.round(gt.avg*10)/10,base:rt.montant,cible:rt.c.court,cibleTotal:rt.total};}
   else if(a==='ratChar'){const w=S.dlg.who;S.dlg.who=w.includes(d.id)?w.filter(x=>x!==d.id):[...w,d.id];}
   else if(a==='ratOk'){const g=S.dlg,t=(g.titre||'').trim(),n=Math.floor(+g.montant||0);if(!t||n<=0||!g.who.length)return;S.dlg=null;
-    const e={id:'g'+Date.now().toString(36),session:true,rattrapage:true,date:g.date||today(),titre:t,type:g.type||'Autre',entries:g.who.map(p=>({perso:p,nature:g.nature||'Individuel',montant:n})),pnj:{}};saveEvents([...S.events,e]);return;}
-  else if(a==='sessNew'){S.dlg={kind:'sn',type:'Scénario',titre:sessPrefix('Scénario'),date:today()};}
-  else if(a==='sessEdit'||a==='sessEditId'){const e=a==='sessEdit'?curSession():sessById(d.id);if(!e)return;S.dlg={kind:'sm',id:e.id,type:evType(e),titre:e.titre||'',date:e.date||'',confirm:false};}
-  else if(a==='sessCreate'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;const e={id:'g'+Date.now().toString(36),session:true,date:g.date||today(),titre:t,type:g.type||'Scénario',entries:[],pnj:{}};S.curSess=e.id;saveEvents([...S.events,e]);return;}
-  else if(a==='sessSave'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;saveEvents(S.events.map(e=>e.id===g.id?{...e,titre:t,type:g.type,date:g.date||e.date}:e));return;}
+    const e={id:'g'+Date.now().toString(36),session:true,rattrapage:true,date:g.date||today(),titre:t,type:g.type||'Autre',entries:g.who.map(p=>({perso:p,nature:g.nature||'Individuel',montant:n})),pnj:{},pj:[...g.who]};saveEvents([...S.events,e]);return;}
+  else if(a==='sessNew'){S.dlg={kind:'sn',type:'Scénario',titre:sessPrefix('Scénario'),date:today(),pj:allPJ()};}
+  else if(a==='sdPj'){const w=S.dlg.pj||[];S.dlg.pj=w.includes(d.id)?w.filter(x=>x!==d.id):[...w,d.id];}
+  else if(a==='sessEdit'||a==='sessEditId'){const e=a==='sessEdit'?curSession():sessById(d.id);if(!e)return;S.dlg={kind:'sm',id:e.id,type:evType(e),titre:e.titre||'',date:e.date||'',confirm:false,pj:presents(e)};}
+  else if(a==='sessCreate'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;const e={id:'g'+Date.now().toString(36),session:true,date:g.date||today(),titre:t,type:g.type||'Scénario',entries:[],pnj:{},pj:g.pj||[]};S.curSess=e.id;saveEvents([...S.events,e]);return;}
+  else if(a==='sessSave'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;const pj=g.pj||[];
+    saveEvents(S.events.map(e=>{if(e.id!==g.id)return e;const ch=pjIds();let en=e.entries;
+      const sc=en.filter(x=>x.nature==='Scénario'&&x.montant&&ch.includes(x.perso));
+      if(sc.length){const m=+modeOf(sc.map(x=>x.montant));en=en.filter(x=>!(x.nature==='Scénario'&&ch.includes(x.perso)&&!pj.includes(x.perso)));
+        for(const p of pj)if(!en.some(x=>x.nature==='Scénario'&&x.perso===p))en=[...en,{perso:p,nature:'Scénario',montant:m}];}
+      return {...e,titre:t,type:g.type,date:g.date||e.date,pj,entries:en};}));return;}
   else if(a==='sessDel'){if(!sessChildren(S.dlg.id).length)S.dlg.confirm=true;}
   else if(a==='sessDelOk'){const id=S.dlg.id;S.dlg=null;if(sessChildren(id).length){render();return;}if(S.curSess===id)S.curSess=null;saveEvents(S.events.filter(e=>e.id!==id));return;}
-  else if(a==='sessAdd'){const cs=curSession();if(!cs)return;const add=[];for(const l of S.form.lines){const m=+l.montant;if(m>0)for(const pp of lp(l))add.push({perso:pp,nature:l.nature,montant:m});}if(!add.length)return;
+  else if(a==='sessAdd'){const cs=curSession();if(!cs)return;const add=[];for(const l of S.form.lines){const m=+l.montant;if(m>0)for(const pp of slp(l,cs))add.push({perso:pp,nature:l.nature,montant:m});}if(!add.length)return;
     S.form={titre:'',type:'Scénario',date:today(),lines:[{nature:'Scénario',montant:'',persos:null}]};saveEvents(S.events.map(e=>e.id===cs.id?{...e,entries:[...e.entries,...add]}:e));return;}
   else if(a==='pnjToggle'){const cs=curSession();if(!cs)return;const pn={...(cs.pnj||{})};pn[d.id]=!pn[d.id];saveEvents(S.events.map(e=>e.id===cs.id?{...e,pnj:pn}:e));return;}
   else if(a==='sessLineDel'){const key='l:'+d.id+':'+d.k;if(S.confirm!==key){S.confirm=key;}else{S.confirm=null;const [n,m]=d.k.split('|');saveEvents(S.events.map(e=>e.id===d.id?{...e,entries:e.entries.filter(en=>!(en.nature===n&&String(en.montant)===m&&pjIds().includes(en.perso)))}:e));return;}}
@@ -1357,6 +1386,7 @@ document.addEventListener('click',ev=>{
   else if(a==='futCancel')S.futForm.open=false;
   else if(a==='futSave'){const nom=S.futForm.nom.trim();if(nom){const c=clone(S.chars[S.sel]);c.futiles=c.futiles||[];c.futiles.push({nom,max:Math.max(1,+S.futForm.max||6),cur:0});S.futForm={open:false,nom:'',max:'6'};saveChar(c);return;}}
   else if(a==='pnjXp'){const f=S.pnjForm,m=+f.montant;if(f.titre.trim()&&m>0){const e={id:'g'+Date.now().toString(36),date:today(),titre:f.titre.trim(),type:'Autre',entries:[{perso:S.sel,nature:'Individuel',montant:m}]};S.pnjForm={titre:'',montant:''};saveEvents([...S.events,e]);return;}}
+  else if(a==='slChar'){const l=S.form.lines[+d.l];const cp=l.persos||[];l.persos=cp.includes(d.id)?cp.filter(x=>x!==d.id):[...cp,d.id];}
   else if(a==='lineChar'){const l=S.form.lines[+d.l];if(lockedLine(l))return;const cp=lp(l);l.persos=cp.includes(d.id)?cp.filter(x=>x!==d.id):[...cp,d.id];}
   else if(a==='lineAll'){S.form.lines[+d.l].persos=allPJ();}
   else if(a==='lineNone')S.form.lines[+d.l].persos=[];
@@ -1413,6 +1443,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.dp!==undefined){S.dlg.pts=t.value;}
   else if(t.dataset.pd!==undefined&&S.dlg){S.dlg[t.dataset.pd]=t.value;if(t.dataset.pd==='date'){const b=q0('#sheetRoot [data-act="pdOk"]');if(b)b.disabled=!(t.value&&t.value>=today());}}
   else if(t.dataset.nv!==undefined&&S.dlg&&S.dlg.kind==='ne'){S.dlg.vals[t.dataset.nv]=t.value;}
+  else if(t.dataset.nem!==undefined&&S.dlg&&S.dlg.kind==='ne'){S.dlg.m=t.value;}
   else if(t.dataset.sd!==undefined&&S.dlg){if(t.dataset.sd==='type'&&S.dlg.kind==='sn'){const old=S.dlg.titre||'';if(!old.trim()||old===sessPrefix(S.dlg.type)){S.dlg.titre=sessPrefix(t.value);const i=q0('#sdi');if(i)i.value=S.dlg.titre;const b=q0('#sheetRoot [data-act="sessCreate"]');if(b)b.disabled=!S.dlg.titre.trim();}}S.dlg[t.dataset.sd]=t.value;if(t.dataset.sd==='titre'){const b=q0('#sheetRoot [data-act="sessCreate"],#sheetRoot [data-act="sessSave"]');if(b)b.disabled=!t.value.trim();}if(S.dlg.kind==='rat'){const g=S.dlg,b=q0('#sheetRoot [data-act="ratOk"]'),n=Math.floor(+g.montant||0);if(b){b.disabled=!(n>0&&g.who.length&&(g.titre||'').trim());b.textContent='Attribuer '+n+' XP';}}}
   else if(t.dataset.sxs!==undefined&&S.dlg){S.dlg.sess=t.value;}
   else if(t.dataset.cr!==undefined&&S.dlg){S.dlg.nom=t.value;const v=t.value.trim(),dup=!!v&&S.creatures.some(c=>c.id!==S.dlg.id&&c.nom.toLowerCase()===v.toLowerCase());const b=q0('#sheetRoot [data-act="creAddOk"],#sheetRoot [data-act="creSave"]');if(b)b.disabled=!v||dup;const w=document.getElementById('crdup');if(w)w.style.display=dup?'':'none';}
