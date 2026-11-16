@@ -28,8 +28,8 @@ const slug=s=>(String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').r
 let DB=null;
 const queue={};
 function chain(path,fn){queue[path]=(queue[path]||Promise.resolve()).then(fn).then(()=>setSync('ok')).catch(e=>{console.error(e);setSync('err','Enregistrement refusé');});}
-function persist(path,data){if(DB)chain(path,()=>DB.doc(path).set(data));}
-function persistDel(path){if(DB)chain(path,()=>DB.doc(path).delete());}
+function persist(path,data){if(S.visit)return;if(DB)chain(path,()=>DB.doc(path).set(data));}
+function persistDel(path){if(S.visit)return;if(DB)chain(path,()=>DB.doc(path).delete());}
 function setSync(st,msg){S.sync=st;const el=document.getElementById('sync');if(!el)return;el.className='sync '+(st==='ok'?'ok':st==='err'?'err':'');
   el.querySelector('span').textContent=msg||(st==='ok'?'Synchronisé':st==='loading'?'Connexion…':st==='local'?'Hors ligne':'Erreur');}
 function saveChar(c){c=fxSync(c);S.chars[c.id]=c;render();persist('chars/'+c.id,c);}

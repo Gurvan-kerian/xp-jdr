@@ -220,11 +220,11 @@ function gainsTableAndJournal(){
 function viewPlayers(){
   const pl=playersSorted(),chars=ids().map(i=>S.chars[i]);
   let h=`<h2 style="margin-top:4px">Joueurs</h2>`;
-  h+=`<div class="card"><div class="field"><label for="me">Je suis</label><select id="me" data-me="1"><option value="">— invité —</option>${pl.map(p=>`<option value="${p.id}"${p.id===ME?' selected':''}>${esc(p.nom)}</option>`).join('')}</select></div><div class="muted small" style="margin-top:6px">Sert à retrouver tes personnages masqués, sur cet appareil seulement.</div></div>`+pushCard();
+  h+=pinOn()?`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div>Identité sur cet appareil : <b>${S.visit?'Visiteur':ME&&S.players[ME]?esc(S.players[ME].nom):'—'}</b></div><button class="btn" data-act="meOpen">Changer d'identité</button></div></div>`:`<div class="card"><div class="field"><label for="me">Je suis</label><select id="me" data-me="1"><option value="">— invité —</option>${pl.map(p=>`<option value="${p.id}"${p.id===ME?' selected':''}>${esc(p.nom)}</option>`).join('')}</select></div><div class="muted small" style="margin-top:6px">Sert à retrouver tes personnages masqués, sur cet appareil seulement.</div></div>`+pushCard();
   {const g=isGest(),last=gestCount()<=1;
    h+=`<div class="card" style="margin-top:12px"><h3>Rôles et droits de gestion</h3>`+pl.filter(p=>!p.parti).map(p=>{const on=hasGest(p),lock=!g||(on&&last);return `<div class="gestrow"><div><b>${esc(p.nom)}</b> <span class="gestrole">${esc(p.role||'Joueur')}</span></div><button class="gsw${on?' on':''}" data-act="gestToggle" data-pid="${p.id}" role="switch" aria-checked="${on}" aria-label="Droits de gestion pour ${esc(p.nom)}"${lock?' disabled':''}><span>Gestion</span><i></i></button></div>`;}).join('')+
    `<div class="muted small" style="margin-top:8px">Les droits de gestion permettent de modifier les races et les Paramètres, de déverrouiller le contenu et de corriger les choix figés. Ils sont indépendants du rôle MJ.${g?(last?' Il faut toujours au moins une personne avec ces droits.':''):' Seule une personne ayant ces droits peut les attribuer.'}</div>`+
-   (g?`<div class="actions" style="margin-top:10px"><button class="btn" data-act="asPlayer">Voir comme un joueur</button></div>`:'')+`</div>`;}
+   (g?`<div class="actions" style="margin-top:10px"><button class="btn" data-act="asPlayer">Voir comme un joueur</button></div>`:'')+`</div>`+pinCard();}
   h+=pl.map(p=>{
     const mine=chars.filter(c=>(p.persos||[]).includes(c.id));
     const armed=S.confirm==='p:'+p.id;

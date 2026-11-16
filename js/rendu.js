@@ -8,7 +8,7 @@ function viewHome(){
   <div class="hlinks"><button class="btn ghost" data-act="tab" data-v="players">Joueurs</button><button class="btn ghost" data-act="tab" data-v="rules">Règles</button><button class="btn ghost" data-act="tab" data-v="params">Paramètres</button></div></div>`;
 }
 /* ---------- Qui es-tu ? ---------- */
-function whoGate(){
+function whoGate(){return idGate();
   const pl=planPlayers();
   if(!S.ready||!pl.length||(ME&&S.players[ME]))return '';
   return `<div class="who" role="dialog" aria-modal="true" aria-label="Qui es-tu ?"><div class="who-in"><div class="who-g">${ICON.gear||''}</div><h2>Bienvenue dans La belle appli</h2><p>Qui es-tu ?</p><div class="who-grid">${pl.map(p=>`<button class="btn" data-act="setMe" data-id="${p.id}">${esc(p.nom)}</button>`).join('')}</div><p class="muted small">Demandé une seule fois sur cet appareil. Tu pourras changer dans l'onglet Joueurs. Ton nom sert pour tes disponibilités et tes réponses aux dates proposées.</p></div></div>`;
@@ -55,7 +55,7 @@ function renderSheet(){
     const g=S.dlg;let titre='',txt='';
     if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button><button data-act="tab" data-v="params"${S.view==='params'?' aria-current="page"':''}>${ICON.ref}Paramètres</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
-    if(g.kind==='me'){const pl=planPlayers();root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Changer de joueur"><div class="in"><h2>Qui es-tu ?</h2><div class="who-grid">${pl.map(p=>`<button class="btn${p.id===ME?' sel':''}" aria-pressed="${p.id===ME}" data-act="setMe" data-id="${p.id}">${esc(p.nom)}</button>`).join('')}</div><div class="muted small">Mémorisé sur cet appareil. Sert pour tes disponibilités, tes réponses aux dates proposées et tes notifications.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='me'){root.innerHTML=idSheet();return;}
     if(g.kind==='ne'){const e=sessById(g.id);if(!e){S.dlg=null;root.innerHTML='';return;}
       let body;
       if(g.one){const tg=orderPJ(natTargets(e,g.n));body=`<div class="field"><label for="ne-m">XP par personnage</label><input id="ne-m" type="number" inputmode="numeric" min="0" data-nem="1" value="${esc(g.m)}" placeholder="0"></div>
@@ -174,7 +174,7 @@ function render(){
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;
   const v=S.view,app=document.getElementById('app');
-  app.innerHTML=(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():viewRules());
+  app.innerHTML=idBanners()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():viewRules());
   renderSheet();
   const w=whoGate();let wr=document.getElementById('whoRoot');if(!wr){wr=document.createElement('div');wr.id='whoRoot';document.body.appendChild(wr);}if(wr.innerHTML!==w)wr.innerHTML=w;
 }

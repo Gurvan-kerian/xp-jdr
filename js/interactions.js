@@ -13,18 +13,27 @@ document.addEventListener('click',ev=>{
   const a=t.dataset.act,d=t.dataset;S._force=true;
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
   if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel|rf2Add|rf2Del|rfChAdd|rfChDel|rfPwUnk|rfFxNew|rfFxDel|rfFxT|rfFxQ|rfFxAdd|rfFxCancel)$/.test(a)&&!isGest())return; /* Référentiel : modification réservée à la gestion */
+  if(S.visit&&!VISIT_OK.has(a))return; /* visiteur : lecture seule */
   if(a==='tab'&&d.v==='ref'){d.v='univers';S.uni='creatures';}
+  if(a==='tab'&&d.v==='players')pinRefresh();
   if(a==='tab'){ev.preventDefault();if(d.v==='univers')S.sec=null;if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
   else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max,sp:{}};}
-  else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;}
+  else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;if(S.id.state==='ok')S.pinF=null;}
   else if(a==='menu'){S.dlg={kind:'menu'};}
   else if(a==='pushOn'){pushEnable();return;}
   else if(a==='pushOff'){pushDisable();return;}
   else if(a==='setMe'){const old=ME;ME=d.id;try{localStorage.setItem('xp.me',ME);}catch(e){}S.dlg=null;S._force=true;
     if(S.pushSub&&old!==ME){const js=S.pushSub.toJSON(),ep=js.endpoint;for(const pp of Object.values(S.players)){if(pp.id!==ME&&(pp.push||[]).some(x=>x.endpoint===ep)){const n=clone(pp);n.push=n.push.filter(x=>x.endpoint!==ep);savePlayer(n);}}
       const me=S.players[ME];if(me&&!(me.push||[]).some(x=>x.endpoint===ep)){const n=clone(me);n.push=[...(n.push||[]),{endpoint:ep,keys:js.keys}];savePlayer(n);}}}
-  else if(a==='meOpen'){S.dlg={kind:'me'};}
+  else if(a==='meOpen'){S.pinF=null;S.dlg={kind:'me'};pinRefresh();}
+  else if(a==='idPick'){idPick(d.id);return;}
+  else if(a==='idVisit'){idVisit();return;}
+  else if(a==='idBack'){if(BY)idSwitchAs(BY);return;}
+  else if(a==='pinKey'){pinKey(d.k);return;}
+  else if(a==='pinBack'){S.pinF=null;}
+  else if(a==='pinReset'){if(!isGest())return;S.confirm='pin:'+d.pid;}
+  else if(a==='pinResetOk'){if(!isGest())return;pinReset(d.pid);return;}
   else if(a==='dPropose'){S.dlg={kind:'pd',date:'',sl:'S',type:'Scénario',note:''};}
   else if(a==='pdSl'){S.dlg.sl=d.sl;}
   else if(a==='pdOk'){const g=S.dlg;if(!g.date||g.date<today())return;S.dlg=null;const x={id:'d'+Date.now().toString(36),date:g.date,sl:g.sl,type:g.type,note:(g.note||'').trim(),by:ME||null,status:'prop'};
@@ -259,7 +268,7 @@ document.addEventListener('click',ev=>{
   render();
 });
 const q0=s=>document.querySelector(s);
-document.addEventListener('keydown',ev=>{const t=ev.target;if((ev.key==='Enter'||ev.key===' ')&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset.act){ev.preventDefault();t.click();}});
+document.addEventListener('keydown',ev=>{const t=ev.target;if(S.pinF&&(/^[0-9]$/.test(ev.key)||ev.key==='Backspace')&&!(t&&/INPUT|TEXTAREA|SELECT/.test(t.tagName))){ev.preventDefault();pinKey(ev.key==='Backspace'?'del':ev.key);return;}if((ev.key==='Enter'||ev.key===' ')&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset.act){ev.preventDefault();t.click();}});
 document.addEventListener('input',ev=>{
   const t=ev.target;
   if(t.dataset.f){S.form[t.dataset.f]=t.value;}
@@ -317,7 +326,7 @@ document.addEventListener('change',ev=>{
   else if(t.dataset.her){S.heritage={score:t.value,delta:S.heritage.delta};persist('meta/heritage',S.heritage);render();}
   else if(t.dataset.note!==undefined){const c=clone(S.chars[S.sel]);const p=c.profils.find(x=>x.nom===t.dataset.note);const v=t.value.trim();p.note=v===''?null:(isNaN(+v)?v:+v);saveChar(c);}
   else if(t.dataset.k==='nature'){S.form.lines[+t.dataset.l].persos=null;render();}
-  else if(t.dataset.me){ME=t.value||null;try{if(ME)localStorage.setItem('xp.me',ME);else localStorage.removeItem('xp.me');}catch(e){}render();}
+  else if(t.dataset.me&&!pinOn()){ME=t.value||null;try{if(ME)localStorage.setItem('xp.me',ME);else localStorage.removeItem('xp.me');}catch(e){}render();}
   else if(t.dataset.pf){const p=clone(S.players[t.dataset.pid]);p[t.dataset.pf]=t.dataset.pf==='nom'?(t.value.trim()||p.nom):t.value;savePlayer(p);}
   else if(t.dataset.rfa!==undefined&&S.rf){const k=t.dataset.rfa,a=S.rf.acc;S.rf.acc=t.checked?(a.includes(k)?a:[...a,k]):a.filter(x=>x!==k);render();}
   else if(t.dataset.rfjump!==undefined){S.rf=rfDraft(t.value);render();}

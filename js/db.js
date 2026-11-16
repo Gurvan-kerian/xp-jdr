@@ -20,7 +20,7 @@ function sbDb(code){
   async function write(fn,args,local){inflight++;try{await rpc(fn,args);local();sig=sigOf(rows);}finally{inflight--;}setTimeout(poll,400);}
   const listen=(get,ok,err)=>{const f=e=>{if(e){err&&err(e);return;}ok(get());};subs.push(f);if(loaded)setTimeout(()=>f(),0);};
   const meta={hasPendingWrites:false,fromCache:false};
-  return {check,
+  return {check,rpc,
     collection:n=>({onSnapshot:(ok,err)=>listen(()=>({metadata:meta,docs:rows.filter(r=>r.coll===n).map(r=>({id:r.id,data:()=>r.data}))}),ok,err)}),
     doc:path=>{const [c,i]=path.split('/');return {
       onSnapshot:(ok,err)=>listen(()=>{const r=rows.find(x=>x.coll===c&&x.id===i);return {metadata:meta,data:()=>r?r.data:undefined};},ok,err),
