@@ -222,7 +222,7 @@ h3,.field label,.names .lab,th,.strip span{font-family:var(--font-label);letter-
 #ptrStage{position:relative;width:260px;height:260px;margin:6px auto;border-radius:16px;overflow:hidden;background:#222;touch-action:none;cursor:grab;user-select:none}#ptrStage img{position:absolute;max-width:none;pointer-events:none;user-select:none}#ptrStage .ring{position:absolute;inset:20px;border-radius:50%;box-shadow:0 0 0 400px rgba(0,0,0,.45);border:2px solid #fff;pointer-events:none}
 .rsearch{display:flex;gap:8px;margin-bottom:10px}.rsearch input{flex:1;min-width:0;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:inherit;font:inherit}
 .flt{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}.flt button{font:inherit;font-size:13px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:inherit;cursor:pointer}.flt button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
-.rl{display:flex;flex-direction:column;gap:2px}.rl .r{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px;border-radius:8px;font:inherit;font-size:15px;text-align:left;background:none;border:0;color:inherit;cursor:pointer;width:100%}.rl .r b{font-weight:600}.rl .r small{display:block;color:var(--muted);font-size:12px}.rl .r.dec{background:var(--plan-soft);box-shadow:inset 3px 0 0 var(--brass)}
+.rl{display:flex;flex-direction:column;gap:2px}.rsep{margin:10px 8px 2px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}.rl .r{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px;border-radius:8px;font:inherit;font-size:15px;text-align:left;background:none;border:0;color:inherit;cursor:pointer;width:100%}.rl .r b{font-weight:600}.rl .r small{display:block;color:var(--muted);font-size:12px}.rl .r.dec{background:var(--plan-soft);box-shadow:inset 3px 0 0 var(--brass)}
 .rst{font-size:12px;padding:2px 8px;border-radius:99px;white-space:nowrap;font-weight:600}.rst.ok{background:var(--good-soft);color:var(--good)}.rst.mid{background:var(--plan-soft);color:var(--plan)}.rst.no{background:var(--surface2);color:var(--muted)}.rst.todo{background:var(--bad);color:#fff}
 .rpj{font-size:12px;color:var(--accent);font-weight:600}.rdot{color:var(--good);font-size:12px;font-weight:600}
 .ct{width:100%;border-collapse:collapse;font-size:14px}.ct th{font-weight:600;color:var(--muted);text-align:center;padding:4px}.ct th:first-child,.ct td:first-child{text-align:left}.ct td{padding:3px 4px;text-align:center;border-top:1px dashed var(--line)}.ct input[type=number]{width:52px;text-align:center;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:inherit;font:inherit}
@@ -472,7 +472,7 @@ function ref(c,key){
   if(k==='carac'){const o=c.carac&&c.carac[n];return o?{kind:'carac',nom:n,o,max:maxFor(c,'carac',n,o)}:null;}
   if(k==='comp'){for(const p of c.profils||[])for(const x of p.comps||[])if(x.nom===n)return{kind:'comp',nom:n,o:x,max:maxFor(c,'comp',n,x)};return null;}
   if(k==='fut'){const x=(c.futiles||[]).find(f=>f.nom===n);return x?{kind:'fut',nom:n,o:x,max:maxFor(c,'fut',n,x)}:null;}
-  if(k==='prof'){const x=(c.profils||[]).find(f=>f.nom===n);return x?{kind:'prof',nom:n,o:x,max:x.max}:null;}
+  if(k==='prof'){const x=(c.profils||[]).find(f=>f.nom===n);return x?{kind:'prof',nom:n,o:x,max:maxFor(c,'prof',n,x)}:null;}
   return null;
 }
 function lv(c,key){const r=ref(c,key);return r?(r.o.cur||0):0;}
@@ -586,14 +586,22 @@ const CARCOL=['Agilité','Constitution','Force','Précision','Esprit','Perceptio
 const COMPS_ALL=['Conduite','Mouvement','Ressort','Survie','Art de la guerre','Autorité','Mêlée','Tir','Culture','Fortitude','Occultisme','Rhétorique','Classe','Entregent','Séduction','Sensibilité','Comédie','Larçin','Discrétion','Monde du crime','Habiletés','Médecine','Observations','Sciences'];
 /* Structures dérivées (clé = nom de race au singulier) */
 let RACES={},CARMAX={},PRED={},PREDFUT={},ACCRU={};
+/* Spécialités de prédilection (colonnes T et U du tableau des races) : [nom, compétence, note] */
+const SP_SEED={"anges":{"sp":[["Vol","Mouvement","gratuite même au rang 0"]],"spf":[]},"banshees":{"sp":[["Furtivité","Discrétion",""],["Spiritisme","Occultisme","*"]],"spf":[]},"bastets":{"sp":[["Élégance","Classe",""],["Ingéniosité","Habiletés",""]],"spf":[]},"centaures":{"sp":[["Pédagogie","Rhétorique",""]],"spf":[]},"elfes":{"sp":[["Élégance","Classe",""]],"spf":[]},"fees-electricite":{"sp":[["Automobile","Conduite",""],["Physique-chimie","Sciences",""]],"spf":[]},"fleurs-de-metal":{"sp":[["Vol","Mouvement","gratuite même au rang 0"]],"spf":[]},"fouinards":{"sp":[["Tous véhicules à moteur","Conduite","gratuite"],["Invention","Sciences",""]],"spf":[["Création","Musique ou Photographie",""]]},"gnomes":{"sp":[["Folklore féérique","Culture",""],["Artisanat","Habiletés",""]],"spf":[["Création","Divination ou compétence artistique",""]]},"gorgones":{"sp":[["Culture générale","Culture",""]],"spf":[]},"gremelins":{"sp":[["Mécanique","Habiletés",""],["Acrobatie","Mouvement",""]],"spf":[]},"harpies":{"sp":[["Vol","Mouvement","gratuite même au rang 0"]],"spf":[]},"korrigans":{"sp":[["Pickpocket","Larçin",""],["Nage","Mouvement","gratuite"]],"spf":[]},"minotaures":{"sp":[["Courage","Ressort",""]],"spf":[]},"phenix":{"sp":[["Vol","Mouvement","gratuite même au rang 0"]],"spf":[]},"protys":{"sp":[["Jouer un rôle","Comédie",""],["Psychologie","Sensibilité",""]],"spf":[]},"satyres":{"sp":[["Endurer","Ressort",""]],"spf":[]},"smogs":{"sp":[["Automobile","Conduite",""],["Pharmacopée","Médecine",""],["Physique-chimie","Sciences",""]],"spf":[]},"sylves":{"sp":[["Camouflage","Discrétion",""],["Orientation","Survie",""]],"spf":[]},"trolls":{"sp":[["Un type de véhicule au choix","Conduite",""],["Armes blanches lourdes","Mêlée",""]],"spf":[]},"vampyrs":{"sp":[["Politique","Entregent",""],["Maîtrise de soi","Fortitude",""]],"spf":[]}};
+for(const k in SP_SEED)if(RACE_SEED[k])Object.assign(RACE_SEED[k],SP_SEED[k]);
+/* Humain : réservé aux PNJ, hors féerie (caracs 1 à 6, profils et compétences max 6) */
+const HUMAIN='Humain',HUM_ID='humain',HUM_SEED={sing:HUMAIN,hum:true,car:Object.fromEntries(CARCOL.map(k=>[k,[1,6]]))};
+const humRec=()=>(S.racesReady&&S.races&&S.races[HUM_ID])||HUM_SEED;
+const isHum=c=>!!c&&c.type==='PNJ'&&c.race===HUMAIN;
+const humCar=nom=>{const x=humRec().car||{};return x[nom]||[1,6];};
 const singOf=n=>(n||'').split(' ').map(w=>w.length>3&&/s$/.test(w)&&!/x$/.test(w)?w.slice(0,-1):w).join(' ').replace(/s-/g,'-');
 function raceRules(){return S.racesReady&&S.races?S.races:RACE_SEED;}
 function raceCres(){return S.creaturesReady?S.creatures:CREATURES_SEED;}
-function raceRec(cr){const x=raceRules()[cr.id];return x||{sing:singOf(cr.nom),car:null,acc:[],pred:[],fut:[],at:[],typ:[]};}
+function raceRec(cr){const x=raceRules()[cr.id];return x||{sing:singOf(cr.nom),car:null,acc:[],pred:[],fut:[],at:[],typ:[],sp:[],spf:[]};}
 const carOk=x=>!!(x&&x.car&&CARCOL.every(k=>x.car[k]&&x.car[k][0]!==''&&x.car[k][0]!=null&&x.car[k][1]!==''&&x.car[k][1]!=null));
 function rebuildRaces(){RACES={};CARMAX={};PRED={};PREDFUT={};ACCRU={};
   for(const cr of raceCres()){const x=raceRec(cr),n=x.sing;if(!n)continue;
-    RACES[n]={a:(x.at||[]).filter(a=>a&&a[0]),t:(x.typ||[]).filter(t=>t&&t[0]&&t[1]),cre:cr.id};
+    RACES[n]={a:(x.at||[]).filter(a=>a&&a[0]),t:(x.typ||[]).filter(t=>t&&t[0]&&t[1]),sp:(x.sp||[]).filter(e=>e&&e[0]),spf:(x.spf||[]).filter(e=>e&&e[0]),cre:cr.id};
     if(carOk(x))CARMAX[n]=CARCOL.map(k=>[+x.car[k][0]||0,+x.car[k][1]]);
     if((x.pred||[]).length)PRED[n]=x.pred;if((x.fut||[]).length)PREDFUT[n]=x.fut;if((x.acc||[]).length)ACCRU[n]=x.acc;}}
 function raceBlocks(x){x=x||{};return [['Caractéristiques',carOk(x)],['Caractéristiques accrues',(x.acc||[]).length>0],['Compétences utiles de prédilection',(x.pred||[]).length>0],['Compétences futiles de prédilection',(x.fut||[]).length>0],['Atouts féeriques',(x.at||[]).some(a=>a&&a[0])],['Spécialités typiques',(x.typ||[]).filter(t=>t&&t[0]).length>=2]];}
@@ -603,12 +611,13 @@ const playedBy=sing=>Object.values(S.chars).filter(c=>c.type==='PJ'&&c.race&&c.r
 /* Résout les choix « X ou Y » : choix enregistré sur le personnage, sinon d'après la fiche (max 7, sinon présent, sinon le premier) */
 function predGuess(list,items){return (list||[]).filter(Array.isArray).map(e=>{const has=n=>items.find(x=>nrm(x.nom)===nrm(n));const m7=e.find(n=>{const x=has(n);return x&&(x.max||0)>=7;});return [e.join('|'),m7||e.find(n=>has(n))||e[0]];});}
 function predOf(c,list,items){const has=n=>items.find(x=>nrm(x.nom)===nrm(n));return (list||[]).map(e=>{if(!Array.isArray(e))return e;const k=e.join('|');if(c.choix&&c.choix[k])return c.choix[k];const m7=e.find(n=>{const x=has(n);return x&&(x.max||0)>=7;});return m7||e.find(n=>has(n))||e[0];}).map(nrm);}
-function maxFor(c,kind,nom,o){if(c.type!=='PJ')return o.max;
+function maxFor(c,kind,nom,o){if(isHum(c)){if(kind==='carac'){const v=humCar(nom)[1];return v===''||v==null?o.max:+v;}return kind==='comp'||kind==='prof'?6:o.max;}
+  if(c.type!=='PJ')return o.max;
   if(kind==='carac'){const t=CARMAX[c.race];const i=CARCOL.indexOf(nom);if(!(t&&i>=0))return o.max;let m=t[i][1];if(c.ajust){if(c.ajust.moins===nom)m--;if(c.ajust.plus===nom)m++;}return m;}
   if(kind==='comp'){if(!PRED[c.race])return o.max;const all=(c.profils||[]).flatMap(p=>p.comps||[]);return predOf(c,PRED[c.race],all).includes(nrm(nom))?7:6;}
   if(kind==='fut'){if(!PREDFUT[c.race])return o.max;return predOf(c,PREDFUT[c.race],c.futiles||[]).includes(nrm(nom))?7:6;}
   return o.max;}
-const minFor=(c,nom)=>{const t=CARMAX[c.race],i=CARCOL.indexOf(nom);return t&&i>=0?t[i][0]:0;};
+const minFor=(c,nom)=>{if(isHum(c)){const v=humCar(nom)[0];return v===''||v==null?1:+v;}const t=CARMAX[c.race],i=CARCOL.indexOf(nom);return t&&i>=0?t[i][0]:0;};
 /* Mise en place ponctuelle du référentiel : choix « X ou Y » figés, ajustement de Masse Toc, coquille « Astronimie » de Maral */
 function fixRef(){for(const c0 of Object.values(S.chars)){if(c0.type!=='PJ'||c0.refFix||!c0.race)continue;const c=clone(c0);
     if(c.id==='maral')for(const f of c.futiles||[])if(f.nom==='Astronimie')f.nom='Astronomie';
@@ -617,6 +626,18 @@ function fixRef(){for(const c0 of Object.values(S.chars)){if(c0.type!=='PJ'||c0.
     for(const [k,v] of predGuess(PREDFUT[c.race],c.futiles||[]))if(!c.choix[k])c.choix[k]=v;
     if(c.id==='massetoc'&&!c.ajust)c.ajust={moins:'Constitution',plus:'Esprit'};
     c.refFix=true;saveChar(c);}}
+/* Mise en place ponctuelle : Ismaël et Anselme sont humains ; Ismaël reçoit Équitation (offerte, rattachée à Aventurier) */
+function fixHumain(){for(const id of ['ismael','anselme']){const c0=S.chars[id];if(!c0||c0.type!=='PNJ'||c0.humFix)continue;const c=clone(c0);if(!c.race)c.race=HUMAIN;
+    if(id==='ismael'){c.spec=c.spec||{cur:0};c.specs=specsOf(c).slice();if(!c.specs.some(x=>nrmS(x.nom)==='equitation')){c.specs.push({nom:'Équitation',cible:'prof:Aventurier',offert:true});c.spec.cur=(c.spec.cur||0)+1;}}
+    c.humFix=true;saveChar(c);}}
+/* Création d'un PJ : au premier choix de race, ajoute gratuitement ses spécialités de prédilection */
+function grantPredSp(c){c.spPred=true;const r=RACES[c.race];if(!r)return c;c.spec=c.spec||{cur:0};c.specs=specsOf(c).slice();c.achats=c.achats||[];
+  const add=(nom,cible)=>{const from=c.spec.cur||0,id='a'+Date.now().toString(36)+Math.floor(Math.random()*1e6),choix=/au choix/i.test(nom);c.spec.cur=from+1;
+    c.achats.push({id,date:today(),label:`Spécialité (${choix?nom+' : à préciser':nom}) · offerte (prédilection de race)`,cout:0,key:'spec',from,to:from+1});
+    if(!choix)c.specs.push({nom,cible,achat:id,pred:1});};
+  for(const [nom,comp] of r.sp||[])add(nom,'comp:'+comp);
+  for(const [nom] of r.spf||[])add(nom,null);
+  return c;}
 const RACE0={kerian:'Elfe',massetoc:'Troll',sloan:'Fleur de métal',theodule:'Fouinard',rowen:'Bastet',maral:'Djinn'};
 const TYP='Spécialités typiques';
 const nrmA=t=>nrmS(t).replace(/y/g,'i').replace(/-/g,' ').replace(/\s+/g,' ');
@@ -698,7 +719,7 @@ function newChar(id,court,nom,type){
   const caracs=Object.fromEntries(CARACS.map(n=>[n,{max:6,cur:1}]));
   const base={id,court,nom:nom||court,type,statut:'actif',carac:caracs,spec:{cur:0},plan:{},achats:[]};
   if(type==='PNJ'){base.profils=PROFILS.map(n=>({nom:n,max:6,cur:0,subs:[]}));return base;}
-  base.feerie={max:8,cur:0};base.masque={max:9,cur:0};base.fortune={max:15,cur:0};base.atout={max:8,cur:0};
+  base.feerie={max:8,cur:3};base.masque={max:9,cur:3};base.creation=true;base.fortune={max:15,cur:0};base.atout={max:8,cur:0};
   base.profils=PROFILS.map(n=>({nom:n,max:6,note:null,comps:PROFCOMPS[n].map(x=>({nom:x,max:6,cur:0}))}));base.futiles=[];
   return base;
 }
@@ -1183,7 +1204,7 @@ const CFAM=[['trad','Traditionnelles'],['mod','Modernes'],['exo','Exotiques']];
 /* Reprise du tableur : les créatures cochées l'ont été avant l'appli, leur XP est déjà au journal */
 const CREATURES_SEED=[{"id":"anges","nom":"Anges","fam":"trad","done":false},{"id":"bastets","nom":"Bastets","fam":"trad","done":true},{"id":"elfes","nom":"Elfes","fam":"trad","done":false},{"id":"farfadets","nom":"Farfadets","fam":"trad","done":false},{"id":"gnomes","nom":"Gnomes","fam":"trad","done":true},{"id":"gobelins","nom":"Gobelins","fam":"trad","done":false},{"id":"korrigans","nom":"Korrigans","fam":"trad","done":true},{"id":"leporides","nom":"Léporides","fam":"trad","done":false},{"id":"loups-garous","nom":"Loups-garous","fam":"trad","done":false},{"id":"ogres","nom":"Ogres","fam":"trad","done":false},{"id":"ondines","nom":"Ondines","fam":"trad","done":false},{"id":"orcs","nom":"Orcs","fam":"trad","done":false},{"id":"phenix","nom":"Phénix","fam":"trad","done":true},{"id":"succubes","nom":"Succubes","fam":"trad","done":false},{"id":"sylves","nom":"Sylves","fam":"trad","done":false},{"id":"trolls","nom":"Trolls","fam":"trad","done":true},{"id":"vampyrs","nom":"Vampyrs","fam":"trad","done":true},{"id":"fees-electricite","nom":"Fées électricité","fam":"mod","done":true},{"id":"fleurs-de-metal","nom":"Fleurs de métal","fam":"mod","done":false},{"id":"fouinards","nom":"Fouinards","fam":"mod","done":true},{"id":"gargouilles","nom":"Gargouilles","fam":"mod","done":false},{"id":"golems","nom":"Golems","fam":"mod","done":false},{"id":"gremelins","nom":"Gremelins","fam":"mod","done":false},{"id":"protys","nom":"Protys","fam":"mod","done":false},{"id":"smogs","nom":"Smogs","fam":"mod","done":true},{"id":"djinns","nom":"Djinns","fam":"exo","done":false},{"id":"banshees","nom":"Banshees","fam":"exo","done":false},{"id":"domovois","nom":"Domovoïs","fam":"exo","done":false},{"id":"gorgones","nom":"Gorgones","fam":"exo","done":false},{"id":"centaures","nom":"Centaures","fam":"exo","done":false},{"id":"minotaures","nom":"Minotaures","fam":"exo","done":false},{"id":"harpies","nom":"Harpies","fam":"exo","done":false},{"id":"satyres","nom":"Satyres","fam":"exo","done":false}];
 /* --- Référentiel › Races --- */
-function viewRef(){if(!S.creaturesReady||!S.racesReady)return `<h2 style="margin-top:4px">Référentiel</h2><div class="card empty">Chargement…</div>`;return S.rf?refSheet():refList();}
+function viewRef(){if(!S.creaturesReady||!S.racesReady)return `<h2 style="margin-top:4px">Référentiel</h2><div class="card empty">Chargement…</div>`;return S.rf?(S.rf.hum?refHum():refSheet()):refList();}
 function refRows(){return S.creatures.map(cr=>{const x=raceRec(cr);return {cr,x,st:raceStatus(cr,x),pj:playedBy(x.sing)};}).sort((a,b)=>a.x.sing.localeCompare(b.x.sing,'fr'));}
 function refList(){const all=refRows(),q=nrm(S.rfq||''),f=S.rff||'all',fm=S.rffam||'';
   const cnt=k=>all.filter(r=>k==='todo'?r.st==='todo':k==='pj'?r.pj.length:k==='dec'?r.cr.done:true).length;
@@ -1192,14 +1213,20 @@ function refList(){const all=refRows(),q=nrm(S.rfq||''),f=S.rff||'all',fm=S.rffa
   let h=`<h2 style="margin-top:4px">Référentiel › Races</h2><div class="card"><div class="rsearch"><input type="search" data-rfq="1" placeholder="Rechercher une race…" aria-label="Rechercher une race" value="${esc(S.rfq||'')}" autocomplete="off"><button class="btn" style="white-space:nowrap;padding:6px 12px" data-act="rfNew">+ Nouvelle</button></div>
   <div class="flt">${[['all','Toutes'],['todo','À compléter'],['pj','Jouées'],['dec','Découvertes']].map(([k,l])=>`<button data-act="rfFlt" data-v="${k}" aria-pressed="${f===k}">${l} (${cnt(k)})</button>`).join('')}</div>
   <div class="flt">${CFAM.map(([k,l])=>`<button data-act="rfFam" data-v="${k}" aria-pressed="${fm===k}">${l}</button>`).join('')}</div>
-  <div class="rl">${L.map(r=>`<button class="r${r.cr.done?' dec':''}" data-act="rfOpen" data-id="${esc(r.cr.id)}"><span><b>${esc(r.x.sing)}</b>${r.pj.length?` <span class="rpj">· ${r.pj.map(c=>esc(c.court)).join(', ')}</span>`:''}<small>${F[r.cr.fam]||''}${r.cr.done?' · <span class="rdot">✓ découverte</span>':''}</small></span><span class="rst ${r.st}">${RST[r.st]}</span><span style="color:var(--accent);font-size:18px">›</span></button>`).join('')||'<div class="muted" style="padding:8px">Aucune race.</div>'}</div></div>`;
+  <div class="rl">${L.map(r=>`<button class="r${r.cr.done?' dec':''}" data-act="rfOpen" data-id="${esc(r.cr.id)}"><span><b>${esc(r.x.sing)}</b>${r.pj.length?` <span class="rpj">· ${r.pj.map(c=>esc(c.court)).join(', ')}</span>`:''}<small>${F[r.cr.fam]||''}${r.cr.done?' · <span class="rdot">✓ découverte</span>':''}</small></span><span class="rst ${r.st}">${RST[r.st]}</span><span style="color:var(--accent);font-size:18px">›</span></button>`).join('')||'<div class="muted" style="padding:8px">Aucune race.</div>'}${f==='all'&&!fm&&(!q||nrm(HUMAIN).includes(q))?(()=>{const pn=Object.values(S.chars).filter(isHum);return `<div class="rsep">Hors féerie</div><button class="r" data-act="rfHum"><span><b>${HUMAIN}</b>${pn.length?` <span class="rpj">· ${pn.map(c=>esc(c.court)).join(', ')}</span>`:''}<small>réservé aux PNJ</small></span><span></span><span style="color:var(--accent);font-size:18px">›</span></button>`;})():''}</div></div>`;
   return h;}
+function refHum(){const g=S.rf,pn=Object.values(S.chars).filter(isHum);
+  return `<h2 style="margin-top:4px">Référentiel › Races</h2><div style="margin-bottom:8px"><button class="btn ghost" style="white-space:nowrap" data-act="rfBack">‹ Liste</button></div>
+  <div class="card"><h2 style="margin:0 0 4px">${HUMAIN}</h2><div class="muted small">Hors féerie · réservé aux PNJ${pn.length?' · '+pn.map(c=>esc(c.court)).join(', '):''}</div>
+    <h3 class="rs">Caractéristiques</h3><table class="ct"><tr><th></th><th>Min</th><th>Max</th></tr>${CARCOL.map(k=>`<tr><td>${k}</td><td><input type="number" min="0" max="12" data-rfc="${k}" data-m="0" value="${esc(g.car[k][0])}" aria-label="${k} minimum"></td><td><input type="number" min="0" max="12" data-rfc="${k}" data-m="1" value="${esc(g.car[k][1])}" aria-label="${k} maximum"></td></tr>`).join('')}</table>
+    <h3 class="rs">Règles fixes</h3><ul class="small" style="margin:4px 0 0;padding-left:18px;line-height:1.6"><li>Profils et compétences : maximum 6.</li><li>Spécialités : mêmes règles que pour les fées.</li><li>Pas de caractéristique accrue, pas de compétence de prédilection, pas de compétence futile, pas d'atout féerique.</li></ul>
+    <div class="actions" style="margin-top:14px"><button class="btn pri" data-act="rfHumSave">Enregistrer</button></div>${g.saved?'<div class="small muted" style="margin-top:6px">Enregistré.</div>':''}</div>`;}
 function rfDraft(id){const cr=S.creatures.find(c=>c.id===id);const x=cr?clone(raceRec(cr)):{sing:'',car:null,acc:[],pred:[],fut:[],at:[],typ:[]};
   const car={};for(const k of CARCOL){const v=x.car&&x.car[k];car[k]=[v?v[0]:'',v?v[1]:''];}
   const typ=(x.typ||[]).slice(0,2);while(typ.length<2)typ.push(['','']);
-  return {id:cr?cr.id:null,sing:x.sing||'',plur:cr?cr.nom:'',fam:cr?cr.fam:'trad',car,acc:x.acc||[],pred:x.pred||[],fut:x.fut||[],at:(x.at||[]).map(a=>[a[0],a[1]||'']),typ,pa:'',pb:'',fa:'',fb:'',confirm:false};}
+  return {id:cr?cr.id:null,sing:x.sing||'',plur:cr?cr.nom:'',fam:cr?cr.fam:'trad',car,acc:x.acc||[],pred:x.pred||[],fut:x.fut||[],at:(x.at||[]).map(a=>[a[0],a[1]||'']),typ,sp:(x.sp||[]).map(e=>[e[0]||'',e[1]||'',e[2]||'']),spf:(x.spf||[]).map(e=>[e[0]||'',e[1]||'',e[2]||'']),pa:'',pb:'',fa:'',fb:'',confirm:false};}
 function rfRec(g){const car={};let any=false;for(const k of CARCOL){const a=g.car[k];car[k]=[a[0]===''?'':+a[0],a[1]===''?'':+a[1]];if(a[0]!==''||a[1]!=='')any=true;}
-  return {sing:g.sing.trim(),car:any?car:null,acc:g.acc.slice(),pred:clone(g.pred),fut:clone(g.fut),at:g.at.filter(a=>(a[0]||'').trim()).map(a=>[a[0].trim(),(a[1]||'').trim()]),typ:g.typ.filter(t=>(t[0]||'').trim()).map(t=>[t[0].trim(),t[1]||''])};}
+  return {sing:g.sing.trim(),car:any?car:null,acc:g.acc.slice(),pred:clone(g.pred),fut:clone(g.fut),at:g.at.filter(a=>(a[0]||'').trim()).map(a=>[a[0].trim(),(a[1]||'').trim()]),typ:g.typ.filter(t=>(t[0]||'').trim()).map(t=>[t[0].trim(),t[1]||'']),sp:(g.sp||[]).filter(e=>(e[0]||'').trim()).map(e=>[e[0].trim(),e[1]||'',(e[2]||'').trim()]),spf:(g.spf||[]).filter(e=>(e[0]||'').trim()).map(e=>[e[0].trim(),(e[1]||'').trim(),(e[2]||'').trim()])};}
 function refSheet(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id),rec=rfRec(g),st=raceStatus(cr,rec),pj=playedBy(g.sing.trim()),F={trad:'Traditionnelle',mod:'Moderne',exo:'Exotique'};
   const chip=(e,k,i)=>Array.isArray(e)?`<span class="rchip grp"><b>au choix</b> ${e.map(esc).join(' <span class="muted">ou</span> ')}<button data-act="rfPredDel" data-k="${k}" data-i="${i}" aria-label="Retirer">✕</button></span>`:`<span class="rchip">${esc(e)}<button data-act="rfPredDel" data-k="${k}" data-i="${i}" aria-label="Retirer ${esc(e)}">✕</button></span>`;
   const copt=(v,none)=>(none?`<option value="">${none}</option>`:'')+COMPS_ALL.map(c=>`<option${v===c?' selected':''}>${esc(c)}</option>`).join('');
@@ -1215,6 +1242,8 @@ function refSheet(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id),rec=r
     <div class="radd"><input type="text" data-rfk="fa" placeholder="Compétence futile" value="${esc(g.fa)}" style="flex:1"><span class="muted small">ou</span><input type="text" data-rfk="fb" placeholder="(au choix, facultatif)" value="${esc(g.fb)}" style="flex:1"><button class="btn" data-act="rfPredAdd" data-k="fut">Ajouter</button></div>
     <h3 class="rs">Atouts féeriques</h3><div class="rgrid">${g.at.map((a,i)=>`<input type="text" data-rfat="${i}" data-p="0" value="${esc(a[0])}" placeholder="Nom" aria-label="Nom de l'atout"><input type="text" data-rfat="${i}" data-p="1" value="${esc(a[1])}" placeholder="Description" aria-label="Description de l'atout"><button class="x" data-act="rfAtDel" data-i="${i}" aria-label="Retirer l'atout">✕</button>`).join('')}</div><div class="radd"><button class="btn" data-act="rfAtAdd">+ Ajouter un atout</button></div>
     <h3 class="rs">Spécialités typiques</h3><div class="rgrid" style="grid-template-columns:1fr 1fr">${g.typ.map((t,i)=>`<input type="text" data-rft="${i}" data-p="0" value="${esc(t[0])}" placeholder="Spécialité" aria-label="Spécialité typique ${i+1}"><select data-rft="${i}" data-p="1" aria-label="Compétence de la spécialité ${i+1}">${copt(t[1],'— compétence —')}</select>`).join('')}</div>
+    <h3 class="rs">Spécialités de prédilection</h3><div class="muted small">Offertes à la création d'un personnage de cette race. Un nom contenant « au choix » est précisé par le joueur.</div>
+    ${[['sp','Utiles'],['spf','Futiles']].map(([k,l])=>`<div class="small" style="margin:8px 0 4px"><b>${l}</b></div><div class="rgrid" style="grid-template-columns:1.3fr 1fr 1fr auto">${(g[k]||[]).map((e,i)=>`<input type="text" data-rfsp="${k}" data-i="${i}" data-p="0" value="${esc(e[0])}" placeholder="Spécialité" aria-label="Spécialité ${l.toLowerCase()} ${i+1}">${k==='sp'?`<select data-rfsp="sp" data-i="${i}" data-p="1" aria-label="Compétence de la spécialité ${i+1}">${copt(e[1],'— compétence —')}</select>`:`<input type="text" data-rfsp="spf" data-i="${i}" data-p="1" value="${esc(e[1])}" placeholder="Compétence futile" aria-label="Compétence futile de la spécialité ${i+1}">`}<input type="text" data-rfsp="${k}" data-i="${i}" data-p="2" value="${esc(e[2])}" placeholder="Note (facultatif)" aria-label="Note de la spécialité ${i+1}"><button class="x" data-act="rfSpDel" data-k="${k}" data-i="${i}" aria-label="Retirer la spécialité">✕</button>`).join('')||'<span class="muted small" style="grid-column:1/-1">Aucune.</span>'}</div><button class="btn ghost" style="margin-top:4px;padding:4px 10px" data-act="rfSpAdd" data-k="${k}">+ Ajouter</button>`).join('')}
     <div class="actions" style="margin-top:14px"><button class="btn pri" data-act="rfSave"${g.sing.trim()?'':' disabled'}>Enregistrer la race</button>${g.id?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="rfDelOk">Confirmer la suppression</button>`:`<button class="btn ghost" data-act="rfDel">Supprimer</button>`):''}</div>
     ${g.err?`<div class="small" role="alert" style="color:var(--bad);margin-top:6px">${esc(g.err)}</div>`:''}</div>`;
   return h;}
@@ -1671,6 +1700,10 @@ document.addEventListener('click',ev=>{
   else if(a==='rfPredDel'){S.rf[d.k].splice(+d.i,1);}
   else if(a==='rfPredAdd'){const g=S.rf;if(d.k==='pred'){if(!g.pa)return;g.pred.push(g.pb&&g.pb!==g.pa?[g.pa,g.pb]:g.pa);g.pa='';g.pb='';}else{const x=(g.fa||'').trim(),y=(g.fb||'').trim();if(!x)return;g.fut.push(y?[x,y]:x);g.fa='';g.fb='';}}
   else if(a==='rfAtAdd'){S.rf.at.push(['','']);}
+  else if(a==='rfSpAdd'){(S.rf[d.k]=S.rf[d.k]||[]).push(['','','']);}
+  else if(a==='rfSpDel'){S.rf[d.k].splice(+d.i,1);}
+  else if(a==='rfHum'){S.dlg=null;S.view='ref';const x=humRec(),car={};for(const k of CARCOL){const v=x.car&&x.car[k];car[k]=[v?v[0]:'',v?v[1]:''];}S.rf={hum:true,car};window.scrollTo(0,0);}
+  else if(a==='rfHumSave'){const g=S.rf,car={};for(const k of CARCOL){const v=g.car[k];car[k]=[v[0]===''?1:+v[0],v[1]===''?6:+v[1]];}S.races={...S.races,[HUM_ID]:{sing:HUMAIN,hum:true,car}};persist('meta/races',{byId:S.races});g.saved=true;}
   else if(a==='rfAtDel'){S.rf.at.splice(+d.i,1);}
   else if(a==='rfDel'){const g=S.rf,cr=S.creatures.find(c=>c.id===g.id);if(cr&&cr.done){g.err='Cette race est cochée « découverte » dans l\'Univers : elle ne peut pas être supprimée.';}else if(playedBy(raceRec(cr||{}).sing||'').length){g.err='Cette race est jouée par un personnage : elle ne peut pas être supprimée.';}else{g.err='';g.confirm=true;}}
   else if(a==='rfDelOk'){const id=S.rf.id;S.rf=null;saveCreatures(S.creatures.filter(c=>c.id!==id));const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}
@@ -1723,7 +1756,7 @@ document.addEventListener('click',ev=>{
     c.achats=c.achats||[];c.achats.push({id:'a'+Date.now().toString(36)+Math.floor(Math.random()*1e3),date:today(),label:`PP ${g.prof} - ${ppFmt(n)} - ${why||'non précisé'}`,cout:0,key:'pp:'+g.prof,pp:n,ppNP:!why});
     S.dlg=null;saveChar(c);return;}
   else if(a==='fixToggle'){S.sheet.fix=!S.sheet.fix;}
-  else if(a==='fixApply'){const n=clone(cur()),r=ref(n,S.sheet.key);const v=Math.max(r.kind==='carac'?minFor(n,r.nom):0,Math.floor(+S.sheet.fixCur));if(!isNaN(v))r.o.cur=v;S.sheet=null;saveChar(n);return;}
+  else if(a==='fixApply'){const n=clone(cur()),r=ref(n,S.sheet.key);const v=Math.max(r.kind==='carac'?minFor(n,r.nom):(r.kind==='feerie'||r.kind==='masque')&&n.type==='PJ'?3:0,Math.floor(+S.sheet.fixCur));if(!isNaN(v))r.o.cur=v;S.sheet=null;saveChar(n);return;}
   else if(a==='buy'){const c=cur(),n=buy(c,S.sheet.key,S.sheet.to,today());S.sheet=null;saveChar(n);return;}
   else if(a==='plan'){const c=clone(cur());c.plan=c.plan||{};c.plan[S.sheet.key]=S.sheet.to;S.sheet=null;saveChar(c);return;}
   else if(a==='unplanSheet'||a==='unplan'){const c=clone(S.chars[S.sheet?S.sheet.id:S.sel]);const k=a==='unplan'?d.key:S.sheet.key;delete c.plan[k];S.sheet=null;saveChar(c);return;}
@@ -1793,6 +1826,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.rfk!==undefined&&S.rf){S.rf[t.dataset.rfk]=t.value;if(t.dataset.rfk==='sing'){const b=q0('[data-act="rfSave"]');if(b)b.disabled=!t.value.trim();}}
   else if(t.dataset.rfc!==undefined&&S.rf){S.rf.car[t.dataset.rfc][+t.dataset.m]=t.value;}
   else if(t.dataset.rfat!==undefined&&S.rf){S.rf.at[+t.dataset.rfat][+t.dataset.p]=t.value;}
+  else if(t.dataset.rfsp!==undefined&&S.rf){S.rf[t.dataset.rfsp][+t.dataset.i][+t.dataset.p]=t.value;}
   else if(t.dataset.rft!==undefined&&S.rf){S.rf.typ[+t.dataset.rft][+t.dataset.p]=t.value;}
   else if(t.dataset.ato!==undefined){S.spOther=S.spOther||{};S.spOther[S.sel+'|atout']=t.value;}
   else if(t.dataset.spo!==undefined){S.spOther=S.spOther||{};S.spOther[S.sel+'|'+t.dataset.spo]=t.value;}
@@ -1833,7 +1867,7 @@ document.addEventListener('change',ev=>{
   else if((t.dataset.rfk==='fam'||t.dataset.rfk==='pa'||t.dataset.rfk==='pb'||t.dataset.rft!==undefined)&&S.rf){if(t.dataset.rft!==undefined)S.rf.typ[+t.dataset.rft][+t.dataset.p]=t.value;else S.rf[t.dataset.rfk]=t.value;render();}
   else if(t.dataset.ptrfile){const f=t.files&&t.files[0],cid=t.dataset.ptrfile;t.value='';if(!f)return;const rd=new FileReader();
     rd.onload=()=>{const im=new Image();im.onload=()=>{window._ptrImg=im;const w=im.naturalWidth,h=im.naturalHeight,base=Math.max(220/w,220/h);S.dlg={kind:'ptr',cid,src:rd.result,w,h,base,z:1,x:130-w*base/2,y:130-h*base/2};S._force=true;render();};im.src=rd.result;};rd.readAsDataURL(f);}
-  else if(t.dataset.cf==='race'){const c=clone(S.chars[t.dataset.id]);c.race=t.value||null;saveChar(c);}
+  else if(t.dataset.cf==='race'){let c=clone(S.chars[t.dataset.id]);c.race=t.value||null;if(c.race&&c.creation&&!c.spPred)c=grantPredSp(c);saveChar(c);}
   else if(t.dataset.cf==='pj'){const c=clone(S.chars[t.dataset.id]);const v=t.value||null;if(v!==(c.pj||null)){c.pj=v;c.pjDate=v?today():null;}saveChar(c);}
   else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'?t.value:(t.value.trim()||c[k]);saveChar(c);}
   else if(t.dataset.np==='role'||t.dataset.nc==='type'||t.dataset.nc==='owner'){render();}
@@ -1918,7 +1952,7 @@ function start(){
       if(snap.metadata.hasPendingWrites)return;
       const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=normNoms(x);});
       S.chars=m;S.ready=true;clearTimeout(timer);if(!snap.metadata.fromCache)setSync('ok');render();
-      fixTypKerian();resetSA();renameVM();fixRef();
+      fixTypKerian();resetSA();renameVM();fixRef();fixHumain();
     },e=>{setSync('err','Lecture impossible');});
     db.collection('players').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
@@ -1950,7 +1984,10 @@ function start(){
     db.doc('meta/races').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
       const x=snap.data();
-      if(x&&x.byId)S.races=x.byId;else{S.races=clone(RACE_SEED);persist('meta/races',{byId:S.races});}
+      let ch=false;if(x&&x.byId)S.races=x.byId;else{S.races=clone(RACE_SEED);ch=true;}
+      if(!S.races[HUM_ID]){S.races={...S.races,[HUM_ID]:clone(HUM_SEED)};ch=true;}
+      for(const k in SP_SEED){const r=S.races[k];if(r&&r.sp===undefined){S.races={...S.races,[k]:{...r,...clone(SP_SEED[k])}};ch=true;}}
+      if(ch)persist('meta/races',{byId:S.races});
       S.racesReady=true;rebuildRaces();render();
     },()=>{});
     db.doc('meta/portraits').onSnapshot(snap=>{
