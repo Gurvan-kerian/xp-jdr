@@ -226,6 +226,7 @@ h3,.field label,.names .lab,th,.strip span{font-family:var(--font-label);letter-
 .spx .acq{border:0;background:none;color:var(--plan);font:700 13px system-ui,sans-serif;cursor:pointer;padding:4px 2px;white-space:nowrap}
 .spx .bb{flex:none;padding:4px 12px;font-size:13px;border-radius:10px;border:1px solid var(--brass);background:linear-gradient(180deg,var(--brass-hi),var(--brass));font-weight:700;color:#2b2118;cursor:pointer;white-space:nowrap}.spx .bb:disabled{opacity:.45;cursor:default}
 .spx input{flex:1;min-width:0;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:inherit;font:inherit;font-size:14px}
+.fixl{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 6px 4px 10px;margin-top:4px;border-top:1px dashed var(--line);font-size:14px;color:var(--muted)}.fixl .btn{padding:4px 12px;font-size:13px}
 .specl2{padding:2px 14px 8px 22px;font-size:14px;color:var(--muted);line-height:1.5}
 .ftab{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:8px 0 4px}.ftab span{color:var(--muted)}.ftab b{text-align:right;font-variant-numeric:tabular-nums}.fnext{border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
 .spl{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}.spl .muted{font-size:12px}
@@ -457,9 +458,9 @@ function cum(kind,from,to){let s=0;for(let l=from+1;l<=to;l++)s+=lvlCost(kind,l)
 function ref(c,key){
   const i=key.indexOf(':'),k=i<0?key:key.slice(0,i),n=i<0?'':key.slice(i+1);
   if(k==='feerie'||k==='masque'||k==='fortune'||k==='atout'||k==='spec'){const o=c[k];return o?{kind:k,nom:LABEL[k],o,max:k==='spec'?null:(k==='atout'&&c.type==='PJ'?Math.max(atoutListed(c),o.cur||0):o.max)}:null;}
-  if(k==='carac'){const o=c.carac&&c.carac[n];return o?{kind:'carac',nom:n,o,max:o.max}:null;}
-  if(k==='comp'){for(const p of c.profils||[])for(const x of p.comps||[])if(x.nom===n)return{kind:'comp',nom:n,o:x,max:x.max};return null;}
-  if(k==='fut'){const x=(c.futiles||[]).find(f=>f.nom===n);return x?{kind:'fut',nom:n,o:x,max:x.max}:null;}
+  if(k==='carac'){const o=c.carac&&c.carac[n];return o?{kind:'carac',nom:n,o,max:maxFor(c,'carac',n,o)}:null;}
+  if(k==='comp'){for(const p of c.profils||[])for(const x of p.comps||[])if(x.nom===n)return{kind:'comp',nom:n,o:x,max:maxFor(c,'comp',n,x)};return null;}
+  if(k==='fut'){const x=(c.futiles||[]).find(f=>f.nom===n);return x?{kind:'fut',nom:n,o:x,max:maxFor(c,'fut',n,x)}:null;}
   if(k==='prof'){const x=(c.profils||[]).find(f=>f.nom===n);return x?{kind:'prof',nom:n,o:x,max:x.max}:null;}
   return null;
 }
@@ -558,7 +559,7 @@ function specComp(nom){const k=nrmS(SPALIAS[nrm(nom)]||nom);if(LANGS.includes(nr
 function specInfo(nom){const k=nrmS(SPALIAS[nrm(nom)]||nom);for(const l of Object.values(CATSPEC))for(const x of l)if(nrmS(x[0])===k)return x;if(LANGS.includes(nrm(nom))||/^langue/.test(nrm(nom)))return ['Langue','ESP/PRES'];return null;}
 const specCost=(key,nom)=>key.startsWith('fut:')?2:nrm(nom)==='mauvaise main'?12:RULES.spec;
 /* Catalogue proposé pour une cible : compétence, profil de PNJ (union de ses compétences) ou futile (aucun) */
-function specCatalog(key){if(key.startsWith('comp:'))return CATSPEC[key.slice(5)]||[];if(key.startsWith('prof:'))return (PROFCOMPS[key.slice(5)]||[]).flatMap(c=>CATSPEC[c]||[]);return [];}
+function specCatalog(key,c){if(key.startsWith('comp:')){const l=CATSPEC[key.slice(5)]||[];return c&&c.race==='Fouinard'&&key==='comp:Conduite'?l.concat([['Tous véhicules à moteur','PRÉC',1]]):l;}if(key.startsWith('prof:'))return (PROFCOMPS[key.slice(5)]||[]).flatMap(c=>CATSPEC[c]||[]);return [];}
 function specsOf(c){return Array.isArray(c.specs)?c.specs:[];}
 const specAnon=c=>Math.max(0,(c.spec&&c.spec.cur||0)-specsOf(c).length);
 const specToAttach=c=>specAnon(c)+specsOf(c).filter(x=>!x.cible).length;
@@ -581,6 +582,22 @@ const RACES={
  'Phénix':{a:[['Bel hidalgo','+1 en Séduction et Classe'],['Rapière ancestrale','+1 à l\'Initiative, +1 aux dégâts'],['Serviteur débrouillard','humain dévoué, Allié et Féal'],['Titre de noblesse','Chevalier sans terre lié à un Baron']]},
  'Troll':{a:[['Ami des petits animaux','de petits animaux lui rendent des services simples'],['Ami ogre gourmet','un contact ogre restaurateur'],['Contact armurier','armes blanches lourdes à prix réduit'],['Homme de main','des contacts dans une faction']],t:[['Épreuves de force','Ressort'],['Chasse','Survie']]},
  'Vampyr':{a:[['Âme damnée','serviteur féerique dévoué'],['Faciès aristocratique','Spécialité Crédit gratuite et +2 auprès des humains'],['Fortune immobilière','+2 en Fortune'],['Visage impassible','−2 aux tests pour deviner ses émotions']]}};
+/* Caractéristiques par race [min, max] (ordre CARCOL) */
+const CARMAX={'Elfe':[[0,7],[0,4],[0,3],[0,7],[0,7],[0,7],[0,7],[0,6]],'Troll':[[1,5],[4,9],[3,8],[1,4],[1,2],[2,8],[1,3],[3,9]],'Fouinard':[[1,6],[1,3],[1,3],[3,8],[4,9],[3,8],[1,5],[2,6]],'Bastet':[[3,7],[1,5],[1,5],[2,6],[2,6],[3,7],[3,7],[1,5]],'Fleur de métal':[[2,6],[1,5],[1,5],[2,6],[1,5],[2,6],[4,8],[3,7]]};
+const CARCOL=['Agilité','Constitution','Force','Précision','Esprit','Perception','Prestance','Sang Froid'];
+const MAXEX={massetoc:{Constitution:8,Esprit:3}}; /* choix de création : Esprit max 3 au prix d'1 point de Constitution max */
+/* Compétences de prédilection (max 7) ; un sous-tableau = au choix */
+const PRED={'Elfe':['Classe','Entregent','Sensibilité','Culture',['Mêlée','Tir']],'Troll':['Conduite','Mêlée','Monde du crime','Ressort','Survie'],'Fouinard':['Conduite','Habiletés','Observations','Sciences','Tir'],'Bastet':['Classe','Habiletés','Larçin','Séduction','Survie'],'Fleur de métal':['Comédie','Discrétion','Médecine','Mêlée','Séduction']};
+const PREDFUT={'Elfe':['Héraldique','Arts plastiques'],'Troll':[['Cuisine','Agriculture'],'Gourmet'],'Fouinard':[['Modélisme','Astronomie'],['Musique','Photographie']],'Bastet':[['Danse','Potins mondains'],'Jeux'],'Fleur de métal':[['Danse','Théâtre'],'Mode']};
+const ACCRU={'Elfe':['Agilité','Prestance'],'Troll':['Constitution','Force','Sang Froid'],'Fouinard':['Esprit','Perception','Précision'],'Bastet':['Agilité','Perception'],'Fleur de métal':['Prestance','Sang Froid'],'Djinn':['Agilité']};
+/* Résout les choix « X ou Y » d'après la fiche (celui qui avait déjà un max de 7, sinon celui présent, sinon le premier) */
+function predOf(c,list,items){const has=n=>items.find(x=>nrm(x.nom)===nrm(n));return (list||[]).map(e=>{if(!Array.isArray(e))return e;const m7=e.find(n=>{const x=has(n);return x&&(x.max||0)>=7;});return m7||e.find(n=>has(n))||e[0];}).map(nrm);}
+function maxFor(c,kind,nom,o){if(c.type!=='PJ')return o.max;
+  if(kind==='carac'){const ex=MAXEX[c.id]&&MAXEX[c.id][nom];if(ex!=null)return ex;const t=CARMAX[c.race];const i=CARCOL.indexOf(nom);return t&&i>=0?t[i][1]:o.max;}
+  if(kind==='comp'){if(!PRED[c.race])return o.max;const all=(c.profils||[]).flatMap(p=>p.comps||[]);return predOf(c,PRED[c.race],all).includes(nrm(nom))?7:6;}
+  if(kind==='fut'){if(!PREDFUT[c.race])return o.max;return predOf(c,PREDFUT[c.race],c.futiles||[]).includes(nrm(nom))?7:6;}
+  return o.max;}
+const minFor=(c,nom)=>{const t=CARMAX[c.race],i=CARCOL.indexOf(nom);return t&&i>=0?t[i][0]:0;};
 const RACE0={kerian:'Elfe',massetoc:'Troll',sloan:'Fleur de métal',theodule:'Fouinard',rowen:'Bastet',maral:'Djinn'};
 const TYP='Spécialités typiques';
 const nrmA=t=>nrmS(t).replace(/y/g,'i').replace(/-/g,' ').replace(/\s+/g,' ');
@@ -608,6 +625,8 @@ function fixTypKerian(){const c0=S.chars.kerian;if(!c0||c0.fixTypK||c0.race!=='E
 function fromJournal(c,re){const named=[];let anon=0;for(const a of c.achats||[]){const l=(a.label||'').trim();if(!re.test(l))continue;const m=/\(([^)]*)\)/.exec(l);
     if(m&&/^\s*\d+\s*(→|->)\s*\d+\s*$/.test(m[1])){const [x,y]=m[1].split(/→|->/).map(v=>+v);anon+=Math.max(0,y-x);}else if(m&&m[1].trim())named.push({nom:m[1].trim(),achat:a.id});else anon+=1;}
   return{named,anon};}
+function renameVM(){for(const c0 of Object.values(S.chars)){if(c0.race!=='Fouinard')continue;const sl=specsOf(c0);const i=sl.findIndex(x=>/^vehicules? a moteur$/.test(nrm(x.nom)));if(i<0)continue;
+    const c=clone(c0);c.specs=sl.slice();c.specs[i]={...c.specs[i],nom:'Tous véhicules à moteur'};const ac=c.specs[i].achat&&(c.achats||[]).find(x=>x.id===c.specs[i].achat);if(ac)ac.label='Spécialité (Tous véhicules à moteur)';saveChar(c);}}
 function resetSA(){for(const c0 of Object.values(S.chars)){if(c0.resetSA)continue;const c=clone(c0);
     const sp=fromJournal(c,/^sp[ée]cialit[ée]s?(?=\s|\(|$)/i);c.specs=sp.named.map(x=>({nom:x.nom,cible:null,achat:x.achat}));c.spec={...(c.spec||{}),cur:sp.named.length+sp.anon};
     if(c.type==='PJ'){const at=fromJournal(c,/^atouts?\s+f[ée]eriques?(?=\s|\(|$)/i),rl=RACES[c.race]?RACES[c.race].a:[];
@@ -724,10 +743,10 @@ function itemRow(c,key,dispo){
   if(r.kind==='spec'){const ta=specToAttach(c);if(ta)sub=`<span class="nsub bad">${ta} à rattacher</span>`;}
   const spk=r.kind==='comp'||r.kind==='fut'||r.kind==='prof',sps=spk?specsOf(c).filter(x=>x.cible===key):[];
   const so=!!(S.specOpen&&S.specOpen[c.id+'|'+key]);
-  if(spk)sub+=`<span class="spt${so?' on':''}" data-act="specToggle" data-key="${esc(key)}" role="button" tabindex="0" aria-expanded="${so}"><span class="cv" aria-hidden="true">›</span> ${sps.length} spé.</span>`;
+
   let after=spk&&so?specList(c,key,dispo):'';
-  if(r.kind==='atout'&&c.type==='PJ'){const ao=!!(S.specOpen&&S.specOpen[c.id+'|atout']);sub+=`<span class="spt${ao?' on':''}" data-act="specToggle" data-key="atout" role="button" tabindex="0" aria-expanded="${ao}"><span class="cv" aria-hidden="true">›</span> ${cur} atout${cur>1?'s':''}</span>`;if(ao)after=atoutList(c,dispo);}
-  return `<div class="irow${atMax?' max':can?' can':''}"><button class="rmain" data-act="open" data-key="${esc(key)}"><span class="nm">${esc(r.nom)}${sub}${acc?`<span class="accst" title="${esc(r.nom)} ${accW(r.nom)} : +1 hors maximum" aria-label="accru">★</span>`:''}</span>${max!=null?(acc?barAcc(cur,max,planned):bar(cur,max,planned)):'<span></span>'}<span class="lv">${lvTxt}</span></button>${tail}</div>${after}`;
+  if(r.kind==='atout'&&c.type==='PJ'){const ao=!!(S.specOpen&&S.specOpen[c.id+'|atout']);if(ao)after=atoutList(c,dispo);}
+  return `<div class="irow${atMax?' max':can?' can':''}"><button class="rmain" data-act="${spk||(r.kind==='atout'&&c.type==='PJ')?'specToggle':'open'}" data-key="${esc(key)}"${spk||(r.kind==='atout'&&c.type==='PJ')?` aria-expanded="${spk?so:!!(S.specOpen&&S.specOpen[c.id+'|atout'])}"`:''}><span class="nm">${esc(r.nom)}${sub}${acc?`<span class="accst" title="${esc(r.nom)} ${accW(r.nom)} : +1 hors maximum" aria-label="accru">★</span>`:''}</span>${max!=null?(acc?barAcc(cur,max,planned):bar(cur,max,planned)):'<span></span>'}<span class="lv">${lvTxt}</span></button>${tail}</div>${after}`;
 }
 /* Liste dépliée sous une compétence : spécialités du livre (acquise / achat), acquises hors liste, à rattacher, et ligne libre */
 function specList(c,key,dispo){const all=specsOf(c),own=all.filter(x=>x.cible===key),ownN=new Set(own.map(x=>nrmS(x.nom))),anon=specAnon(c);
@@ -735,13 +754,15 @@ function specList(c,key,dispo){const all=specsOf(c),own=all.filter(x=>x.cible===
   const btn=(nom,attrs)=>{if(anon>0)return `<button class="bb" ${attrs}>Rattacher</button>`;const k=specCost(key,nom);return `<button class="bb" ${attrs}${k>dispo?' disabled':''} aria-label="Acheter ${esc(nom)} pour ${k} XP">+ ${k}</button>`;};
   let h='';
   for(const x of all.filter(y=>!y.cible))h+=`<div class="ln att"><span>${esc(x.nom)}<small>possédée, à rattacher</small></span><button class="bb" data-act="spAttach" data-i="${all.indexOf(x)}" data-key="${esc(key)}">Rattacher</button></div>`;
-  for(const e of specCatalog(key)){if(e[0]==='Langue : ')continue;const o=own.find(x=>nrmS(x.nom)===nrmS(e[0]));
+  for(const e of specCatalog(key,c)){if(e[0]==='Langue : ')continue;const o=own.find(x=>nrmS(x.nom)===nrmS(e[0]));
     if(o){h+=acq(o);continue;}const k=specCost(key,e[0]),ok=anon>0||k<=dispo;
     h+=`<div class="ln${ok?' dispo':''}"><span>${esc(e[0])}${e[2]?'*':''}<small>${esc(e[1])}</small></span>${btn(e[0],`data-act="spBuy" data-key="${esc(key)}" data-nom="${esc(e[0])}"`)}</div>`;}
-  const cat=new Set(specCatalog(key).map(e=>nrmS(e[0])));for(const o of own)if(!cat.has(nrmS(o.nom)))h+=acq(o);
+  const cat=new Set(specCatalog(key,c).map(e=>nrmS(e[0])));for(const o of own)if(!cat.has(nrmS(o.nom)))h+=acq(o);
   const ph=key==='comp:Culture'?'Autre spécialité ou langue…':'Autre spécialité…';
   h+=`<div class="ln"><input type="text" data-spo="${esc(key)}" placeholder="${ph}" aria-label="${ph}" value="${esc((S.spOther||{})[c.id+'|'+key]||'')}" autocomplete="off">${btn('',`data-act="spBuyO" data-key="${esc(key)}"`)}</div>`;
-  return `<div class="spx">${h}</div>`;}
+  return `<div class="spx">${h}${lvlLine(c,key)}</div>`;}
+function lvlLine(c,key){const r=ref(c,key);if(!r)return '';const cur=r.o.cur||0,lb=lastBuy(c,key);
+  return `<div class="fixl"><span>Niveau ${cur}${r.max!=null?' / '+r.max:''}</span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${lb?`<button class="btn ghost" data-act="undoK" data-key="${esc(key)}">Annuler le dernier achat</button>`:''}<button class="btn ghost" data-act="fixOpen" data-key="${esc(key)}">Corriger le niveau</button></span></div>`;}
 /* Liste dépliée des atouts féeriques : atouts de la race + Spécialités typiques (acquis / achat), acquis hors liste, ligne libre */
 function atoutList(c,dispo){const all=atoutsOf(c),anon=atoutAnon(c),r=RACES[c.race],typ=r&&r.t?'offre '+r.t.map(x=>x[0]).join(', '):'offre 2 spécialités gratuites à choisir';
   const lst=(r?r.a:[]).concat([[TYP,typ]]),cost=RULES.atout;
@@ -753,7 +774,7 @@ function atoutList(c,dispo){const all=atoutsOf(c),anon=atoutAnon(c),r=RACES[c.ra
   for(const o of all)if(!used.has(o))h+=acq(o,'hors liste de la race');
   h+=`<div class="ln"><input type="text" data-ato="1" placeholder="Autre atout…" aria-label="Autre atout" value="${esc((S.spOther||{})[c.id+'|atout']||'')}" autocomplete="off">${btn('data-act="atBuyO"')}</div>`;
   if(!c.race)h+=`<div class="muted small" style="padding:4px 10px">Race à préciser dans Joueurs pour proposer ses atouts.</div>`;
-  return `<div class="spx">${h}</div>`;}
+  return `<div class="spx">${h}${lvlLine(c,'atout')}</div>`;}
 function specBlock(c){const ta=specToAttach(c),named=specsOf(c).filter(x=>!x.cible);
   return `<div class="muted small" style="padding:4px 0 8px">Les spécialités s'affichent sous leur ${c.type==='PNJ'?'profil':'compétence'}. ${ta?`<b style="color:var(--bad)">${ta} à rattacher</b>${named.length?` (dont ${named.map(x=>esc(x.nom)).join(', ')})`:''} : ouvre une ${c.type==='PNJ'?'ligne de profil':'compétence'} pour la rattacher sans XP.`:''}</div>`;}
 function namesBlock(c,kind){
@@ -1009,7 +1030,7 @@ function viewPlayers(){
     return `<div class="card" style="margin-bottom:12px"><div class="frow"><div class="field"><label for="cc-${c.id}">Nom court</label><input id="cc-${c.id}" type="text" data-cf="court" data-id="${c.id}" value="${esc(c.court)}"></div><div class="field"><label for="cn-${c.id}">Nom complet</label><input id="cn-${c.id}" type="text" data-cf="nom" data-id="${c.id}" value="${esc(c.nom)}"></div><div class="field"><label for="cs-${c.id}">Statut</label><select id="cs-${c.id}" data-cf="statut" data-id="${c.id}">${Object.entries(STATUTS).map(([k,v])=>`<option value="${k}"${(c.statut||'actif')===k?' selected':''}>${v}</option>`).join('')}</select></div>${c.type==='PJ'?`<div class="field"><label for="cr-${c.id}">Race</label><select id="cr-${c.id}" data-cf="race" data-id="${c.id}"><option value="">— à préciser —</option>${Object.keys(RACES).map(r=>`<option${c.race===r?' selected':''}>${esc(r)}</option>`).join('')}</select></div>`:''}${c.type==='PNJ'?`<div class="field"><label for="cp-${c.id}">Rattaché au PJ</label><select id="cp-${c.id}" data-cf="pj" data-id="${c.id}"><option value="">— aucun —</option>${Object.values(S.chars).filter(x=>x.type==='PJ').sort((a,b)=>(a.court||'').localeCompare(b.court||'')).map(x=>`<option value="${x.id}"${c.pj===x.id?' selected':''}>${esc(x.court)}</option>`).join('')}</select></div>`:''}</div>
       <div class="muted small">${c.type==='PNJ'?(c.pj&&S.chars[c.pj]?'PNJ · rattaché à '+esc(S.chars[c.pj].court)+(c.pjDate?' depuis le '+fmtDate(c.pjDate)+' : part d\'XP sur les sessions à partir de cette date':''):'PNJ · rattache-le à un PJ pour qu\'il reçoive sa part d\'XP des sessions'):c.type+' · '+(ow?'joué par '+esc(ow):'sans joueur')}</div>
       <div class="actions" style="margin-top:8px"><button class="btn" data-act="cHide" data-id="${c.id}" aria-pressed="${!!c.cache}">${c.cache?'Masqué aux autres : afficher':'Masquer aux autres'}</button>${c.type==='PJ'?`<button class="btn" data-act="cMoy" data-id="${c.id}">${c.horsMoyenne?'Compter dans la moyenne':'Exclure de la moyenne'}</button>`:''}<button class="btn ghost" data-act="cDel" data-id="${c.id}">Supprimer</button></div></div>`;}).join('')||'<div class="card empty">Aucun personnage visible.</div>';
-  h+=`<div class="card"><h3>Nouveau personnage</h3><div class="frow"><div class="field"><label for="nc-c">Nom court</label><input id="nc-c" type="text" data-nc="court" value="${esc(S.newC.court)}"></div><div class="field"><label for="nc-n">Nom complet</label><input id="nc-n" type="text" data-nc="nom" value="${esc(S.newC.nom)}"></div><div class="field"><label for="nc-t">Type</label><select id="nc-t" data-nc="type"><option value="PJ"${S.newC.type==='PJ'?' selected':''}>PJ</option><option value="PNJ"${S.newC.type==='PNJ'?' selected':''}>PNJ</option></select></div><div class="field"><label for="nc-o">Joueur</label><select id="nc-o" data-nc="owner"><option value="">— aucun —</option>${pl.map(p=>`<option value="${p.id}"${S.newC.owner===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}</select></div></div><div class="muted small" style="margin-bottom:8px">La fiche démarre à zéro, avec des maxima par défaut. Corrige-les ensuite depuis la fiche (« Corriger le niveau ou le maximum »).</div><button class="btn pri" data-act="addC"${S.newC.court.trim()?'':' disabled'}>Créer le personnage</button></div>`;
+  h+=`<div class="card"><h3>Nouveau personnage</h3><div class="frow"><div class="field"><label for="nc-c">Nom court</label><input id="nc-c" type="text" data-nc="court" value="${esc(S.newC.court)}"></div><div class="field"><label for="nc-n">Nom complet</label><input id="nc-n" type="text" data-nc="nom" value="${esc(S.newC.nom)}"></div><div class="field"><label for="nc-t">Type</label><select id="nc-t" data-nc="type"><option value="PJ"${S.newC.type==='PJ'?' selected':''}>PJ</option><option value="PNJ"${S.newC.type==='PNJ'?' selected':''}>PNJ</option></select></div><div class="field"><label for="nc-o">Joueur</label><select id="nc-o" data-nc="owner"><option value="">— aucun —</option>${pl.map(p=>`<option value="${p.id}"${S.newC.owner===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}</select></div></div><div class="muted small" style="margin-bottom:8px">La fiche démarre à zéro, avec des maxima par défaut. Les maxima suivent la race du personnage ; corrige les niveaux depuis la fiche (« Corriger le niveau »).</div><button class="btn pri" data-act="addC"${S.newC.court.trim()?'':' disabled'}>Créer le personnage</button></div>`;
   return h;
 }
 function viewRules(){
@@ -1414,7 +1435,7 @@ function renderSheet(){
     const a=S.asheet,c=S.chars[a.cid],x=c&&(c.achats||[]).find(y=>y.id===a.id);
     if(!x){S.asheet=null;root.innerHTML='';return;}
     const r=x.key?ref(c,x.key):null,canRev=!!r&&(r.o.cur||0)===x.to;
-    const info=(x.key||'').startsWith('pp:')?`Annuler cette dépense rend ${esc(ppFmt(x.pp||0))} PP au profil ${esc(x.key.slice(3))}.`:(x.key||'').startsWith('autre:')?`Annuler cette dépense rend ${x.cout} XP.`:x.key?(canRev?`Annuler cet achat rend ${x.cout} XP et fait redescendre ${esc(r.nom)} de ${x.to} à ${x.from}.`:`Le niveau de cet élément a changé depuis l'achat : annuler rend seulement les XP. Corrige le niveau à la main si besoin.`):`Achat importé du tableur : annuler rend les XP, mais ne change pas le niveau sur la fiche. Corrige le niveau ensuite avec « Corriger le niveau ou le maximum ».`;
+    const info=(x.key||'').startsWith('pp:')?`Annuler cette dépense rend ${esc(ppFmt(x.pp||0))} PP au profil ${esc(x.key.slice(3))}.`:(x.key||'').startsWith('autre:')?`Annuler cette dépense rend ${x.cout} XP.`:x.key?(canRev?`Annuler cet achat rend ${x.cout} XP et fait redescendre ${esc(r.nom)} de ${x.to} à ${x.from}.`:`Le niveau de cet élément a changé depuis l'achat : annuler rend seulement les XP. Corrige le niveau à la main si besoin.`):`Achat importé du tableur : annuler rend les XP, mais ne change pas le niveau sur la fiche. Corrige le niveau ensuite avec « Corriger le niveau ».`;
     root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Achat"><div class="in"><div><h2>Modifier l'achat</h2><div class="muted small">${esc(c.court)}</div></div>
       <div class="field"><label for="al">Libellé</label><input id="al" type="text" data-as="label" value="${esc(a.label)}"></div>
       <div class="frow" style="margin:0"><div class="field"><label for="ac">Coût (XP)</label><input id="ac" type="number" inputmode="numeric" min="0" data-as="cout" value="${esc(a.cout)}"></div><div class="field"><label for="ad">Date</label><input id="ad" type="date" data-as="date" value="${esc(a.date||'')}"></div></div>
@@ -1438,11 +1459,11 @@ function renderSheet(){
       <div class="ftab"><span>Revenu annuel</span><b>${esc(f[1])}&nbsp;F</b><span>Argent de poche</span><b>${frs(f[2])}</b><span>Argent disponible par mois</span><b>${frs(f[3])}</b></div>
       ${nx?`<div class="muted small fnext">Rang suivant : ${esc(nx[0])} · Revenu par mois ${frs(nx[3])} · Argent de poche ${frs(nx[2])}</div>`:''}</div>
       <div class="muted small">⚠ Dépenser plus de ${frs(f[3]*2)} (le double du mois) en moins de deux mois fait perdre un rang de Fortune.</div>`;}
-  if(r.kind==='carac'){const other=c.accru&&!acc?c.accru:null;
+  if(r.kind==='carac'&&(!ACCRU[c.race]||ACCRU[c.race].includes(r.nom)||acc)){const other=c.accru&&!acc?c.accru:null;
     body+=`<label style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;margin:6px 0${other?';opacity:.6':''}"><span><b>${esc(r.nom)} ${accW(r.nom)}</b><br><span class="muted small">${other?`Déjà accrue : ${esc(other)}. Une seule par personnage.`:'+1 au score, au-delà du maximum. Une seule par personnage.'}</span></span><input type="checkbox" data-acc="${esc(r.nom)}"${acc?' checked':''}${other?' disabled':''} style="width:22px;height:22px;accent-color:var(--accent)"></label>`;}
   body+=undoH;
-  let fix=`<button class="btn ghost" data-act="fixToggle" style="align-self:flex-start">${sh.fix?'Masquer la correction':'Corriger le niveau ou le maximum'}</button>`;
-  if(sh.fix)fix+=`<div class="frow" style="margin:0"><div class="field"><label for="fc">Niveau actuel</label><input id="fc" type="number" min="0" data-sh="fixCur" value="${esc(sh.fixCur)}"></div>${max!=null?`<div class="field"><label for="fx">Maximum</label><input id="fx" type="number" min="0" data-sh="fixMax" value="${esc(sh.fixMax)}"></div>`:''}</div><div class="muted small">La correction ne dépense ni ne rend aucun XP.</div><div class="actions"><button class="btn" data-act="fixApply">Appliquer la correction</button></div>`;
+  let fix=`<button class="btn ghost" data-act="fixToggle" style="align-self:flex-start">${sh.fix?'Masquer la correction':'Corriger le niveau'}</button>`;
+  if(sh.fix)fix+=`<div class="frow" style="margin:0"><div class="field"><label for="fc">Niveau actuel</label><input id="fc" type="number" min="0" data-sh="fixCur" value="${esc(sh.fixCur)}"></div></div><div class="muted small">La correction ne dépense ni ne rend aucun XP.</div><div class="actions"><button class="btn" data-act="fixApply">Appliquer la correction</button></div>`;
   root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(r.nom)}"><div class="in"><div><h2>${esc(r.nom)}</h2><div class="muted small">${esc(c.court)}</div></div>${body}${fix}<div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;
 }
 function render(){
@@ -1583,6 +1604,8 @@ document.addEventListener('click',ev=>{
   else if(a==='spCancelOk'){const g=S.dlg,c0=S.chars[g.cid],e=specsOf(c0)[g.i];S.dlg=null;if(!e)return;
     if(e.achat&&(c0.achats||[]).some(x=>x.id===e.achat)){saveChar(cancelAchat(c0,e.achat).c);return;}
     const c=clone(c0);c.specs=specsOf(c).slice();if(e.offert){c.spec.cur=Math.max(0,(c.spec.cur||0)-1);c.specs.splice(g.i,1);}else c.specs[g.i]={nom:e.nom,cible:null};saveChar(c);return;}
+  else if(a==='undoK'){const u=undoLevel(S.chars[S.sel],d.key);if(u)saveChar(u.c);return;}
+  else if(a==='fixOpen'){const c=S.chars[S.sel],r=ref(c,d.key);if(!r)return;const cu=r.o.cur||0;S.sheet={id:c.id,key:d.key,to:cu+1,fix:true,fixCur:cu,fixMax:r.max,sp:{}};}
   else if(a==='spPick'){S.sheet.sp={...(S.sheet.sp||{}),pick:d.v};}
   else if(a==='specAdd'){const sh=S.sheet,c0=S.chars[sh.id],sp=sh.sp||{},pick=sp.pick||'';if(!c0||!pick)return;const sl=specsOf(c0);
     const isNamed=pick.startsWith('n:'),nom=isNamed?(sl[+pick.slice(2)]||{}).nom:pick.startsWith('c:')?pick.slice(2):pick==='l:'?(sp.txt&&sp.txt.trim()?'Langue : '+sp.txt.trim():''):(sp.txt||'').trim();if(!nom)return;
@@ -1603,7 +1626,7 @@ document.addEventListener('click',ev=>{
     c.achats=c.achats||[];c.achats.push({id:'a'+Date.now().toString(36)+Math.floor(Math.random()*1e3),date:today(),label:`PP ${g.prof} - ${ppFmt(n)} - ${why||'non précisé'}`,cout:0,key:'pp:'+g.prof,pp:n,ppNP:!why});
     S.dlg=null;saveChar(c);return;}
   else if(a==='fixToggle'){S.sheet.fix=!S.sheet.fix;}
-  else if(a==='fixApply'){const n=clone(cur()),r=ref(n,S.sheet.key);const v=Math.max(0,Math.floor(+S.sheet.fixCur));if(!isNaN(v))r.o.cur=v;if(r.max!=null&&S.sheet.fixMax!==undefined&&S.sheet.fixMax!==''&&!isNaN(+S.sheet.fixMax))r.o.max=Math.max(0,Math.floor(+S.sheet.fixMax));S.sheet=null;saveChar(n);return;}
+  else if(a==='fixApply'){const n=clone(cur()),r=ref(n,S.sheet.key);const v=Math.max(r.kind==='carac'?minFor(n,r.nom):0,Math.floor(+S.sheet.fixCur));if(!isNaN(v))r.o.cur=v;S.sheet=null;saveChar(n);return;}
   else if(a==='buy'){const c=cur(),n=buy(c,S.sheet.key,S.sheet.to,today());S.sheet=null;saveChar(n);return;}
   else if(a==='plan'){const c=clone(cur());c.plan=c.plan||{};c.plan[S.sheet.key]=S.sheet.to;S.sheet=null;saveChar(c);return;}
   else if(a==='unplanSheet'||a==='unplan'){const c=clone(S.chars[S.sheet?S.sheet.id:S.sel]);const k=a==='unplan'?d.key:S.sheet.key;delete c.plan[k];S.sheet=null;saveChar(c);return;}
@@ -1785,7 +1808,7 @@ function start(){
       if(snap.metadata.hasPendingWrites)return;
       const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=normNoms(x);});
       S.chars=m;S.ready=true;clearTimeout(timer);if(!snap.metadata.fromCache)setSync('ok');render();
-      fixTypKerian();resetSA();
+      fixTypKerian();resetSA();renameVM();
     },e=>{setSync('err','Lecture impossible');});
     db.collection('players').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
