@@ -279,6 +279,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.rffx!==undefined&&S.rf&&S.rf.fxEd){S.rf.fxEd[t.dataset.rffx]=t.value;const e=S.rf.fxEd,ok=e.t==='rap'?(e.txt||'').trim():e.t==='perm'?e.cible&&+e.val:+e.val,b=q0('[data-act="rfFxAdd"]');if(b)b.disabled=!ok;}
   else if(t.dataset.rf2!==undefined&&S.rf){S.rf[t.dataset.rf2][+t.dataset.i][+t.dataset.p]=t.value;}
   else if(t.dataset.rfpw!==undefined&&S.rf){S.rf.pw[+t.dataset.rfpw][0]=t.value;}
+  else if(t.dataset.rfpwq!==undefined&&S.rf){S.rf.pw[+t.dataset.rfpwq][2]=t.value;}
   else if(t.dataset.rfat!==undefined&&S.rf){S.rf.at[+t.dataset.rfat][+t.dataset.p]=t.value;}
   else if(t.dataset.rfsp!==undefined&&S.rf){S.rf[t.dataset.rfsp][+t.dataset.i][+t.dataset.p]=t.value;}
   else if(t.dataset.rft!==undefined&&S.rf){S.rf.typ[+t.dataset.rft][+t.dataset.p]=t.value;}
@@ -320,6 +321,7 @@ document.addEventListener('change',ev=>{
   else if(t.dataset.rfjump!==undefined){S.rf=rfDraft(t.value);render();}
   else if(t.dataset.rfk==='ca'&&S.rf){S.rf.ca=t.value;S.rf.cb='';render();}
   else if(t.dataset.rfpw!==undefined&&S.rf){S.rf.pw[+t.dataset.rfpw][0]=t.value;render();}
+  else if(t.dataset.rfpwq!==undefined&&S.rf){S.rf.pw[+t.dataset.rfpwq][2]=t.value;render();}
   else if((t.dataset.rfk==='fam'||t.dataset.rfk==='pa'||t.dataset.rfk==='pb'||t.dataset.rft!==undefined)&&S.rf){if(t.dataset.rft!==undefined)S.rf.typ[+t.dataset.rft][+t.dataset.p]=t.value;else S.rf[t.dataset.rfk]=t.value;render();}
   else if(t.dataset.ptrfile){const f=t.files&&t.files[0],cid=t.dataset.ptrfile;t.value='';if(!f)return;const rd=new FileReader();
     rd.onload=()=>{const im=new Image();im.onload=()=>{window._ptrImg=im;const w=im.naturalWidth,h=im.naturalHeight,base=Math.max(220/w,220/h);S.dlg={kind:'ptr',cid,src:rd.result,w,h,base,z:1,x:130-w*base/2,y:130-h*base/2};S._force=true;render();};im.src=rd.result;};rd.readAsDataURL(f);}

@@ -149,7 +149,11 @@ const accOf=x=>{const c=(x&&x.choix)||[];return c.length?c.filter(o=>o[0]==='acc
 /* Pouvoirs : 4 masqués, 2 démasqués, 1 profond, 1 légendaire ; '?' = inconnu en jeu */
 const PWN={m:4,d:2};
 const pwSlots=x=>{const p=(x&&x.pw)||{};return [...Array(4)].map((_,i)=>(p.m||[])[i]||'').concat([...Array(2)].map((_,i)=>(p.d||[])[i]||''),[p.p||'',p.l||'']);};
-const pwName=id=>id==='?'?'Inconnu':!id?'':((S.pouvoirs&&S.pouvoirs[id])||POUVOIRS_SEED[id]||{nom:id}).nom;
+const pwCat=id=>(S.pouvoirs&&S.pouvoirs[id])||POUVOIRS_SEED[id]||{nom:id};
+const pwName=id=>id==='?'?'Inconnu':!id?'':pwCat(id).nom;
+/* Précision propre à la race (ex. Communication (animale)) ; obligatoire pour un pouvoir du catalogue marqué « prec » */
+const pwPrec=(x,i)=>((x&&x.pwq)||[])[i]||'';
+const pwFull=(x,i)=>{const id=pwSlots(x)[i];if(!id||id==='?')return pwName(id);const q=pwPrec(x,i);return pwName(id)+(q?' ('+q+')':pwCat(id).prec?' (précision à compléter)':'');};
 const carOk=x=>!!(x&&x.car&&CARCOL.every(k=>x.car[k]&&x.car[k][0]!==''&&x.car[k][0]!=null&&x.car[k][1]!==''&&x.car[k][1]!=null));
 function rebuildRaces(){RACES={};CARMAX={};PRED={};PREDFUT={};ACCRU={};
   for(const cr of raceCres()){const x=raceRec(cr),n=x.sing;if(!n)continue;
@@ -376,3 +380,11 @@ function applyParams(){PRM=paramActive();for(const [k] of PARAM_DEF.couts)if(PRM
   if(typeof SKIND!=='undefined'){SKIND.titre.pts=+PRM.secTitre;SKIND.vm.pts=+PRM.secVM;SKIND.vmin.pts=+PRM.secVmin;SKIND.h.pts=+PRM.secH;SEC_BONUS=+PRM.secBonus;}}
 /* Après chargement : remet à jour les bonus intégrés des personnages du moteur (si une fiche de race a changé) */
 function fxSyncAll(){if(!S.ready||!S.racesReady||!S.creaturesReady)return;for(const c of Object.values(S.chars)){if(!c.fx)continue;const n=fxSync(c);if(n!==c){S.chars[n.id]=n;persist('chars/'+n.id,n);}}}
+/* Mise en place ponctuelle : « Communication animale et végétale » et sa variante Troll deviennent « Communication » + précision par race */
+function fixComm(){if(!S.racesReady||!S.pouvoirsReady||!S.races||!S.pouvoirs)return;const OLD={'pw-communication-animale-et-vegetale':'animale et végétale','pw-communication-animale-et-vegetale-animale-uniquement':'animale'};
+  if(!Object.keys(OLD).some(k=>S.pouvoirs[k]))return;const R={...S.races};
+  for(const k in R){const r=R[k];if(!r||!r.pw)continue;const sl=pwSlots(r);if(!sl.some(x=>OLD[x]))continue;const q=((r.pwq||[]).concat(Array(8).fill(''))).slice(0,8);
+    sl.forEach((x,i)=>{if(OLD[x]){if(!q[i])q[i]=OLD[x];sl[i]='pw-communication';}});
+    R[k]={...r,pw:{m:sl.slice(0,4).filter((x,i)=>x||i<(r.pw.m||[]).length),d:sl.slice(4,6).filter((x,i)=>x||i<(r.pw.d||[]).length),p:sl[6],l:sl[7]},pwq:q};}
+  const P={...S.pouvoirs};for(const k in OLD)delete P[k];P['pw-communication']={nom:'Communication',prec:true};
+  S.pouvoirs=P;persist('meta/pouvoirs',{byId:P});S.races=R;persist('meta/races',{byId:R});rebuildRaces();render();}

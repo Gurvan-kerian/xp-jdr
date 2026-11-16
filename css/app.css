@@ -484,3 +484,5 @@ fieldset.pf{border:0;padding:0;margin:0;min-width:0}.lab2{font-size:12px;letter-
 .pnjg{display:grid;grid-template-columns:1.4fr .8fr .8fr auto;gap:6px;align-items:center}.pnjg input{min-width:0}
 .fxfix{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}.fxfix .hd{display:flex;justify-content:space-between;align-items:baseline}.fxq{padding:6px 0;display:flex;flex-direction:column;gap:5px;font-size:14px}.fxq .seg{align-self:flex-start}
 .fxnote{padding:0 0 6px;color:var(--good)}
+
+.pwq{display:flex;gap:6px;align-items:center;margin:0 0 4px 12px}.pwq input{flex:1;min-width:0;font-size:13px;padding:4px 8px}.pwq input.need{border-color:var(--bad)}

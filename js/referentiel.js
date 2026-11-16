@@ -23,13 +23,13 @@ function refHum(){const g=S.rf,pn=Object.values(S.chars).filter(isHum);
     <h3 class="rs">Règles fixes</h3><ul class="small" style="margin:4px 0 0;padding-left:18px;line-height:1.6"><li>Profils et compétences : maximum 6.</li><li>Spécialités : mêmes règles que pour les fées.</li><li>Pas de caractéristique accrue, pas de compétence de prédilection, pas de compétence futile, pas d'atout féerique.</li></ul>
     <div class="actions" style="margin-top:14px"><button class="btn pri" data-act="rfHumSave">Enregistrer</button></div>${g.saved?'<div class="small muted" style="margin-top:6px">Enregistré.</div>':''}</div>`;}
 function rfDraft(id){const cr=S.creatures.find(c=>c.id===id);const x=cr?clone(raceRec(cr)):{sing:'',car:null,acc:[],pred:[],fut:[],at:[],typ:[],cap:[],choix:[],av:[],dv:[],pw:{m:[],d:[],p:'',l:''}};
-  const sl=id=>id==='?'?['',true]:[pwName(id),false],pw=pwSlots(x).map(sl);
+  const sl=(id,i)=>id==='?'?['',true,pwPrec(x,i)]:[pwName(id),false,pwPrec(x,i)],pw=pwSlots(x).map(sl);
   const car={};for(const k of CARCOL){const v=x.car&&x.car[k];car[k]=[v?v[0]:'',v?v[1]:''];}
   const typ=(x.typ||[]).slice(0,2);while(typ.length<2)typ.push(['','']);
   return {id:cr?cr.id:null,sing:x.sing||'',plur:cr?cr.nom:'',fam:cr?cr.fam:'trad',car,acc:x.acc||[],pred:x.pred||[],fut:x.fut||[],at:(x.at||[]).map(a=>[a[0],a[1]||'']),typ,sp:(x.sp||[]).map(e=>[e[0]||'',e[1]||'',e[2]||'']),spf:(x.spf||[]).map(e=>[e[0]||'',e[1]||'',e[2]||'']),cap:(x.cap||[]).map(a=>[a[0]||'',a[1]||'']),choix:clone((x.choix&&x.choix.length)?x.choix:(x.acc||[]).map(c=>['acc',c])),av:(x.av||[]).map(a=>[a[0]||'',a[1]||'']),dv:(x.dv||[]).map(a=>[a[0]||'',a[1]||'']),pw,fx:clone(x.fx||{}),fxEd:null,ca:'acc',cb:'',pa:'',pb:'',fa:'',fb:'',confirm:false};}
 function rfRec(g){const car={};let any=false;for(const k of CARCOL){const a=g.car[k];car[k]=[a[0]===''?'':+a[0],a[1]===''?'':+a[1]];if(a[0]!==''||a[1]!=='')any=true;}
   const pr=(g.pw||[]).map(s=>s[1]?'?':(s[0]||'').trim()),two=l=>(l||[]).filter(a=>(a[0]||'').trim()).map(a=>[a[0].trim(),(a[1]||'').trim()]);
-  return {doc:1,fx:clone(g.fx||{}),fxv:1,cap:two(g.cap),choix:clone(g.choix||[]),av:two(g.av),dv:two(g.dv),pw:{m:pr.slice(0,4),d:pr.slice(4,6),p:pr[6]||'',l:pr[7]||''},sing:g.sing.trim(),car:any?car:null,acc:(g.choix||[]).filter(o=>o[0]==='acc').map(o=>o[1]),pred:clone(g.pred),fut:clone(g.fut),at:g.at.filter(a=>(a[0]||'').trim()).map(a=>[a[0].trim(),(a[1]||'').trim()]),typ:g.typ.filter(t=>(t[0]||'').trim()).map(t=>[t[0].trim(),t[1]||'']),sp:(g.sp||[]).filter(e=>(e[0]||'').trim()).map(e=>[e[0].trim(),e[1]||'',(e[2]||'').trim()]),spf:(g.spf||[]).filter(e=>(e[0]||'').trim()).map(e=>[e[0].trim(),(e[1]||'').trim(),(e[2]||'').trim()])};}
+  return {doc:1,pwq:(g.pw||[]).map(s=>(s[2]||'').trim()),fx:clone(g.fx||{}),fxv:1,cap:two(g.cap),choix:clone(g.choix||[]),av:two(g.av),dv:two(g.dv),pw:{m:pr.slice(0,4),d:pr.slice(4,6),p:pr[6]||'',l:pr[7]||''},sing:g.sing.trim(),car:any?car:null,acc:(g.choix||[]).filter(o=>o[0]==='acc').map(o=>o[1]),pred:clone(g.pred),fut:clone(g.fut),at:g.at.filter(a=>(a[0]||'').trim()).map(a=>[a[0].trim(),(a[1]||'').trim()]),typ:g.typ.filter(t=>(t[0]||'').trim()).map(t=>[t[0].trim(),t[1]||'']),sp:(g.sp||[]).filter(e=>(e[0]||'').trim()).map(e=>[e[0].trim(),e[1]||'',(e[2]||'').trim()]),spf:(g.spf||[]).filter(e=>(e[0]||'').trim()).map(e=>[e[0].trim(),(e[1]||'').trim(),(e[2]||'').trim()])};}
 function refSheet(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id),rec=rfRec(g),st=raceStatus(cr,rec),pj=playedBy(g.sing.trim()),F={trad:'Traditionnelle',mod:'Moderne',exo:'Exotique'};
   const chip=(e,k,i)=>Array.isArray(e)?`<span class="rchip grp"><b>au choix</b> ${e.map(esc).join(' <span class="muted">ou</span> ')}<button data-act="rfPredDel" data-k="${k}" data-i="${i}" aria-label="Retirer">✕</button></span>`:`<span class="rchip">${esc(e)}<button data-act="rfPredDel" data-k="${k}" data-i="${i}" aria-label="Retirer ${esc(e)}">✕</button></span>`;
   const copt=(v,none)=>(none?`<option value="">${none}</option>`:'')+COMPS_ALL.map(c=>`<option${v===c?' selected':''}>${esc(c)}</option>`).join('');
@@ -92,7 +92,7 @@ function creToggle(id,sid){const c=S.creatures.find(x=>x.id===id);if(!c)return;
 const PWG=[['Masqués',0,4,''],['Démasqués',4,6,''],['Profond',6,7,' · accessible au palier Profond'],['Légendaire',7,8,' · accessible au palier Légendaire']];
 function pwIdByName(nm){const k=nrm(nm);for(const [id,p] of Object.entries(S.pouvoirs||{}))if(nrm(p.nom)===k)return id;return null;}
 function pwOthers(nm,selfId){if(!nm)return [];const id=pwIdByName(nm);if(!id)return [];const out=[];
-  for(const cr of raceCres()){if(cr.id===selfId)continue;const x=raceRec(cr);if(pwSlots(x).includes(id))out.push(x.sing);}return out;}
+  for(const cr of raceCres()){if(cr.id===selfId)continue;const x=raceRec(cr),i=pwSlots(x).indexOf(id);if(i>=0){const q=pwPrec(x,i);out.push(x.sing+(q?' ('+q+')':''));}}return out;}
 function rfNewBlocks(g){
   const rows=(k,lab,ph)=>`<div class="rgrid" style="grid-template-columns:1fr 1.4fr auto">${(g[k]||[]).map((a,i)=>`<input type="text" data-rf2="${k}" data-i="${i}" data-p="0" value="${esc(a[0])}" placeholder="${ph}" aria-label="${lab} ${i+1}"><input type="text" data-rf2="${k}" data-i="${i}" data-p="1" value="${esc(a[1])}" placeholder="Effet (facultatif)" aria-label="Effet ${i+1}"><button class="x" data-act="rf2Del" data-k="${k}" data-i="${i}" aria-label="Retirer">✕</button>${fxLine(g,k,a[0])}`).join('')||'<span class="muted small" style="grid-column:1/-1">Aucun.</span>'}</div><div class="radd"><button class="btn" data-act="rf2Add" data-k="${k}">+ Ajouter</button></div>`;
   const ch=(g.choix||[]).map((o,i)=>`<span class="rchip${o[0]==='acc'?' grp':''}">${o[0]==='acc'?'<b>accrue</b> ':''}${esc(o[1])}<button data-act="rfChDel" data-i="${i}" aria-label="Retirer">✕</button></span>`).join('')||'<span class="muted small">Aucune option.</span>';
@@ -106,7 +106,8 @@ function rfNewBlocks(g){
   h+=`<h3 class="rs">Pouvoirs <span class="muted small" style="text-transform:none;letter-spacing:0;font-family:inherit">${n} / 8</span></h3><datalist id="pwcat">${Object.values(S.pouvoirs||{}).map(p=>p.nom).sort((a,b)=>a.localeCompare(b,'fr')).map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`;
   for(const [lab,a,b,sub] of PWG){h+=`<div class="small" style="margin:8px 0 4px"><b>${lab}</b><span class="muted">${sub}</span></div>`;
     for(let i=a;i<b;i++){const s=g.pw[i]||['',false],ot=s[1]?[]:pwOthers(s[0],g.id);
-      h+=`<div class="pwrow"><input type="text" list="pwcat" data-rfpw="${i}" value="${esc(s[1]?'':s[0])}" placeholder="${s[1]?'Inconnu (à nommer plus tard)':'Pouvoir'}"${s[1]?' disabled':''} aria-label="${lab} ${i-a+1}"><button class="btn ghost pwunk" data-act="rfPwUnk" data-i="${i}" aria-pressed="${!!s[1]}" title="Pouvoir inconnu en jeu">Inconnu</button>${rfPwEye(g,i,lab)}</div>${ot.length?`<div class="muted small pwalso">aussi : ${ot.map(esc).join(', ')}</div>`:''}`;}}
+      const cid=s[1]?null:pwIdByName(s[0]),need=cid&&pwCat(cid).prec&&!(s[2]||'').trim();
+      h+=`<div class="pwrow"><input type="text" list="pwcat" data-rfpw="${i}" value="${esc(s[1]?'':s[0])}" placeholder="${s[1]?'Inconnu (à nommer plus tard)':'Pouvoir'}"${s[1]?' disabled':''} aria-label="${lab} ${i-a+1}"><button class="btn ghost pwunk" data-act="rfPwUnk" data-i="${i}" aria-pressed="${!!s[1]}" title="Pouvoir inconnu en jeu">Inconnu</button>${rfPwEye(g,i,lab)}</div><div class="pwq"><input type="text" data-rfpwq="${i}" value="${esc(s[2]||'')}" placeholder="Précision (facultatif)" aria-label="Précision du pouvoir ${lab} ${i-a+1}"${need?' class="need"':''}>${need?'<span class="small" style="color:var(--bad)">précision à compléter</span>':''}</div>${ot.length?`<div class="muted small pwalso">aussi : ${ot.map(esc).join(', ')}</div>`:''}`;}}
   h+=`<div class="muted small" style="margin-top:6px">Un pouvoir commun à plusieurs races n'est saisi qu'une fois : en tapant un nom, l'appli propose les pouvoirs déjà connus.</div>`;
   return h;}
 /* À l'enregistrement : noms de pouvoirs → identifiants du catalogue (création des nouveaux) */
@@ -120,7 +121,7 @@ function pwIdByNameIn(cat,nm){const k=nrm(nm);for(const [id,p] of Object.entries
 /* Yeux sur la fiche (gestion) */
 function rfPwEye(g,i,lab){const cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr)return '';const x=raceRec(cr),e=eyeOf(cr,x),saved=pwSlots(x)[i];
   if(!saved)return `<button class="eye off" disabled title="Enregistrer d'abord un pouvoir (ou « Inconnu »)" aria-label="Œil indisponible : emplacement vide">${EYE_C}</button>`;
-  return eyeBtn('eye',`data-id="${esc(cr.id)}" data-k="pw" data-i="${i}"`,(e.pw||[])[i],'Pouvoir '+lab+' : '+pwName(saved));}
+  return eyeBtn('eye',`data-id="${esc(cr.id)}" data-k="pw" data-i="${i}"`,(e.pw||[])[i],'Pouvoir '+lab+' : '+pwFull(x,i));}
 function rfEyes(h,cr){const x=raceRec(cr),e=eyeOf(cr,x),[n,t]=eyeCount(e),full=eyeFull(e);
   const HD={car:'Caractéristiques',cap:'Capacités naturelles',av:'Avantages féeriques',dv:'Désavantages féeriques',pred:'Compétences utiles de prédilection (max 7)',fut:'Compétences futiles de prédilection',at:'Atouts féeriques',typ:'Spécialités typiques',sp:'Spécialités de prédilection'};
   for(const [k,l] of EYE_BLOCKS){const o=`<h3 class="rs">${HD[k]}</h3>`;h=h.replace(o,`<h3 class="rs rse"><span>${HD[k]}</span>${eyeBtn('eye',`data-id="${esc(cr.id)}" data-k="${k}"`,e[k],l)}</h3>`);}
@@ -152,14 +153,14 @@ function refRead(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr
   h+=sec('sp','Spécialités de prédilection',spl.length?`<ul class="rdl">${spl.map(e=>`<li>${esc(e[0])}${e[1]?' <span class="muted">('+esc(e[1])+')</span>':''}</li>`).join('')}</ul>`:none);
   const sl=pwSlots(x);h+=`<h3 class="rs">Pouvoirs</h3>`;
   for(const [lab,a,b] of PWG){h+=`<div class="small" style="margin:8px 0 4px"><b>${lab}</b></div>`;
-    for(let i=a;i<b;i++){const v=pwVisible(cr,x,i);h+=`<div class="mq-pw${v?'':' hid'}">${v?(sl[i]==='?'?'<span class="mq-unk">Inconnu</span>':sl[i]?esc(pwName(sl[i])):'<span class="mq-unk">—</span>'):'<span class="mq-unk">Scellé</span>'}</div>`;}}
+    for(let i=a;i<b;i++){const v=pwVisible(cr,x,i);h+=`<div class="mq-pw${v?'':' hid'}">${v?(sl[i]==='?'?'<span class="mq-unk">Inconnu</span>':sl[i]?esc(pwFull(x,i)):'<span class="mq-unk">—</span>'):'<span class="mq-unk">Scellé</span>'}</div>`;}}
   return h+`</div>`;}
 
 /* Confirmation d'un œil de fiche de race */
 function eyeRaceSheet(g){const cr=S.creatures.find(c=>c.id===g.id);if(!cr)return null;const x=raceRec(cr),e=eyeOf(cr,x),e2=clone(e);
   if(g.k==='pw'){e2.pw=(e2.pw||[]).slice();e2.pw[g.i]=g.open;}else e2[g.k]=g.open;
   const wasFull=eyeFull(e),isFull=eyeFull(e2),[n2,t]=eyeCount(e2),np=allPJ().length;
-  const lab=g.k==='fiche'?'Fiche '+x.sing:g.k==='pw'?'Pouvoirs › '+(pwSlots(x)[g.i]==='?'?'Inconnu ('+PW_LAB[g.i].toLowerCase()+')':pwName(pwSlots(x)[g.i])):(EYE_BLOCKS.find(b=>b[0]===g.k)||[,g.k])[1];
+  const lab=g.k==='fiche'?'Fiche '+x.sing:g.k==='pw'?'Pouvoirs › '+(pwSlots(x)[g.i]==='?'?'Inconnu ('+PW_LAB[g.i].toLowerCase()+')':pwFull(x,g.i)):(EYE_BLOCKS.find(b=>b[0]===g.k)||[,g.k])[1];
   const txt=g.open?(g.k==='fiche'?`La fiche ${esc(x.sing)} apparaîtra dans le Référentiel pour toute la table, avec les éléments déjà dévoilés.`:`Cet élément de la fiche <b>${esc(x.sing)}</b> deviendra visible par toute la table${e.fiche?'':', dès que la fiche elle-même sera dévoilée'}.`)
     :(g.k==='fiche'?`La fiche ${esc(x.sing)} ne sera plus visible que par la gestion et par les joueurs de cette race.`:`Cet élément ne sera plus visible que par les personnes ayant les droits de gestion${g.k==='pw'&&g.i<6?' (et par les joueurs de cette race)':''}.`);
   let xp;

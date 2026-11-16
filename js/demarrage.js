@@ -39,14 +39,14 @@ function start(){
     db.doc('meta/pouvoirs').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
       const x=snap.data();if(x&&x.byId)S.pouvoirs=x.byId;else{S.pouvoirs=clone(POUVOIRS_SEED);persist('meta/pouvoirs',{byId:S.pouvoirs});}
-      S.pouvoirsReady=true;render();fixRaceDoc();fixEyes();fixFx();fxSyncAll();
+      S.pouvoirsReady=true;render();fixRaceDoc();fixEyes();fixFx();fxSyncAll();fixComm();
     },()=>{});
     db.doc('meta/creatures').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
       const x=snap.data();
       if(x&&Array.isArray(x.list))S.creatures=x.list;
       else{S.creatures=clone(CREATURES_SEED);persist('meta/creatures',{list:S.creatures});}
-      S.creaturesReady=true;rebuildRaces();render();fixRaceDoc();fixEyes();fixFx();fxSyncAll();
+      S.creaturesReady=true;rebuildRaces();render();fixRaceDoc();fixEyes();fixFx();fxSyncAll();fixComm();
     },()=>{});
     db.doc('meta/races').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
@@ -55,7 +55,7 @@ function start(){
       if(!S.races[HUM_ID]){S.races={...S.races,[HUM_ID]:clone(HUM_SEED)};ch=true;}
       for(const k in SP_SEED){const r=S.races[k];if(r&&r.sp===undefined){S.races={...S.races,[k]:{...r,...clone(SP_SEED[k])}};ch=true;}}
       if(ch)persist('meta/races',{byId:S.races});
-      S.racesReady=true;rebuildRaces();render();fixRaceDoc();fixEyes();fixFx();fxSyncAll();
+      S.racesReady=true;rebuildRaces();render();fixRaceDoc();fixEyes();fixFx();fxSyncAll();fixComm();
     },()=>{});
     db.doc('meta/portraits').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
