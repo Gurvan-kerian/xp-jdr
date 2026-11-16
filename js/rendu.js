@@ -5,7 +5,7 @@ function viewHome(){
   const tile=(v,ic,l)=>`<button class="htile" data-act="tab" data-v="${v}"><span class="hic">${ICON[ic]}</span><span class="hl">${l}</span></button>`;
   return `<div class="home-in"><button class="htile hplan" data-act="tab" data-v="planning" data-pv="com"><span class="hic" style="position:relative">${ICON.cal}${unseenProps()?`<span class="bdg">${unseenProps()}</span>`:''}</span><span class="ht"><span class="hl">Planning</span><span class="muted small">${V?'Prochaine partie validée':'Prochaine partie'}</span><b>${V?dLine(V):'Aucune partie validée'}</b>${V?`<span class="muted small">${esc(V.type||'Scénario')}${np?' · '+np+' date'+(np>1?'s':'')+' proposée'+(np>1?'s':'')+' en attente':''}</span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''} en attente</span>`:''}</span></button>
   <div class="hgrid">${tile('gains','xp','XP')}${tile('team','perso','Personnages')}${tile('univers','univers','Univers')}</div>
-  <div class="hlinks"><button class="btn ghost" data-act="tab" data-v="players">Joueurs</button><button class="btn ghost" data-act="tab" data-v="ref">Référentiel</button><button class="btn ghost" data-act="tab" data-v="rules">Règles</button><button class="btn ghost" data-act="tab" data-v="params">Paramètres</button></div></div>`;
+  <div class="hlinks"><button class="btn ghost" data-act="tab" data-v="players">Joueurs</button><button class="btn ghost" data-act="tab" data-v="rules">Règles</button><button class="btn ghost" data-act="tab" data-v="params">Paramètres</button></div></div>`;
 }
 /* ---------- Qui es-tu ? ---------- */
 function whoGate(){
@@ -53,7 +53,7 @@ function renderSheet(){
   {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se'||S.dlg.kind==='ca'||S.dlg.kind==='ce'||S.dlg.kind==='sn'||S.dlg.kind==='sm'||S.dlg.kind==='pd')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt'||ae0.id==='crn'||ae0.id==='sdi'||ae0.id==='pdn'||ae0.id==='pdd')&&root.contains(ae0))return;}
   if(S.dlg){
     const g=S.dlg;let titre='',txt='';
-    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="ref"${S.view==='ref'?' aria-current="page"':''}>${ICON.ref}Référentiel</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button><button data-act="tab" data-v="params"${S.view==='params'?' aria-current="page"':''}>${ICON.ref}Paramètres</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button><button data-act="tab" data-v="params"${S.view==='params'?' aria-current="page"':''}>${ICON.ref}Paramètres</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
     if(g.kind==='me'){const pl=planPlayers();root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Changer de joueur"><div class="in"><h2>Qui es-tu ?</h2><div class="who-grid">${pl.map(p=>`<button class="btn${p.id===ME?' sel':''}" aria-pressed="${p.id===ME}" data-act="setMe" data-id="${p.id}">${esc(p.nom)}</button>`).join('')}</div><div class="muted small">Mémorisé sur cet appareil. Sert pour tes disponibilités, tes réponses aux dates proposées et tes notifications.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='ne'){const e=sessById(g.id);if(!e){S.dlg=null;root.innerHTML='';return;}
@@ -161,20 +161,20 @@ function renderSheet(){
 function render(){
   if(S.gate)return; /* écran du code : rien ne doit le remplacer */
   const cur=k=>S.view===k||(k==='team'&&S.view==='sheet');
-  const tabs=[['gains','XP'],['team','Personnages'],['univers','Univers'],['planning','Planning'],['players','Joueurs'],['ref','Référentiel'],['rules','Règles']];
+  const tabs=[['gains','XP'],['team','Personnages'],['univers','Univers'],['planning','Planning'],['players','Joueurs'],['rules','Règles'],['params','Paramètres']];
   const nb=unseenProps(),bdg=k=>k==='planning'&&nb?`<span class="bdg" aria-label="${nb} date${nb>1?'s':''} proposée${nb>1?'s':''} sans réponse">${nb}</span>`:'';
   document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${l}${bdg(k)}</button>`).join('');
   const bn=[['gains','XP','xp'],['team','Personnages','perso'],['univers','Univers','univers'],['planning','Planning','cal']];
-  const inMenu=S.view==='players'||S.view==='rules'||S.view==='ref'||S.view==='params';
+  const inMenu=S.view==='players'||S.view==='rules'||S.view==='params';
   document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}" style="position:relative">${ICON[ic]}<span>${l}</span>${bdg(k)}</button>`).join('')+
-    `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Référentiel, Règles" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
+    `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles, Paramètres" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
   document.body.classList.toggle('home',S.view==='home');
   {const mb=document.getElementById('meBtn');if(mb){const me=ME&&S.players[ME];const lab=me?esc(me.nom):'Qui es-tu ?';const html=`${ICON.perso}<span>${lab}</span>`;if(mb.innerHTML!==html)mb.innerHTML=html;mb.setAttribute('aria-label',me?'Connecté en tant que '+me.nom+', changer de joueur':'Choisir qui tu es');}}
   const ae=document.activeElement;
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;
   const v=S.view,app=document.getElementById('app');
-  app.innerHTML=(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewRef():v==='params'?viewParams():viewRules());
+  app.innerHTML=(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():viewRules());
   renderSheet();
   const w=whoGate();let wr=document.getElementById('whoRoot');if(!wr){wr=document.createElement('div');wr.id='whoRoot';document.body.appendChild(wr);}if(wr.innerHTML!==w)wr.innerHTML=w;
 }

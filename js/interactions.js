@@ -13,6 +13,7 @@ document.addEventListener('click',ev=>{
   const a=t.dataset.act,d=t.dataset;S._force=true;
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
   if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel|rf2Add|rf2Del|rfChAdd|rfChDel|rfPwUnk|rfFxNew|rfFxDel|rfFxT|rfFxQ|rfFxAdd|rfFxCancel)$/.test(a)&&!isGest())return; /* Référentiel : modification réservée à la gestion */
+  if(a==='tab'&&d.v==='ref'){d.v='univers';S.uni='creatures';}
   if(a==='tab'){ev.preventDefault();if(d.v==='univers')S.sec=null;if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
   else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max,sp:{}};}
@@ -82,7 +83,7 @@ document.addEventListener('click',ev=>{
   else if(a==='creSave'){const g=S.dlg,nom=(g.nom||'').trim();if(!nom||S.creatures.some(c=>c.id!==g.id&&c.nom.toLowerCase()===nom.toLowerCase()))return;S.dlg=null;saveCreatures(clone(S.creatures).map(c=>c.id===g.id&&!c.done?{...c,nom,fam:g.fam}:c));render();return;}
   else if(a==='creDel'){S.dlg.confirm=true;}
   else if(a==='creDelOk'){const id=S.dlg.id,cr=S.creatures.find(c=>c.id===id);S.dlg=null;if(cr&&playedBy(raceRec(cr).sing).length){alert('Cette race est jouée par un personnage : elle ne peut pas être supprimée.');return;}saveCreatures(S.creatures.filter(c=>!(c.id===id&&!c.done)));if(cr&&!cr.done&&S.races&&S.races[id]){const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}render();return;}
-  else if(a==='uni'){S.uni=d.v;S.sec=null;}
+  else if(a==='uni'){S.uni=d.v;S.sec=null;S.rf=null;}
   else if(a==='secFilter'){S.secFilter=d.v;}
   else if(a==='secOpen'){S.sec=+d.n;window.scrollTo(0,0);}
   else if(a==='secBack'){S.sec=null;}
@@ -113,8 +114,9 @@ document.addEventListener('click',ev=>{
     let c;if(specAnon(c0)>0){c=clone(c0);c.specs=[...specsOf(c),{nom,cible:key}];}
     else{const k=specCost(key,nom);if(k>summary(c0,S.events).dispo)return;c=buySpec(c0,key,nom,k,today());}
     if(a==='spBuyO'&&S.spOther)delete S.spOther[c0.id+'|'+key];saveChar(c);return;}
-  else if(a==='rfOpen'){S.dlg=null;S.view='ref';S.rf=rfDraft(d.id);window.scrollTo(0,0);}
-  else if(a==='rfNew'){S.rf=rfDraft(null);}
+  else if(a==='rfOpen'){S.dlg=null;S.view='univers';S.uni='creatures';S.rf=rfDraft(d.id);window.scrollTo(0,0);}
+  else if(a==='rfNew'){S.rf=rfDraft(null);window.scrollTo(0,0);}
+  else if(a==='raceFull'){if(!isGest())return;const cr=S.creatures.find(c=>c.id===d.id);if(!cr||eyeFull(eyeOf(cr,raceRec(cr))))return;S.dlg={kind:'eye',t:'race',id:d.id,k:'all',i:0,open:true,sess:(sessList()[0]||{}).id||''};}
   else if(a==='rfBack'){S.rf=null;}
   else if(a==='rfFlt'){S.rff=d.v;}
   else if(a==='rfFam'){S.rffam=S.rffam===d.v?'':d.v;}
@@ -146,10 +148,10 @@ document.addEventListener('click',ev=>{
   else if(a==='rfPwUnk'){const s=S.rf.pw[+d.i];s[1]=!s[1];if(s[1])s[0]='';}
   else if(a==='rfSpAdd'){(S.rf[d.k]=S.rf[d.k]||[]).push(['','','']);}
   else if(a==='rfSpDel'){S.rf[d.k].splice(+d.i,1);}
-  else if(a==='rfHum'){S.dlg=null;S.view='ref';const x=humRec(),car={};for(const k of CARCOL){const v=x.car&&x.car[k];car[k]=[v?v[0]:'',v?v[1]:''];}S.rf={hum:true,car};window.scrollTo(0,0);}
+  else if(a==='rfHum'){S.dlg=null;S.view='univers';S.uni='creatures';const x=humRec(),car={};for(const k of CARCOL){const v=x.car&&x.car[k];car[k]=[v?v[0]:'',v?v[1]:''];}S.rf={hum:true,car};window.scrollTo(0,0);}
   else if(a==='rfHumSave'){const g=S.rf,car={};for(const k of CARCOL){const v=g.car[k];car[k]=[v[0]===''?1:+v[0],v[1]===''?6:+v[1]];}S.races={...S.races,[HUM_ID]:{sing:HUMAIN,hum:true,car}};persist('meta/races',{byId:S.races});g.saved=true;}
   else if(a==='rfAtDel'){S.rf.at.splice(+d.i,1);}
-  else if(a==='rfDel'){const g=S.rf,cr=S.creatures.find(c=>c.id===g.id);if(cr&&cr.done){g.err='Cette race est cochée « découverte » dans l\'Univers : elle ne peut pas être supprimée.';}else if(playedBy(raceRec(cr||{}).sing||'').length){g.err='Cette race est jouée par un personnage : elle ne peut pas être supprimée.';}else{g.err='';g.confirm=true;}}
+  else if(a==='rfDel'){const g=S.rf,cr=S.creatures.find(c=>c.id===g.id);if(cr&&cr.done){g.err='Cette fiche de race est complète : elle ne peut pas être supprimée.';}else if(playedBy(raceRec(cr||{}).sing||'').length){g.err='Cette race est jouée par un personnage : elle ne peut pas être supprimée.';}else{g.err='';g.confirm=true;}}
   else if(a==='rfDelOk'){const id=S.rf.id;S.rf=null;saveCreatures(S.creatures.filter(c=>c.id!==id));const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}
   else if(a==='rfSave'){const g=S.rf,rec=rfRec(g),sing=rec.sing,plur=(g.plur||'').trim()||sing;if(!sing)return;rec.pw=pwToIds(rec.pw);
     if(refRows().some(r=>r.cr.id!==g.id&&nrm(r.x.sing)===nrm(sing))){g.err='Une autre race porte déjà ce nom.';render();return;}

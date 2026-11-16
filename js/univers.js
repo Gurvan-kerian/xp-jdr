@@ -28,8 +28,8 @@ function secPts(s){let p=titreVis(s)?(s.titrePts||1):0;for(const k of ['vm','vmi
 function secPips(s,k){const [f,t]=secCount(s,k),K=SKIND[k];return t?K.g.repeat(f)+K.o.repeat(t-f):'—';}
 const secById=n=>S.secrets.find(s=>s.n===n);
 function viewUnivers(){
-  let h=`<div class="subtabs" role="group" aria-label="Sections de l'univers"><button data-act="uni" data-v="secrets" aria-pressed="${S.uni!=='creatures'}">Secrets</button><button data-act="uni" data-v="creatures" aria-pressed="${S.uni==='creatures'}">Créatures</button></div>`;
-  if(S.uni==='creatures')return h+viewCreatures();
+  let h=`<div class="subtabs" role="group" aria-label="Sections de l'univers"><button data-act="uni" data-v="secrets" aria-pressed="${S.uni!=='creatures'}">Secrets</button><button data-act="uni" data-v="creatures" aria-pressed="${S.uni==='creatures'}">Races</button></div>`;
+  if(S.uni==='creatures')return h+viewRaces();
   if(!S.secretsReady)return h+`<div class="card empty">Chargement des secrets…</div>`;
   const s=S.sec!=null&&secById(S.sec);
   return h+(s?viewSecret(s):viewSecretList());

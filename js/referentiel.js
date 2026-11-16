@@ -1,23 +1,23 @@
 /* La belle appli — Référentiel des races */
 /* --- Référentiel › Races --- */
-function viewRef(){if(!S.creaturesReady||!S.racesReady||!S.pouvoirsReady)return `<h2 style="margin-top:4px">Référentiel</h2><div class="card empty">Chargement…</div>`;if(!S.rf)return refList();
+function viewRef(){if(!S.creaturesReady||!S.racesReady||!S.pouvoirsReady)return `<div class="card empty">Chargement…</div>`;if(!S.rf)return viewRaces();
   if(!S.rf.hum&&!isGest())return refRead();
   let h=S.rf.hum?refHum():refSheet();
   if(!isGest()){const i=h.indexOf('<div class="card"'),k=h.indexOf('>',i)+1,e=h.lastIndexOf('</div>');
-    if(i>=0&&e>k)h=h.slice(0,k)+'<div class="rolock">Lecture seule : la modification du Référentiel est réservée aux personnes ayant les droits de gestion.</div><fieldset disabled class="ro">'+h.slice(k,e)+'</fieldset>'+h.slice(e);}
+    if(i>=0&&e>k)h=h.slice(0,k)+'<div class="rolock">Lecture seule : la modification des races est réservée aux personnes ayant les droits de gestion.</div><fieldset disabled class="ro">'+h.slice(k,e)+'</fieldset>'+h.slice(e);}
   return h;}
 function refRows(){return S.creatures.map(cr=>{const x=raceRec(cr);return {cr,x,st:raceStatus(cr,x),pj:playedBy(x.sing)};}).filter(r=>raceVisible(r.cr,r.x)).sort((a,b)=>a.x.sing.localeCompare(b.x.sing,'fr'));}
 function refList(){const all=refRows(),q=nrm(S.rfq||''),f=S.rff||'all',fm=S.rffam||'';
   const cnt=k=>all.filter(r=>k==='todo'?r.st==='todo':k==='pj'?r.pj.length:k==='dec'?r.cr.done:true).length;
   const L=all.filter(r=>(!q||nrm(r.x.sing).includes(q)||nrm(r.cr.nom).includes(q))&&(f==='all'||(f==='todo'&&r.st==='todo')||(f==='pj'&&r.pj.length)||(f==='dec'&&r.cr.done))&&(!fm||r.cr.fam===fm));
   const F={trad:'traditionnelle',mod:'moderne',exo:'exotique'};
-  let h=`<h2 style="margin-top:4px">Référentiel › Races</h2><div class="card"><div class="rsearch"><input type="search" data-rfq="1" placeholder="Rechercher une race…" aria-label="Rechercher une race" value="${esc(S.rfq||'')}" autocomplete="off">${isGest()?'<button class="btn" style="white-space:nowrap;padding:6px 12px" data-act="rfNew">+ Nouvelle</button>':''}</div>
+  let h=`<div class="card"><div class="rsearch"><input type="search" data-rfq="1" placeholder="Rechercher une race…" aria-label="Rechercher une race" value="${esc(S.rfq||'')}" autocomplete="off">${isGest()?'<button class="btn" style="white-space:nowrap;padding:6px 12px" data-act="rfNew">+ Nouvelle</button>':''}</div>
   <div class="flt">${[['all','Toutes'],['todo','À compléter'],['pj','Jouées'],['dec','Découvertes']].map(([k,l])=>`<button data-act="rfFlt" data-v="${k}" aria-pressed="${f===k}">${l} (${cnt(k)})</button>`).join('')}</div>
   <div class="flt">${CFAM.map(([k,l])=>`<button data-act="rfFam" data-v="${k}" aria-pressed="${fm===k}">${l}</button>`).join('')}</div>
   <div class="rl">${L.map(r=>`<button class="r${r.cr.done?' dec':''}" data-act="rfOpen" data-id="${esc(r.cr.id)}"><span><b>${esc(r.x.sing)}</b>${r.pj.length?` <span class="rpj">· ${r.pj.map(c=>esc(c.court)).join(', ')}</span>`:''}<small>${F[r.cr.fam]||''}${r.cr.done?' · <span class="rdot">✓ découverte</span>':''}</small></span>${isGest()?`<span class="rst ${r.st}">${RST[r.st]}</span>`:'<span></span>'}<span style="color:var(--accent);font-size:18px">›</span></button>`).join('')||'<div class="muted" style="padding:8px">Aucune race.</div>'}${f==='all'&&!fm&&(!q||nrm(HUMAIN).includes(q))?(()=>{const pn=Object.values(S.chars).filter(isHum);return `<div class="rsep">Hors féerie</div><button class="r" data-act="rfHum"><span><b>${HUMAIN}</b>${pn.length?` <span class="rpj">· ${pn.map(c=>esc(c.court)).join(', ')}</span>`:''}<small>réservé aux PNJ</small></span><span></span><span style="color:var(--accent);font-size:18px">›</span></button>`;})():''}</div></div>`;
   return h;}
 function refHum(){const g=S.rf,pn=Object.values(S.chars).filter(isHum);
-  return `<h2 style="margin-top:4px">Référentiel › Races</h2><div style="margin-bottom:8px"><button class="btn ghost" style="white-space:nowrap" data-act="rfBack">‹ Liste</button></div>
+  return `<div style="margin-bottom:8px"><button class="btn ghost" style="white-space:nowrap" data-act="rfBack">‹ Races</button></div>
   <div class="card"><h2 style="margin:0 0 4px">${HUMAIN}</h2><div class="muted small">Hors féerie · réservé aux PNJ${pn.length?' · '+pn.map(c=>esc(c.court)).join(', '):''}</div>
     <h3 class="rs">Caractéristiques</h3><table class="ct"><tr><th></th><th>Min</th><th>Max</th></tr>${CARCOL.map(k=>`<tr><td>${k}</td><td><input type="number" min="0" max="12" data-rfc="${k}" data-m="0" value="${esc(g.car[k][0])}" aria-label="${k} minimum"></td><td><input type="number" min="0" max="12" data-rfc="${k}" data-m="1" value="${esc(g.car[k][1])}" aria-label="${k} maximum"></td></tr>`).join('')}</table>
     <h3 class="rs">Règles fixes</h3><ul class="small" style="margin:4px 0 0;padding-left:18px;line-height:1.6"><li>Profils et compétences : maximum 6.</li><li>Spécialités : mêmes règles que pour les fées.</li><li>Pas de caractéristique accrue, pas de compétence de prédilection, pas de compétence futile, pas d'atout féerique.</li></ul>
@@ -34,8 +34,8 @@ function refSheet(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id),rec=r
   const chip=(e,k,i)=>Array.isArray(e)?`<span class="rchip grp"><b>au choix</b> ${e.map(esc).join(' <span class="muted">ou</span> ')}<button data-act="rfPredDel" data-k="${k}" data-i="${i}" aria-label="Retirer">✕</button></span>`:`<span class="rchip">${esc(e)}<button data-act="rfPredDel" data-k="${k}" data-i="${i}" aria-label="Retirer ${esc(e)}">✕</button></span>`;
   const copt=(v,none)=>(none?`<option value="">${none}</option>`:'')+COMPS_ALL.map(c=>`<option${v===c?' selected':''}>${esc(c)}</option>`).join('');
   const others=refRows();
-  let h=`<h2 style="margin-top:4px">Référentiel › Races</h2><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><button class="btn ghost" style="white-space:nowrap" data-act="rfBack">‹ Liste</button>${g.id?`<select data-rfjump="1" aria-label="Aller à une autre race" style="padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:inherit;font:inherit;min-width:0">${others.map(r=>`<option value="${esc(r.cr.id)}"${r.cr.id===g.id?' selected':''}>${esc(r.x.sing)}</option>`).join('')}</select>`:''}</div>`;
-  h+=`<div class="card"${cr&&cr.done?' style="box-shadow:inset 3px 0 0 var(--brass)"':''}><h2 style="margin:0 0 4px">${esc(g.sing||'Nouvelle race')}</h2><div class="muted small">${F[g.fam]||''}${cr&&cr.done?' · <span class="rdot">✓ découverte</span>':''} · <span class="rst ${st}">${RST[st]}</span>${pj.length?' · jouée par '+pj.map(c=>esc(c.court)).join(', '):''}${cr?` · <a href="#" data-act="rfUni">voir dans Univers</a>`:''}</div>
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><button class="btn ghost" style="white-space:nowrap" data-act="rfBack">‹ Races</button>${g.id?`<select data-rfjump="1" aria-label="Aller à une autre race" style="padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:inherit;font:inherit;min-width:0">${others.map(r=>`<option value="${esc(r.cr.id)}"${r.cr.id===g.id?' selected':''}>${esc(r.x.sing)}</option>`).join('')}</select>`:''}</div>`;
+  h+=`<div class="card"${cr&&cr.done?' style="box-shadow:inset 3px 0 0 var(--brass)"':''}><h2 style="margin:0 0 4px">${esc(g.sing||'Nouvelle race')}</h2><div class="muted small">${F[g.fam]||''} · <span class="rst ${st}">${RST[st]}</span>${pj.length?' · jouée par '+pj.map(c=>esc(c.court)).join(', '):''}</div>
     <div class="rchk">${raceBlocks(rec).map(([l,ok])=>`<div class="${ok?'':'ko'}">${ok?'✓':'✗'} ${l}</div>`).join('')}</div>
     <h3 class="rs">Identité</h3><div class="frow"><div class="field"><label for="rfs">Nom (singulier)</label><input id="rfs" type="text" data-rfk="sing" value="${esc(g.sing)}" autocomplete="off"></div><div class="field"><label for="rfp">Nom dans l'Univers (pluriel)</label><input id="rfp" type="text" data-rfk="plur" value="${esc(g.plur)}" autocomplete="off"></div><div class="field"><label for="rff">Famille</label><select id="rff" data-rfk="fam">${CFAM.map(([k])=>`<option value="${k}"${g.fam===k?' selected':''}>${F[k]}</option>`).join('')}</select></div></div>
     <h3 class="rs">Caractéristiques</h3><table class="ct"><tr><th></th><th>Min</th><th>Max</th></tr>${CARCOL.map(k=>`<tr><td>${k}</td><td><input type="number" min="0" max="12" data-rfc="${k}" data-m="0" value="${esc(g.car[k][0])}" aria-label="${k} minimum"></td><td><input type="number" min="0" max="12" data-rfc="${k}" data-m="1" value="${esc(g.car[k][1])}" aria-label="${k} maximum"></td></tr>`).join('')}</table><div class="muted small">Les caractéristiques qui peuvent être accrues se règlent dans le choix définitif des capacités naturelles.</div>
@@ -126,19 +126,23 @@ function rfEyes(h,cr){const x=raceRec(cr),e=eyeOf(cr,x),[n,t]=eyeCount(e),full=e
   const HD={car:'Caractéristiques',cap:'Capacités naturelles',av:'Avantages féeriques',dv:'Désavantages féeriques',pred:'Compétences utiles de prédilection (max 7)',fut:'Compétences futiles de prédilection',at:'Atouts féeriques',typ:'Spécialités typiques',sp:'Spécialités de prédilection'};
   for(const [k,l] of EYE_BLOCKS){const o=`<h3 class="rs">${HD[k]}</h3>`;h=h.replace(o,`<h3 class="rs rse"><span>${HD[k]}</span>${eyeBtn('eye',`data-id="${esc(cr.id)}" data-k="${k}"`,e[k],l)}</h3>`);}
   const o=`<h2 style="margin:0 0 4px">${esc(S.rf.sing||'Nouvelle race')}</h2>`;
-  h=h.replace(o,`<div class="rse"><h2 style="margin:0 0 4px">${esc(S.rf.sing||'Nouvelle race')}</h2>${eyeBtn('eye',`data-id="${esc(cr.id)}" data-k="fiche"`,e.fiche,'Fiche '+x.sing)}</div>`);
+  const sw=`<button class="cpl${full?' on':''}" data-act="raceFull" data-id="${esc(cr.id)}" role="switch" aria-checked="${full}"${full?' aria-disabled="true" title="Pour la défaire, referme un œil"':' title="Ouvre d\'un coup tous les yeux de la fiche"'}><span class="tg${full?' on':''}"></span><small>Fiche complète</small></button>`;
+  h=h.replace(o,`<div class="hd2"><div style="min-width:0">${o}`);
+  /* fin du bloc d'en-tête : après la ligne de sous-titre */
+  const k0=h.indexOf('<div class="muted small">',h.indexOf('<div class="hd2">')),k1=h.indexOf('</div>',k0)+6;
+  h=h.slice(0,k1)+`<div class="vis ${e.fiche?'v':'c'}">● ${e.fiche?'Fiche visible par la table':'Fiche cachée aux joueurs'}</div></div>${sw}</div>`+h.slice(k1);
   const bar=`<div class="eyebar${full?' full':''}"><span>${full?'★ Fiche complète : visible en entier par toute la table':`Visibilité : ${n} élément${n>1?'s':''} sur ${t} ouvert${n>1?'s':''}`}</span><span class="eyeleg">${EYE_O} toute la table · ${EYE_C} gestion seule</span></div>`;
   const k=h.indexOf('<div class="rchk">');return k>=0?h.slice(0,k)+bar+h.slice(k):h;}
 /* Lecture joueur : seuls les éléments dévoilés (ou toute sa propre race, hors pouvoirs profond et légendaire) */
-function refRead(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr){S.rf=null;return refList();}
+function refRead(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr){S.rf=null;return viewRaces();}
   const x=raceRec(cr),F={trad:'Traditionnelle',mod:'Moderne',exo:'Exotique'},mine=myRace(x.sing);
-  if(!raceVisible(cr,x)){S.rf=null;return refList();}
+  if(!raceVisible(cr,x)){S.rf=null;return viewRaces();}
   const seal='<div class="sealedbox">Pas encore découvert.</div>',none='<span class="muted small">—</span>';
   const sec=(k,title,body)=>`<h3 class="rs">${title}</h3>${blockVisible(cr,x,k)?body:seal}`;
   const chip=e=>Array.isArray(e)?`<span class="rchip grp"><b>au choix</b> ${e.map(esc).join(' <span class="muted">ou</span> ')}</span>`:`<span class="rchip">${esc(e)}</span>`;
   const chips=l=>(l||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:6px">${l.map(chip).join('')}</div>`:none;
   const list=(l,k)=>(l||[]).filter(a=>a&&a[0]).length?`<ul class="rdl">${l.filter(a=>a&&a[0]).map(a=>{const fx=(x.fx&&x.fx[fxKey(k,a[0])])||[];return `<li><b>${esc(a[0])}</b>${a[1]?' : '+esc(a[1]):''}${fx.length?`<div class="fxl">${fx.map(e=>fxChip(e)).join('')}</div>`:''}</li>`;}).join('')}</ul>`:none;
-  let h=`<h2 style="margin-top:4px">Référentiel › Races</h2><div style="margin-bottom:8px"><button class="btn ghost" style="white-space:nowrap" data-act="rfBack">‹ Liste</button></div>
+  let h=`<div style="margin-bottom:8px"><button class="btn ghost" style="white-space:nowrap" data-act="rfBack">‹ Races</button></div>
   <div class="card"><h2 style="margin:0 0 4px">${esc(x.sing)}</h2><div class="muted small">${F[cr.fam]||''}${cr.done?' · <span class="rdot">✓ fiche complète</span>':''}${mine?' · ta race':''}</div>`;
   h+=sec('car','Caractéristiques',x.car?`<table class="ct"><tr><th></th><th>Min</th><th>Max</th></tr>${CARCOL.map(k=>{const v=x.car[k]||['',''];return `<tr><td>${k}</td><td class="num">${esc(v[0])}</td><td class="num">${esc(v[1])}</td></tr>`;}).join('')}</table>`:none);
   const ch=(x.choix||[]).length?`<div class="small" style="margin:8px 0 4px"><b>Choix définitif</b> <span class="muted">(une seule option)</span></div><div style="display:flex;flex-wrap:wrap;gap:6px">${x.choix.map(o=>`<span class="rchip${o[0]==='acc'?' grp':''}">${o[0]==='acc'?'<b>accrue</b> ':''}${esc(o[1])}</span>`).join('')}</div>`:'';
@@ -158,10 +162,12 @@ function refRead(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr
 
 /* Confirmation d'un œil de fiche de race */
 function eyeRaceSheet(g){const cr=S.creatures.find(c=>c.id===g.id);if(!cr)return null;const x=raceRec(cr),e=eyeOf(cr,x),e2=clone(e);
-  if(g.k==='pw'){e2.pw=(e2.pw||[]).slice();e2.pw[g.i]=g.open;}else e2[g.k]=g.open;
+  if(g.k==='all')Object.assign(e2,eyeAll(true));else if(g.k==='pw'){e2.pw=(e2.pw||[]).slice();e2.pw[g.i]=g.open;}else e2[g.k]=g.open;
   const wasFull=eyeFull(e),isFull=eyeFull(e2),[n2,t]=eyeCount(e2),np=allPJ().length;
+  const nClosed=eyeCount(e)[1]-eyeCount(e)[0];
+  if(g.k==='all')return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Confirmation"><div class="in"><div><h2>Marquer « ${esc(x.sing)} » comme complète ?</h2><div class="muted">${nClosed===1?'Le dernier élément encore fermé devient visible':`Les ${nClosed} éléments encore fermés deviennent visibles`} par toute la table${e.fiche?'':', y compris la fiche dans la liste'}.</div></div><div class="xpbox">★ +${+PRM.creXP||1} XP de groupe pour ${np} PJ actif${np>1?'s':''} (journal : « ${esc(cr.nom)} complété », ${CRE_TYPE}).</div><div class="field"><label for="sxs">Session de rattachement</label><select id="sxs" data-sxs="1">${sessOptions(g.sess)}</select></div><div class="actions"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="eyeOk">Confirmer</button></div></div></div>`;
   const lab=g.k==='fiche'?'Fiche '+x.sing:g.k==='pw'?'Pouvoirs › '+(pwSlots(x)[g.i]==='?'?'Inconnu ('+PW_LAB[g.i].toLowerCase()+')':pwFull(x,g.i)):(EYE_BLOCKS.find(b=>b[0]===g.k)||[,g.k])[1];
-  const txt=g.open?(g.k==='fiche'?`La fiche ${esc(x.sing)} apparaîtra dans le Référentiel pour toute la table, avec les éléments déjà dévoilés.`:`Cet élément de la fiche <b>${esc(x.sing)}</b> deviendra visible par toute la table${e.fiche?'':', dès que la fiche elle-même sera dévoilée'}.`)
+  const txt=g.open?(g.k==='fiche'?`La fiche ${esc(x.sing)} apparaîtra dans Univers › Races pour toute la table, avec les éléments déjà dévoilés.`:`Cet élément de la fiche <b>${esc(x.sing)}</b> deviendra visible par toute la table${e.fiche?'':', dès que la fiche elle-même sera dévoilée'}.`)
     :(g.k==='fiche'?`La fiche ${esc(x.sing)} ne sera plus visible que par la gestion et par les joueurs de cette race.`:`Cet élément ne sera plus visible que par les personnes ayant les droits de gestion${g.k==='pw'&&g.i<6?' (et par les joueurs de cette race)':''}.`);
   let xp;
   if(isFull&&!wasFull)xp=`<div class="xpbox">★ La fiche ${esc(x.sing)} devient complète : +1 XP de groupe pour ${np} PJ actif${np>1?'s':''} (journal : « ${esc(cr.nom)} complété », ${CRE_TYPE}).</div><div class="field"><label for="sxs">Session de rattachement</label><select id="sxs" data-sxs="1">${sessOptions(g.sess)}</select></div>`;
@@ -185,3 +191,19 @@ function fxLine(g,k,name){if(!(name||'').trim())return '';const key=fxKey(k,name
       <div class="actions" style="margin-top:10px"><button class="btn ghost" data-act="rfFxCancel">Annuler</button><button class="btn pri" data-act="rfFxAdd"${ok?'':' disabled'}>Ajouter</button></div>
       <div class="hint"><b>Permanent</b> : ajouté à la valeur sur la fiche des personnages créés à partir de maintenant. <b>Jet</b> : bonus ou malus à un type de jet, affiché sur la fiche mais pas ajouté aux rangs. <b>Rappel</b> : texte seul. Pense ensuite à « Enregistrer la race ».</div></div>`;}
   return `<div style="grid-column:1/-1">${h}</div>`;}
+
+/* ---------- Univers › Races : liste par famille, œil de fiche (gestion), compteur d'XP ---------- */
+function viewRaces(){if(!S.creaturesReady||!S.racesReady||!S.pouvoirsReady)return `<div class="card empty">Chargement des races…</div>`;
+  if(S.rf){if(S.rf.hum)return viewRef();return viewRef();}
+  const G=isGest(),rows=refRows(),n=S.creatures.filter(c=>c.done).length,xp=+PRM.creXP||1;
+  let h=`<div class="card secsum"><div style="display:flex;align-items:baseline;gap:10px"><span class="big num">${n*xp}</span><span>XP de groupe<br>issue des races</span></div><div class="muted small" style="text-align:right">${n} complète${n>1?'s':''} sur ${S.creatures.length}<br>${xp} XP par fiche complète</div></div>`;
+  if(G)h+=`<div class="muted small" style="margin:8px 2px">L'œil de la liste rend la fiche visible par toute la table ; elle s'ouvre alors avec les seuls éléments dévoilés.</div>`;
+  for(const [f,lab] of CFAM){const L=rows.filter(r=>r.cr.fam===f);if(!L.length)continue;
+    h+=`<h2>${lab}</h2><div class="card" style="padding:2px 12px">`+L.map(r=>{const e=eyeOf(r.cr,r.x),[o,t]=eyeCount(e),full=eyeFull(e);
+      const pill=full?'<span class="rst ok">★ Complète</span>':G?(e.fiche?`<span class="rst mid">${o} / ${t}</span>`:'<span class="rst no">Cachée</span>'):'<span></span>';
+      return `<div class="lr"><button class="nm" data-act="rfOpen" data-id="${esc(r.cr.id)}"><b>${esc(r.x.sing)}</b>${r.pj.length?` <span class="rpj">· ${r.pj.map(c=>esc(c.court)).join(', ')}</span>`:''}</button>${pill}${G?eyeBtn('eye',`data-id="${esc(r.cr.id)}" data-k="fiche"`,e.fiche,'Fiche '+r.x.sing):'<span></span>'}</div>`;}).join('')+`</div>`;}
+  if(!rows.length)h+=`<div class="card empty" style="margin-top:12px">Aucune race découverte pour l'instant.</div>`;
+  const pn=Object.values(S.chars).filter(isHum);
+  h+=`<h2>Hors féerie</h2><div class="card" style="padding:2px 12px"><div class="lr"><button class="nm" data-act="rfHum"><b>${HUMAIN}</b>${pn.length?` <span class="rpj">· ${pn.map(c=>esc(c.court)).join(', ')}</span>`:''}</button><span class="muted small">règles</span><span></span></div></div>`;
+  if(G)h+=`<div class="actions" style="margin-top:12px"><button class="btn pri cta" data-act="rfNew">+ Nouvelle race</button></div>`;
+  return h;}
