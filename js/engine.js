@@ -165,7 +165,7 @@ function fixRaceDoc(){if(!S.racesReady||!S.creaturesReady||!S.pouvoirsReady||!S.
     if(cr&&cr.done){while(d.pw.m.length<4)d.pw.m.push('?');while(d.pw.d.length<2)d.pw.d.push('?');if(!d.pw.p)d.pw.p='?';if(!d.pw.l)d.pw.l='?';}
     const ac=accOf(d);S.races={...S.races,[k]:{...r,...d,acc:ac.length?ac:(r.acc||[]),doc:1}};ch=true;}
   if(ch){persist('meta/races',{byId:S.races});rebuildRaces();render();}}
-const RST={no:'Vide',mid:'Partielle',ok:'Complète',todo:'À compléter'};
+const RST={no:'Vide',mid:'Partielle',ok:'Remplie',todo:'À compléter'};
 const playedBy=sing=>Object.values(S.chars).filter(c=>c.type==='PJ'&&c.race&&c.race===sing);
 /* Résout les choix « X ou Y » : choix enregistré sur le personnage, sinon d'après la fiche (max 7, sinon présent, sinon le premier) */
 function predGuess(list,items){return (list||[]).filter(Array.isArray).map(e=>{const has=n=>items.find(x=>nrm(x.nom)===nrm(n));const m7=e.find(n=>{const x=has(n);return x&&(x.max||0)>=7;});return [e.join('|'),m7||e.find(n=>has(n))||e[0]];});}
@@ -287,3 +287,37 @@ function scenarioCount(events){return events.filter(e=>evType(e)==='Scénario').
 function starCount(events,delta){return Math.max(0,Math.min(STARS,scenarioCount(events)+(delta||0)));}
 /*ENDENGINE*/
 
+
+/* ---------- Yeux (visibilité) des fiches de race ----------
+   eye = {fiche, car, cap, av, dv, pred, fut, at, typ, sp : bool, pw : [8 bool]} ; fermé = visible par la gestion seulement.
+   Fiche complète (+1 XP de groupe) quand tous les yeux sont ouverts. */
+const EYE_BLOCKS=[['car','Caractéristiques'],['cap','Capacités naturelles'],['av','Avantages féeriques'],['dv','Désavantages féeriques'],['pred','Compétences utiles de prédilection'],['fut','Compétences futiles de prédilection'],['at','Atouts féeriques'],['typ','Spécialités typiques'],['sp','Spécialités de prédilection']];
+const PW_LAB=['Masqué','Masqué','Masqué','Masqué','Démasqué','Démasqué','Profond','Légendaire'];
+const eyeAll=v=>{const e={fiche:v,pw:[v,v,v,v,v,v,v,v]};for(const [k] of EYE_BLOCKS)e[k]=v;return e;};
+const eyeOf=(cr,x)=>(x&&x.eye)?x.eye:eyeAll(!!(cr&&cr.done));
+const eyeFull=e=>!!e.fiche&&EYE_BLOCKS.every(([k])=>e[k])&&[0,1,2,3,4,5,6,7].every(i=>(e.pw||[])[i]);
+const eyeCount=e=>{const l=[e.fiche,...EYE_BLOCKS.map(([k])=>e[k]),...[0,1,2,3,4,5,6,7].map(i=>(e.pw||[])[i])];return [l.filter(Boolean).length,l.length];};
+/* Le joueur qui joue cette race voit toute la fiche, sauf les pouvoirs profond et légendaire tant qu'ils sont fermés */
+const myRace=sing=>!!ME&&!!S.players[ME]&&(S.players[ME].persos||[]).some(id=>S.chars[id]&&S.chars[id].race===sing);
+const raceVisible=(cr,x)=>isGest()||eyeOf(cr,x).fiche||myRace(x.sing);
+const blockVisible=(cr,x,k)=>isGest()||myRace(x.sing)||(eyeOf(cr,x).fiche&&eyeOf(cr,x)[k]);
+const pwVisible=(cr,x,i)=>isGest()||(myRace(x.sing)&&i<6)||(eyeOf(cr,x).fiche&&(eyeOf(cr,x).pw||[])[i]);
+/* Mise en place ponctuelle : races déjà découvertes = tous les yeux ouverts (sans nouvelle XP), les autres fermés */
+function fixEyes(){if(!S.racesReady||!S.creaturesReady||!S.races)return;let ch=false;const R={...S.races};
+  for(const cr of S.creatures){const r=R[cr.id];if(r&&!r.eye){R[cr.id]={...r,eye:eyeAll(!!cr.done)};ch=true;}}
+  if(ch){S.races=R;persist('meta/races',{byId:R});render();}}
+/* Ouvre ou ferme un œil ; k = 'fiche' | bloc | 'pw' (avec i) | 'all'. Gère le passage à « complète » et la ligne d'XP. */
+function raceEyeSet(id,k,i,open,sid){
+  const cr0=S.creatures.find(c=>c.id===id);if(!cr0)return;const x0=raceRec(cr0),before=eyeOf(cr0,x0),e=clone(before);
+  if(k==='all'){Object.assign(e,eyeAll(open));}else if(k==='pw'){e.pw=(e.pw||[]).slice();e.pw[i]=open;}else e[k]=open;
+  const wasFull=eyeFull(before),isFull=eyeFull(e);
+  const base=S.races[id]||{sing:x0.sing,car:null,acc:[],pred:[],fut:[],at:[],typ:[]};
+  S.races={...S.races,[id]:{...base,eye:e}};persist('meta/races',{byId:S.races});
+  if(wasFull===isFull){rebuildRaces();render();return;}
+  const list=clone(S.creatures),c=list.find(x=>x.id===id);let evs=S.events;
+  if(isFull){c.done=true;c.date=today();const t=allPJ();if(t.length){const ne={id:'g'+Date.now().toString(36)+'-c',date:c.date,titre:c.nom+' complété',type:CRE_TYPE,creature:{id},entries:t.map(p=>({perso:p,nature:'Groupe',montant:1}))};if(sid&&sessById(sid))ne.sessionId=sid;evs=[...evs,ne];}}
+  else{c.done=false;delete c.date;evs=evs.filter(ev=>!(ev.creature&&ev.creature.id===id));}
+  saveCreatures(list);if(evs!==S.events)saveEvents(evs);else render();}
+const eyeBtn=(act,attrs,open,label)=>`<button class="eye ${open?'on':'off'}" data-act="${act}" ${attrs} aria-pressed="${!!open}" title="${open?'Visible par toute la table':'Visible seulement par la gestion'}" aria-label="${esc(label)} : ${open?'visible par toute la table':'visible par la gestion seulement'}">${open?EYE_O:EYE_C}</button>`;
+const EYE_O='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_C='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7c1.7 0 3.2-.4 4.5-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';

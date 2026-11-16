@@ -71,8 +71,12 @@ document.addEventListener('click',ev=>{
   else if(a==='creAdd'){S.dlg={kind:'ca',nom:'',fam:'trad'};}
   else if(a==='creFam'){S.dlg.fam=d.f;}
   else if(a==='creAddOk'){const g=S.dlg,nom=(g.nom||'').trim();if(!nom||S.creatures.some(c=>c.nom.toLowerCase()===nom.toLowerCase()))return;S.dlg=null;saveCreatures([...clone(S.creatures),{id:creSlug(nom),nom,fam:g.fam,done:false}]);render();return;}
-  else if(a==='creToggle'){S.dlg={kind:'ct',id:d.id,sess:(sessList()[0]||{}).id||''};}
-  else if(a==='creToggleOk'){const g=S.dlg;S.dlg=null;creToggle(g.id,g.sess);return;}
+  else if(a==='eye'){if(!isGest())return;const sess=(sessList()[0]||{}).id||'';
+    if(d.t==='sec'){const s=secById(+d.n);if(!s)return;const x=d.k==='titre'?null:s.slots[d.k][+d.i];const cur=d.k==='titre'?!s.titreHid:!!(x&&!x.hid);S.dlg={kind:'eye',t:'sec',n:+d.n,k:d.k,i:+d.i||0,open:!cur,sess};}
+    else{const cr=S.creatures.find(c=>c.id===d.id);if(!cr)return;const e=eyeOf(cr,raceRec(cr)),cur=d.k==='pw'?!!(e.pw||[])[+d.i]:!!e[d.k];S.dlg={kind:'eye',t:'race',id:d.id,k:d.k,i:+d.i||0,open:!cur,sess};}}
+  else if(a==='eyeOk'){const g=S.dlg;S.dlg=null;if(!isGest()){render();return;}if(g.t==='sec')secEyeSet(g.n,g.k,g.i,g.open,g.sess);else raceEyeSet(g.id,g.k,g.i,g.open,g.sess);return;}
+  else if(a==='creToggle'){if(!isGest())return;S.dlg={kind:'ct',id:d.id,sess:(sessList()[0]||{}).id||''};}
+  else if(a==='creToggleOk'){if(!isGest())return;const g=S.dlg;S.dlg=null;creToggle(g.id,g.sess);return;}
   else if(a==='creEdit'){const c=S.creatures.find(x=>x.id===d.id);if(!c)return;const ev=creEv(c.id);S.dlg={kind:'ce',id:c.id,nom:c.nom,fam:c.fam,confirm:false,sess:ev?(ev.sessionId||''):''};}
   else if(a==='creSess'){const g=S.dlg;S.dlg=null;const ev=creEv(g.id);if(!ev){render();return;}const sid=g.sess&&sessById(g.sess)?g.sess:undefined;saveEvents(S.events.map(e=>{if(e!==ev)return e;const x={...e};if(sid)x.sessionId=sid;else delete x.sessionId;return x;}));return;}
   else if(a==='creSave'){const g=S.dlg,nom=(g.nom||'').trim();if(!nom||S.creatures.some(c=>c.id!==g.id&&c.nom.toLowerCase()===nom.toLowerCase()))return;S.dlg=null;saveCreatures(clone(S.creatures).map(c=>c.id===g.id&&!c.done?{...c,nom,fam:g.fam}:c));render();return;}
@@ -84,7 +88,7 @@ document.addEventListener('click',ev=>{
   else if(a==='secBack'){S.sec=null;}
   else if(a==='secAdd'){const s=secById(S.sec);if(!s)return;const k=!s.titre?'titre':['vm','vmin','h'].find(x=>secFree(s,x));if(!k)return;S.dlg={kind:'sx',n:s.n,k,txt:'',sess:(sessList()[0]||{}).id||''};}
   else if(a==='sxKind'){S.dlg.k=d.k;}
-  else if(a==='sxOk'){const g=S.dlg,txt=(g.txt||'').trim();S.dlg=null;if(txt)secConsign(g.n,g.k,txt,g.sess);else render();return;}
+  else if(a==='sxOk'){const g=S.dlg,txt=(g.txt||'').trim();S.dlg=null;if(txt)secConsign(g.n,g.k,txt,g.sess,!!g.hid&&isGest());else render();return;}
   else if(a==='secEntry'){const s=secById(S.sec);if(!s)return;const x=d.k==='titre'?s.titre:(s.slots[d.k][+d.i]||{}).txt;const ev0=secEv(s.n,d.k,+d.i);S.dlg={kind:'se',n:s.n,k:d.k,i:+d.i,txt:x||'',confirm:false,sess:ev0?(ev0.sessionId||''):''};}
   else if(a==='seSave'){const g=S.dlg,txt=(g.txt||'').trim();S.dlg=null;if(!txt){render();return;}
     const ev0=secEv(g.n,g.k,g.i);if(ev0&&(ev0.sessionId||'')!==(g.sess||'')){const sid=g.sess&&sessById(g.sess)?g.sess:undefined;
@@ -135,7 +139,7 @@ document.addEventListener('click',ev=>{
     let list=clone(S.creatures),id=g.id;
     if(!id){id=creSlug(plur)||('race-'+Date.now().toString(36));if(list.some(c=>c.id===id))id+='-'+Date.now().toString(36);list.push({id,nom:plur,fam:g.fam,done:false});}
     else{const cr=list.find(c=>c.id===id);if(cr){cr.nom=plur;cr.fam=g.fam;}}
-    const old=S.races[id]&&S.races[id].sing;S.races={...S.races,[id]:rec};persist('meta/races',{byId:S.races});saveCreatures(list);rebuildRaces();
+    const old=S.races[id]&&S.races[id].sing;rec.eye=(S.races[id]&&S.races[id].eye)||eyeAll(false);S.races={...S.races,[id]:rec};persist('meta/races',{byId:S.races});saveCreatures(list);rebuildRaces();
     if(old&&old!==sing)for(const c of Object.values(S.chars))if(c.race===old){const n=clone(c);n.race=sing;saveChar(n);}
     S.rf=rfDraft(id);S.rf.err='';S.rf.saved=true;}
   else if(a==='ptrSave'){const g=S.dlg,im=window._ptrImg;if(!g||!im)return;const s2=g.base*g.z,cv=document.createElement('canvas');cv.width=cv.height=256;
@@ -247,6 +251,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.nc){S.newC[t.dataset.nc]=t.value;}
   else if(t.dataset.as){S.asheet[t.dataset.as]=t.value;}
   else if(t.dataset.sh){S.sheet[t.dataset.sh]=t.value;}
+  else if(t.dataset.sxh!==undefined&&S.dlg){S.dlg.hid=t.checked;S._force=true;render();}
   else if(t.dataset.ptrz!==undefined&&S.dlg&&S.dlg.kind==='ptr'){const g=S.dlg,s0=g.base*g.z,cx=(130-g.x)/s0,cy=(130-g.y)/s0;g.z=+t.value;const s1=g.base*g.z;g.x=130-cx*s1;g.y=130-cy*s1;ptrClamp(g);ptrPaint();}
   else if(t.dataset.rfq!==undefined){S.rfq=t.value;S._force=true;const pos=t.selectionStart;render();const i=q0('[data-rfq]');if(i){i.focus();try{i.setSelectionRange(pos,pos);}catch(e){}}}
   else if(t.dataset.rfk!==undefined&&S.rf){S.rf[t.dataset.rfk]=t.value;if(t.dataset.rfk==='sing'){const b=q0('[data-act="rfSave"]');if(b)b.disabled=!t.value.trim();}}

@@ -443,3 +443,17 @@ fieldset.ro .actions,fieldset.ro .radd,fieldset.ro button.x,fieldset.ro .rchip b
 .rolock{font-size:13px;color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:6px 10px;margin:0 0 10px}
 
 .pwrow{display:flex;gap:6px;align-items:center;margin:3px 0}.pwrow input{flex:1;min-width:0}.pwrow input:disabled{font-style:italic;background:transparent}.pwunk{padding:5px 9px;font-size:.78rem;white-space:nowrap}.pwunk[aria-pressed="true"]{background:var(--brass);color:#fff;border-color:var(--brass)}.pwalso{margin:-1px 0 4px 2px;font-size:.75rem}
+
+.eye{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);flex:none;cursor:pointer}
+.eye.on{color:var(--accent);border-color:var(--accent)}.eye.off{background:var(--surface2)}.eye:disabled{opacity:.4;cursor:default}
+.rse{display:flex;align-items:center;justify-content:space-between;gap:8px}h3.rse{margin-right:0}
+.eyebar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;align-items:center;font-size:13px;margin:8px 0;padding:7px 10px;border-radius:10px;background:var(--surface2);color:var(--muted)}.eyebar.full{background:var(--good-soft);color:var(--good);font-weight:600}
+.eyeleg{display:inline-flex;align-items:center;gap:4px}.eyeleg svg{width:14px;height:14px;vertical-align:-2px}
+.pwrow .eye{width:28px;height:28px}
+.xpbox{background:var(--good-soft);color:var(--good);border-radius:12px;padding:9px 11px;font-weight:600;font-size:14px}.xpbox.neg{background:rgba(160,60,30,.1);color:var(--bad)}
+.fwrap{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line)}.fwrap:last-child{border-bottom:0}.fwrap .found{border-bottom:0;flex:1}
+.fwrap.hid{background:repeating-linear-gradient(135deg,transparent 0 6px,rgba(118,102,80,.07) 6px 12px)}.fwrap.hid .found{color:var(--muted)}
+.hidchk{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.35}.hidchk input{margin-top:3px}
+.mq-pw{border:1px solid var(--line);border-radius:10px;padding:7px 10px;margin:4px 0;background:var(--surface)}.mq-pw.hid{background:repeating-linear-gradient(135deg,transparent 0 6px,rgba(118,102,80,.07) 6px 12px)}.mq-unk{font-style:italic;color:var(--muted)}
+.rdl{margin:4px 0 0;padding-left:18px;line-height:1.5}.rdl li{margin:2px 0}
+.sec .small svg{width:13px;height:13px;vertical-align:-2px}
