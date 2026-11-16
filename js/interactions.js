@@ -123,6 +123,15 @@ document.addEventListener('click',ev=>{
   else if(a==='rfPredAdd'){const g=S.rf;if(d.k==='pred'){if(!g.pa)return;g.pred.push(g.pb&&g.pb!==g.pa?[g.pa,g.pb]:g.pa);g.pa='';g.pb='';}else{const x=(g.fa||'').trim(),y=(g.fb||'').trim();if(!x)return;g.fut.push(y?[x,y]:x);g.fa='';g.fb='';}}
   else if(a==='rfAtAdd'){S.rf.at.push(['','']);}
   else if(a==='forme'){S.forme=d.v;}
+  else if(a==='ptab'){S.ptab=d.v;S.psaved=false;}
+  else if(a==='pSave'){if(!isGest())return;const g=S.pd;if(!g||!g.date)return;const v={...g.v};for(const t in PARAM_DEF)for(const [k] of PARAM_DEF[t])if(k!=='ppBareme'&&v[k]!=='')v[k]=+v[k];v.pnj=(v.pnj||[]).filter(r=>(r.nom||'').trim()).map(r=>({nom:r.nom.trim(),car:r.car===''?'':+r.car,prof:r.prof===''?'':+r.prof}));
+    const L=((S.params&&S.params.versions)||[]).filter(x=>x.date!==g.date);L.push({date:g.date,v});S.params={versions:L};persist('meta/params',S.params);applyParams();S.pd=null;S.psaved=true;}
+  else if(a==='pDef'){if(!isGest())return;pDraft().v=paramDefaults();S.psaved=false;}
+  else if(a==='pnjAdd'){if(!isGest())return;pDraft().v.pnj=[...(S.pd.v.pnj||[]),{nom:'',car:'',prof:''}];}
+  else if(a==='pnjDel'){if(!isGest())return;S.pd.v.pnj.splice(+d.i,1);}
+  else if(a==='pfix'){(S.pfix=S.pfix||{})[d.id]={...(S.pfix[d.id]||{}),[d.k]:d.v};}
+  else if(a==='fxActivate'){if(!isGest())return;fxActivate(d.id);return;}
+  else if(a==='fxActivateRest'){if(!isGest())return;for(const r of fxFixRows())if(!r.I.length&&!r.D.length)fxActivate(r.c.id);return;}
   else if(a==='rfFxNew'){S.rf.fxEd={key:fxKey(d.k,d.n),t:'perm',cible:'',val:'',txt:'',quand:'tj'};}
   else if(a==='rfFxCancel'){S.rf.fxEd=null;}
   else if(a==='rfFxT'){const e=S.rf.fxEd;e.t=d.v;e.cible='';}
@@ -264,6 +273,9 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.rfq!==undefined){S.rfq=t.value;S._force=true;const pos=t.selectionStart;render();const i=q0('[data-rfq]');if(i){i.focus();try{i.setSelectionRange(pos,pos);}catch(e){}}}
   else if(t.dataset.rfk!==undefined&&S.rf){S.rf[t.dataset.rfk]=t.value;if(t.dataset.rfk==='sing'){const b=q0('[data-act="rfSave"]');if(b)b.disabled=!t.value.trim();}}
   else if(t.dataset.rfc!==undefined&&S.rf){S.rf.car[t.dataset.rfc][+t.dataset.m]=t.value;}
+  else if(t.dataset.pv!==undefined){pDraft().v[t.dataset.pv]=t.value;S.psaved=false;}
+  else if(t.dataset.pdate!==undefined){pDraft().date=t.value;}
+  else if(t.dataset.prk!==undefined){pDraft().v.pnj[+t.dataset.prk][t.dataset.pk]=t.value;}
   else if(t.dataset.rffx!==undefined&&S.rf&&S.rf.fxEd){S.rf.fxEd[t.dataset.rffx]=t.value;const e=S.rf.fxEd,ok=e.t==='rap'?(e.txt||'').trim():e.t==='perm'?e.cible&&+e.val:+e.val,b=q0('[data-act="rfFxAdd"]');if(b)b.disabled=!ok;}
   else if(t.dataset.rf2!==undefined&&S.rf){S.rf[t.dataset.rf2][+t.dataset.i][+t.dataset.p]=t.value;}
   else if(t.dataset.rfpw!==undefined&&S.rf){S.rf.pw[+t.dataset.rfpw][0]=t.value;}

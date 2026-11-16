@@ -12,7 +12,7 @@ const ICON={
   regles:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg>'
 };
 const SEC_TYPE="Secret de l'univers";
-const SEC_BONUS=4;
+let SEC_BONUS=4;
 const SKIND={titre:{nom:'Titre',pts:1},vm:{nom:'Vérité majeure',pl:'Vérités majeures',pts:3,g:'◆',o:'◇'},vmin:{nom:'Vérité mineure',pl:'Vérités mineures',pts:2,g:'●',o:'○'},h:{nom:'Indice',pl:'Indices',pts:1,g:'■',o:'□'}};
 const ROMAN=['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI','XXII'];
 /* Contenu repris du tableur « Secrets d'Héritiers » : emplacements fixes, null = encore scellé */

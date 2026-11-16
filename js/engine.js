@@ -1,6 +1,6 @@
 /* La belle appli — moteur de règles (coûts, races, spécialités, atouts, achats) */
 /*ENGINE*/
-const RULES={feerie:5,masque:4,carac:4,comp:3,fut:1,fortune:2,atout:8,spec:8,prof:12};
+const RULES={feerie:5,masque:4,carac:4,comp:3,fut:1,fortune:2,atout:8,spec:8,prof:12,carac12:12,specFut:2,mauvaiseMain:12};
 const CARACS=['Agilité','Constitution','Force','Esprit','Perception','Précision','Prestance','Sang Froid'];
 const NATURES=['Scénario','Groupe','Individuel'];
 const PROFILS=['Aventurier','Combattant','Erudit','Gentleman','Roublard','Savant'];
@@ -10,8 +10,8 @@ const TYPES=['Scénario','Interscénario','Autre'];
 const STARS=30;
 const LABEL={feerie:'Féerie',masque:'Masque',fortune:'Fortune',atout:'Atouts féeriques',spec:'Spécialités'};
 const STAGES=[{nom:'Profond',feerie:7,carac:6,comp:6,atout:4},{nom:'Légendaire',feerie:8,carac:7,comp:7,atout:5}];
-const PALIER_MAX=7; /* seules les compétences dont le niveau max est ≥ 7 comptent pour Profond et Légendaire */
-function lvlCost(kind,l){if(kind==='atout'||kind==='spec')return RULES[kind];if(kind==='carac'&&l===2)return 12;return l*RULES[kind];}
+let PALIER_MAX=7; /* seules les compétences dont le niveau max est ≥ 7 comptent pour Profond et Légendaire */
+function lvlCost(kind,l){if(kind==='atout'||kind==='spec')return RULES[kind];if(kind==='carac'&&l===2)return RULES.carac12;return l*RULES[kind];}
 function cum(kind,from,to){let s=0;for(let l=from+1;l<=to;l++)s+=lvlCost(kind,l);return s;}
 function ref(c,key){
   const i=key.indexOf(':'),k=i<0?key:key.slice(0,i),n=i<0?'':key.slice(i+1);
@@ -115,7 +115,7 @@ const nrmS=t=>nrm(t).split(' ').map(w=>w.length>3?w.replace(/s$/,''):w).join(' '
 function specComp(nom){const k=nrmS(SPALIAS[nrm(nom)]||nom);if(LANGS.includes(nrm(nom))||/^langue/.test(nrm(nom)))return 'Culture';
   for(const [c,l] of Object.entries(CATSPEC))for(const x of l)if(x[0]!=='Langue : '&&nrmS(x[0])===k)return c;return null;}
 function specInfo(nom){const k=nrmS(SPALIAS[nrm(nom)]||nom);for(const l of Object.values(CATSPEC))for(const x of l)if(nrmS(x[0])===k)return x;if(LANGS.includes(nrm(nom))||/^langue/.test(nrm(nom)))return ['Langue','ESP/PRES'];return null;}
-const specCost=(key,nom)=>key.startsWith('fut:')?2:nrm(nom)==='mauvaise main'?12:RULES.spec;
+const specCost=(key,nom)=>key.startsWith('fut:')?RULES.specFut:nrm(nom)==='mauvaise main'?RULES.mauvaiseMain:RULES.spec;
 /* Catalogue proposé pour une cible : compétence, profil de PNJ (union de ses compétences) ou futile (aucun) */
 function specCatalog(key,c){if(key.startsWith('comp:')){const l=CATSPEC[key.slice(5)]||[];return c&&c.race==='Fouinard'&&key==='comp:Conduite'?l.concat([['Tous véhicules à moteur','PRÉC',1]]):l;}if(key.startsWith('prof:'))return (PROFCOMPS[key.slice(5)]||[]).flatMap(c=>CATSPEC[c]||[]);return [];}
 function specsOf(c){return Array.isArray(c.specs)?c.specs:[];}
@@ -279,7 +279,7 @@ function newChar(id,court,nom,type){
   const base={id,court,nom:nom||court,type,statut:'actif',carac:caracs,spec:{cur:0},plan:{},achats:[]};
   base.fx=true; /* moteur de bonus actif pour les personnages créés à partir de l'étape 5 */
   if(type==='PNJ'){base.profils=PROFILS.map(n=>({nom:n,max:6,cur:0,subs:[]}));return base;}
-  base.feerie={max:8,cur:3};base.masque={max:9,cur:3};base.creation=true;base.fortune={max:15,cur:0};base.atout={max:8,cur:0};
+  base.feerie={max:8,cur:PRM.fmStart};base.masque={max:9,cur:PRM.fmStart};base.creation=true;base.fortune={max:15,cur:0};base.atout={max:8,cur:0};
   base.profils=PROFILS.map(n=>({nom:n,max:6,note:null,comps:PROFCOMPS[n].map(x=>({nom:x,max:6,cur:0}))}));base.futiles=[];
   return base;
 }
@@ -316,7 +316,7 @@ function raceEyeSet(id,k,i,open,sid){
   S.races={...S.races,[id]:{...base,eye:e}};persist('meta/races',{byId:S.races});
   if(wasFull===isFull){rebuildRaces();render();return;}
   const list=clone(S.creatures),c=list.find(x=>x.id===id);let evs=S.events;
-  if(isFull){c.done=true;c.date=today();const t=allPJ();if(t.length){const ne={id:'g'+Date.now().toString(36)+'-c',date:c.date,titre:c.nom+' complété',type:CRE_TYPE,creature:{id},entries:t.map(p=>({perso:p,nature:'Groupe',montant:1}))};if(sid&&sessById(sid))ne.sessionId=sid;evs=[...evs,ne];}}
+  if(isFull){c.done=true;c.date=today();const t=allPJ();if(t.length){const ne={id:'g'+Date.now().toString(36)+'-c',date:c.date,titre:c.nom+' complété',type:CRE_TYPE,creature:{id},entries:t.map(p=>({perso:p,nature:'Groupe',montant:+PRM.creXP||1}))};if(sid&&sessById(sid))ne.sessionId=sid;evs=[...evs,ne];}}
   else{c.done=false;delete c.date;evs=evs.filter(ev=>!(ev.creature&&ev.creature.id===id));}
   saveCreatures(list);if(evs!==S.events)saveEvents(evs);else render();}
 const eyeBtn=(act,attrs,open,label)=>`<button class="eye ${open?'on':'off'}" data-act="${act}" ${attrs} aria-pressed="${!!open}" title="${open?'Visible par toute la table':'Visible seulement par la gestion'}" aria-label="${esc(label)} : ${open?'visible par toute la table':'visible par la gestion seulement'}">${open?EYE_O:EYE_C}</button>`;
@@ -340,8 +340,39 @@ function fxOf(c){const x=raceRecOf(c);if(!x||!x.fx)return [];const out=[],has=ne
     for(const f of (x.fx[fxKey(k,e[0])]||[]))out.push({...f,src:e[0],kind:k});}
   return out;}
 const fxOn=(e,forme)=>e.quand==='tj'||e.quand===(forme||'m');
-function fxSum(c,cible,forme){if(!c.fx)return [0,[]];let s=0;const src=[];for(const e of fxOf(c))if(e.t==='perm'&&e.cible===cible&&fxOn(e,forme)){s+=+e.val||0;src.push(sgn(e.val)+' '+e.src);}return [s,src];}
+/* Valeurs qui s'achètent : un bonus permanent « toujours » est intégré à la valeur enregistrée (le coût XP se calcule avec lui) */
+const fxPurch=cible=>cible==='fortune'||/^(car|comp):/.test(cible);
+const fxInteg=e=>e.t==='perm'&&e.quand==='tj'&&fxPurch(e.cible);
+/* Bonus ajouté à l'affichage (valeurs calculées, ou bonus lié à une forme) */
+function fxSum(c,cible,forme){if(!c.fx)return [0,[]];let s=0;const src=[];for(const e of fxOf(c))if(e.t==='perm'&&e.cible===cible&&fxOn(e,forme)&&!fxInteg(e)){s+=+e.val||0;src.push(sgn(e.val)+' '+e.src);}return [s,src];}
+/* Origine des bonus intégrés à une valeur enregistrée */
+function fxIntSrc(c,cible){if(!c.fx)return [];return fxOf(c).filter(e=>fxInteg(e)&&e.cible===cible).map(e=>sgn(e.val)+' '+e.src);}
+const fxRefKey=cible=>cible==='fortune'?'fortune':cible.startsWith('car:')?'carac:'+cible.slice(4):'comp:'+cible.slice(5);
+const fxIntKey=e=>e.kind+'|'+nrm(e.src)+'|'+e.cible;
+/* Tient à jour les bonus intégrés d'un personnage du moteur : ajoute ce qui est nouveau, retire ce qui a disparu */
+function fxSync(c0){if(!c0||!c0.fx)return c0;const want={};for(const e of fxOf(c0))if(fxInteg(e))want[fxIntKey(e)]=(want[fxIntKey(e)]||0)+(+e.val||0);
+  const had=c0.fxInt||{},keys=new Set([...Object.keys(want),...Object.keys(had)]);let c=null;
+  for(const k of keys){const d=(want[k]||0)-(had[k]||0);if(!d)continue;if(!c)c=clone(c0);const r=ref(c,fxRefKey(k.split('|')[2]));if(r&&r.o)r.o.cur=Math.max(0,(r.o.cur||0)+d);}
+  if(!c&&JSON.stringify(had)===JSON.stringify(want))return c0;c=c||clone(c0);c.fxInt=want;return c;}
 /* Mise en place ponctuelle : effets préremplis (à vérifier) sur les races qui n'en ont pas encore */
 function fixFx(){if(!S.racesReady||!S.races)return;let ch=false;const R={...S.races};
   for(const k in FX_SEED){const r=R[k];if(!r||r.fxv)continue;R[k]={...r,fx:{...clone(FX_SEED[k]),...(r.fx||{})},fxv:1};ch=true;}
   if(ch){S.races=R;persist('meta/races',{byId:R});render();}}
+
+/* ---------- Paramètres (écran Paramètres, droits de gestion) ----------
+   meta/params = {versions:[{date, v:{...}}]} ; la version active est la plus récente dont la date d'effet est passée. */
+const PARAM_TABS=[['couts','Coûts XP'],['paliers','Paliers'],['creation','Création'],['pnj','Rangs de PNJ'],['table','Table'],['bonus','Bonus']];
+const PARAM_DEF={
+ couts:[['feerie','Féerie : (niveau suivant) ×',5],['masque','Masque : (niveau suivant) ×',4],['carac','Caractéristique : (niveau suivant) ×',4],['carac12','Caractéristique : passage de 1 à 2',12],['comp','Compétence : (niveau suivant) ×',3],['fut','Compétence futile : (niveau suivant) ×',1],['fortune','Fortune : (niveau suivant) ×',2],['atout','Atout féerique',8],['spec','Spécialité',8],['specFut','Spécialité futile',2],['mauvaiseMain','Mauvaise main',12],['prof','Profil de PNJ : (niveau suivant) ×',12]],
+ paliers:[['p1feerie','Profond : Féerie',7],['p1carac','Profond : une caractéristique à',6],['p1comp','Profond : une compétence à',6],['p1atout','Profond : atouts féeriques',4],['p2feerie','Légendaire : Féerie',8],['p2carac','Légendaire : une caractéristique à',7],['p2comp','Légendaire : une compétence à',7],['p2atout','Légendaire : atouts féeriques',5],['palierMax','Compétences prises en compte : niveau max d\'au moins',7]],
+ creation:[['carTot','Total de caractéristiques (PJ, minima compris)',26],['carMax','Plafond des caractéristiques à la création',5],['compMax','Plafond des compétences à la création (profils et prédilection compris)',5],['atStart','Atouts féeriques de départ',2],['fmStart','Féerie et Masque de départ',3],['profMaj','Rang du profil majeur',2],['profMin','Rang du profil mineur',1],['predBonus','Bonus de prédilection (rangs)',2],['ptsUtil','Points de compétence libres',18,1],['ptsFut','Points de compétences futiles libres',12,1],['ptsSpec','Coût d\'une spécialité (points de création)',1,1],['ptsMM','Coût de Mauvaise main (points de création)',2,1],['langCult','Langues offertes par rang de Culture',1],['ppBareme','Barème des PP de création','1, 3, 6, 10, 15',1]],
+ table:[['creXP','XP de groupe par fiche de race complète',1],['secTitre','Secret : titre',1],['secVM','Secret : vérité majeure',3],['secVmin','Secret : vérité mineure',2],['secH','Secret : indice',1],['secBonus','Secret : bonus du secret complété',4]]};
+const PNJ_DEF=[{nom:'Larbin',car:20,prof:5}];
+function paramDefaults(){const v={};for(const t in PARAM_DEF)for(const [k,,d] of PARAM_DEF[t])v[k]=d;v.pnj=clone(PNJ_DEF);return v;}
+let PRM=paramDefaults();
+function paramActive(){const L=((S.params&&S.params.versions)||[]).filter(x=>x.date<=today()).sort((a,b)=>a.date.localeCompare(b.date));return {...paramDefaults(),...(L.length?L[L.length-1].v:{})};}
+function applyParams(){PRM=paramActive();for(const [k] of PARAM_DEF.couts)if(PRM[k]!==''&&PRM[k]!=null)RULES[k]=+PRM[k];
+  for(const [i,p] of [[0,'p1'],[1,'p2']])for(const f of ['feerie','carac','comp','atout'])if(PRM[p+f]!==''&&PRM[p+f]!=null)STAGES[i][f]=+PRM[p+f];if(PRM.palierMax)PALIER_MAX=+PRM.palierMax;
+  if(typeof SKIND!=='undefined'){SKIND.titre.pts=+PRM.secTitre;SKIND.vm.pts=+PRM.secVM;SKIND.vmin.pts=+PRM.secVmin;SKIND.h.pts=+PRM.secH;SEC_BONUS=+PRM.secBonus;}}
+/* Après chargement : remet à jour les bonus intégrés des personnages du moteur (si une fiche de race a changé) */
+function fxSyncAll(){if(!S.ready||!S.racesReady||!S.creaturesReady)return;for(const c of Object.values(S.chars)){if(!c.fx)continue;const n=fxSync(c);if(n!==c){S.chars[n.id]=n;persist('chars/'+n.id,n);}}}

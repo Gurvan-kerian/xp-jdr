@@ -32,7 +32,7 @@ function persist(path,data){if(DB)chain(path,()=>DB.doc(path).set(data));}
 function persistDel(path){if(DB)chain(path,()=>DB.doc(path).delete());}
 function setSync(st,msg){S.sync=st;const el=document.getElementById('sync');if(!el)return;el.className='sync '+(st==='ok'?'ok':st==='err'?'err':'');
   el.querySelector('span').textContent=msg||(st==='ok'?'Synchronisé':st==='loading'?'Connexion…':st==='local'?'Hors ligne':'Erreur');}
-function saveChar(c){S.chars[c.id]=c;render();persist('chars/'+c.id,c);}
+function saveChar(c){c=fxSync(c);S.chars[c.id]=c;render();persist('chars/'+c.id,c);}
 function savePlayer(p){S.players[p.id]=p;render();persist('players/'+p.id,p);}
 function saveEvents(ev){S.events=ev;render();persist('gains/all',{events:ev});}
 function removeChar(id){
