@@ -134,6 +134,7 @@ const COMPS_ALL=['Conduite','Mouvement','Ressort','Survie','Art de la guerre','A
 let RACES={},CARMAX={},PRED={},PREDFUT={},ACCRU={};
 /* Spécialités de prédilection (colonnes T et U du tableau des races) : [nom, compétence, note] */
 for(const k in SP_SEED)if(RACE_SEED[k])Object.assign(RACE_SEED[k],SP_SEED[k]);
+for(const k in RACE_DOC)if(RACE_SEED[k])Object.assign(RACE_SEED[k],JSON.parse(JSON.stringify(RACE_DOC[k])));
 /* Humain : réservé aux PNJ, hors féerie (caracs 1 à 6, profils et compétences max 6) */
 const HUMAIN='Humain',HUM_ID='humain',HUM_SEED={sing:HUMAIN,hum:true,car:Object.fromEntries(CARCOL.map(k=>[k,[1,6]]))};
 const humRec=()=>(S.racesReady&&S.races&&S.races[HUM_ID])||HUM_SEED;
@@ -142,15 +143,28 @@ const humCar=nom=>{const x=humRec().car||{};return x[nom]||[1,6];};
 const singOf=n=>(n||'').split(' ').map(w=>w.length>3&&/s$/.test(w)&&!/x$/.test(w)?w.slice(0,-1):w).join(' ').replace(/s-/g,'-');
 function raceRules(){return S.racesReady&&S.races?S.races:RACE_SEED;}
 function raceCres(){return S.creaturesReady?S.creatures:CREATURES_SEED;}
-function raceRec(cr){const x=raceRules()[cr.id];return x||{sing:singOf(cr.nom),car:null,acc:[],pred:[],fut:[],at:[],typ:[],sp:[],spf:[]};}
+function raceRec(cr){const x=raceRules()[cr.id];return x||{sing:singOf(cr.nom),car:null,acc:[],pred:[],fut:[],at:[],typ:[],sp:[],spf:[],cap:[],choix:[],av:[],dv:[],pw:{m:[],d:[],p:'',l:''}};}
+/* Caractéristiques accrues possibles = options « accrue » du choix définitif (à défaut, l'ancienne liste) */
+const accOf=x=>{const c=(x&&x.choix)||[];return c.length?c.filter(o=>o[0]==='acc').map(o=>o[1]):((x&&x.acc)||[]);};
+/* Pouvoirs : 4 masqués, 2 démasqués, 1 profond, 1 légendaire ; '?' = inconnu en jeu */
+const PWN={m:4,d:2};
+const pwSlots=x=>{const p=(x&&x.pw)||{};return [...Array(4)].map((_,i)=>(p.m||[])[i]||'').concat([...Array(2)].map((_,i)=>(p.d||[])[i]||''),[p.p||'',p.l||'']);};
+const pwName=id=>id==='?'?'Inconnu':!id?'':((S.pouvoirs&&S.pouvoirs[id])||POUVOIRS_SEED[id]||{nom:id}).nom;
 const carOk=x=>!!(x&&x.car&&CARCOL.every(k=>x.car[k]&&x.car[k][0]!==''&&x.car[k][0]!=null&&x.car[k][1]!==''&&x.car[k][1]!=null));
 function rebuildRaces(){RACES={};CARMAX={};PRED={};PREDFUT={};ACCRU={};
   for(const cr of raceCres()){const x=raceRec(cr),n=x.sing;if(!n)continue;
     RACES[n]={a:(x.at||[]).filter(a=>a&&a[0]),t:(x.typ||[]).filter(t=>t&&t[0]&&t[1]),sp:(x.sp||[]).filter(e=>e&&e[0]),spf:(x.spf||[]).filter(e=>e&&e[0]),cre:cr.id};
     if(carOk(x))CARMAX[n]=CARCOL.map(k=>[+x.car[k][0]||0,+x.car[k][1]]);
-    if((x.pred||[]).length)PRED[n]=x.pred;if((x.fut||[]).length)PREDFUT[n]=x.fut;if((x.acc||[]).length)ACCRU[n]=x.acc;}}
-function raceBlocks(x){x=x||{};return [['Caractéristiques',carOk(x)],['Caractéristiques accrues',(x.acc||[]).length>0],['Compétences utiles de prédilection',(x.pred||[]).length>0],['Compétences futiles de prédilection',(x.fut||[]).length>0],['Atouts féeriques',(x.at||[]).some(a=>a&&a[0])],['Spécialités typiques',(x.typ||[]).filter(t=>t&&t[0]).length>=2]];}
-function raceStatus(cr,x){const n=raceBlocks(x).filter(b=>b[1]).length;if(cr&&cr.done&&n<6)return 'todo';return n===0?'no':n===6?'ok':'mid';}
+    if((x.pred||[]).length)PRED[n]=x.pred;if((x.fut||[]).length)PREDFUT[n]=x.fut;const ac=accOf(x);if(ac.length)ACCRU[n]=ac;}}
+function raceBlocks(x){x=x||{};return [['Caractéristiques',carOk(x)],['Capacités naturelles et choix définitif',(x.cap||[]).length>0&&(x.choix||[]).length>0],['Avantages et désavantages',(x.av||[]).length>0&&(x.dv||[]).length>0],['Compétences utiles de prédilection',(x.pred||[]).length>0],['Compétences futiles de prédilection',(x.fut||[]).length>0],['Atouts féeriques',(x.at||[]).some(a=>a&&a[0])],['Spécialités typiques',(x.typ||[]).filter(t=>t&&t[0]).length>=2],['Pouvoirs',pwSlots(x).every(v=>v)]];}
+function raceStatus(cr,x){const b=raceBlocks(x),n=b.filter(v=>v[1]).length;if(cr&&cr.done&&n<b.length)return 'todo';return n===0?'no':n===b.length?'ok':'mid';}
+/* Mise en place ponctuelle : capacités, choix définitif, avantages, désavantages et pouvoirs repris du doc « Fiches de race » ;
+   pour une race découverte, un pouvoir absent du doc devient « Inconnu » */
+function fixRaceDoc(){if(!S.racesReady||!S.creaturesReady||!S.pouvoirsReady||!S.races)return;let ch=false;
+  for(const k in RACE_DOC){const r=S.races[k];if(!r||r.doc)continue;const d=clone(RACE_DOC[k]),cr=S.creatures.find(c=>c.id===k);
+    if(cr&&cr.done){while(d.pw.m.length<4)d.pw.m.push('?');while(d.pw.d.length<2)d.pw.d.push('?');if(!d.pw.p)d.pw.p='?';if(!d.pw.l)d.pw.l='?';}
+    const ac=accOf(d);S.races={...S.races,[k]:{...r,...d,acc:ac.length?ac:(r.acc||[]),doc:1}};ch=true;}
+  if(ch){persist('meta/races',{byId:S.races});rebuildRaces();render();}}
 const RST={no:'Vide',mid:'Partielle',ok:'Complète',todo:'À compléter'};
 const playedBy=sing=>Object.values(S.chars).filter(c=>c.type==='PJ'&&c.race&&c.race===sing);
 /* Résout les choix « X ou Y » : choix enregistré sur le personnage, sinon d'après la fiche (max 7, sinon présent, sinon le premier) */

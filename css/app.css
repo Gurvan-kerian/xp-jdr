@@ -441,3 +441,5 @@ body.home{padding-bottom:24px}
 fieldset.ro{border:0;padding:0;margin:0;min-width:0}
 fieldset.ro .actions,fieldset.ro .radd,fieldset.ro button.x,fieldset.ro .rchip button{display:none}
 .rolock{font-size:13px;color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:6px 10px;margin:0 0 10px}
+
+.pwrow{display:flex;gap:6px;align-items:center;margin:3px 0}.pwrow input{flex:1;min-width:0}.pwrow input:disabled{font-style:italic;background:transparent}.pwunk{padding:5px 9px;font-size:.78rem;white-space:nowrap}.pwunk[aria-pressed="true"]{background:var(--brass);color:#fff;border-color:var(--brass)}.pwalso{margin:-1px 0 4px 2px;font-size:.75rem}
