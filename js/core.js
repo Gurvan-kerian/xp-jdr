@@ -12,6 +12,13 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
 const fmtDate=d=>{if(!d)return '';const [y,m,j]=d.split('-');return `${j}/${m}/${y.slice(2)}`;};
 const actif=c=>(c.statut||'actif')==='actif';
 const owners=c=>Object.values(S.players).filter(p=>(p.persos||[]).includes(c.id));
+/* Droits de gestion (indépendants du rôle MJ) ; « voir comme un joueur » les suspend */
+const hasGest=p=>!!(p&&p.gestion&&!p.parti);
+const isGest=()=>!S.asPlayer&&!!ME&&hasGest(S.players[ME]);
+const gestCount=()=>Object.values(S.players).filter(hasGest).length;
+/* Mise en place ponctuelle : si personne n'a encore de droits de gestion, les donner au(x) MJ et à Gurvan */
+function fixGestion(){const P=Object.values(S.players);if(!P.length||P.some(p=>'gestion' in p))return;
+  for(const p0 of P){const p=clone(p0);p.gestion=p.role==='MJ'||p.id==='lorenzo';S.players[p.id]=p;persist('players/'+p.id,p);}render();}
 const meOwns=c=>!!ME&&!!S.players[ME]&&(S.players[ME].persos||[]).includes(c.id);
 const vis=c=>!c.cache||meOwns(c)||owners(c).length===0;
 const ids=()=>Object.keys(S.chars).filter(i=>vis(S.chars[i])).sort((a,b)=>{const i=ORDER.indexOf(a),j=ORDER.indexOf(b);return (i<0?99:i)-(j<0?99:j)||(S.chars[a].court||'').localeCompare(S.chars[b].court||'');});

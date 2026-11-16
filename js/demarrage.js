@@ -15,7 +15,7 @@ function start(){
     db.collection('players').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
       const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=x;});
-      S.players=m;render();
+      S.players=m;render();fixGestion();
     },()=>{});
     db.doc('meta/heritage').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;

@@ -12,6 +12,7 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]');if(!t)return;
   const a=t.dataset.act,d=t.dataset;S._force=true;
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
+  if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel)$/.test(a)&&!isGest())return; /* Référentiel : modification réservée à la gestion */
   if(a==='tab'){ev.preventDefault();if(d.v==='univers')S.sec=null;if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
   else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max,sp:{}};}
@@ -212,6 +213,9 @@ document.addEventListener('click',ev=>{
   else if(a==='hideAll'){const p=S.players[d.pid];const mine=ids().map(i=>S.chars[i]).filter(c=>(p.persos||[]).includes(c.id));const target=!mine.every(c=>c.cache);mine.forEach(c=>setCache(c,target));}
   else if(a==='cHide'){setCache(S.chars[d.id],!S.chars[d.id].cache);}
   else if(a==='cMoy'){const n=clone(S.chars[d.id]);n.horsMoyenne=!n.horsMoyenne;saveChar(n);return;}
+  else if(a==='gestToggle'){if(!isGest())return;const p=clone(S.players[d.pid]);if(hasGest(p)&&gestCount()<=1)return;p.gestion=!hasGest(p);savePlayer(p);return;}
+  else if(a==='asPlayer'){S.asPlayer=true;S.rf=null;window.scrollTo(0,0);}
+  else if(a==='asPlayerOff'){S.asPlayer=false;}
   else if(a==='partiToggle'){const p=clone(S.players[d.pid]);p.parti=!p.parti;savePlayer(p);return;}
   else if(a==='pDel')S.dlg={kind:'p',id:d.pid};
   else if(a==='cDel')S.dlg={kind:'c',id:d.id};

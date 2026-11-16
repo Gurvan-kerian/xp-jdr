@@ -1,12 +1,16 @@
 /* La belle appli — Référentiel des races */
 /* --- Référentiel › Races --- */
-function viewRef(){if(!S.creaturesReady||!S.racesReady)return `<h2 style="margin-top:4px">Référentiel</h2><div class="card empty">Chargement…</div>`;return S.rf?(S.rf.hum?refHum():refSheet()):refList();}
+function viewRef(){if(!S.creaturesReady||!S.racesReady)return `<h2 style="margin-top:4px">Référentiel</h2><div class="card empty">Chargement…</div>`;if(!S.rf)return refList();
+  let h=S.rf.hum?refHum():refSheet();
+  if(!isGest()){const i=h.indexOf('<div class="card"'),k=h.indexOf('>',i)+1,e=h.lastIndexOf('</div>');
+    if(i>=0&&e>k)h=h.slice(0,k)+'<div class="rolock">Lecture seule : la modification du Référentiel est réservée aux personnes ayant les droits de gestion.</div><fieldset disabled class="ro">'+h.slice(k,e)+'</fieldset>'+h.slice(e);}
+  return h;}
 function refRows(){return S.creatures.map(cr=>{const x=raceRec(cr);return {cr,x,st:raceStatus(cr,x),pj:playedBy(x.sing)};}).sort((a,b)=>a.x.sing.localeCompare(b.x.sing,'fr'));}
 function refList(){const all=refRows(),q=nrm(S.rfq||''),f=S.rff||'all',fm=S.rffam||'';
   const cnt=k=>all.filter(r=>k==='todo'?r.st==='todo':k==='pj'?r.pj.length:k==='dec'?r.cr.done:true).length;
   const L=all.filter(r=>(!q||nrm(r.x.sing).includes(q)||nrm(r.cr.nom).includes(q))&&(f==='all'||(f==='todo'&&r.st==='todo')||(f==='pj'&&r.pj.length)||(f==='dec'&&r.cr.done))&&(!fm||r.cr.fam===fm));
   const F={trad:'traditionnelle',mod:'moderne',exo:'exotique'};
-  let h=`<h2 style="margin-top:4px">Référentiel › Races</h2><div class="card"><div class="rsearch"><input type="search" data-rfq="1" placeholder="Rechercher une race…" aria-label="Rechercher une race" value="${esc(S.rfq||'')}" autocomplete="off"><button class="btn" style="white-space:nowrap;padding:6px 12px" data-act="rfNew">+ Nouvelle</button></div>
+  let h=`<h2 style="margin-top:4px">Référentiel › Races</h2><div class="card"><div class="rsearch"><input type="search" data-rfq="1" placeholder="Rechercher une race…" aria-label="Rechercher une race" value="${esc(S.rfq||'')}" autocomplete="off">${isGest()?'<button class="btn" style="white-space:nowrap;padding:6px 12px" data-act="rfNew">+ Nouvelle</button>':''}</div>
   <div class="flt">${[['all','Toutes'],['todo','À compléter'],['pj','Jouées'],['dec','Découvertes']].map(([k,l])=>`<button data-act="rfFlt" data-v="${k}" aria-pressed="${f===k}">${l} (${cnt(k)})</button>`).join('')}</div>
   <div class="flt">${CFAM.map(([k,l])=>`<button data-act="rfFam" data-v="${k}" aria-pressed="${fm===k}">${l}</button>`).join('')}</div>
   <div class="rl">${L.map(r=>`<button class="r${r.cr.done?' dec':''}" data-act="rfOpen" data-id="${esc(r.cr.id)}"><span><b>${esc(r.x.sing)}</b>${r.pj.length?` <span class="rpj">· ${r.pj.map(c=>esc(c.court)).join(', ')}</span>`:''}<small>${F[r.cr.fam]||''}${r.cr.done?' · <span class="rdot">✓ découverte</span>':''}</small></span><span class="rst ${r.st}">${RST[r.st]}</span><span style="color:var(--accent);font-size:18px">›</span></button>`).join('')||'<div class="muted" style="padding:8px">Aucune race.</div>'}${f==='all'&&!fm&&(!q||nrm(HUMAIN).includes(q))?(()=>{const pn=Object.values(S.chars).filter(isHum);return `<div class="rsep">Hors féerie</div><button class="r" data-act="rfHum"><span><b>${HUMAIN}</b>${pn.length?` <span class="rpj">· ${pn.map(c=>esc(c.court)).join(', ')}</span>`:''}<small>réservé aux PNJ</small></span><span></span><span style="color:var(--accent);font-size:18px">›</span></button>`;})():''}</div></div>`;
