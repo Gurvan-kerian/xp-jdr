@@ -218,6 +218,17 @@ h3,.field label,.names .lab,th,.strip span{font-family:var(--font-label);letter-
 .bar i{background:linear-gradient(180deg,var(--bar-hi),var(--bar) 55%,var(--bar-lo))}
 .bar.plan i{background:linear-gradient(180deg,#e9a85a,var(--plan) 60%,#6b3c0b)}
 .bar.acb{display:flex}.bar.acb i:first-child{border-radius:99px 0 0 99px}.bar i.accb,.irow.max .bar i.accb{background:linear-gradient(180deg,#7fb3ee,#3d84d6 55%,#24589a);border-radius:0 99px 99px 0}
+.ptrrow{display:flex;align-items:center;gap:12px;margin:2px 0 10px}.ptrimg{width:64px;height:64px;flex:none;border-radius:50%;overflow:hidden;border:2px solid var(--brass);display:flex;align-items:center;justify-content:center;background:var(--surface2);font-weight:700;font-size:24px}.ptrimg img{width:100%;height:100%;object-fit:cover}.ptrrow .btn{padding:5px 12px;font-size:14px}
+#ptrStage{position:relative;width:260px;height:260px;margin:6px auto;border-radius:16px;overflow:hidden;background:#222;touch-action:none;cursor:grab;user-select:none}#ptrStage img{position:absolute;max-width:none;pointer-events:none;user-select:none}#ptrStage .ring{position:absolute;inset:20px;border-radius:50%;box-shadow:0 0 0 400px rgba(0,0,0,.45);border:2px solid #fff;pointer-events:none}
+.rsearch{display:flex;gap:8px;margin-bottom:10px}.rsearch input{flex:1;min-width:0;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:inherit;font:inherit}
+.flt{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}.flt button{font:inherit;font-size:13px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:inherit;cursor:pointer}.flt button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.rl{display:flex;flex-direction:column;gap:2px}.rl .r{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px;border-radius:8px;font:inherit;font-size:15px;text-align:left;background:none;border:0;color:inherit;cursor:pointer;width:100%}.rl .r b{font-weight:600}.rl .r small{display:block;color:var(--muted);font-size:12px}.rl .r.hl{background:linear-gradient(90deg,var(--bad-soft,#f6dcc8),transparent 75%);box-shadow:inset 3px 0 0 var(--bad)}
+.rst{font-size:12px;padding:2px 8px;border-radius:99px;white-space:nowrap;font-weight:600}.rst.ok{background:var(--good-soft);color:var(--good)}.rst.mid{background:var(--plan-soft);color:var(--plan)}.rst.no{background:var(--surface2);color:var(--muted)}.rst.todo{background:var(--bad);color:#fff}
+.rpj{font-size:12px;color:var(--accent);font-weight:600}.rdot{color:var(--good);font-size:12px;font-weight:600}
+.ct{width:100%;border-collapse:collapse;font-size:14px}.ct th{font-weight:600;color:var(--muted);text-align:center;padding:4px}.ct th:first-child,.ct td:first-child{text-align:left}.ct td{padding:3px 4px;text-align:center;border-top:1px dashed var(--line)}.ct input[type=number]{width:52px;text-align:center;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:inherit;font:inherit}
+.rchip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border:1px solid var(--line);border-radius:10px;font-size:14px;white-space:nowrap}.rchip.grp{border:1.5px dashed var(--brass);background:var(--plan-soft)}.rchip.grp b{font-size:11px;letter-spacing:.04em;color:var(--plan);text-transform:uppercase}.rchip button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px}
+.rgrid{display:grid;grid-template-columns:1fr 1.4fr auto;gap:6px;align-items:center}.rgrid input,.rgrid select,.radd input,.radd select{padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:inherit;font:inherit;font-size:14px;min-width:0}.rgrid .x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:15px}
+.radd{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}.radd .btn{padding:4px 12px;font-size:13px}h3.rs{margin:16px 0 6px;font-size:15px}.rchk{font-size:14px;line-height:1.7;margin-top:8px}.rchk .ko{color:var(--bad)}
 .accst{margin-left:6px;color:#3d84d6;font-size:.9em}
 .nsub{display:block;font-size:12px;color:var(--muted);margin-top:1px;font-weight:400}.nsub.bad{color:var(--bad)}
 .spt{display:flex;align-items:center;gap:4px;margin-top:1px;color:var(--accent);font-size:12.5px;font-weight:600;cursor:pointer}.spt .cv{display:inline-block;transition:transform .2s;font-size:14px;line-height:1}.spt.on .cv{transform:rotate(90deg)}
@@ -569,35 +580,43 @@ function migrateSpecs(c){if(Array.isArray(c.specs))return c;const seen=new Set()
     if(comp){if(c.type==='PNJ'){const pr=(c.profils||[]).find(p=>(PROFCOMPS[p.nom]||[]).includes(comp));if(pr)cible='prof:'+pr.nom;}else if(ref(c,'comp:'+comp))cible='comp:'+comp;}
     out.push({nom,cible});}
   c.specs=out;if(c.spec&&(c.spec.cur||0)<out.length)c.spec.cur=out.length;return c;}
-/* Races : atouts féeriques [nom, description] et spécialités typiques [spécialité, compétence] */
-const RACES={
- 'Bastet':{a:[['Ami des chats','réseau d\'informateurs félins'],['Contacts mondains','noblesse et grande bourgeoisie européennes'],['Grâce féline','élégance ; repère d\'instinct les lieux confortables'],['Malice','+1 aux tests d\'Habiletés liés à l\'Ingéniosité']],t:[['Chasse','Survie'],['Moyen improvisé','Habiletés']]},
- 'Djinn':{a:[['Marchandage','+1 en négociations commerciales'],['Arme fétiche','cimeterre dissimulable, dégâts 4'],['Grotte secrète',''],['6e sens magique','+1 pour détecter la magie ou identifier les faux-semblants']]},
- 'Elfe':{a:[['Ami des druides',''],['Fragilité trompeuse',''],['Vision décuplée',''],['Manoir somptueux','']],t:[['Beau monde','Entregent'],['Culture générale','Culture']]},
- 'Fée électricité':{a:[['Amie des fées modernes','un Contact dans chaque grande cour féerique'],['Identité discrète','fausse identité féerique crédible'],['Manipulation électrique','charge ou décharge une pile ou une batterie en un tour'],['Muse des technophiles','les Technologues lui rendent service']]},
- 'Fleur de métal':{a:[['Protecteur vampyrique','un Comte ou une Comtesse vampyrique comme Allié'],['Amant éperdu','jeune amant dévoué'],['Amie des artistes','+2 en social avec les artistes'],['Garde-robe variée','tenues pour toutes les classes sociales ; +1 en Comédie (Déguisement), Séduction, et Classe en tenue élégante']],t:[['Appâts','Séduction'],['Mentir','Comédie']]},
- 'Fouinard':{a:[['Ami des pixies','les pixies lui sont favorables'],['Ami des scientifiques','un Contact scientifique dans chaque capitale européenne'],['Brevets','+2 en Fortune'],['Laboratoire secret','vaste atelier ou laboratoire clandestin']],t:[['Mécanique','Habiletés'],['Investigation','Observations']]},
- 'Gnome':{a:[['Affinité occulte','+1 en Occultisme'],['Aisance souterraine','+2 pour s\'orienter et survivre sous terre'],['Repère souterrain','vaste refuge secret'],['Santé de fer','immunisé aux maladies ordinaires et féeriques']]},
- 'Korrigan':{a:[['Ami d\'un ondin','un Allié ondin brillant et influent'],['Beau parleur','+1 pour briller en société'],['Cadeau approprié','+2 aux interactions après un cadeau bien choisi'],['Gardien du trésor','+2 pour protéger ou récupérer son trésor']]},
- 'Phénix':{a:[['Bel hidalgo','+1 en Séduction et Classe'],['Rapière ancestrale','+1 à l\'Initiative, +1 aux dégâts'],['Serviteur débrouillard','humain dévoué, Allié et Féal'],['Titre de noblesse','Chevalier sans terre lié à un Baron']]},
- 'Troll':{a:[['Ami des petits animaux','de petits animaux lui rendent des services simples'],['Ami ogre gourmet','un contact ogre restaurateur'],['Contact armurier','armes blanches lourdes à prix réduit'],['Homme de main','des contacts dans une faction']],t:[['Épreuves de force','Ressort'],['Chasse','Survie']]},
- 'Vampyr':{a:[['Âme damnée','serviteur féerique dévoué'],['Faciès aristocratique','Spécialité Crédit gratuite et +2 auprès des humains'],['Fortune immobilière','+2 en Fortune'],['Visage impassible','−2 aux tests pour deviner ses émotions']]}};
-/* Caractéristiques par race [min, max] (ordre CARCOL) */
-const CARMAX={'Elfe':[[0,7],[0,4],[0,3],[0,7],[0,7],[0,7],[0,7],[0,6]],'Troll':[[1,5],[4,9],[3,8],[1,4],[1,2],[2,8],[1,3],[3,9]],'Fouinard':[[1,6],[1,3],[1,3],[3,8],[4,9],[3,8],[1,5],[2,6]],'Bastet':[[3,7],[1,5],[1,5],[2,6],[2,6],[3,7],[3,7],[1,5]],'Fleur de métal':[[2,6],[1,5],[1,5],[2,6],[1,5],[2,6],[4,8],[3,7]]};
+/* Référentiel des races : données maîtresses dans meta/races (byId, clé = id de créature), amorcées depuis le tableur « Synthèse des races » */
+const RACE_SEED={"anges":{"sing":"Ange","car":null,"acc":[],"pred":["Fortitude","Médecine",["Mêlée","Tir"],"Rhétorique","Sensibilité"],"fut":[["Chant","Musique"],"Une compétence artistique au choix"],"at":[],"typ":[]},"banshees":{"sing":"Banshee","car":null,"acc":[],"pred":["Autorité","Discrétion","Fortitude","Observations","Occultisme"],"fut":[["Littérature","Chant"],["Divination","Puériculture"]],"at":[],"typ":[]},"bastets":{"sing":"Bastet","car":{"Agilité":[3,7],"Esprit":[2,6],"Constitution":[1,5],"Perception":[3,7],"Force":[1,5],"Prestance":[3,7],"Précision":[2,6],"Sang Froid":[1,5]},"acc":["Agilité","Perception"],"pred":["Classe","Habiletés","Larçin","Séduction","Survie"],"fut":[["Danse","Potins mondains"],"Jeux"],"at":[["Ami des chats","réseau d'informateurs félins"],["Contacts mondains","noblesse et grande bourgeoisie européennes"],["Grâce féline","élégance ; repère d'instinct les lieux confortables"],["Malice","+1 aux tests d'Habiletés liés à l'Ingéniosité"]],"typ":[["Chasse","Survie"],["Moyen improvisé","Habiletés"]]},"centaures":{"sing":"Centaure","car":null,"acc":[],"pred":["Médecine","Mouvement","Rhétorique","Sensibilité","Tir"],"fut":["Chasse à courre","Une compétence mentale au choix"],"at":[],"typ":[]},"djinns":{"sing":"Djinn","car":{"Agilité":[3,7],"Esprit":[2,6],"Constitution":[2,6],"Perception":[2,6],"Force":[1,5],"Prestance":[3,7],"Précision":[2,6],"Sang Froid":[1,5]},"acc":["Agilité"],"pred":["Mouvement","Survie","Mêlée","Rhétorique","Discrétion"],"fut":["Astronomie","Poésie"],"at":[["Marchandage","+1 en négociations commerciales"],["Arme fétiche","cimeterre dissimulable, dégâts 4"],["Grotte secrète",""],["6e sens magique","+1 pour détecter la magie ou identifier les faux-semblants"]],"typ":[]},"domovois":{"sing":"Domovoï","car":null,"acc":[],"pred":[],"fut":[],"at":[],"typ":[]},"elfes":{"sing":"Elfe","car":{"Agilité":[1,7],"Esprit":[1,7],"Constitution":[1,4],"Perception":[1,7],"Force":[1,3],"Prestance":[1,7],"Précision":[1,7],"Sang Froid":[1,6]},"acc":["Agilité","Prestance"],"pred":["Classe","Entregent","Sensibilité","Culture",["Mêlée","Tir"]],"fut":["Héraldique","Arts plastiques"],"at":[["Ami des druides",""],["Fragilité trompeuse",""],["Vision décuplée",""],["Manoir somptueux",""]],"typ":[["Beau monde","Entregent"],["Culture générale","Culture"]]},"farfadets":{"sing":"Farfadet","car":null,"acc":[],"pred":[],"fut":[],"at":[],"typ":[]},"fees-electricite":{"sing":"Fée électricité","car":{"Agilité":[3,8],"Esprit":[2,6],"Constitution":[1,5],"Perception":[3,7],"Force":[1,4],"Prestance":[2,6],"Précision":[3,7],"Sang Froid":[1,5]},"acc":["Agilité","Perception","Précision"],"pred":["Conduite","Mouvement","Observations","Sciences","Tir"],"fut":[["Cinématographe","Photographie"],["Météorologie","Astronomie"]],"at":[["Amie des fées modernes","un Contact dans chaque grande cour féerique"],["Identité discrète","fausse identité féerique crédible"],["Manipulation électrique","charge ou décharge une pile ou une batterie en un tour"],["Muse des technophiles","les Technologues lui rendent service"]],"typ":[["Investigation","Observations"],["Esquive","Mouvement"]]},"fleurs-de-metal":{"sing":"Fleur de métal","car":{"Agilité":[2,6],"Esprit":[1,5],"Constitution":[1,5],"Perception":[2,6],"Force":[1,5],"Prestance":[4,8],"Précision":[2,6],"Sang Froid":[3,7]},"acc":["Prestance","Sang Froid"],"pred":["Comédie","Discrétion","Médecine","Mêlée","Séduction"],"fut":[["Danse","Théâtre"],"Mode"],"at":[["Protecteur vampyrique","un Comte ou une Comtesse vampyrique comme Allié"],["Amant éperdu","jeune amant dévoué"],["Amie des artistes","+2 en social avec les artistes"],["Garde-robe variée","tenues pour toutes les classes sociales ; +1 en Comédie (Déguisement), Séduction, et Classe en tenue élégante"]],"typ":[["Appâts","Séduction"],["Mentir","Comédie"]]},"fouinards":{"sing":"Fouinard","car":{"Agilité":[1,6],"Esprit":[4,9],"Constitution":[1,3],"Perception":[3,8],"Force":[1,3],"Prestance":[1,5],"Précision":[3,8],"Sang Froid":[2,6]},"acc":["Esprit","Perception","Précision"],"pred":["Conduite","Habiletés","Observations","Sciences","Tir"],"fut":[["Modélisme","Astronomie"],["Musique","Photographie"]],"at":[["Ami des pixies","les pixies lui sont favorables"],["Ami des scientifiques","un Contact scientifique dans chaque capitale européenne"],["Brevets","+2 en Fortune"],["Laboratoire secret","vaste atelier ou laboratoire clandestin"]],"typ":[["Mécanique","Habiletés"],["Investigation","Observations"]]},"gargouilles":{"sing":"Gargouille","car":null,"acc":[],"pred":[],"fut":[],"at":[],"typ":[]},"gnomes":{"sing":"Gnome","car":{"Agilité":[1,4],"Esprit":[3,9],"Constitution":[3,7],"Perception":[1,4],"Force":[1,6],"Prestance":[1,3],"Précision":[3,7],"Sang Froid":[3,8]},"acc":["Esprit","Sang Froid"],"pred":["Culture","Habiletés","Fortitude","Occultisme","Sciences"],"fut":[["Divination","une compétence artistique"],["Spéléologie","Géologie"]],"at":[["Affinité occulte","+1 en Occultisme"],["Aisance souterraine","+2 pour s'orienter et survivre sous terre"],["Repère souterrain","vaste refuge secret"],["Santé de fer","immunisé aux maladies ordinaires et féeriques"]],"typ":[["Maîtrise de soi","Fortitude"],["Explosifs","Habiletés"]]},"gobelins":{"sing":"Gobelin","car":null,"acc":[],"pred":[],"fut":[],"at":[],"typ":[]},"golems":{"sing":"Golem","car":null,"acc":[],"pred":[],"fut":[],"at":[],"typ":[]},"gorgones":{"sing":"Gorgone","car":null,"acc":[],"pred":["Autorité","Culture","Monde du crime","Sensibilité",["Mêlée","Tir"]],"fut":["Psychanalyse","Sculpture"],"at":[],"typ":[]},"gremelins":{"sing":"Gremelin","car":null,"acc":[],"pred":["Comédie","Discrétion","Habiletés","Larçin","Mouvement"],"fut":[["Cirque","Puériculture"],["Prestidigitation","Sculpture"]],"at":[],"typ":[]},"harpies":{"sing":"Harpie","car":null,"acc":[],"pred":["Autorité","Larçin","Monde du crime","Observations","Survie"],"fut":["Fauconnerie","Météorologie"],"at":[],"typ":[]},"korrigans":{"sing":"Korrigan","car":{"Agilité":[3,7],"Esprit":[2,7],"Constitution":[1,4],"Perception":[2,7],"Force":[1,3],"Prestance":[3,7],"Précision":[3,8],"Sang Froid":[1,5]},"acc":["Agilité","Prestance"],"pred":["Classe","Discrétion","Larçin","Mouvement","Rhétorique"],"fut":[["Joaillerie","Orfèvrerie"],["Danse","Musique"]],"at":[["Ami d'un ondin","un Allié ondin brillant et influent"],["Beau parleur","+1 pour briller en société"],["Cadeau approprié","+2 aux interactions après un cadeau bien choisi"],["Gardien du trésor","+2 pour protéger ou récupérer son trésor"]],"typ":[["Crochetage","Larçin"],["Argent","Classe"]]},"leporides":{"sing":"Léporide","car":null,"acc":[],"pred":[],"fut":[],"at":[],"typ":[]},"loups-garous":{"sing":"Loup Garou","car":{"Agilité":[3,7],"Esprit":[2,6],"Constitution":[3,7],"Perception":[3,7],"Force":[2,6],"Prestance":[1,6],"Précision":[1,4],"Sang Froid":[1,3]},"acc":["Agilité","Force","Constitution"],"pred":[],"fut":[],"at":[],"typ":[]},"minotaures":{"sing":"Minotaure","car":null,"acc":[],"pred":["Mêlée","Fortitude","Observations","Ressort","Survie"],"fut":["Agriculture","Spéléologie"],"at":[],"typ":[]},"ogres":{"sing":"Ogre","car":{"Agilité":[1,4],"Esprit":[1,5],"Constitution":[3,8],"Perception":[1,6],"Force":[4,9],"Prestance":[1,4],"Précision":[1,3],"Sang Froid":[4,9]},"acc":["Constitution","Force","Sang Froid"],"pred":[],"fut":[],"at":[],"typ":[]},"ondines":{"sing":"Ondine","car":null,"acc":[],"pred":[],"fut":[],"at":[],"typ":[]},"orcs":{"sing":"Orc","car":null,"acc":[],"pred":[],"fut":[],"at":[],"typ":[]},"phenix":{"sing":"Phénix","car":{"Agilité":[3,7],"Esprit":[2,6],"Constitution":[2,6],"Perception":[2,6],"Force":[2,6],"Prestance":[3,7],"Précision":[1,5],"Sang Froid":[1,5]},"acc":["Agilité","Prestance"],"pred":["Art de la guerre","Autorité","Culture","Mêlée","Rhétorique"],"fut":["Fauconnerie","Héraldique"],"at":[["Bel hidalgo","+1 en Séduction et Classe"],["Rapière ancestrale","+1 à l'Initiative, +1 aux dégâts"],["Serviteur débrouillard","humain dévoué, Allié et Féal"],["Titre de noblesse","Chevalier sans terre lié à un Baron"]],"typ":[["Armes blanches légères","Mêlée"],["Histoire","Culture"]]},"protys":{"sing":"Protys","car":null,"acc":[],"pred":["Comédie","Culture","Entregent","Rhétorique","Sensibilité"],"fut":[["Théâtre","Opéra"],["Mode","Potins mondains"]],"at":[],"typ":[]},"satyres":{"sing":"Satyre","car":null,"acc":[],"pred":["Entregent",["Mêlée","Tir"],"Ressort","Séduction","Survie"],"fut":["Kama Sutra",["Musique","Danse","Œnologie"]],"at":[],"typ":[]},"smogs":{"sing":"Smog","car":{"Agilité":[2,7],"Esprit":[2,7],"Constitution":[2,6],"Perception":[3,7],"Force":[1,4],"Prestance":[1,3],"Précision":[2,7],"Sang Froid":[3,7]},"acc":["Constitution","Sang Froid"],"pred":["Conduite","Fortitude","Médecine","Monde du crime","Sciences"],"fut":["Météorologie",["Psychanalyse","Astronomie"]],"at":[],"typ":[]},"succubes":{"sing":"Succube/Incube","car":{"Agilité":[2,6],"Esprit":[3,6],"Constitution":[1,4],"Perception":[3,7],"Force":[1,4],"Prestance":[4,9],"Précision":[1,6],"Sang Froid":[1,6]},"acc":["Esprit","Prestance"],"pred":[],"fut":[],"at":[],"typ":[]},"sylves":{"sing":"Sylve","car":null,"acc":[],"pred":["Discrétion","Médecine","Rhétorique","Sensibilité","Survie"],"fut":["Botanique",["Zoologie","Agriculture"]],"at":[],"typ":[]},"trolls":{"sing":"Troll","car":{"Agilité":[1,5],"Esprit":[1,2],"Constitution":[4,9],"Perception":[2,8],"Force":[3,8],"Prestance":[1,3],"Précision":[1,4],"Sang Froid":[3,9]},"acc":["Constitution","Force","Sang Froid"],"pred":["Conduite","Mêlée","Monde du crime","Ressort","Survie"],"fut":[["Cuisine","Agriculture"],"Gourmet"],"at":[["Ami des petits animaux","de petits animaux lui rendent des services simples"],["Ami ogre gourmet","un contact ogre restaurateur"],["Contact armurier","armes blanches lourdes à prix réduit"],["Homme de main","des contacts dans une faction"]],"typ":[["Épreuves de force","Ressort"],["Chasse","Survie"]]},"vampyrs":{"sing":"Vampyr","car":{"Agilité":[1,5],"Esprit":[3,7],"Constitution":[1,5],"Perception":[2,6],"Force":[1,5],"Prestance":[3,7],"Précision":[1,5],"Sang Froid":[4,8]},"acc":["Force","Sang Froid"],"pred":["Autorité","Classe","Entregent","Fortitude","Observations"],"fut":["Héraldique",["Œnologie","Psychanalyse"]],"at":[["Âme damnée","serviteur féerique dévoué"],["Faciès aristocratique","Spécialité Crédit gratuite et +2 auprès des humains"],["Fortune immobilière","+2 en Fortune"],["Visage impassible","−2 aux tests pour deviner ses émotions"]],"typ":[["Étiquette","Classe"],["Commander","Autorité"]]}};
 const CARCOL=['Agilité','Constitution','Force','Précision','Esprit','Perception','Prestance','Sang Froid'];
-const MAXEX={massetoc:{Constitution:8,Esprit:3}}; /* choix de création : Esprit max 3 au prix d'1 point de Constitution max */
-/* Compétences de prédilection (max 7) ; un sous-tableau = au choix */
-const PRED={'Elfe':['Classe','Entregent','Sensibilité','Culture',['Mêlée','Tir']],'Troll':['Conduite','Mêlée','Monde du crime','Ressort','Survie'],'Fouinard':['Conduite','Habiletés','Observations','Sciences','Tir'],'Bastet':['Classe','Habiletés','Larçin','Séduction','Survie'],'Fleur de métal':['Comédie','Discrétion','Médecine','Mêlée','Séduction']};
-const PREDFUT={'Elfe':['Héraldique','Arts plastiques'],'Troll':[['Cuisine','Agriculture'],'Gourmet'],'Fouinard':[['Modélisme','Astronomie'],['Musique','Photographie']],'Bastet':[['Danse','Potins mondains'],'Jeux'],'Fleur de métal':[['Danse','Théâtre'],'Mode']};
-const ACCRU={'Elfe':['Agilité','Prestance'],'Troll':['Constitution','Force','Sang Froid'],'Fouinard':['Esprit','Perception','Précision'],'Bastet':['Agilité','Perception'],'Fleur de métal':['Prestance','Sang Froid'],'Djinn':['Agilité']};
-/* Résout les choix « X ou Y » d'après la fiche (celui qui avait déjà un max de 7, sinon celui présent, sinon le premier) */
-function predOf(c,list,items){const has=n=>items.find(x=>nrm(x.nom)===nrm(n));return (list||[]).map(e=>{if(!Array.isArray(e))return e;const m7=e.find(n=>{const x=has(n);return x&&(x.max||0)>=7;});return m7||e.find(n=>has(n))||e[0];}).map(nrm);}
+const COMPS_ALL=['Conduite','Mouvement','Ressort','Survie','Art de la guerre','Autorité','Mêlée','Tir','Culture','Fortitude','Occultisme','Rhétorique','Classe','Entregent','Séduction','Sensibilité','Comédie','Larçin','Discrétion','Monde du crime','Habiletés','Médecine','Observations','Sciences'];
+/* Structures dérivées (clé = nom de race au singulier) */
+let RACES={},CARMAX={},PRED={},PREDFUT={},ACCRU={};
+const singOf=n=>(n||'').split(' ').map(w=>w.length>3&&/s$/.test(w)&&!/x$/.test(w)?w.slice(0,-1):w).join(' ').replace(/s-/g,'-');
+function raceRules(){return S.racesReady&&S.races?S.races:RACE_SEED;}
+function raceCres(){return S.creaturesReady?S.creatures:CREATURES_SEED;}
+function raceRec(cr){const x=raceRules()[cr.id];return x||{sing:singOf(cr.nom),car:null,acc:[],pred:[],fut:[],at:[],typ:[]};}
+const carOk=x=>!!(x&&x.car&&CARCOL.every(k=>x.car[k]&&x.car[k][0]!==''&&x.car[k][0]!=null&&x.car[k][1]!==''&&x.car[k][1]!=null));
+function rebuildRaces(){RACES={};CARMAX={};PRED={};PREDFUT={};ACCRU={};
+  for(const cr of raceCres()){const x=raceRec(cr),n=x.sing;if(!n)continue;
+    RACES[n]={a:(x.at||[]).filter(a=>a&&a[0]),t:(x.typ||[]).filter(t=>t&&t[0]&&t[1]),cre:cr.id};
+    if(carOk(x))CARMAX[n]=CARCOL.map(k=>[+x.car[k][0]||0,+x.car[k][1]]);
+    if((x.pred||[]).length)PRED[n]=x.pred;if((x.fut||[]).length)PREDFUT[n]=x.fut;if((x.acc||[]).length)ACCRU[n]=x.acc;}}
+function raceBlocks(x){x=x||{};return [['Caractéristiques',carOk(x)],['Caractéristiques accrues',(x.acc||[]).length>0],['Compétences utiles de prédilection',(x.pred||[]).length>0],['Compétences futiles de prédilection',(x.fut||[]).length>0],['Atouts féeriques',(x.at||[]).some(a=>a&&a[0])],['Spécialités typiques',(x.typ||[]).filter(t=>t&&t[0]).length>=2]];}
+function raceStatus(cr,x){const n=raceBlocks(x).filter(b=>b[1]).length;if(cr&&cr.done&&n<6)return 'todo';return n===0?'no':n===6?'ok':'mid';}
+const RST={no:'Vide',mid:'Partielle',ok:'Complète',todo:'À compléter'};
+const playedBy=sing=>Object.values(S.chars).filter(c=>c.type==='PJ'&&c.race&&c.race===sing);
+/* Résout les choix « X ou Y » : choix enregistré sur le personnage, sinon d'après la fiche (max 7, sinon présent, sinon le premier) */
+function predGuess(list,items){return (list||[]).filter(Array.isArray).map(e=>{const has=n=>items.find(x=>nrm(x.nom)===nrm(n));const m7=e.find(n=>{const x=has(n);return x&&(x.max||0)>=7;});return [e.join('|'),m7||e.find(n=>has(n))||e[0]];});}
+function predOf(c,list,items){const has=n=>items.find(x=>nrm(x.nom)===nrm(n));return (list||[]).map(e=>{if(!Array.isArray(e))return e;const k=e.join('|');if(c.choix&&c.choix[k])return c.choix[k];const m7=e.find(n=>{const x=has(n);return x&&(x.max||0)>=7;});return m7||e.find(n=>has(n))||e[0];}).map(nrm);}
 function maxFor(c,kind,nom,o){if(c.type!=='PJ')return o.max;
-  if(kind==='carac'){const ex=MAXEX[c.id]&&MAXEX[c.id][nom];if(ex!=null)return ex;const t=CARMAX[c.race];const i=CARCOL.indexOf(nom);return t&&i>=0?t[i][1]:o.max;}
+  if(kind==='carac'){const t=CARMAX[c.race];const i=CARCOL.indexOf(nom);if(!(t&&i>=0))return o.max;let m=t[i][1];if(c.ajust){if(c.ajust.moins===nom)m--;if(c.ajust.plus===nom)m++;}return m;}
   if(kind==='comp'){if(!PRED[c.race])return o.max;const all=(c.profils||[]).flatMap(p=>p.comps||[]);return predOf(c,PRED[c.race],all).includes(nrm(nom))?7:6;}
   if(kind==='fut'){if(!PREDFUT[c.race])return o.max;return predOf(c,PREDFUT[c.race],c.futiles||[]).includes(nrm(nom))?7:6;}
   return o.max;}
 const minFor=(c,nom)=>{const t=CARMAX[c.race],i=CARCOL.indexOf(nom);return t&&i>=0?t[i][0]:0;};
+/* Mise en place ponctuelle du référentiel : choix « X ou Y » figés, ajustement de Masse Toc, coquille « Astronimie » de Maral */
+function fixRef(){for(const c0 of Object.values(S.chars)){if(c0.type!=='PJ'||c0.refFix||!c0.race)continue;const c=clone(c0);
+    if(c.id==='maral')for(const f of c.futiles||[])if(f.nom==='Astronimie')f.nom='Astronomie';
+    c.choix={...(c.choix||{})};const all=(c.profils||[]).flatMap(p=>p.comps||[]);
+    for(const [k,v] of predGuess(PRED[c.race],all))if(!c.choix[k])c.choix[k]=v;
+    for(const [k,v] of predGuess(PREDFUT[c.race],c.futiles||[]))if(!c.choix[k])c.choix[k]=v;
+    if(c.id==='massetoc'&&!c.ajust)c.ajust={moins:'Constitution',plus:'Esprit'};
+    c.refFix=true;saveChar(c);}}
 const RACE0={kerian:'Elfe',massetoc:'Troll',sloan:'Fleur de métal',theodule:'Fouinard',rowen:'Bastet',maral:'Djinn'};
 const TYP='Spécialités typiques';
 const nrmA=t=>nrmS(t).replace(/y/g,'i').replace(/-/g,' ').replace(/\s+/g,' ');
@@ -611,7 +630,7 @@ function migrateAtouts(c){if(c.type!=='PJ')return c;if(!c.race&&RACE0[c.id])c.ra
   c.atouts=out;if(c.atout&&(c.atout.cur||0)<out.length)c.atout.cur=out.length;return c;}
 /* Spécialités typiques : à l'acquisition, ajoute les deux spécialités de la race (ou 2 à rattacher si la race n'en a pas) */
 function grantTyp(n,entry){const r=RACES[n.race];n.spec=n.spec||{cur:0};n.specs=specsOf(n).slice();entry.typ=[];
-  if(r&&r.t){for(const [sp,comp] of r.t){if(n.specs.some(x=>nrmS(x.nom)===nrmS(sp)))continue;n.specs.push({nom:sp,cible:'comp:'+comp,offert:true,typ:1});n.spec.cur=(n.spec.cur||0)+1;entry.typ.push(sp);}}
+  if(r&&r.t&&r.t.length){for(const [sp,comp] of r.t){if(n.specs.some(x=>nrmS(x.nom)===nrmS(sp)))continue;n.specs.push({nom:sp,cible:'comp:'+comp,offert:true,typ:1});n.spec.cur=(n.spec.cur||0)+1;entry.typ.push(sp);}}
   else{n.spec.cur=(n.spec.cur||0)+2;entry.typAnon=2;}}
 function revokeTyp(n,entry){if(!entry)return;n.specs=specsOf(n).slice();for(const sp of entry.typ||[]){const i=n.specs.findIndex(x=>x.typ&&nrmS(x.nom)===nrmS(sp));if(i>=0){const ac=n.specs[i].achat;if(ac&&n.achats)n.achats=n.achats.filter(x=>x.id!==ac);n.specs.splice(i,1);n.spec.cur=Math.max(0,(n.spec.cur||0)-1);}}
   if(entry.typAnon)n.spec.cur=Math.max(n.specs.length,(n.spec.cur||0)-entry.typAnon);}
@@ -764,7 +783,7 @@ function specList(c,key,dispo){const all=specsOf(c),own=all.filter(x=>x.cible===
 function lvlLine(c,key){const r=ref(c,key);if(!r)return '';const cur=r.o.cur||0,lb=lastBuy(c,key);
   return `<div class="fixl"><span>Niveau ${cur}${r.max!=null?' / '+r.max:''}</span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${lb?`<button class="btn ghost" data-act="undoK" data-key="${esc(key)}">Annuler le dernier achat</button>`:''}<button class="btn ghost" data-act="fixOpen" data-key="${esc(key)}">Corriger le niveau</button></span></div>`;}
 /* Liste dépliée des atouts féeriques : atouts de la race + Spécialités typiques (acquis / achat), acquis hors liste, ligne libre */
-function atoutList(c,dispo){const all=atoutsOf(c),anon=atoutAnon(c),r=RACES[c.race],typ=r&&r.t?'offre '+r.t.map(x=>x[0]).join(', '):'offre 2 spécialités gratuites à choisir';
+function atoutList(c,dispo){const all=atoutsOf(c),anon=atoutAnon(c),r=RACES[c.race],typ=r&&r.t&&r.t.length?'offre '+r.t.map(x=>x[0]).join(', '):'offre 2 spécialités gratuites à choisir';
   const lst=(r?r.a:[]).concat([[TYP,typ]]),cost=RULES.atout;
   const acq=(x,d)=>`<div class="ln acqd"><span>${esc(x.nom)}${d?`<small style="display:block;margin-left:0">${esc(d)}</small>`:''}</span><button class="acq" data-act="atCancel" data-i="${all.indexOf(x)}" aria-label="${esc(x.nom)} acquis : annuler">★ Acquis</button></div>`;
   const btn=(attrs,nom)=>anon>0?`<button class="bb" ${attrs}>Rattacher</button>`:`<button class="bb" ${attrs}${cost>dispo?' disabled':''} aria-label="Acheter ${esc(nom||'un atout')} pour ${cost} XP">+ ${cost}</button>`;
@@ -824,7 +843,7 @@ function emptyState(){
   return `<div class="card empty">${esc(msg)}</div>`;
 }
 const PORTRAITS=['kerian','maral','massetoc','rowen','sloan','theodule'];
-function portrait(c){const k=String(c.court||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');return PORTRAITS.includes(k)?'portraits/'+k+'.jpg':null;}
+function portrait(c){if(S.ptr&&c&&S.ptr[c.id])return S.ptr[c.id];const k=String(c.court||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');return PORTRAITS.includes(k)?'portraits/'+k+'.jpg':null;}
 function viewSheet(){
   if(!ids().length)return emptyState();
   const id=S.sel&&S.chars[S.sel]&&vis(S.chars[S.sel])?S.sel:ids()[0];S.sel=id;const c=S.chars[id],s=summary(c,S.events);
@@ -1027,7 +1046,9 @@ function viewPlayers(){
   h+=`<h2>Personnages</h2>`;
   h+=chars.map(c=>{
     const armed=S.confirm==='c:'+c.id,ow=owners(c).map(p=>p.nom).join(', ');
-    return `<div class="card" style="margin-bottom:12px"><div class="frow"><div class="field"><label for="cc-${c.id}">Nom court</label><input id="cc-${c.id}" type="text" data-cf="court" data-id="${c.id}" value="${esc(c.court)}"></div><div class="field"><label for="cn-${c.id}">Nom complet</label><input id="cn-${c.id}" type="text" data-cf="nom" data-id="${c.id}" value="${esc(c.nom)}"></div><div class="field"><label for="cs-${c.id}">Statut</label><select id="cs-${c.id}" data-cf="statut" data-id="${c.id}">${Object.entries(STATUTS).map(([k,v])=>`<option value="${k}"${(c.statut||'actif')===k?' selected':''}>${v}</option>`).join('')}</select></div>${c.type==='PJ'?`<div class="field"><label for="cr-${c.id}">Race</label><select id="cr-${c.id}" data-cf="race" data-id="${c.id}"><option value="">— à préciser —</option>${Object.keys(RACES).map(r=>`<option${c.race===r?' selected':''}>${esc(r)}</option>`).join('')}</select></div>`:''}${c.type==='PNJ'?`<div class="field"><label for="cp-${c.id}">Rattaché au PJ</label><select id="cp-${c.id}" data-cf="pj" data-id="${c.id}"><option value="">— aucun —</option>${Object.values(S.chars).filter(x=>x.type==='PJ').sort((a,b)=>(a.court||'').localeCompare(b.court||'')).map(x=>`<option value="${x.id}"${c.pj===x.id?' selected':''}>${esc(x.court)}</option>`).join('')}</select></div>`:''}</div>
+    const img=portrait(c),own=!!(S.ptr&&S.ptr[c.id]);
+    const ptr=`<div class="ptrrow"><span class="ptrimg">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span>${canPortrait(c)?`<span style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn" style="cursor:pointer">Changer le portrait<input type="file" accept="image/*" data-ptrfile="${c.id}" hidden></label>${own?`<button class="btn ghost" data-act="ptrDel" data-id="${c.id}">Retirer</button>`:''}</span>`:`<span class="muted small">${ME?'Seuls son joueur et les MJ peuvent changer le portrait.':'Identifie-toi (« Qui es-tu ? ») pour changer le portrait.'}</span>`}</div>`;
+    return `<div class="card" style="margin-bottom:12px">${ptr}<div class="frow"><div class="field"><label for="cc-${c.id}">Nom court</label><input id="cc-${c.id}" type="text" data-cf="court" data-id="${c.id}" value="${esc(c.court)}"></div><div class="field"><label for="cn-${c.id}">Nom complet</label><input id="cn-${c.id}" type="text" data-cf="nom" data-id="${c.id}" value="${esc(c.nom)}"></div><div class="field"><label for="cs-${c.id}">Statut</label><select id="cs-${c.id}" data-cf="statut" data-id="${c.id}">${Object.entries(STATUTS).map(([k,v])=>`<option value="${k}"${(c.statut||'actif')===k?' selected':''}>${v}</option>`).join('')}</select></div>${c.type==='PJ'?`<div class="field"><label for="cr-${c.id}">Race</label><select id="cr-${c.id}" data-cf="race" data-id="${c.id}"><option value="">— à préciser —</option>${Object.keys(RACES).sort((a,b)=>a.localeCompare(b,'fr')).map(r=>`<option${c.race===r?' selected':''}>${esc(r)}</option>`).join('')}</select></div>`:''}${c.type==='PNJ'?`<div class="field"><label for="cp-${c.id}">Rattaché au PJ</label><select id="cp-${c.id}" data-cf="pj" data-id="${c.id}"><option value="">— aucun —</option>${Object.values(S.chars).filter(x=>x.type==='PJ').sort((a,b)=>(a.court||'').localeCompare(b.court||'')).map(x=>`<option value="${x.id}"${c.pj===x.id?' selected':''}>${esc(x.court)}</option>`).join('')}</select></div>`:''}</div>
       <div class="muted small">${c.type==='PNJ'?(c.pj&&S.chars[c.pj]?'PNJ · rattaché à '+esc(S.chars[c.pj].court)+(c.pjDate?' depuis le '+fmtDate(c.pjDate)+' : part d\'XP sur les sessions à partir de cette date':''):'PNJ · rattache-le à un PJ pour qu\'il reçoive sa part d\'XP des sessions'):c.type+' · '+(ow?'joué par '+esc(ow):'sans joueur')}</div>
       <div class="actions" style="margin-top:8px"><button class="btn" data-act="cHide" data-id="${c.id}" aria-pressed="${!!c.cache}">${c.cache?'Masqué aux autres : afficher':'Masquer aux autres'}</button>${c.type==='PJ'?`<button class="btn" data-act="cMoy" data-id="${c.id}">${c.horsMoyenne?'Compter dans la moyenne':'Exclure de la moyenne'}</button>`:''}<button class="btn ghost" data-act="cDel" data-id="${c.id}">Supprimer</button></div></div>`;}).join('')||'<div class="card empty">Aucun personnage visible.</div>';
   h+=`<div class="card"><h3>Nouveau personnage</h3><div class="frow"><div class="field"><label for="nc-c">Nom court</label><input id="nc-c" type="text" data-nc="court" value="${esc(S.newC.court)}"></div><div class="field"><label for="nc-n">Nom complet</label><input id="nc-n" type="text" data-nc="nom" value="${esc(S.newC.nom)}"></div><div class="field"><label for="nc-t">Type</label><select id="nc-t" data-nc="type"><option value="PJ"${S.newC.type==='PJ'?' selected':''}>PJ</option><option value="PNJ"${S.newC.type==='PNJ'?' selected':''}>PNJ</option></select></div><div class="field"><label for="nc-o">Joueur</label><select id="nc-o" data-nc="owner"><option value="">— aucun —</option>${pl.map(p=>`<option value="${p.id}"${S.newC.owner===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}</select></div></div><div class="muted small" style="margin-bottom:8px">La fiche démarre à zéro, avec des maxima par défaut. Les maxima suivent la race du personnage ; corrige les niveaux depuis la fiche (« Corriger le niveau »).</div><button class="btn pri" data-act="addC"${S.newC.court.trim()?'':' disabled'}>Créer le personnage</button></div>`;
@@ -1160,6 +1181,42 @@ const CRE_TYPE="Créature de l'univers";
 const CFAM=[['trad','Traditionnelles'],['mod','Modernes'],['exo','Exotiques']];
 /* Reprise du tableur : les créatures cochées l'ont été avant l'appli, leur XP est déjà au journal */
 const CREATURES_SEED=[{"id":"anges","nom":"Anges","fam":"trad","done":false},{"id":"bastets","nom":"Bastets","fam":"trad","done":true},{"id":"elfes","nom":"Elfes","fam":"trad","done":false},{"id":"farfadets","nom":"Farfadets","fam":"trad","done":false},{"id":"gnomes","nom":"Gnomes","fam":"trad","done":true},{"id":"gobelins","nom":"Gobelins","fam":"trad","done":false},{"id":"korrigans","nom":"Korrigans","fam":"trad","done":true},{"id":"leporides","nom":"Léporides","fam":"trad","done":false},{"id":"loups-garous","nom":"Loups-garous","fam":"trad","done":false},{"id":"ogres","nom":"Ogres","fam":"trad","done":false},{"id":"ondines","nom":"Ondines","fam":"trad","done":false},{"id":"orcs","nom":"Orcs","fam":"trad","done":false},{"id":"phenix","nom":"Phénix","fam":"trad","done":true},{"id":"succubes","nom":"Succubes","fam":"trad","done":false},{"id":"sylves","nom":"Sylves","fam":"trad","done":false},{"id":"trolls","nom":"Trolls","fam":"trad","done":true},{"id":"vampyrs","nom":"Vampyrs","fam":"trad","done":true},{"id":"fees-electricite","nom":"Fées électricité","fam":"mod","done":true},{"id":"fleurs-de-metal","nom":"Fleurs de métal","fam":"mod","done":false},{"id":"fouinards","nom":"Fouinards","fam":"mod","done":true},{"id":"gargouilles","nom":"Gargouilles","fam":"mod","done":false},{"id":"golems","nom":"Golems","fam":"mod","done":false},{"id":"gremelins","nom":"Gremelins","fam":"mod","done":false},{"id":"protys","nom":"Protys","fam":"mod","done":false},{"id":"smogs","nom":"Smogs","fam":"mod","done":true},{"id":"djinns","nom":"Djinns","fam":"exo","done":false},{"id":"banshees","nom":"Banshees","fam":"exo","done":false},{"id":"domovois","nom":"Domovoïs","fam":"exo","done":false},{"id":"gorgones","nom":"Gorgones","fam":"exo","done":false},{"id":"centaures","nom":"Centaures","fam":"exo","done":false},{"id":"minotaures","nom":"Minotaures","fam":"exo","done":false},{"id":"harpies","nom":"Harpies","fam":"exo","done":false},{"id":"satyres","nom":"Satyres","fam":"exo","done":false}];
+/* --- Référentiel › Races --- */
+function viewRef(){if(!S.creaturesReady||!S.racesReady)return `<h2 style="margin-top:4px">Référentiel</h2><div class="card empty">Chargement…</div>`;return S.rf?refSheet():refList();}
+function refRows(){return S.creatures.map(cr=>{const x=raceRec(cr);return {cr,x,st:raceStatus(cr,x),pj:playedBy(x.sing)};}).sort((a,b)=>a.x.sing.localeCompare(b.x.sing,'fr'));}
+function refList(){const all=refRows(),q=nrm(S.rfq||''),f=S.rff||'all',fm=S.rffam||'';
+  const cnt=k=>all.filter(r=>k==='todo'?r.st==='todo':k==='pj'?r.pj.length:k==='dec'?r.cr.done:true).length;
+  const L=all.filter(r=>(!q||nrm(r.x.sing).includes(q)||nrm(r.cr.nom).includes(q))&&(f==='all'||(f==='todo'&&r.st==='todo')||(f==='pj'&&r.pj.length)||(f==='dec'&&r.cr.done))&&(!fm||r.cr.fam===fm));
+  const F={trad:'traditionnelle',mod:'moderne',exo:'exotique'};
+  let h=`<h2 style="margin-top:4px">Référentiel › Races</h2><div class="card"><div class="rsearch"><input type="search" data-rfq="1" placeholder="Rechercher une race…" aria-label="Rechercher une race" value="${esc(S.rfq||'')}" autocomplete="off"><button class="btn" style="white-space:nowrap;padding:6px 12px" data-act="rfNew">+ Nouvelle</button></div>
+  <div class="flt">${[['all','Toutes'],['todo','À compléter'],['pj','Jouées'],['dec','Découvertes']].map(([k,l])=>`<button data-act="rfFlt" data-v="${k}" aria-pressed="${f===k}">${l} (${cnt(k)})</button>`).join('')}</div>
+  <div class="flt">${CFAM.map(([k,l])=>`<button data-act="rfFam" data-v="${k}" aria-pressed="${fm===k}">${l}</button>`).join('')}</div>
+  <div class="rl">${L.map(r=>`<button class="r${r.st==='todo'?' hl':''}" data-act="rfOpen" data-id="${esc(r.cr.id)}"><span><b>${esc(r.x.sing)}</b>${r.pj.length?` <span class="rpj">· ${r.pj.map(c=>esc(c.court)).join(', ')}</span>`:''}<small>${F[r.cr.fam]||''}${r.cr.done?' · <span class="rdot">✓ découverte</span>':''}</small></span><span class="rst ${r.st}">${RST[r.st]}</span><span style="color:var(--accent);font-size:18px">›</span></button>`).join('')||'<div class="muted" style="padding:8px">Aucune race.</div>'}</div></div>`;
+  return h;}
+function rfDraft(id){const cr=S.creatures.find(c=>c.id===id);const x=cr?clone(raceRec(cr)):{sing:'',car:null,acc:[],pred:[],fut:[],at:[],typ:[]};
+  const car={};for(const k of CARCOL){const v=x.car&&x.car[k];car[k]=[v?v[0]:'',v?v[1]:''];}
+  const typ=(x.typ||[]).slice(0,2);while(typ.length<2)typ.push(['','']);
+  return {id:cr?cr.id:null,sing:x.sing||'',plur:cr?cr.nom:'',fam:cr?cr.fam:'trad',car,acc:x.acc||[],pred:x.pred||[],fut:x.fut||[],at:(x.at||[]).map(a=>[a[0],a[1]||'']),typ,pa:'',pb:'',fa:'',fb:'',confirm:false};}
+function rfRec(g){const car={};let any=false;for(const k of CARCOL){const a=g.car[k];car[k]=[a[0]===''?'':+a[0],a[1]===''?'':+a[1]];if(a[0]!==''||a[1]!=='')any=true;}
+  return {sing:g.sing.trim(),car:any?car:null,acc:g.acc.slice(),pred:clone(g.pred),fut:clone(g.fut),at:g.at.filter(a=>(a[0]||'').trim()).map(a=>[a[0].trim(),(a[1]||'').trim()]),typ:g.typ.filter(t=>(t[0]||'').trim()).map(t=>[t[0].trim(),t[1]||''])};}
+function refSheet(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id),rec=rfRec(g),st=raceStatus(cr,rec),pj=playedBy(g.sing.trim()),F={trad:'Traditionnelle',mod:'Moderne',exo:'Exotique'};
+  const chip=(e,k,i)=>Array.isArray(e)?`<span class="rchip grp"><b>au choix</b> ${e.map(esc).join(' <span class="muted">ou</span> ')}<button data-act="rfPredDel" data-k="${k}" data-i="${i}" aria-label="Retirer">✕</button></span>`:`<span class="rchip">${esc(e)}<button data-act="rfPredDel" data-k="${k}" data-i="${i}" aria-label="Retirer ${esc(e)}">✕</button></span>`;
+  const copt=(v,none)=>(none?`<option value="">${none}</option>`:'')+COMPS_ALL.map(c=>`<option${v===c?' selected':''}>${esc(c)}</option>`).join('');
+  const others=refRows();
+  let h=`<h2 style="margin-top:4px">Référentiel › Races</h2><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><button class="btn ghost" style="white-space:nowrap" data-act="rfBack">‹ Liste</button>${g.id?`<select data-rfjump="1" aria-label="Aller à une autre race" style="padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:inherit;font:inherit;min-width:0">${others.map(r=>`<option value="${esc(r.cr.id)}"${r.cr.id===g.id?' selected':''}>${esc(r.x.sing)}</option>`).join('')}</select>`:''}</div>`;
+  h+=`<div class="card"${st==='todo'?' style="box-shadow:inset 3px 0 0 var(--bad)"':''}><h2 style="margin:0 0 4px">${esc(g.sing||'Nouvelle race')}</h2><div class="muted small">${F[g.fam]||''}${cr&&cr.done?' · <span class="rdot">✓ découverte</span>':''} · <span class="rst ${st}">${RST[st]}</span>${pj.length?' · jouée par '+pj.map(c=>esc(c.court)).join(', '):''}${cr?` · <a href="#" data-act="rfUni">voir dans Univers</a>`:''}</div>
+    <div class="rchk">${raceBlocks(rec).map(([l,ok])=>`<div class="${ok?'':'ko'}">${ok?'✓':'✗'} ${l}</div>`).join('')}</div>
+    <h3 class="rs">Identité</h3><div class="frow"><div class="field"><label for="rfs">Nom (singulier)</label><input id="rfs" type="text" data-rfk="sing" value="${esc(g.sing)}" autocomplete="off"></div><div class="field"><label for="rfp">Nom dans l'Univers (pluriel)</label><input id="rfp" type="text" data-rfk="plur" value="${esc(g.plur)}" autocomplete="off"></div><div class="field"><label for="rff">Famille</label><select id="rff" data-rfk="fam">${CFAM.map(([k])=>`<option value="${k}"${g.fam===k?' selected':''}>${F[k]}</option>`).join('')}</select></div></div>
+    <h3 class="rs">Caractéristiques</h3><table class="ct"><tr><th></th><th>Min</th><th>Max</th><th>Accrue</th></tr>${CARCOL.map(k=>`<tr><td>${k}</td><td><input type="number" min="0" max="12" data-rfc="${k}" data-m="0" value="${esc(g.car[k][0])}" aria-label="${k} minimum"></td><td><input type="number" min="0" max="12" data-rfc="${k}" data-m="1" value="${esc(g.car[k][1])}" aria-label="${k} maximum"></td><td><input type="checkbox" data-rfa="${k}"${g.acc.includes(k)?' checked':''} aria-label="${k} peut être accrue"></td></tr>`).join('')}</table>
+    <h3 class="rs">Compétences utiles de prédilection (max 7)</h3><div style="display:flex;flex-wrap:wrap;gap:6px">${g.pred.map((e,i)=>chip(e,'pred',i)).join('')||'<span class="muted small">Aucune.</span>'}</div>
+    <div class="radd"><select data-rfk="pa" aria-label="Compétence">${copt(g.pa,'— compétence —')}</select><span class="muted small">ou</span><select data-rfk="pb" aria-label="Au choix avec">${copt(g.pb,'— seule —')}</select><button class="btn" data-act="rfPredAdd" data-k="pred">Ajouter</button></div>
+    <h3 class="rs">Compétences futiles de prédilection</h3><div style="display:flex;flex-wrap:wrap;gap:6px">${g.fut.map((e,i)=>chip(e,'fut',i)).join('')||'<span class="muted small">Aucune.</span>'}</div>
+    <div class="radd"><input type="text" data-rfk="fa" placeholder="Compétence futile" value="${esc(g.fa)}" style="flex:1"><span class="muted small">ou</span><input type="text" data-rfk="fb" placeholder="(au choix, facultatif)" value="${esc(g.fb)}" style="flex:1"><button class="btn" data-act="rfPredAdd" data-k="fut">Ajouter</button></div>
+    <h3 class="rs">Atouts féeriques</h3><div class="rgrid">${g.at.map((a,i)=>`<input type="text" data-rfat="${i}" data-p="0" value="${esc(a[0])}" placeholder="Nom" aria-label="Nom de l'atout"><input type="text" data-rfat="${i}" data-p="1" value="${esc(a[1])}" placeholder="Description" aria-label="Description de l'atout"><button class="x" data-act="rfAtDel" data-i="${i}" aria-label="Retirer l'atout">✕</button>`).join('')}</div><div class="radd"><button class="btn" data-act="rfAtAdd">+ Ajouter un atout</button></div>
+    <h3 class="rs">Spécialités typiques</h3><div class="rgrid" style="grid-template-columns:1fr 1fr">${g.typ.map((t,i)=>`<input type="text" data-rft="${i}" data-p="0" value="${esc(t[0])}" placeholder="Spécialité" aria-label="Spécialité typique ${i+1}"><select data-rft="${i}" data-p="1" aria-label="Compétence de la spécialité ${i+1}">${copt(t[1],'— compétence —')}</select>`).join('')}</div>
+    <div class="actions" style="margin-top:14px"><button class="btn pri" data-act="rfSave"${g.sing.trim()?'':' disabled'}>Enregistrer la race</button>${g.id?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="rfDelOk">Confirmer la suppression</button>`:`<button class="btn ghost" data-act="rfDel">Supprimer</button>`):''}</div>
+    ${g.err?`<div class="small" role="alert" style="color:var(--bad);margin-top:6px">${esc(g.err)}</div>`:''}</div>`;
+  return h;}
 function viewCreatures(){
   if(!S.creaturesReady)return `<div class="card empty">Chargement des créatures…</div>`;
   const L=S.creatures,n=L.filter(c=>c.done).length;
@@ -1185,8 +1242,9 @@ function creSheet(g){
     return head('Décocher '+c.nom+' ?','')+`<div class="muted">${c.date?'La créature redevient à compléter : la ligne « '+esc(c.nom)+' complété » est retirée du journal d\'XP (−1 XP de groupe).':'Cette créature a été cochée dans le tableur : il n\'y a pas de ligne au journal à retirer, seul le compteur change.'}</div><div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn" style="color:var(--bad)" data-act="creToggleOk">Décocher</button></div></div></div>`;
   }
   /* ce : modifier */
-  if(c.done){const ev=creEv(c.id);return head(c.nom,'Complète'+(c.date?' depuis le '+fmtDate(c.date):'')+' · +1 XP')+(ev?`<div class="field"><label for="sxs">Session de rattachement</label><select id="sxs" data-sxs="1">${sessOptions(g.sess)}</select></div>`:'')+`<div class="muted small">Pour la renommer ou la supprimer, décoche-la d'abord.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button>${ev?'<button class="btn pri" data-act="creSess">Enregistrer</button>':''}</div></div></div>`;}
-  return head('Modifier la créature','')+nameField+warn+famPick+`<div class="actions"><button class="btn pri" data-act="creSave"${g.nom.trim()&&!dup?'':' disabled'}>Enregistrer</button>${g.confirm?`<button class="btn" style="color:var(--bad)" data-act="creDelOk">Confirmer la suppression</button>`:`<button class="btn" data-act="creDel">Supprimer</button>`}<button class="btn ghost" data-act="closeSheet">Fermer</button></div></div></div>`;
+  const rlink=`<div><button class="btn ghost" data-act="rfOpen" data-id="${esc(c.id)}">Règles de la race ›</button></div>`;
+  if(c.done){const ev=creEv(c.id);return head(c.nom,'Complète'+(c.date?' depuis le '+fmtDate(c.date):'')+' · +1 XP')+rlink+(ev?`<div class="field"><label for="sxs">Session de rattachement</label><select id="sxs" data-sxs="1">${sessOptions(g.sess)}</select></div>`:'')+`<div class="muted small">Pour la renommer ou la supprimer, décoche-la d'abord.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button>${ev?'<button class="btn pri" data-act="creSess">Enregistrer</button>':''}</div></div></div>`;}
+  return head('Modifier la créature','')+nameField+warn+famPick+rlink+`<div class="actions"><button class="btn pri" data-act="creSave"${g.nom.trim()&&!dup?'':' disabled'}>Enregistrer</button>${g.confirm?`<button class="btn" style="color:var(--bad)" data-act="creDelOk">Confirmer la suppression</button>`:`<button class="btn" data-act="creDel">Supprimer</button>`}<button class="btn ghost" data-act="closeSheet">Fermer</button></div></div></div>`;
 }
 function saveCreatures(list){S.creatures=list;persist('meta/creatures',{list});}
 function creSlug(n){return slug(n);}
@@ -1266,6 +1324,7 @@ const futDates=()=>S.dates.filter(x=>dEnd(x)>=today()).sort((a,b)=>(a.date+a.sl)
 const validDates=()=>futDates().filter(x=>x.status==='valid');
 const propDates=()=>futDates().filter(x=>x.status!=='valid');
 const isMJ=p=>p&&p.role==='MJ'&&!p.parti;
+const canPortrait=c=>!!(ME&&S.players[ME]&&(isMJ(S.players[ME])||owners(c).some(p=>p.id===ME)));
 const mjRefus=x=>Object.values(S.players).some(p=>isMJ(p)&&(p.rep||{})[x.id]==='no');
 const openProps=()=>propDates().filter(x=>!mjRefus(x));
 function saveDates(list){S.dates=list;persist('meta/planning',{dates:list});render();}
@@ -1368,7 +1427,7 @@ function renderSheet(){
   {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se'||S.dlg.kind==='ca'||S.dlg.kind==='ce'||S.dlg.kind==='sn'||S.dlg.kind==='sm'||S.dlg.kind==='pd')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt'||ae0.id==='crn'||ae0.id==='sdi'||ae0.id==='pdn'||ae0.id==='pdd')&&root.contains(ae0))return;}
   if(S.dlg){
     const g=S.dlg;let titre='',txt='';
-    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="ref"${S.view==='ref'?' aria-current="page"':''}>${ICON.univers||ICON.regles}Référentiel</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
     if(g.kind==='me'){const pl=planPlayers();root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Changer de joueur"><div class="in"><h2>Qui es-tu ?</h2><div class="who-grid">${pl.map(p=>`<button class="btn${p.id===ME?' sel':''}" aria-pressed="${p.id===ME}" data-act="setMe" data-id="${p.id}">${esc(p.nom)}</button>`).join('')}</div><div class="muted small">Mémorisé sur cet appareil. Sert pour tes disponibilités, tes réponses aux dates proposées et tes notifications.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='ne'){const e=sessById(g.id);if(!e){S.dlg=null;root.innerHTML='';return;}
@@ -1379,6 +1438,12 @@ function renderSheet(){
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Modifier ${esc(g.n)}"><div class="in"><div><h2>${esc(g.n)}</h2><div class="muted small">${esc(e.titre)}</div></div>
       ${body}
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="natSave">Enregistrer</button></div></div></div>`;return;}
+    if(g.kind==='ptr'){const c=S.chars[g.cid];if(!c){S.dlg=null;root.innerHTML='';return;}const s2=g.base*g.z;
+      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Portrait"><div class="in"><div><h2>Portrait de ${esc(c.court)}</h2><div class="muted small">Fais glisser la photo pour la cadrer dans le cercle, et zoome avec le curseur.</div></div>
+      <div id="ptrStage"><img id="ptrImg" src="${g.src}" alt="" style="left:${g.x}px;top:${g.y}px;width:${g.w*s2}px;height:${g.h*s2}px"><div class="ring"></div></div>
+      <div class="field"><label for="ptrz">Zoom</label><input id="ptrz" type="range" min="1" max="4" step="0.01" data-ptrz="1" value="${g.z}" style="width:100%"></div>
+      <div class="muted small">L'image est recadrée et réduite (environ 30 Ko) avant l'envoi.</div>
+      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="ptrSave">Enregistrer</button></div></div></div>`;return;}
     if(g.kind==='atc'){const c=S.chars[g.cid],e=c&&atoutsOf(c)[g.i];if(!e){S.dlg=null;root.innerHTML='';return;}const ach=e.achat&&(c.achats||[]).find(x=>x.id===e.achat);
       const txt=(ach?`Annuler l'achat rend ${ach.cout} XP.`:'L\'atout redevient « à rattacher » : il reste compté et pourra recevoir un autre nom sans XP.')+((e.typ&&e.typ.length)||e.typAnon?' Les spécialités offertes par cet atout sont retirées.':'');
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Annuler un atout"><div class="in"><div><h2>${esc(e.nom)}</h2><div class="muted small">${esc(c.court)}</div></div><div>Annuler cet atout ?</div><div class="muted small">${txt}</div>
@@ -1469,32 +1534,38 @@ function renderSheet(){
 function render(){
   if(S.gate)return; /* écran du code : rien ne doit le remplacer */
   const cur=k=>S.view===k||(k==='team'&&S.view==='sheet');
-  const tabs=[['gains','XP'],['team','Personnages'],['univers','Univers'],['planning','Planning'],['players','Joueurs'],['rules','Règles']];
+  const tabs=[['gains','XP'],['team','Personnages'],['univers','Univers'],['planning','Planning'],['players','Joueurs'],['ref','Référentiel'],['rules','Règles']];
   const nb=unseenProps(),bdg=k=>k==='planning'&&nb?`<span class="bdg" aria-label="${nb} date${nb>1?'s':''} proposée${nb>1?'s':''} sans réponse">${nb}</span>`:'';
   document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${l}${bdg(k)}</button>`).join('');
   const bn=[['gains','XP','xp'],['team','Personnages','perso'],['univers','Univers','univers'],['planning','Planning','cal']];
-  const inMenu=S.view==='players'||S.view==='rules';
+  const inMenu=S.view==='players'||S.view==='rules'||S.view==='ref';
   document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}" style="position:relative">${ICON[ic]}<span>${l}</span>${bdg(k)}</button>`).join('')+
-    `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
+    `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Référentiel, Règles" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
   document.body.classList.toggle('home',S.view==='home');
   {const mb=document.getElementById('meBtn');if(mb){const me=ME&&S.players[ME];const lab=me?esc(me.nom):'Qui es-tu ?';const html=`${ICON.perso}<span>${lab}</span>`;if(mb.innerHTML!==html)mb.innerHTML=html;mb.setAttribute('aria-label',me?'Connecté en tant que '+me.nom+', changer de joueur':'Choisir qui tu es');}}
   const ae=document.activeElement;
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;
   const v=S.view,app=document.getElementById('app');
-  app.innerHTML=v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():viewRules();
+  app.innerHTML=v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewRef():viewRules();
   renderSheet();
   const w=whoGate();let wr=document.getElementById('whoRoot');if(!wr){wr=document.createElement('div');wr.id='whoRoot';document.body.appendChild(wr);}if(wr.innerHTML!==w)wr.innerHTML=w;
 }
 
 /* --- interactions --- */
+function ptrClamp(g){const s2=g.base*g.z;g.x=Math.min(20,Math.max(240-g.w*s2,g.x));g.y=Math.min(20,Math.max(240-g.h*s2,g.y));}
+function ptrPaint(){const g=S.dlg,im=document.getElementById('ptrImg');if(!g||!im)return;const s2=g.base*g.z;im.style.left=g.x+'px';im.style.top=g.y+'px';im.style.width=g.w*s2+'px';im.style.height=g.h*s2+'px';}
+(function(){let drag=null;
+  document.addEventListener('pointerdown',ev=>{const st=ev.target.closest&&ev.target.closest('#ptrStage');if(!st||!S.dlg||S.dlg.kind!=='ptr')return;drag={x:ev.clientX,y:ev.clientY,gx:S.dlg.x,gy:S.dlg.y};st.setPointerCapture&&st.setPointerCapture(ev.pointerId);ev.preventDefault();});
+  document.addEventListener('pointermove',ev=>{if(!drag||!S.dlg||S.dlg.kind!=='ptr')return;S.dlg.x=drag.gx+ev.clientX-drag.x;S.dlg.y=drag.gy+ev.clientY-drag.y;ptrClamp(S.dlg);ptrPaint();});
+  document.addEventListener('pointerup',()=>{drag=null;});document.addEventListener('pointercancel',()=>{drag=null;});})();
 function setCache(c,v){const n=clone(c);n.cache=v;S.chars[n.id]=n;persist('chars/'+n.id,n);}
 document.addEventListener('click',ev=>{
   if(S.gate)return;
   const t=ev.target.closest('[data-act]');if(!t)return;
   const a=t.dataset.act,d=t.dataset;S._force=true;
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
-  if(a==='tab'){ev.preventDefault();if(d.v==='univers')S.sec=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
+  if(a==='tab'){ev.preventDefault();if(d.v==='univers')S.sec=null;if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
   else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max,sp:{}};}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;}
@@ -1558,7 +1629,7 @@ document.addEventListener('click',ev=>{
   else if(a==='creSess'){const g=S.dlg;S.dlg=null;const ev=creEv(g.id);if(!ev){render();return;}const sid=g.sess&&sessById(g.sess)?g.sess:undefined;saveEvents(S.events.map(e=>{if(e!==ev)return e;const x={...e};if(sid)x.sessionId=sid;else delete x.sessionId;return x;}));return;}
   else if(a==='creSave'){const g=S.dlg,nom=(g.nom||'').trim();if(!nom||S.creatures.some(c=>c.id!==g.id&&c.nom.toLowerCase()===nom.toLowerCase()))return;S.dlg=null;saveCreatures(clone(S.creatures).map(c=>c.id===g.id&&!c.done?{...c,nom,fam:g.fam}:c));render();return;}
   else if(a==='creDel'){S.dlg.confirm=true;}
-  else if(a==='creDelOk'){const id=S.dlg.id;S.dlg=null;saveCreatures(S.creatures.filter(c=>!(c.id===id&&!c.done)));render();return;}
+  else if(a==='creDelOk'){const id=S.dlg.id,cr=S.creatures.find(c=>c.id===id);S.dlg=null;if(cr&&playedBy(raceRec(cr).sing).length){alert('Cette race est jouée par un personnage : elle ne peut pas être supprimée.');return;}saveCreatures(S.creatures.filter(c=>!(c.id===id&&!c.done)));if(cr&&!cr.done&&S.races&&S.races[id]){const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}render();return;}
   else if(a==='uni'){S.uni=d.v;S.sec=null;}
   else if(a==='secFilter'){S.secFilter=d.v;}
   else if(a==='secOpen'){S.sec=+d.n;window.scrollTo(0,0);}
@@ -1590,6 +1661,31 @@ document.addEventListener('click',ev=>{
     let c;if(specAnon(c0)>0){c=clone(c0);c.specs=[...specsOf(c),{nom,cible:key}];}
     else{const k=specCost(key,nom);if(k>summary(c0,S.events).dispo)return;c=buySpec(c0,key,nom,k,today());}
     if(a==='spBuyO'&&S.spOther)delete S.spOther[c0.id+'|'+key];saveChar(c);return;}
+  else if(a==='rfOpen'){S.dlg=null;S.view='ref';S.rf=rfDraft(d.id);window.scrollTo(0,0);}
+  else if(a==='rfNew'){S.rf=rfDraft(null);}
+  else if(a==='rfBack'){S.rf=null;}
+  else if(a==='rfFlt'){S.rff=d.v;}
+  else if(a==='rfFam'){S.rffam=S.rffam===d.v?'':d.v;}
+  else if(a==='rfUni'){ev.preventDefault();S.view='univers';S.uni='creatures';S.rf=null;}
+  else if(a==='rfPredDel'){S.rf[d.k].splice(+d.i,1);}
+  else if(a==='rfPredAdd'){const g=S.rf;if(d.k==='pred'){if(!g.pa)return;g.pred.push(g.pb&&g.pb!==g.pa?[g.pa,g.pb]:g.pa);g.pa='';g.pb='';}else{const x=(g.fa||'').trim(),y=(g.fb||'').trim();if(!x)return;g.fut.push(y?[x,y]:x);g.fa='';g.fb='';}}
+  else if(a==='rfAtAdd'){S.rf.at.push(['','']);}
+  else if(a==='rfAtDel'){S.rf.at.splice(+d.i,1);}
+  else if(a==='rfDel'){const g=S.rf,cr=S.creatures.find(c=>c.id===g.id);if(cr&&cr.done){g.err='Cette race est cochée « découverte » dans l\'Univers : elle ne peut pas être supprimée.';}else if(playedBy(raceRec(cr||{}).sing||'').length){g.err='Cette race est jouée par un personnage : elle ne peut pas être supprimée.';}else{g.err='';g.confirm=true;}}
+  else if(a==='rfDelOk'){const id=S.rf.id;S.rf=null;saveCreatures(S.creatures.filter(c=>c.id!==id));const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}
+  else if(a==='rfSave'){const g=S.rf,rec=rfRec(g),sing=rec.sing,plur=(g.plur||'').trim()||sing;if(!sing)return;
+    if(refRows().some(r=>r.cr.id!==g.id&&nrm(r.x.sing)===nrm(sing))){g.err='Une autre race porte déjà ce nom.';render();return;}
+    let list=clone(S.creatures),id=g.id;
+    if(!id){id=creSlug(plur)||('race-'+Date.now().toString(36));if(list.some(c=>c.id===id))id+='-'+Date.now().toString(36);list.push({id,nom:plur,fam:g.fam,done:false});}
+    else{const cr=list.find(c=>c.id===id);if(cr){cr.nom=plur;cr.fam=g.fam;}}
+    const old=S.races[id]&&S.races[id].sing;S.races={...S.races,[id]:rec};persist('meta/races',{byId:S.races});saveCreatures(list);rebuildRaces();
+    if(old&&old!==sing)for(const c of Object.values(S.chars))if(c.race===old){const n=clone(c);n.race=sing;saveChar(n);}
+    S.rf=rfDraft(id);S.rf.err='';S.rf.saved=true;}
+  else if(a==='ptrSave'){const g=S.dlg,im=window._ptrImg;if(!g||!im)return;const s2=g.base*g.z,cv=document.createElement('canvas');cv.width=cv.height=256;
+    const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,256,256);cx.drawImage(im,(20-g.x)/s2,(20-g.y)/s2,220/s2,220/s2,0,0,256,256);
+    let q=.82,data=cv.toDataURL('image/jpeg',q);while(data.length>60000&&q>.4){q-=.1;data=cv.toDataURL('image/jpeg',q);}
+    S.ptr={...(S.ptr||{}),[g.cid]:data};S.dlg=null;window._ptrImg=null;persist('portraits/'+g.cid,{img:data,t:Date.now()});S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});render();return;}
+  else if(a==='ptrDel'){if(!S.ptr||!S.ptr[d.id])return;const m={...S.ptr};delete m[d.id];S.ptr=m;persistDel('portraits/'+d.id);S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});}
   else if(a==='atBuy'||a==='atBuyO'){const c0=S.chars[S.sel];if(!c0)return;let nom=a==='atBuy'?d.nom:((S.spOther||{})[c0.id+'|atout']||'').trim();if(!nom)return;if(isTyp(nom))nom=TYP;
     if(atoutsOf(c0).some(x=>nrmA(x.nom)===nrmA(nom)))return;let c;
     if(atoutAnon(c0)>0){c=clone(c0);const e={nom};if(nom===TYP)grantTyp(c,e);c.atouts=[...atoutsOf(c),e];}
@@ -1691,6 +1787,12 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.nc){S.newC[t.dataset.nc]=t.value;}
   else if(t.dataset.as){S.asheet[t.dataset.as]=t.value;}
   else if(t.dataset.sh){S.sheet[t.dataset.sh]=t.value;}
+  else if(t.dataset.ptrz!==undefined&&S.dlg&&S.dlg.kind==='ptr'){const g=S.dlg,s0=g.base*g.z,cx=(130-g.x)/s0,cy=(130-g.y)/s0;g.z=+t.value;const s1=g.base*g.z;g.x=130-cx*s1;g.y=130-cy*s1;ptrClamp(g);ptrPaint();}
+  else if(t.dataset.rfq!==undefined){S.rfq=t.value;S._force=true;const pos=t.selectionStart;render();const i=q0('[data-rfq]');if(i){i.focus();try{i.setSelectionRange(pos,pos);}catch(e){}}}
+  else if(t.dataset.rfk!==undefined&&S.rf){S.rf[t.dataset.rfk]=t.value;if(t.dataset.rfk==='sing'){const b=q0('[data-act="rfSave"]');if(b)b.disabled=!t.value.trim();}}
+  else if(t.dataset.rfc!==undefined&&S.rf){S.rf.car[t.dataset.rfc][+t.dataset.m]=t.value;}
+  else if(t.dataset.rfat!==undefined&&S.rf){S.rf.at[+t.dataset.rfat][+t.dataset.p]=t.value;}
+  else if(t.dataset.rft!==undefined&&S.rf){S.rf.typ[+t.dataset.rft][+t.dataset.p]=t.value;}
   else if(t.dataset.ato!==undefined){S.spOther=S.spOther||{};S.spOther[S.sel+'|atout']=t.value;}
   else if(t.dataset.spo!==undefined){S.spOther=S.spOther||{};S.spOther[S.sel+'|'+t.dataset.spo]=t.value;}
   else if(t.dataset.spt!==undefined&&S.sheet){S.sheet.sp={...(S.sheet.sp||{}),txt:t.value};const b=q0('#sheetRoot [data-act="specAdd"]');if(b){const nm=t.value.trim();b.disabled=!nm;}}
@@ -1725,6 +1827,11 @@ document.addEventListener('change',ev=>{
   else if(t.dataset.k==='nature'){S.form.lines[+t.dataset.l].persos=null;render();}
   else if(t.dataset.me){ME=t.value||null;try{if(ME)localStorage.setItem('xp.me',ME);else localStorage.removeItem('xp.me');}catch(e){}render();}
   else if(t.dataset.pf){const p=clone(S.players[t.dataset.pid]);p[t.dataset.pf]=t.dataset.pf==='nom'?(t.value.trim()||p.nom):t.value;savePlayer(p);}
+  else if(t.dataset.rfa!==undefined&&S.rf){const k=t.dataset.rfa,a=S.rf.acc;S.rf.acc=t.checked?(a.includes(k)?a:[...a,k]):a.filter(x=>x!==k);render();}
+  else if(t.dataset.rfjump!==undefined){S.rf=rfDraft(t.value);render();}
+  else if((t.dataset.rfk==='fam'||t.dataset.rfk==='pa'||t.dataset.rfk==='pb'||t.dataset.rft!==undefined)&&S.rf){if(t.dataset.rft!==undefined)S.rf.typ[+t.dataset.rft][+t.dataset.p]=t.value;else S.rf[t.dataset.rfk]=t.value;render();}
+  else if(t.dataset.ptrfile){const f=t.files&&t.files[0],cid=t.dataset.ptrfile;t.value='';if(!f)return;const rd=new FileReader();
+    rd.onload=()=>{const im=new Image();im.onload=()=>{window._ptrImg=im;const w=im.naturalWidth,h=im.naturalHeight,base=Math.max(220/w,220/h);S.dlg={kind:'ptr',cid,src:rd.result,w,h,base,z:1,x:130-w*base/2,y:130-h*base/2};S._force=true;render();};im.src=rd.result;};rd.readAsDataURL(f);}
   else if(t.dataset.cf==='race'){const c=clone(S.chars[t.dataset.id]);c.race=t.value||null;saveChar(c);}
   else if(t.dataset.cf==='pj'){const c=clone(S.chars[t.dataset.id]);const v=t.value||null;if(v!==(c.pj||null)){c.pj=v;c.pjDate=v?today():null;}saveChar(c);}
   else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'?t.value:(t.value.trim()||c[k]);saveChar(c);}
@@ -1760,7 +1867,9 @@ function sbDb(code){
     doc:path=>{const [c,i]=path.split('/');return {
       onSnapshot:(ok,err)=>listen(()=>{const r=rows.find(x=>x.coll===c&&x.id===i);return {metadata:meta,data:()=>r?r.data:undefined};},ok,err),
       set:d=>write('xp_set',{p_coll:c,p_id:i,p_data:d},()=>{rows=rows.filter(x=>!(x.coll===c&&x.id===i));rows.push({coll:c,id:i,data:JSON.parse(JSON.stringify(d))});}),
-      delete:()=>write('xp_delete',{p_coll:c,p_id:i},()=>{rows=rows.filter(x=>!(x.coll===c&&x.id===i));})};}};
+      delete:()=>write('xp_delete',{p_coll:c,p_id:i},()=>{rows=rows.filter(x=>!(x.coll===c&&x.id===i));})};},
+    /* portraits : fonction dédiée (hors synchronisation), repli sur la liste complète tant que la requête SQL n'est pas installée */
+    portraits:async()=>{try{return await rpc('xp_portraits',{});}catch(e){return rows.filter(r=>r.coll==='portraits');}}};
 }
 function askCode(msg){
   return new Promise(resolve=>{
@@ -1808,7 +1917,7 @@ function start(){
       if(snap.metadata.hasPendingWrites)return;
       const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=normNoms(x);});
       S.chars=m;S.ready=true;clearTimeout(timer);if(!snap.metadata.fromCache)setSync('ok');render();
-      fixTypKerian();resetSA();renameVM();
+      fixTypKerian();resetSA();renameVM();fixRef();
     },e=>{setSync('err','Lecture impossible');});
     db.collection('players').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
@@ -1835,7 +1944,18 @@ function start(){
       const x=snap.data();
       if(x&&Array.isArray(x.list))S.creatures=x.list;
       else{S.creatures=clone(CREATURES_SEED);persist('meta/creatures',{list:S.creatures});}
-      S.creaturesReady=true;render();
+      S.creaturesReady=true;rebuildRaces();render();
+    },()=>{});
+    db.doc('meta/races').onSnapshot(snap=>{
+      if(snap.metadata.hasPendingWrites)return;
+      const x=snap.data();
+      if(x&&x.byId)S.races=x.byId;else{S.races=clone(RACE_SEED);persist('meta/races',{byId:S.races});}
+      S.racesReady=true;rebuildRaces();render();
+    },()=>{});
+    db.doc('meta/portraits').onSnapshot(snap=>{
+      if(snap.metadata.hasPendingWrites)return;
+      const x=snap.data(),v=x&&x.v||0;if(S.ptrV===v&&S.ptr)return;S.ptrV=v;
+      db.portraits().then(rows=>{const m={};for(const r of rows||[])if(r&&r.data&&r.data.img)m[r.id]=r.data.img;S.ptr=m;render();}).catch(()=>{});
     },()=>{});
     db.doc('gains/all').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
@@ -1843,6 +1963,7 @@ function start(){
     },()=>{});
   }).catch(()=>{setSync('local');S.ready=true;render();});
 }
+rebuildRaces();
 start();
 </script>
 </body></html>
