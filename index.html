@@ -456,7 +456,7 @@ function lvlCost(kind,l){if(kind==='atout'||kind==='spec')return RULES[kind];if(
 function cum(kind,from,to){let s=0;for(let l=from+1;l<=to;l++)s+=lvlCost(kind,l);return s;}
 function ref(c,key){
   const i=key.indexOf(':'),k=i<0?key:key.slice(0,i),n=i<0?'':key.slice(i+1);
-  if(k==='feerie'||k==='masque'||k==='fortune'||k==='atout'||k==='spec'){const o=c[k];return o?{kind:k,nom:LABEL[k],o,max:k==='spec'?null:o.max}:null;}
+  if(k==='feerie'||k==='masque'||k==='fortune'||k==='atout'||k==='spec'){const o=c[k];return o?{kind:k,nom:LABEL[k],o,max:k==='spec'?null:(k==='atout'&&c.type==='PJ'?Math.max(atoutListed(c),o.cur||0):o.max)}:null;}
   if(k==='carac'){const o=c.carac&&c.carac[n];return o?{kind:'carac',nom:n,o,max:o.max}:null;}
   if(k==='comp'){for(const p of c.profils||[])for(const x of p.comps||[])if(x.nom===n)return{kind:'comp',nom:n,o:x,max:x.max};return null;}
   if(k==='fut'){const x=(c.futiles||[]).find(f=>f.nom===n);return x?{kind:'fut',nom:n,o:x,max:x.max}:null;}
@@ -568,6 +568,53 @@ function migrateSpecs(c){if(Array.isArray(c.specs))return c;const seen=new Set()
     if(comp){if(c.type==='PNJ'){const pr=(c.profils||[]).find(p=>(PROFCOMPS[p.nom]||[]).includes(comp));if(pr)cible='prof:'+pr.nom;}else if(ref(c,'comp:'+comp))cible='comp:'+comp;}
     out.push({nom,cible});}
   c.specs=out;if(c.spec&&(c.spec.cur||0)<out.length)c.spec.cur=out.length;return c;}
+/* Races : atouts féeriques [nom, description] et spécialités typiques [spécialité, compétence] */
+const RACES={
+ 'Bastet':{a:[['Ami des chats','réseau d\'informateurs félins'],['Contacts mondains','noblesse et grande bourgeoisie européennes'],['Grâce féline','élégance ; repère d\'instinct les lieux confortables'],['Malice','+1 aux tests d\'Habiletés liés à l\'Ingéniosité']],t:[['Chasse','Survie'],['Moyen improvisé','Habiletés']]},
+ 'Djinn':{a:[['Marchandage','+1 en négociations commerciales'],['Arme fétiche','cimeterre dissimulable, dégâts 4'],['Grotte secrète',''],['6e sens magique','+1 pour détecter la magie ou identifier les faux-semblants']]},
+ 'Elfe':{a:[['Ami des druides',''],['Fragilité trompeuse',''],['Vision décuplée',''],['Manoir somptueux','']],t:[['Beau monde','Entregent'],['Culture générale','Culture']]},
+ 'Fée électricité':{a:[['Amie des fées modernes','un Contact dans chaque grande cour féerique'],['Identité discrète','fausse identité féerique crédible'],['Manipulation électrique','charge ou décharge une pile ou une batterie en un tour'],['Muse des technophiles','les Technologues lui rendent service']]},
+ 'Fleur de métal':{a:[['Protecteur vampyrique','un Comte ou une Comtesse vampyrique comme Allié'],['Amant éperdu','jeune amant dévoué'],['Amie des artistes','+2 en social avec les artistes'],['Garde-robe variée','tenues pour toutes les classes sociales ; +1 en Comédie (Déguisement), Séduction, et Classe en tenue élégante']],t:[['Appâts','Séduction'],['Mentir','Comédie']]},
+ 'Fouinard':{a:[['Ami des pixies','les pixies lui sont favorables'],['Ami des scientifiques','un Contact scientifique dans chaque capitale européenne'],['Brevets','+2 en Fortune'],['Laboratoire secret','vaste atelier ou laboratoire clandestin']],t:[['Mécanique','Habiletés'],['Investigation','Observations']]},
+ 'Gnome':{a:[['Affinité occulte','+1 en Occultisme'],['Aisance souterraine','+2 pour s\'orienter et survivre sous terre'],['Repère souterrain','vaste refuge secret'],['Santé de fer','immunisé aux maladies ordinaires et féeriques']]},
+ 'Korrigan':{a:[['Ami d\'un ondin','un Allié ondin brillant et influent'],['Beau parleur','+1 pour briller en société'],['Cadeau approprié','+2 aux interactions après un cadeau bien choisi'],['Gardien du trésor','+2 pour protéger ou récupérer son trésor']]},
+ 'Phénix':{a:[['Bel hidalgo','+1 en Séduction et Classe'],['Rapière ancestrale','+1 à l\'Initiative, +1 aux dégâts'],['Serviteur débrouillard','humain dévoué, Allié et Féal'],['Titre de noblesse','Chevalier sans terre lié à un Baron']]},
+ 'Troll':{a:[['Ami des petits animaux','de petits animaux lui rendent des services simples'],['Ami ogre gourmet','un contact ogre restaurateur'],['Contact armurier','armes blanches lourdes à prix réduit'],['Homme de main','des contacts dans une faction']],t:[['Épreuves de force','Ressort'],['Chasse','Survie']]},
+ 'Vampyr':{a:[['Âme damnée','serviteur féerique dévoué'],['Faciès aristocratique','Spécialité Crédit gratuite et +2 auprès des humains'],['Fortune immobilière','+2 en Fortune'],['Visage impassible','−2 aux tests pour deviner ses émotions']]}};
+const RACE0={kerian:'Elfe',massetoc:'Troll',sloan:'Fleur de métal',theodule:'Fouinard',rowen:'Bastet',maral:'Djinn'};
+const TYP='Spécialités typiques';
+const nrmA=t=>nrmS(t).replace(/y/g,'i').replace(/-/g,' ').replace(/\s+/g,' ');
+const isTyp=n=>/^(spe|specialite)\.? ?typique/.test(nrm(n).replace(/s /g,' ').replace(/s$/,''));
+function raceList(c){const r=RACES[c.race];return r?r.a.map(x=>x[0]).concat([TYP]):[TYP];}
+function atoutsOf(c){return Array.isArray(c.atouts)?c.atouts:[];}
+const atoutAnon=c=>Math.max(0,(c.atout&&c.atout.cur||0)-atoutsOf(c).length);
+function atoutListed(c){const rl=raceList(c).map(nrmA);return rl.length+atoutsOf(c).filter(x=>!(isTyp(x.nom)&&rl.includes(nrmA(TYP)))&&!rl.includes(nrmA(x.nom))).length;}
+function migrateAtouts(c){if(c.type!=='PJ')return c;if(!c.race&&RACE0[c.id])c.race=RACE0[c.id];if(Array.isArray(c.atouts))return c;const seen=new Set(),out=[];
+  for(const nom of nameList(c,'atout')){const k=nrmA(nom);if(!nom||seen.has(k))continue;seen.add(k);out.push({nom:isTyp(nom)?TYP:(RACES[c.race]&&RACES[c.race].a.find(x=>nrmA(x[0])===k)||[nom])[0]});}
+  c.atouts=out;if(c.atout&&(c.atout.cur||0)<out.length)c.atout.cur=out.length;return c;}
+/* Spécialités typiques : à l'acquisition, ajoute les deux spécialités de la race (ou 2 à rattacher si la race n'en a pas) */
+function grantTyp(n,entry){const r=RACES[n.race];n.spec=n.spec||{cur:0};n.specs=specsOf(n).slice();entry.typ=[];
+  if(r&&r.t){for(const [sp,comp] of r.t){if(n.specs.some(x=>nrmS(x.nom)===nrmS(sp)))continue;n.specs.push({nom:sp,cible:'comp:'+comp,offert:true,typ:1});n.spec.cur=(n.spec.cur||0)+1;entry.typ.push(sp);}}
+  else{n.spec.cur=(n.spec.cur||0)+2;entry.typAnon=2;}}
+function revokeTyp(n,entry){if(!entry)return;n.specs=specsOf(n).slice();for(const sp of entry.typ||[]){const i=n.specs.findIndex(x=>x.typ&&nrmS(x.nom)===nrmS(sp));if(i>=0){const ac=n.specs[i].achat;if(ac&&n.achats)n.achats=n.achats.filter(x=>x.id!==ac);n.specs.splice(i,1);n.spec.cur=Math.max(0,(n.spec.cur||0)-1);}}
+  if(entry.typAnon)n.spec.cur=Math.max(n.specs.length,(n.spec.cur||0)-entry.typAnon);}
+/* Correction ponctuelle (16/11/2026) : Kerian avait l'atout Spécialités typiques sans ses deux spécialités d'elfe */
+function fixTypKerian(){const c0=S.chars.kerian;if(!c0||c0.fixTypK||c0.race!=='Elfe')return;const e0=atoutsOf(c0).find(x=>isTyp(x.nom));if(!e0)return;
+  const c=clone(c0);c.spec=c.spec||{cur:0};c.specs=specsOf(c).slice();c.achats=c.achats||[];const e=c.atouts.find(x=>isTyp(x.nom));e.typ=e.typ||[];
+  for(const [sp,comp] of RACES.Elfe.t){if(c.specs.some(x=>nrmS(x.nom)===nrmS(sp)))continue;const from=c.spec.cur||0,id='a'+Date.now().toString(36)+Math.floor(Math.random()*1e3)+sp.length;c.spec.cur=from+1;
+    c.achats.push({id,date:today(),label:`Spécialité (${sp}) · offerte par Spécialités typiques`,cout:0,key:'spec',from,to:from+1});c.specs.push({nom:sp,cible:'comp:'+comp,achat:id,typ:1});e.typ.push(sp);}
+  c.fixTypK=true;saveChar(c);}
+/* Remise à plat ponctuelle (16/11/2026) : ne garder, en nombre et en nom, que les spécialités et atouts présents dans l'historique des achats */
+function fromJournal(c,re){const named=[];let anon=0;for(const a of c.achats||[]){const l=(a.label||'').trim();if(!re.test(l))continue;const m=/\(([^)]*)\)/.exec(l);
+    if(m&&/^\s*\d+\s*(→|->)\s*\d+\s*$/.test(m[1])){const [x,y]=m[1].split(/→|->/).map(v=>+v);anon+=Math.max(0,y-x);}else if(m&&m[1].trim())named.push({nom:m[1].trim(),achat:a.id});else anon+=1;}
+  return{named,anon};}
+function resetSA(){for(const c0 of Object.values(S.chars)){if(c0.resetSA)continue;const c=clone(c0);
+    const sp=fromJournal(c,/^sp[ée]cialit[ée]s?(?=\s|\(|$)/i);c.specs=sp.named.map(x=>({nom:x.nom,cible:null,achat:x.achat}));c.spec={...(c.spec||{}),cur:sp.named.length+sp.anon};
+    if(c.type==='PJ'){const at=fromJournal(c,/^atouts?\s+f[ée]eriques?(?=\s|\(|$)/i),rl=RACES[c.race]?RACES[c.race].a:[];
+      c.atouts=at.named.map(x=>({nom:isTyp(x.nom)?TYP:((rl.find(r=>nrmA(r[0])===nrmA(x.nom))||[x.nom])[0]),achat:x.achat}));c.atout={...(c.atout||{}),cur:at.named.length+at.anon};}
+    c.noms={...(c.noms||{}),spec:[],atout:[]};c.resetSA=true;saveChar(c);}}
+function buyAtout(c,nom,today){const n=clone(c);n.atout=n.atout||{cur:0};const from=n.atout.cur||0;n.atout.cur=from+1;const id='a'+Date.now().toString(36)+Math.floor(Math.random()*1e3);
+  n.achats=n.achats||[];n.achats.push({id,date:today,label:`Atout féerique (${nom})`,cout:RULES.atout,key:'atout',from,to:from+1});const e={nom,achat:id};if(nom===TYP)grantTyp(n,e);n.atouts=[...atoutsOf(n),e];return n;}
 /* Points de personnage : atteindre le rang N d'un profil ajoute N PP (à partir de maintenant) */
 const tri=r=>r*(r+1)/2;
 function ppSync(before,n){if(n.type!=='PJ')return n;for(const p of n.profils||[]){const o=(before.profils||[]).find(x=>x.nom===p.nom);if(!o)continue;const r0=rankOf(before,o),r1=rankOf(n,p);if(r0===r1)continue;
@@ -575,11 +622,13 @@ function ppSync(before,n){if(n.type!=='PJ')return n;for(const p of n.profils||[]
 const ppFmt=v=>String(v).replace('.',',');
 const NOMRE=/^\s*(atouts?\s+f[ée]eriques?|sp[ée]cialit[ée]s?)\s*\((.+)\)\s*$/i;
 function nameList(c,kind){const out=[];for(const a of c.achats||[]){const m=NOMRE.exec(a.label||'');if(!m)continue;const k=/^atout/i.test(m[1])?'atout':'spec';const n=m[2].trim();if(k!==kind||/^\d+\s*(→|->)\s*\d+$/.test(n))continue;out.push(n);}return out.concat((c.noms&&c.noms[kind])||[]);}
-function normNoms(c){for(const k of ['atout','spec']){if(c[k]){const n=nameList(c,k).length;if((c[k].cur||0)<n)c[k].cur=n;}}return migrateSpecs(c);}
+function normNoms(c){for(const k of ['atout','spec']){if(c[k]){const n=nameList(c,k).length;if((c[k].cur||0)<n)c[k].cur=n;}}return migrateAtouts(migrateSpecs(c));}
 function buy(c,key,to,today,nom){
   const n=clone(c),r=ref(n,key),from=r.o.cur||0,cost=cum(r.kind,from,to);r.o.cur=to;
   const label=nom?(r.kind==='atout'?`Atout féerique (${nom})`:`Spécialité (${nom})`):(r.kind==='atout'||r.kind==='spec')?`${r.nom} (${from}→${to})`:`${r.nom} ${to}`;
-  n.achats=n.achats||[];n.achats.push({id:'a'+Date.now().toString(36)+Math.floor(Math.random()*1e3),date:today,label,cout:cost,key,from,to});
+  const aid='a'+Date.now().toString(36)+Math.floor(Math.random()*1e3);n.achats=n.achats||[];n.achats.push({id:aid,date:today,label,cout:cost,key,from,to});
+  if(nom&&r.kind==='spec')n.specs=[...specsOf(n),{nom,cible:null,achat:aid}];
+  if(nom&&r.kind==='atout'&&n.type==='PJ'){const nm=isTyp(nom)?TYP:nom,e={nom:nm,achat:aid};if(nm===TYP)grantTyp(n,e);n.atouts=[...atoutsOf(n),e];}
   if(n.plan&&n.plan[key]!==undefined&&n.plan[key]<=to)delete n.plan[key];
   return ppSync(c,n);
 }
@@ -592,10 +641,11 @@ function lastBuy(c,key){const r=ref(c,key);if(!r)return null;const cur=r.o.cur||
 function undoLevel(c,key){const a=lastBuy(c,key);if(!a)return null;const n=clone(c),r=ref(n,key),cur=r.o.cur||0,na=n.achats.find(x=>x.id===a.id);let refund;
   if(a.to-a.from<=1){refund=na.cout||0;n.achats=n.achats.filter(x=>x.id!==a.id);}
   else{refund=Math.min(na.cout||0,lvlCost(r.kind,cur));na.cout=(na.cout||0)-refund;na.to=cur-1;na.label=(r.kind==='atout'||r.kind==='spec')?`${r.nom} (${na.from}→${na.to})`:`${r.nom} ${na.to}`;}
-  r.o.cur=cur-1;if(r.kind==='spec'&&Array.isArray(n.specs))n.specs=n.specs.filter(x=>x.achat!==a.id);return{c:ppSync(c,n),refund,from:cur,to:cur-1};}
+  r.o.cur=cur-1;if(r.kind==='spec'&&Array.isArray(n.specs))n.specs=n.specs.filter(x=>x.achat!==a.id);if(r.kind==='atout'&&Array.isArray(n.atouts)){const e=n.atouts.find(x=>x.achat===a.id);if(e){revokeTyp(n,e);n.atouts=n.atouts.filter(x=>x!==e);}}return{c:ppSync(c,n),refund,from:cur,to:cur-1};}
 function undo(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(!a||!canUndo(n,a))return n;ref(n,a.key).o.cur=a.from;n.achats=n.achats.filter(x=>x.id!==id);return ppSync(c,n);}
 
 function cancelAchat(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(!a)return{c:n,reverted:false};let rev=false;if(a.key){const r=ref(n,a.key);if(r&&(r.kind==='atout'||r.kind==='spec')){if((r.o.cur||0)>0){r.o.cur=r.o.cur-1;rev=true;}}else if(r&&(r.o.cur||0)===a.to){r.o.cur=a.from;rev=true;}}if(a.key==='spec'&&Array.isArray(n.specs))n.specs=n.specs.filter(x=>x.achat!==id);
+  if(a.key==='atout'&&Array.isArray(n.atouts)){const e=n.atouts.find(x=>x.achat===id);if(e){revokeTyp(n,e);n.atouts=n.atouts.filter(x=>x!==e);}}
   if((a.key||'').startsWith('pp:')){const p=(n.profils||[]).find(x=>x.nom===a.key.slice(3));if(p){const v=p.note==null||p.note===''?0:+p.note;if(!isNaN(v))p.note=v+(+a.pp||0);}rev=true;}
   n.achats=n.achats.filter(x=>x.id!==id);return{c:ppSync(c,n),reverted:rev};}
 function editAchat(c,id,p){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(a){if(p.label!==undefined)a.label=p.label;if(p.cout!==undefined)a.cout=p.cout;if(p.date!==undefined)a.date=p.date||null;}return n;}
@@ -675,7 +725,8 @@ function itemRow(c,key,dispo){
   const spk=r.kind==='comp'||r.kind==='fut'||r.kind==='prof',sps=spk?specsOf(c).filter(x=>x.cible===key):[];
   const so=!!(S.specOpen&&S.specOpen[c.id+'|'+key]);
   if(spk)sub+=`<span class="spt${so?' on':''}" data-act="specToggle" data-key="${esc(key)}" role="button" tabindex="0" aria-expanded="${so}"><span class="cv" aria-hidden="true">›</span> ${sps.length} spé.</span>`;
-  const after=spk&&so?specList(c,key,dispo):'';
+  let after=spk&&so?specList(c,key,dispo):'';
+  if(r.kind==='atout'&&c.type==='PJ'){const ao=!!(S.specOpen&&S.specOpen[c.id+'|atout']);sub+=`<span class="spt${ao?' on':''}" data-act="specToggle" data-key="atout" role="button" tabindex="0" aria-expanded="${ao}"><span class="cv" aria-hidden="true">›</span> ${cur} atout${cur>1?'s':''}</span>`;if(ao)after=atoutList(c,dispo);}
   return `<div class="irow${atMax?' max':can?' can':''}"><button class="rmain" data-act="open" data-key="${esc(key)}"><span class="nm">${esc(r.nom)}${sub}${acc?`<span class="accst" title="${esc(r.nom)} ${accW(r.nom)} : +1 hors maximum" aria-label="accru">★</span>`:''}</span>${max!=null?(acc?barAcc(cur,max,planned):bar(cur,max,planned)):'<span></span>'}<span class="lv">${lvTxt}</span></button>${tail}</div>${after}`;
 }
 /* Liste dépliée sous une compétence : spécialités du livre (acquise / achat), acquises hors liste, à rattacher, et ligne libre */
@@ -690,6 +741,18 @@ function specList(c,key,dispo){const all=specsOf(c),own=all.filter(x=>x.cible===
   const cat=new Set(specCatalog(key).map(e=>nrmS(e[0])));for(const o of own)if(!cat.has(nrmS(o.nom)))h+=acq(o);
   const ph=key==='comp:Culture'?'Autre spécialité ou langue…':'Autre spécialité…';
   h+=`<div class="ln"><input type="text" data-spo="${esc(key)}" placeholder="${ph}" aria-label="${ph}" value="${esc((S.spOther||{})[c.id+'|'+key]||'')}" autocomplete="off">${btn('',`data-act="spBuyO" data-key="${esc(key)}"`)}</div>`;
+  return `<div class="spx">${h}</div>`;}
+/* Liste dépliée des atouts féeriques : atouts de la race + Spécialités typiques (acquis / achat), acquis hors liste, ligne libre */
+function atoutList(c,dispo){const all=atoutsOf(c),anon=atoutAnon(c),r=RACES[c.race],typ=r&&r.t?'offre '+r.t.map(x=>x[0]).join(', '):'offre 2 spécialités gratuites à choisir';
+  const lst=(r?r.a:[]).concat([[TYP,typ]]),cost=RULES.atout;
+  const acq=(x,d)=>`<div class="ln acqd"><span>${esc(x.nom)}${d?`<small style="display:block;margin-left:0">${esc(d)}</small>`:''}</span><button class="acq" data-act="atCancel" data-i="${all.indexOf(x)}" aria-label="${esc(x.nom)} acquis : annuler">★ Acquis</button></div>`;
+  const btn=(attrs,nom)=>anon>0?`<button class="bb" ${attrs}>Rattacher</button>`:`<button class="bb" ${attrs}${cost>dispo?' disabled':''} aria-label="Acheter ${esc(nom||'un atout')} pour ${cost} XP">+ ${cost}</button>`;
+  let h='';const used=new Set();
+  for(const [nom,desc] of lst){const o=all.find(x=>nrmA(x.nom)===nrmA(nom)||(nom===TYP&&isTyp(x.nom)));if(o){used.add(o);h+=acq(o,desc);continue;}
+    h+=`<div class="ln${anon>0||cost<=dispo?' dispo':''}"><span>${esc(nom)}${desc?`<small style="display:block;margin-left:0">${esc(desc)}</small>`:''}</span>${btn(`data-act="atBuy" data-nom="${esc(nom)}"`,nom)}</div>`;}
+  for(const o of all)if(!used.has(o))h+=acq(o,'hors liste de la race');
+  h+=`<div class="ln"><input type="text" data-ato="1" placeholder="Autre atout…" aria-label="Autre atout" value="${esc((S.spOther||{})[c.id+'|atout']||'')}" autocomplete="off">${btn('data-act="atBuyO"')}</div>`;
+  if(!c.race)h+=`<div class="muted small" style="padding:4px 10px">Race à préciser dans Joueurs pour proposer ses atouts.</div>`;
   return `<div class="spx">${h}</div>`;}
 function specBlock(c){const ta=specToAttach(c),named=specsOf(c).filter(x=>!x.cible);
   return `<div class="muted small" style="padding:4px 0 8px">Les spécialités s'affichent sous leur ${c.type==='PNJ'?'profil':'compétence'}. ${ta?`<b style="color:var(--bad)">${ta} à rattacher</b>${named.length?` (dont ${named.map(x=>esc(x.nom)).join(', ')})`:''} : ouvre une ${c.type==='PNJ'?'ligne de profil':'compétence'} pour la rattacher sans XP.`:''}</div>`;}
@@ -718,7 +781,7 @@ function teamCard(c){
   if(p&&!off){stage=p.done?`<span class="pill good">Légendaire atteint</span>`:`<span class="pill acc">${p.stage} : ${p.blocked?'hors de portée':p.total+' XP'}</span>`;}
   const plan=off?`<span class="pill">${STATUTS[c.statut]||''}</span>`:s.prevu?`${s.manque?`<span class="pill bad">Il manque ${s.manque}</span>`:''}<span class="pill plan">Prévu ${s.prevu}</span>`:`<span class="pill">Rien de prévu</span>`;
   const img=portrait(c);
-  return `<button class="card team${off?' off':''}" data-act="sel" data-id="${c.id}"><span class="thead"><span class="tph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="nm">${esc(c.court)}</span><span class="muted small">${whoLine(c)}${c.cache?' · masqué aux autres':''}</span></span></span>
+  return `<button class="card team${off?' off':''}" data-act="sel" data-id="${c.id}"><span class="thead"><span class="tph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="nm">${esc(c.court)}</span>${c.race?`<span class="small" style="color:var(--accent);font-weight:600">${esc(c.race)}</span>`:''}<span class="muted small">${whoLine(c)}${c.cache?' · masqué aux autres':''}</span></span></span>
     <span class="big num">${s.dispo}</span><span class="muted small">XP disponibles · ${s.gains} gagnés, ${s.spent} dépensés</span>
     <span style="display:flex;gap:6px;flex-wrap:wrap">${plan}${stage}</span></button>`;
 }
@@ -746,7 +809,7 @@ function viewSheet(){
   const id=S.sel&&S.chars[S.sel]&&vis(S.chars[S.sel])?S.sel:ids()[0];S.sel=id;const c=S.chars[id],s=summary(c,S.events);
   const chips=ids().map(i=>{const c=S.chars[i],img=portrait(c);return `<button class="pchip" data-act="sel" data-id="${i}" aria-pressed="${i===id}" aria-label="${esc(c.court)}"><span class="ph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span class="pn">${esc(c.court)}</span></button>`;}).join('');
   let h=`<button class="back" data-act="tab" data-v="team"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Tous les personnages</button><div class="pchips">${chips}</div>`;
-  h+=`<div style="margin-bottom:12px"><div style="font-family:var(--font-display);font-size:24px;font-weight:700">${esc(c.nom)}</div><div class="muted small">${whoLine(c)}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div></div>`;
+  h+=`<div style="margin-bottom:12px"><div style="font-family:var(--font-display);font-size:24px;font-weight:700">${esc(c.nom)}${c.race?`<span style="font-family:var(--font-body,inherit);font-size:15px;font-weight:600;color:var(--accent)"> · ${esc(c.race)}</span>`:''}</div><div class="muted small">${whoLine(c)}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div></div>`;
   h+=`<div class="strip"><div><b class="num">${s.gains}</b><span>Gains</span></div><div><b class="num">${s.spent}</b><span>Dépensé</span></div><div class="hi"><b class="num">${s.dispo}</b><span>Dispo</span></div><div><b class="num">${s.prevu}</b><span>Prévu</span></div><div class="${s.manque?'warn':''}"><b class="num">${s.manque}</b><span>Manque</span></div></div>`;
   if(c.type==='PNJ'){
     const f=S.pnjForm;
@@ -755,7 +818,7 @@ function viewSheet(){
   h+=`<h2>Caractéristiques dérivées</h2><div class="derived">`+derived(c).map(([n,v,b])=>`<div><b class="num">${v}</b><span>${esc(n)}${b?' (dont '+(b>0?'+':'')+b+' de bonus)':''}</span></div>`).join('')+`</div>`;
   if(c.type==='PJ'){
     h+=`<h2>Ressources</h2><div class="card">`;
-    h+=itemRow(c,'feerie',s.dispo)+itemRow(c,'masque',s.dispo)+staticRow('Tricherie',tricherie(c),'calculée')+itemRow(c,'fortune',s.dispo)+itemRow(c,'atout',s.dispo)+namesBlock(c,'atout')+itemRow(c,'spec',s.dispo)+specBlock(c);
+    h+=itemRow(c,'feerie',s.dispo)+itemRow(c,'masque',s.dispo)+staticRow('Tricherie',tricherie(c),'calculée')+itemRow(c,'fortune',s.dispo)+itemRow(c,'atout',s.dispo)+(c.type==='PJ'?'':namesBlock(c,'atout'))+itemRow(c,'spec',s.dispo)+specBlock(c);
     h+=`</div>`;
   }
   h+=`<h2>Caractéristiques</h2><div class="card">`+CARACS.map(n=>itemRow(c,'carac:'+n,s.dispo)).join('')+`</div>`;
@@ -943,14 +1006,14 @@ function viewPlayers(){
   h+=`<h2>Personnages</h2>`;
   h+=chars.map(c=>{
     const armed=S.confirm==='c:'+c.id,ow=owners(c).map(p=>p.nom).join(', ');
-    return `<div class="card" style="margin-bottom:12px"><div class="frow"><div class="field"><label for="cc-${c.id}">Nom court</label><input id="cc-${c.id}" type="text" data-cf="court" data-id="${c.id}" value="${esc(c.court)}"></div><div class="field"><label for="cn-${c.id}">Nom complet</label><input id="cn-${c.id}" type="text" data-cf="nom" data-id="${c.id}" value="${esc(c.nom)}"></div><div class="field"><label for="cs-${c.id}">Statut</label><select id="cs-${c.id}" data-cf="statut" data-id="${c.id}">${Object.entries(STATUTS).map(([k,v])=>`<option value="${k}"${(c.statut||'actif')===k?' selected':''}>${v}</option>`).join('')}</select></div>${c.type==='PNJ'?`<div class="field"><label for="cp-${c.id}">Rattaché au PJ</label><select id="cp-${c.id}" data-cf="pj" data-id="${c.id}"><option value="">— aucun —</option>${Object.values(S.chars).filter(x=>x.type==='PJ').sort((a,b)=>(a.court||'').localeCompare(b.court||'')).map(x=>`<option value="${x.id}"${c.pj===x.id?' selected':''}>${esc(x.court)}</option>`).join('')}</select></div>`:''}</div>
+    return `<div class="card" style="margin-bottom:12px"><div class="frow"><div class="field"><label for="cc-${c.id}">Nom court</label><input id="cc-${c.id}" type="text" data-cf="court" data-id="${c.id}" value="${esc(c.court)}"></div><div class="field"><label for="cn-${c.id}">Nom complet</label><input id="cn-${c.id}" type="text" data-cf="nom" data-id="${c.id}" value="${esc(c.nom)}"></div><div class="field"><label for="cs-${c.id}">Statut</label><select id="cs-${c.id}" data-cf="statut" data-id="${c.id}">${Object.entries(STATUTS).map(([k,v])=>`<option value="${k}"${(c.statut||'actif')===k?' selected':''}>${v}</option>`).join('')}</select></div>${c.type==='PJ'?`<div class="field"><label for="cr-${c.id}">Race</label><select id="cr-${c.id}" data-cf="race" data-id="${c.id}"><option value="">— à préciser —</option>${Object.keys(RACES).map(r=>`<option${c.race===r?' selected':''}>${esc(r)}</option>`).join('')}</select></div>`:''}${c.type==='PNJ'?`<div class="field"><label for="cp-${c.id}">Rattaché au PJ</label><select id="cp-${c.id}" data-cf="pj" data-id="${c.id}"><option value="">— aucun —</option>${Object.values(S.chars).filter(x=>x.type==='PJ').sort((a,b)=>(a.court||'').localeCompare(b.court||'')).map(x=>`<option value="${x.id}"${c.pj===x.id?' selected':''}>${esc(x.court)}</option>`).join('')}</select></div>`:''}</div>
       <div class="muted small">${c.type==='PNJ'?(c.pj&&S.chars[c.pj]?'PNJ · rattaché à '+esc(S.chars[c.pj].court)+(c.pjDate?' depuis le '+fmtDate(c.pjDate)+' : part d\'XP sur les sessions à partir de cette date':''):'PNJ · rattache-le à un PJ pour qu\'il reçoive sa part d\'XP des sessions'):c.type+' · '+(ow?'joué par '+esc(ow):'sans joueur')}</div>
       <div class="actions" style="margin-top:8px"><button class="btn" data-act="cHide" data-id="${c.id}" aria-pressed="${!!c.cache}">${c.cache?'Masqué aux autres : afficher':'Masquer aux autres'}</button>${c.type==='PJ'?`<button class="btn" data-act="cMoy" data-id="${c.id}">${c.horsMoyenne?'Compter dans la moyenne':'Exclure de la moyenne'}</button>`:''}<button class="btn ghost" data-act="cDel" data-id="${c.id}">Supprimer</button></div></div>`;}).join('')||'<div class="card empty">Aucun personnage visible.</div>';
   h+=`<div class="card"><h3>Nouveau personnage</h3><div class="frow"><div class="field"><label for="nc-c">Nom court</label><input id="nc-c" type="text" data-nc="court" value="${esc(S.newC.court)}"></div><div class="field"><label for="nc-n">Nom complet</label><input id="nc-n" type="text" data-nc="nom" value="${esc(S.newC.nom)}"></div><div class="field"><label for="nc-t">Type</label><select id="nc-t" data-nc="type"><option value="PJ"${S.newC.type==='PJ'?' selected':''}>PJ</option><option value="PNJ"${S.newC.type==='PNJ'?' selected':''}>PNJ</option></select></div><div class="field"><label for="nc-o">Joueur</label><select id="nc-o" data-nc="owner"><option value="">— aucun —</option>${pl.map(p=>`<option value="${p.id}"${S.newC.owner===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}</select></div></div><div class="muted small" style="margin-bottom:8px">La fiche démarre à zéro, avec des maxima par défaut. Corrige-les ensuite depuis la fiche (« Corriger le niveau ou le maximum »).</div><button class="btn pri" data-act="addC"${S.newC.court.trim()?'':' disabled'}>Créer le personnage</button></div>`;
   return h;
 }
 function viewRules(){
-  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2 ; le détail donne la situation, l\'argent de poche, l\'argent disponible par mois et le modificateur de Classe et Entregent. Dépenser plus du double du mois en moins de deux mois fait perdre un rang'],['Atout féerique','8 points par atout'],['Spécialité','8 points (12 pour Mauvaise main, 2 pour une compétence futile). Elle se rattache à une compétence (à un profil pour un PNJ), donne +1 et ne demande aucun rang ; * = obligatoire pour agir dans ce domaine. Tant que des spécialités comptées restent à rattacher, en choisir une est gratuit'],['Points de personnage (PP)','atteindre le rang N d\'un profil ajoute N PP sur ce profil (automatique depuis le 16/11/2026). Toucher « PP » pour en dépenser : la dépense est inscrite dans l\'historique des achats et peut être annulée'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Caractéristique accrue','une seule par personnage : +1 au score, au-delà du maximum (ex. Esprit 6/9 devient 7/10). Le coût d\'évolution et les paliers Profond et Légendaire se calculent sur la base, sans le bonus. Se coche dans le détail de la caractéristique'],['Paliers : éligibilité','seules les compétences dont le niveau max est de 7 ou plus comptent pour Profond et Légendaire'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Créatures de l\'univers','+1 quand toutes nos connaissances sur un type de créature sont réunies (case cochée). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Créature de l\'univers »)'],['Sessions de jeu','chaque gain d\'XP est saisi dans une session (type, intitulé, date) ; les secrets et créatures peuvent y être rattachés. Une session ne peut être supprimée tant que des découvertes y sont rattachées'],['Part des PNJ','PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s\'il a participé activement, 25 % sinon, arrondi à l\'inférieur ; sessions datées à partir du rattachement'],['Planning','chaque joueur coche ses disponibilités en journée et en soirée ; créneaux préférés : samedi soir et dimanche journée. « Prochaines dates » : dates validées, créneaux où toute la table est libre, dates proposées que chacun accepte ou décline ; la prochaine date validée s\'affiche sur l\'accueil. Si un MJ décline une proposition, elle est refusée et ne peut pas être validée. Des créneaux consécutifs libres pour toute la table (par exemple samedi soir et dimanche journée) forment une seule date'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe'],['Rattrapage d\'XP','sur la ligne d\'un PJ en alerte, la flèche ↑ ouvre une attribution pré-remplie (type Autre, nature Individuel, date du jour) du nombre d\'XP qui le ramène au total du PJ juste devant. Rien n\'est attribué automatiquement, tout reste modifiable. Hors session de jeu, sans part pour les PNJ rattachés']];
+  const rows=[['Féerie','(niveau suivant) × 5'],['Masque','(niveau suivant) × 4'],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique','(niveau suivant) × 4, sauf 1→2 qui coûte 12 (8 + 4)'],['Compétence','(niveau suivant) × 3'],['Compétence futile','(niveau suivant) × 1'],['Fortune','(niveau suivant) × 2 ; le détail donne la situation, l\'argent de poche, l\'argent disponible par mois et le modificateur de Classe et Entregent. Dépenser plus du double du mois en moins de deux mois fait perdre un rang'],['Atout féerique','8 points par atout. Chaque race propose 4 atouts, plus « Spécialités typiques » qui offre les 2 spécialités typiques de la race (ou 2 spécialités à choisir). Le compteur affiche acquis / listés (un atout ajouté à la main compte dans les listés). Pas d\'atout pour les humains'],['Spécialité','8 points (12 pour Mauvaise main, 2 pour une compétence futile). Elle se rattache à une compétence (à un profil pour un PNJ), donne +1 et ne demande aucun rang ; * = obligatoire pour agir dans ce domaine. Tant que des spécialités comptées restent à rattacher, en choisir une est gratuit'],['Points de personnage (PP)','atteindre le rang N d\'un profil ajoute N PP sur ce profil (automatique depuis le 16/11/2026). Toucher « PP » pour en dépenser : la dépense est inscrite dans l\'historique des achats et peut être annulée'],['Profil d\'un PNJ','(niveau suivant) × 12, soit quatre compétences à la fois'],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond','Féerie 7, une caractéristique 6, une compétence 6, 4 atouts féeriques'],['Palier Légendaire','Féerie 8, une caractéristique 7, une compétence 7, 5 atouts féeriques (après Profond)'],['Caractéristique accrue','une seule par personnage : +1 au score, au-delà du maximum (ex. Esprit 6/9 devient 7/10). Le coût d\'évolution et les paliers Profond et Légendaire se calculent sur la base, sans le bonus. Se coche dans le détail de la caractéristique'],['Paliers : éligibilité','seules les compétences dont le niveau max est de 7 ou plus comptent pour Profond et Légendaire'],['Autres dépenses','Domaine, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Créatures de l\'univers','+1 quand toutes nos connaissances sur un type de créature sont réunies (case cochée). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Créature de l\'univers »)'],['Sessions de jeu','chaque gain d\'XP est saisi dans une session (type, intitulé, date) ; les secrets et créatures peuvent y être rattachés. Une session ne peut être supprimée tant que des découvertes y sont rattachées'],['Part des PNJ','PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s\'il a participé activement, 25 % sinon, arrondi à l\'inférieur ; sessions datées à partir du rattachement'],['Planning','chaque joueur coche ses disponibilités en journée et en soirée ; créneaux préférés : samedi soir et dimanche journée. « Prochaines dates » : dates validées, créneaux où toute la table est libre, dates proposées que chacun accepte ou décline ; la prochaine date validée s\'affiche sur l\'accueil. Si un MJ décline une proposition, elle est refusée et ne peut pas être validée. Des créneaux consécutifs libres pour toute la table (par exemple samedi soir et dimanche journée) forment une seule date'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe'],['Rattrapage d\'XP','sur la ligne d\'un PJ en alerte, la flèche ↑ ouvre une attribution pré-remplie (type Autre, nature Individuel, date du jour) du nombre d\'XP qui le ramène au total du PJ juste devant. Rien n\'est attribué automatiquement, tout reste modifiable. Hors session de jeu, sans part pour les PNJ rattachés']];
   return `<h2 style="margin-top:4px">Règles appliquées</h2><div class="card">${rows.map(r=>`<div class="ev"><div class="t" style="min-width:140px">${esc(r[0])}</div><div class="muted" style="text-align:right">${esc(r[1])}</div></div>`).join('')}</div>
   <div class="muted small" style="margin-top:12px">Dans ce prototype, les coefficients sont fixés dans la page. Dans la version définitive, ils seront modifiables depuis cet écran.</div><div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="logout">Changer de code (se déconnecter)</button></div>`;
 }
@@ -1295,6 +1358,10 @@ function renderSheet(){
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Modifier ${esc(g.n)}"><div class="in"><div><h2>${esc(g.n)}</h2><div class="muted small">${esc(e.titre)}</div></div>
       ${body}
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="natSave">Enregistrer</button></div></div></div>`;return;}
+    if(g.kind==='atc'){const c=S.chars[g.cid],e=c&&atoutsOf(c)[g.i];if(!e){S.dlg=null;root.innerHTML='';return;}const ach=e.achat&&(c.achats||[]).find(x=>x.id===e.achat);
+      const txt=(ach?`Annuler l'achat rend ${ach.cout} XP.`:'L\'atout redevient « à rattacher » : il reste compté et pourra recevoir un autre nom sans XP.')+((e.typ&&e.typ.length)||e.typAnon?' Les spécialités offertes par cet atout sont retirées.':'');
+      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Annuler un atout"><div class="in"><div><h2>${esc(e.nom)}</h2><div class="muted small">${esc(c.court)}</div></div><div>Annuler cet atout ?</div><div class="muted small">${txt}</div>
+      <div class="actions"><button class="btn" data-act="closeSheet">Garder</button><button class="btn pri" data-act="atCancelOk">Annuler l'atout</button></div></div></div>`;return;}
     if(g.kind==='spc'){const c=S.chars[g.cid],e=c&&specsOf(c)[g.i];if(!e){S.dlg=null;root.innerHTML='';return;}const ach=e.achat&&(c.achats||[]).find(x=>x.id===e.achat);
       const txt=ach?`Annuler l'achat rend ${ach.cout} XP.`:e.offert?'Cette spécialité offerte sera retirée.':'Elle redevient « à rattacher » : elle reste comptée et pourra être rattachée ailleurs sans XP.';
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Annuler une spécialité"><div class="in"><div><h2>${esc(e.nom)}</h2><div class="muted small">${esc(c.court)}</div></div><div>Annuler cette spécialité ?</div><div class="muted small">${txt}</div>
@@ -1502,6 +1569,15 @@ document.addEventListener('click',ev=>{
     let c;if(specAnon(c0)>0){c=clone(c0);c.specs=[...specsOf(c),{nom,cible:key}];}
     else{const k=specCost(key,nom);if(k>summary(c0,S.events).dispo)return;c=buySpec(c0,key,nom,k,today());}
     if(a==='spBuyO'&&S.spOther)delete S.spOther[c0.id+'|'+key];saveChar(c);return;}
+  else if(a==='atBuy'||a==='atBuyO'){const c0=S.chars[S.sel];if(!c0)return;let nom=a==='atBuy'?d.nom:((S.spOther||{})[c0.id+'|atout']||'').trim();if(!nom)return;if(isTyp(nom))nom=TYP;
+    if(atoutsOf(c0).some(x=>nrmA(x.nom)===nrmA(nom)))return;let c;
+    if(atoutAnon(c0)>0){c=clone(c0);const e={nom};if(nom===TYP)grantTyp(c,e);c.atouts=[...atoutsOf(c),e];}
+    else{if(RULES.atout>summary(c0,S.events).dispo)return;c=buyAtout(c0,nom,today());}
+    if(a==='atBuyO'&&S.spOther)delete S.spOther[c0.id+'|atout'];saveChar(c);return;}
+  else if(a==='atCancel'){const c=S.chars[S.sel],e=atoutsOf(c)[+d.i];if(!e)return;S.dlg={kind:'atc',cid:c.id,i:+d.i};}
+  else if(a==='atCancelOk'){const g=S.dlg,c0=S.chars[g.cid],e=atoutsOf(c0)[g.i];S.dlg=null;if(!e)return;
+    if(e.achat&&(c0.achats||[]).some(x=>x.id===e.achat)){saveChar(cancelAchat(c0,e.achat).c);return;}
+    const c=clone(c0);c.atouts=atoutsOf(c).slice();const ce=c.atouts[g.i];revokeTyp(c,ce);c.atouts.splice(g.i,1);saveChar(c);return;}
   else if(a==='spAttach'){const c=clone(S.chars[S.sel]);c.specs=specsOf(c).slice();const e=c.specs[+d.i];if(!e)return;c.specs[+d.i]={...e,cible:d.key};saveChar(c);return;}
   else if(a==='spCancel'){const c=S.chars[S.sel],e=specsOf(c)[+d.i];if(!e)return;S.dlg={kind:'spc',cid:c.id,i:+d.i};}
   else if(a==='spCancelOk'){const g=S.dlg,c0=S.chars[g.cid],e=specsOf(c0)[g.i];S.dlg=null;if(!e)return;
@@ -1592,6 +1668,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.nc){S.newC[t.dataset.nc]=t.value;}
   else if(t.dataset.as){S.asheet[t.dataset.as]=t.value;}
   else if(t.dataset.sh){S.sheet[t.dataset.sh]=t.value;}
+  else if(t.dataset.ato!==undefined){S.spOther=S.spOther||{};S.spOther[S.sel+'|atout']=t.value;}
   else if(t.dataset.spo!==undefined){S.spOther=S.spOther||{};S.spOther[S.sel+'|'+t.dataset.spo]=t.value;}
   else if(t.dataset.spt!==undefined&&S.sheet){S.sheet.sp={...(S.sheet.sp||{}),txt:t.value};const b=q0('#sheetRoot [data-act="specAdd"]');if(b){const nm=t.value.trim();b.disabled=!nm;}}
   else if(t.dataset.ppv!==undefined&&S.dlg&&S.dlg.kind==='pp'){S.dlg[t.dataset.ppv]=t.value;if(t.dataset.ppv==='spent'){const c=S.chars[S.dlg.cid],pr=c&&c.profils.find(x=>x.nom===S.dlg.prof),have=pr&&pr.note!=null&&pr.note!==''?+pr.note:0,n=+String(t.value).replace(',','.')||0,b=q0('#sheetRoot [data-act="ppSave"]'),inf=q0('#ppinfo');if(b)b.disabled=!(n>0);if(inf)inf.innerHTML=(n>0&&!isNaN(have)?`Il restera ${esc(ppFmt(have-n))} PP. `:'')+`Atteindre le rang N de ce profil ajoute N PP automatiquement. La dépense est inscrite dans l'historique des achats et peut y être annulée.`;}}
@@ -1625,6 +1702,7 @@ document.addEventListener('change',ev=>{
   else if(t.dataset.k==='nature'){S.form.lines[+t.dataset.l].persos=null;render();}
   else if(t.dataset.me){ME=t.value||null;try{if(ME)localStorage.setItem('xp.me',ME);else localStorage.removeItem('xp.me');}catch(e){}render();}
   else if(t.dataset.pf){const p=clone(S.players[t.dataset.pid]);p[t.dataset.pf]=t.dataset.pf==='nom'?(t.value.trim()||p.nom):t.value;savePlayer(p);}
+  else if(t.dataset.cf==='race'){const c=clone(S.chars[t.dataset.id]);c.race=t.value||null;saveChar(c);}
   else if(t.dataset.cf==='pj'){const c=clone(S.chars[t.dataset.id]);const v=t.value||null;if(v!==(c.pj||null)){c.pj=v;c.pjDate=v?today():null;}saveChar(c);}
   else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'?t.value:(t.value.trim()||c[k]);saveChar(c);}
   else if(t.dataset.np==='role'||t.dataset.nc==='type'||t.dataset.nc==='owner'){render();}
@@ -1707,6 +1785,7 @@ function start(){
       if(snap.metadata.hasPendingWrites)return;
       const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=normNoms(x);});
       S.chars=m;S.ready=true;clearTimeout(timer);if(!snap.metadata.fromCache)setSync('ok');render();
+      fixTypKerian();resetSA();
     },e=>{setSync('err','Lecture impossible');});
     db.collection('players').onSnapshot(snap=>{
       if(snap.metadata.hasPendingWrites)return;
