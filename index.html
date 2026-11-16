@@ -221,6 +221,11 @@ h3,.field label,.names .lab,th,.strip span{font-family:var(--font-label);letter-
 .accst{margin-left:6px;color:#3d84d6;font-size:.9em}
 .nsub{display:block;font-size:12px;color:var(--muted);margin-top:1px;font-weight:400}.nsub.bad{color:var(--bad)}
 .spt{display:flex;align-items:center;gap:4px;margin-top:1px;color:var(--accent);font-size:12.5px;font-weight:600;cursor:pointer}.spt .cv{display:inline-block;transition:transform .2s;font-size:14px;line-height:1}.spt.on .cv{transform:rotate(90deg)}
+.spx{padding:2px 0 8px 16px}.spx .ln{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 6px 5px 10px;margin:3px 0;border-radius:8px;font-size:15px}.spx .ln small{color:var(--muted);font-size:12px;margin-left:4px}
+.spx .ln.acqd{background:var(--plan-soft);box-shadow:inset 3px 0 0 var(--brass)}.spx .ln.dispo{background:linear-gradient(90deg,var(--good-soft),transparent 60%);box-shadow:inset 3px 0 0 var(--good)}.spx .ln.att{box-shadow:inset 3px 0 0 var(--bad)}
+.spx .acq{border:0;background:none;color:var(--plan);font:700 13px system-ui,sans-serif;cursor:pointer;padding:4px 2px;white-space:nowrap}
+.spx .bb{flex:none;padding:4px 12px;font-size:13px;border-radius:10px;border:1px solid var(--brass);background:linear-gradient(180deg,var(--brass-hi),var(--brass));font-weight:700;color:#2b2118;cursor:pointer;white-space:nowrap}.spx .bb:disabled{opacity:.45;cursor:default}
+.spx input{flex:1;min-width:0;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:inherit;font:inherit;font-size:14px}
 .specl2{padding:2px 14px 8px 22px;font-size:14px;color:var(--muted);line-height:1.5}
 .ftab{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:8px 0 4px}.ftab span{color:var(--muted)}.ftab b{text-align:right;font-variant-numeric:tabular-nums}.fnext{border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
 .spl{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}.spl .muted{font-size:12px}
@@ -667,12 +672,25 @@ function itemRow(c,key,dispo){
   let sub='';
   if(r.kind==='fortune'&&FORTUNE[cur])sub=`<span class="nsub">${esc(FORTUNE[cur][0])}</span>`;
   if(r.kind==='spec'){const ta=specToAttach(c);if(ta)sub=`<span class="nsub bad">${ta} à rattacher</span>`;}
-  const sps=(r.kind==='comp'||r.kind==='fut'||r.kind==='prof')?specsOf(c).filter(x=>x.cible===key):[];
+  const spk=r.kind==='comp'||r.kind==='fut'||r.kind==='prof',sps=spk?specsOf(c).filter(x=>x.cible===key):[];
   const so=!!(S.specOpen&&S.specOpen[c.id+'|'+key]);
-  if(sps.length)sub+=`<span class="spt${so?' on':''}" data-act="specToggle" data-key="${esc(key)}" role="button" tabindex="0" aria-expanded="${so}"><span class="cv" aria-hidden="true">›</span> ${sps.length} spé.</span>`;
-  const after=sps.length&&so?`<div class="specl2">${sps.map(x=>{const i=specInfo(x.nom);return esc(x.nom)+(i&&i[2]?'*':'');}).join(', ')}</div>`:'';
+  if(spk)sub+=`<span class="spt${so?' on':''}" data-act="specToggle" data-key="${esc(key)}" role="button" tabindex="0" aria-expanded="${so}"><span class="cv" aria-hidden="true">›</span> ${sps.length} spé.</span>`;
+  const after=spk&&so?specList(c,key,dispo):'';
   return `<div class="irow${atMax?' max':can?' can':''}"><button class="rmain" data-act="open" data-key="${esc(key)}"><span class="nm">${esc(r.nom)}${sub}${acc?`<span class="accst" title="${esc(r.nom)} ${accW(r.nom)} : +1 hors maximum" aria-label="accru">★</span>`:''}</span>${max!=null?(acc?barAcc(cur,max,planned):bar(cur,max,planned)):'<span></span>'}<span class="lv">${lvTxt}</span></button>${tail}</div>${after}`;
 }
+/* Liste dépliée sous une compétence : spécialités du livre (acquise / achat), acquises hors liste, à rattacher, et ligne libre */
+function specList(c,key,dispo){const all=specsOf(c),own=all.filter(x=>x.cible===key),ownN=new Set(own.map(x=>nrmS(x.nom))),anon=specAnon(c);
+  const acq=x=>{const i=specInfo(x.nom);return `<div class="ln acqd"><span>${esc(x.nom)}${i&&i[2]?'*':''}${i?`<small>${esc(i[1])}</small>`:''}</span><button class="acq" data-act="spCancel" data-i="${all.indexOf(x)}" aria-label="${esc(x.nom)} acquise : annuler">★ Acquise</button></div>`;};
+  const btn=(nom,attrs)=>{if(anon>0)return `<button class="bb" ${attrs}>Rattacher</button>`;const k=specCost(key,nom);return `<button class="bb" ${attrs}${k>dispo?' disabled':''} aria-label="Acheter ${esc(nom)} pour ${k} XP">+ ${k}</button>`;};
+  let h='';
+  for(const x of all.filter(y=>!y.cible))h+=`<div class="ln att"><span>${esc(x.nom)}<small>possédée, à rattacher</small></span><button class="bb" data-act="spAttach" data-i="${all.indexOf(x)}" data-key="${esc(key)}">Rattacher</button></div>`;
+  for(const e of specCatalog(key)){if(e[0]==='Langue : ')continue;const o=own.find(x=>nrmS(x.nom)===nrmS(e[0]));
+    if(o){h+=acq(o);continue;}const k=specCost(key,e[0]),ok=anon>0||k<=dispo;
+    h+=`<div class="ln${ok?' dispo':''}"><span>${esc(e[0])}${e[2]?'*':''}<small>${esc(e[1])}</small></span>${btn(e[0],`data-act="spBuy" data-key="${esc(key)}" data-nom="${esc(e[0])}"`)}</div>`;}
+  const cat=new Set(specCatalog(key).map(e=>nrmS(e[0])));for(const o of own)if(!cat.has(nrmS(o.nom)))h+=acq(o);
+  const ph=key==='comp:Culture'?'Autre spécialité ou langue…':'Autre spécialité…';
+  h+=`<div class="ln"><input type="text" data-spo="${esc(key)}" placeholder="${ph}" aria-label="${ph}" value="${esc((S.spOther||{})[c.id+'|'+key]||'')}" autocomplete="off">${btn('',`data-act="spBuyO" data-key="${esc(key)}"`)}</div>`;
+  return `<div class="spx">${h}</div>`;}
 function specBlock(c){const ta=specToAttach(c),named=specsOf(c).filter(x=>!x.cible);
   return `<div class="muted small" style="padding:4px 0 8px">Les spécialités s'affichent sous leur ${c.type==='PNJ'?'profil':'compétence'}. ${ta?`<b style="color:var(--bad)">${ta} à rattacher</b>${named.length?` (dont ${named.map(x=>esc(x.nom)).join(', ')})`:''} : ouvre une ${c.type==='PNJ'?'ligne de profil':'compétence'} pour la rattacher sans XP.`:''}</div>`;}
 function namesBlock(c,kind){
@@ -1277,6 +1295,10 @@ function renderSheet(){
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Modifier ${esc(g.n)}"><div class="in"><div><h2>${esc(g.n)}</h2><div class="muted small">${esc(e.titre)}</div></div>
       ${body}
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="natSave">Enregistrer</button></div></div></div>`;return;}
+    if(g.kind==='spc'){const c=S.chars[g.cid],e=c&&specsOf(c)[g.i];if(!e){S.dlg=null;root.innerHTML='';return;}const ach=e.achat&&(c.achats||[]).find(x=>x.id===e.achat);
+      const txt=ach?`Annuler l'achat rend ${ach.cout} XP.`:e.offert?'Cette spécialité offerte sera retirée.':'Elle redevient « à rattacher » : elle reste comptée et pourra être rattachée ailleurs sans XP.';
+      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Annuler une spécialité"><div class="in"><div><h2>${esc(e.nom)}</h2><div class="muted small">${esc(c.court)}</div></div><div>Annuler cette spécialité ?</div><div class="muted small">${txt}</div>
+      <div class="actions"><button class="btn" data-act="closeSheet">Garder</button><button class="btn pri" data-act="spCancelOk">Annuler la spécialité</button></div></div></div>`;return;}
     if(g.kind==='pp'){const c=S.chars[g.cid],pr=c&&(c.profils||[]).find(x=>x.nom===g.prof);if(!pr){S.dlg=null;root.innerHTML='';return;}
       const have=pr.note==null||pr.note===''?0:+pr.note,n=+String(g.spent).replace(',','.')||0,ok=n>0&&!isNaN(have);
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Points de personnage"><div class="in"><div><h2>Points de personnage</h2><div class="muted small">${esc(c.court)} · ${esc(pr.nom)} (rang ${rankOf(c,pr)})</div></div>
@@ -1349,21 +1371,6 @@ function renderSheet(){
       <div class="ftab"><span>Revenu annuel</span><b>${esc(f[1])}&nbsp;F</b><span>Argent de poche</span><b>${frs(f[2])}</b><span>Argent disponible par mois</span><b>${frs(f[3])}</b></div>
       ${nx?`<div class="muted small fnext">Rang suivant : ${esc(nx[0])} · Revenu par mois ${frs(nx[3])} · Argent de poche ${frs(nx[2])}</div>`:''}</div>
       <div class="muted small">⚠ Dépenser plus de ${frs(f[3]*2)} (le double du mois) en moins de deux mois fait perdre un rang de Fortune.</div>`;}
-  if(r.kind==='comp'||r.kind==='fut'||r.kind==='prof'){const own=specsOf(c).filter(x=>x.cible===sh.key),sp=sh.sp||{};
-    body+=`<div><h3 style="margin:4px 0 2px">Spécialités</h3>`+(own.length?own.map(x=>{const i=specInfo(x.nom),ix=specsOf(c).indexOf(x);return `<div class="spl"><div><b>${esc(x.nom)}${i&&i[2]?'*':''}</b> ${i?`<span class="muted">${esc(i[1])}${i[2]?' · obligatoire':''}</span>`:''}</div><button class="btn ghost" style="padding:3px 10px;font-size:13px;flex:none" data-act="specDel" data-i="${ix}">Annuler</button></div>`;}).join(''):'<div class="muted small">Aucune spécialité.</div>');
-    const ownN=new Set(own.map(x=>nrmS(x.nom))),named=specsOf(c).filter(x=>!x.cible),anon=specAnon(c);
-    const opts=[...named.map(x=>({v:'n:'+specsOf(c).indexOf(x),t:x.nom,h:'possédée, à rattacher'})),...specCatalog(sh.key).filter(x=>!ownN.has(nrmS(x[0]))&&x[0]!=='Langue : ').map(x=>({v:'c:'+x[0],t:x[0]+(x[2]?'*':''),h:x[1]})),
-      ...(specCatalog(sh.key).some(x=>x[0]==='Langue : ')?[{v:'l:',t:'Langue…',h:'à préciser'}]:[]),{v:'a:',t:'Autre…',h:'saisie libre'}];
-    const pick=sp.pick||'',isNamed=pick.startsWith('n:'),needTxt=pick==='a:'||pick==='l:';
-    const nom=isNamed?(specsOf(c)[+pick.slice(2)]||{}).nom:pick.startsWith('c:')?pick.slice(2):pick==='l:'?(sp.txt?'Langue : '+sp.txt.trim():''):(sp.txt||'').trim();
-    const cost=specCost(sh.key,nom||''),dispo=summary(c,S.events).dispo;
-    let lab,ok=!!pick&&!!nom;
-    if(isNamed)lab='Rattacher';else if(sp.off)lab='Ajouter (offerte)';else if(anon>0)lab=`Rattacher (sans XP) · ${anon} disponible${anon>1?'s':''}`;else{lab=`Acheter · ${cost} XP`;ok=ok&&cost<=dispo;}
-    body+=`<div class="field" style="margin-top:10px"><label>Ajouter une spécialité</label><div class="pick">${opts.map(o=>`<button class="pk" data-act="spPick" data-v="${esc(o.v)}" aria-pressed="${pick===o.v}"><span>${esc(o.t)}</span><small>${esc(o.h)}</small></button>`).join('')}</div></div>`+
-      (needTxt?`<div class="field"><label for="spt">${pick==='l:'?'Langue':'Nom de la spécialité'}</label><input id="spt" type="text" data-spt="1" value="${esc(sp.txt||'')}" autocomplete="off"></div>`:'')+
-      (isNamed||anon>0?'':`<label style="display:flex;gap:8px;align-items:center;margin:6px 0" class="small"><input type="checkbox" data-spoff="1"${sp.off?' checked':''}> Offerte (sans dépense d'XP)</label>`)+
-      `<div class="actions"><button class="btn pri" data-act="specAdd"${ok?'':' disabled'}>${lab}</button></div>
-      <div class="muted small">${specCatalog(sh.key).length?'* spécialité obligatoire pour agir dans ce domaine. ':''}Une spécialité donne +1 et ne demande aucun rang dans la ${r.kind==='prof'?'compétence':'compétence'}.${!isNamed&&anon===0&&!sp.off&&nom&&cost>dispo?` Il manque ${cost-dispo} XP.`:''}</div></div>`;}
   if(r.kind==='carac'){const other=c.accru&&!acc?c.accru:null;
     body+=`<label style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;margin:6px 0${other?';opacity:.6':''}"><span><b>${esc(r.nom)} ${accW(r.nom)}</b><br><span class="muted small">${other?`Déjà accrue : ${esc(other)}. Une seule par personnage.`:'+1 au score, au-delà du maximum. Une seule par personnage.'}</span></span><input type="checkbox" data-acc="${esc(r.nom)}"${acc?' checked':''}${other?' disabled':''} style="width:22px;height:22px;accent-color:var(--accent)"></label>`;}
   body+=undoH;
@@ -1489,6 +1496,17 @@ document.addEventListener('click',ev=>{
   else if(a==='undoLvl'){const u=undoLevel(cur(),S.sheet.key);S.sheet=null;if(u)saveChar(u.c);return;}
   else if(a==='step'){S.sheet.to+= +d.d;}
   else if(a==='specToggle'){S.specOpen=S.specOpen||{};const k=S.sel+'|'+d.key;S.specOpen[k]=!S.specOpen[k];}
+  else if(a==='spBuy'||a==='spBuyO'){const c0=S.chars[S.sel];if(!c0)return;const key=d.key;let nom=a==='spBuy'?d.nom:((S.spOther||{})[c0.id+'|'+key]||'').trim();if(!nom)return;
+    if(key==='comp:Culture'&&a==='spBuyO'&&LANGS.includes(nrm(nom)))nom='Langue : '+nom;
+    if(specsOf(c0).some(x=>x.cible===key&&nrmS(x.nom)===nrmS(nom)))return;
+    let c;if(specAnon(c0)>0){c=clone(c0);c.specs=[...specsOf(c),{nom,cible:key}];}
+    else{const k=specCost(key,nom);if(k>summary(c0,S.events).dispo)return;c=buySpec(c0,key,nom,k,today());}
+    if(a==='spBuyO'&&S.spOther)delete S.spOther[c0.id+'|'+key];saveChar(c);return;}
+  else if(a==='spAttach'){const c=clone(S.chars[S.sel]);c.specs=specsOf(c).slice();const e=c.specs[+d.i];if(!e)return;c.specs[+d.i]={...e,cible:d.key};saveChar(c);return;}
+  else if(a==='spCancel'){const c=S.chars[S.sel],e=specsOf(c)[+d.i];if(!e)return;S.dlg={kind:'spc',cid:c.id,i:+d.i};}
+  else if(a==='spCancelOk'){const g=S.dlg,c0=S.chars[g.cid],e=specsOf(c0)[g.i];S.dlg=null;if(!e)return;
+    if(e.achat&&(c0.achats||[]).some(x=>x.id===e.achat)){saveChar(cancelAchat(c0,e.achat).c);return;}
+    const c=clone(c0);c.specs=specsOf(c).slice();if(e.offert){c.spec.cur=Math.max(0,(c.spec.cur||0)-1);c.specs.splice(g.i,1);}else c.specs[g.i]={nom:e.nom,cible:null};saveChar(c);return;}
   else if(a==='spPick'){S.sheet.sp={...(S.sheet.sp||{}),pick:d.v};}
   else if(a==='specAdd'){const sh=S.sheet,c0=S.chars[sh.id],sp=sh.sp||{},pick=sp.pick||'';if(!c0||!pick)return;const sl=specsOf(c0);
     const isNamed=pick.startsWith('n:'),nom=isNamed?(sl[+pick.slice(2)]||{}).nom:pick.startsWith('c:')?pick.slice(2):pick==='l:'?(sp.txt&&sp.txt.trim()?'Langue : '+sp.txt.trim():''):(sp.txt||'').trim();if(!nom)return;
@@ -1574,6 +1592,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.nc){S.newC[t.dataset.nc]=t.value;}
   else if(t.dataset.as){S.asheet[t.dataset.as]=t.value;}
   else if(t.dataset.sh){S.sheet[t.dataset.sh]=t.value;}
+  else if(t.dataset.spo!==undefined){S.spOther=S.spOther||{};S.spOther[S.sel+'|'+t.dataset.spo]=t.value;}
   else if(t.dataset.spt!==undefined&&S.sheet){S.sheet.sp={...(S.sheet.sp||{}),txt:t.value};const b=q0('#sheetRoot [data-act="specAdd"]');if(b){const nm=t.value.trim();b.disabled=!nm;}}
   else if(t.dataset.ppv!==undefined&&S.dlg&&S.dlg.kind==='pp'){S.dlg[t.dataset.ppv]=t.value;if(t.dataset.ppv==='spent'){const c=S.chars[S.dlg.cid],pr=c&&c.profils.find(x=>x.nom===S.dlg.prof),have=pr&&pr.note!=null&&pr.note!==''?+pr.note:0,n=+String(t.value).replace(',','.')||0,b=q0('#sheetRoot [data-act="ppSave"]'),inf=q0('#ppinfo');if(b)b.disabled=!(n>0);if(inf)inf.innerHTML=(n>0&&!isNaN(have)?`Il restera ${esc(ppFmt(have-n))} PP. `:'')+`Atteindre le rang N de ce profil ajoute N PP automatiquement. La dépense est inscrite dans l'historique des achats et peut y être annulée.`;}}
   else if(t.dataset.nm!==undefined){S.nameForm.nom=t.value;}
