@@ -12,7 +12,7 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]');if(!t)return;
   const a=t.dataset.act,d=t.dataset;S._force=true;
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
-  if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel|rf2Add|rf2Del|rfChAdd|rfChDel|rfPwUnk)$/.test(a)&&!isGest())return; /* Référentiel : modification réservée à la gestion */
+  if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel|rf2Add|rf2Del|rfChAdd|rfChDel|rfPwUnk|rfFxNew|rfFxDel|rfFxT|rfFxQ|rfFxAdd|rfFxCancel)$/.test(a)&&!isGest())return; /* Référentiel : modification réservée à la gestion */
   if(a==='tab'){ev.preventDefault();if(d.v==='univers')S.sec=null;if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
   else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max,sp:{}};}
@@ -122,6 +122,14 @@ document.addEventListener('click',ev=>{
   else if(a==='rfPredDel'){S.rf[d.k].splice(+d.i,1);}
   else if(a==='rfPredAdd'){const g=S.rf;if(d.k==='pred'){if(!g.pa)return;g.pred.push(g.pb&&g.pb!==g.pa?[g.pa,g.pb]:g.pa);g.pa='';g.pb='';}else{const x=(g.fa||'').trim(),y=(g.fb||'').trim();if(!x)return;g.fut.push(y?[x,y]:x);g.fa='';g.fb='';}}
   else if(a==='rfAtAdd'){S.rf.at.push(['','']);}
+  else if(a==='forme'){S.forme=d.v;}
+  else if(a==='rfFxNew'){S.rf.fxEd={key:fxKey(d.k,d.n),t:'perm',cible:'',val:'',txt:'',quand:'tj'};}
+  else if(a==='rfFxCancel'){S.rf.fxEd=null;}
+  else if(a==='rfFxT'){const e=S.rf.fxEd;e.t=d.v;e.cible='';}
+  else if(a==='rfFxQ'){S.rf.fxEd.quand=d.v;}
+  else if(a==='rfFxAdd'){const e=S.rf.fxEd;if(!e)return;const f={t:e.t,cible:e.t==='rap'?'':e.cible,val:e.t==='rap'?0:Math.round(+e.val||0),txt:(e.txt||'').trim(),quand:e.quand};if(f.t==='perm')f.txt='';
+    S.rf.fx={...S.rf.fx,[e.key]:[...(S.rf.fx[e.key]||[]),f]};S.rf.fxEd=null;}
+  else if(a==='rfFxDel'){const L=(S.rf.fx[d.key]||[]).slice();L.splice(+d.j,1);S.rf.fx={...S.rf.fx,[d.key]:L};}
   else if(a==='rf2Add'){S.rf[d.k].push(['','']);}
   else if(a==='rf2Del'){S.rf[d.k].splice(+d.i,1);}
   else if(a==='rfChAdd'){const g=S.rf,v=(g.cb||'').trim();if(!v)return;if(!g.choix.some(o=>o[0]===g.ca&&nrm(o[1])===nrm(v)))g.choix.push([g.ca,v]);g.cb='';}
@@ -256,6 +264,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.rfq!==undefined){S.rfq=t.value;S._force=true;const pos=t.selectionStart;render();const i=q0('[data-rfq]');if(i){i.focus();try{i.setSelectionRange(pos,pos);}catch(e){}}}
   else if(t.dataset.rfk!==undefined&&S.rf){S.rf[t.dataset.rfk]=t.value;if(t.dataset.rfk==='sing'){const b=q0('[data-act="rfSave"]');if(b)b.disabled=!t.value.trim();}}
   else if(t.dataset.rfc!==undefined&&S.rf){S.rf.car[t.dataset.rfc][+t.dataset.m]=t.value;}
+  else if(t.dataset.rffx!==undefined&&S.rf&&S.rf.fxEd){S.rf.fxEd[t.dataset.rffx]=t.value;const e=S.rf.fxEd,ok=e.t==='rap'?(e.txt||'').trim():e.t==='perm'?e.cible&&+e.val:+e.val,b=q0('[data-act="rfFxAdd"]');if(b)b.disabled=!ok;}
   else if(t.dataset.rf2!==undefined&&S.rf){S.rf[t.dataset.rf2][+t.dataset.i][+t.dataset.p]=t.value;}
   else if(t.dataset.rfpw!==undefined&&S.rf){S.rf.pw[+t.dataset.rfpw][0]=t.value;}
   else if(t.dataset.rfat!==undefined&&S.rf){S.rf.at[+t.dataset.rfat][+t.dataset.p]=t.value;}

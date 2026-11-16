@@ -24,13 +24,13 @@ function ref(c,key){
 }
 function lv(c,key){const r=ref(c,key);return r?(r.o.cur||0):0;}
 function tricherie(c){return Math.floor((lv(c,'feerie')+lv(c,'masque'))/2);}
-function derivedBase(c){
-  const A=n=>lv(c,'carac:'+n);
+function derivedBase(c,forme){
+  const A=n=>lv(c,'carac:'+n)+fxSum(c,'car:'+n,forme)[0];
   if(c.type==='PNJ'){const P=n=>lv(c,'prof:'+n);return [['PdV',9+A('Constitution')*3],['Esquive',5+A('Agilité')+P('Aventurier')],['Parade',5+A('Agilité')+P('Combattant')],['Résistance physique',5+A('Constitution')+P('Aventurier')],['Résistance psychique',5+A('Esprit')+P('Erudit')],['Initiative',P('Combattant')+Math.max(A('Sang Froid'),A('Perception'))],['Base mêlée',A('Agilité')+P('Combattant')],['Base tir',A('Précision')+P('Combattant')]];}
-  const C=n=>lv(c,'comp:'+n),mb=Math.max(0,lv(c,'masque')-5);
+  const C=n=>lv(c,'comp:'+n)+fxSum(c,'comp:'+n,forme)[0],mb=Math.max(0,lv(c,'masque')-5);
   return [['PdV',9+A('Constitution')*3],['Esquive',5+A('Agilité')+C('Mouvement')],['Parade',5+A('Agilité')+C('Mêlée')],['Résistance physique',5+A('Constitution')+C('Ressort')+mb],['Résistance psychique',5+A('Esprit')+C('Fortitude')+mb],['Initiative',C('Art de la guerre')+Math.max(A('Sang Froid'),A('Perception'))],['Base mêlée',A('Agilité')+C('Mêlée')],['Base tir',A('Précision')+C('Tir')]];
 }
-function derived(c){return derivedBase(c).map(([n,v])=>{const b=(c.bonus&&c.bonus[n])||0;return [n,v+b,b];});}
+function derived(c,forme){return derivedBase(c,forme).map(([n,v])=>{const b=(c.bonus&&c.bonus[n])||0,[fb,src]=fxSum(c,'der:'+n,forme);return [n,v+b+fb,b,src];});}
 function rankOf(c,p){if(c.type==='PNJ')return p.cur||0;const cs=p.comps||[];return Math.floor(cs.reduce((s,x)=>s+(x.cur||0),0)/4);}
 function nextRank(c,p){
   if(c.type==='PNJ'){const cur=p.cur||0;if(cur>=p.max)return null;return{cost:cum('prof',cur,cur+1),steps:[]};}
@@ -277,6 +277,7 @@ function gainsTable(list,events){
 function newChar(id,court,nom,type){
   const caracs=Object.fromEntries(CARACS.map(n=>[n,{max:6,cur:1}]));
   const base={id,court,nom:nom||court,type,statut:'actif',carac:caracs,spec:{cur:0},plan:{},achats:[]};
+  base.fx=true; /* moteur de bonus actif pour les personnages créés à partir de l'étape 5 */
   if(type==='PNJ'){base.profils=PROFILS.map(n=>({nom:n,max:6,cur:0,subs:[]}));return base;}
   base.feerie={max:8,cur:3};base.masque={max:9,cur:3};base.creation=true;base.fortune={max:15,cur:0};base.atout={max:8,cur:0};
   base.profils=PROFILS.map(n=>({nom:n,max:6,note:null,comps:PROFCOMPS[n].map(x=>({nom:x,max:6,cur:0}))}));base.futiles=[];
@@ -321,3 +322,26 @@ function raceEyeSet(id,k,i,open,sid){
 const eyeBtn=(act,attrs,open,label)=>`<button class="eye ${open?'on':'off'}" data-act="${act}" ${attrs} aria-pressed="${!!open}" title="${open?'Visible par toute la table':'Visible seulement par la gestion'}" aria-label="${esc(label)} : ${open?'visible par toute la table':'visible par la gestion seulement'}">${open?EYE_O:EYE_C}</button>`;
 const EYE_O='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const EYE_C='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7c1.7 0 3.2-.4 4.5-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+/* ---------- Moteur de bonus : effets des capacités, avantages, désavantages et atouts ----------
+   Effet = {t:'perm'|'jet'|'rap', cible, val, txt, quand:'tj'|'m'|'d'} rangé dans x.fx['type:nom normalisé'].
+   Permanent : ajouté à la valeur (seulement pour les personnages créés avec le moteur, c.fx) ; Jet : affiché, non ajouté ; Rappel : texte. */
+const FX_T={perm:'Permanent',jet:'Jet',rap:'Rappel'};
+const FX_Q={tj:'toujours',m:'masquée',d:'démasquée'};
+const FX_DER=['PdV','Esquive','Parade','Résistance physique','Résistance psychique','Initiative','Base mêlée','Base tir'];
+const FX_KIND={cap:'Capacité',av:'Avantage',dv:'Désavantage',at:'Atout'};
+const fxKey=(k,n)=>k+':'+nrm(n);
+const fxTarget=c=>!c?'':c==='fortune'?'Fortune':c.replace(/^(car|comp|der):/,'');
+const sgn=v=>(v>0?'+':v<0?'−':'')+Math.abs(v);
+const fxLabel=e=>e.t==='rap'?e.txt:e.t==='perm'?fxTarget(e.cible)+' '+sgn(e.val):(e.cible||'Jet')+' '+sgn(e.val);
+function raceRecOf(c){const cr=c&&c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);return cr?raceRec(cr):null;}
+/* Effets du personnage : race (capacités, avantages, désavantages) + atouts qu'il a pris */
+function fxOf(c){const x=raceRecOf(c);if(!x||!x.fx)return [];const out=[],has=new Set(atoutsOf(c).map(a=>nrmA(a.nom)));
+  for(const k of ['cap','av','dv','at'])for(const e of (x[k]||[])){if(!e||!e[0])continue;if(k==='at'&&!has.has(nrmA(e[0])))continue;
+    for(const f of (x.fx[fxKey(k,e[0])]||[]))out.push({...f,src:e[0],kind:k});}
+  return out;}
+const fxOn=(e,forme)=>e.quand==='tj'||e.quand===(forme||'m');
+function fxSum(c,cible,forme){if(!c.fx)return [0,[]];let s=0;const src=[];for(const e of fxOf(c))if(e.t==='perm'&&e.cible===cible&&fxOn(e,forme)){s+=+e.val||0;src.push(sgn(e.val)+' '+e.src);}return [s,src];}
+/* Mise en place ponctuelle : effets préremplis (à vérifier) sur les races qui n'en ont pas encore */
+function fixFx(){if(!S.racesReady||!S.races)return;let ch=false;const R={...S.races};
+  for(const k in FX_SEED){const r=R[k];if(!r||r.fxv)continue;R[k]={...r,fx:{...clone(FX_SEED[k]),...(r.fx||{})},fxv:1};ch=true;}
+  if(ch){S.races=R;persist('meta/races',{byId:R});render();}}
