@@ -110,14 +110,36 @@ function viewSheet(){
   h+=`</div>`;
   return h;
 }
-/* Onglet « Fiche complète » : forme, valeurs dérivées, pouvoirs, effets */
-function viewSheetFull(c){const fm=S.forme||'m',fxl=fxOf(c);let h='';
-  if(!isHum(c))h+=`<div class="formesw"><span class="muted small">Forme</span><div class="seg sm" role="group" aria-label="Forme du personnage">${[['m','Masquée'],['d','Démasquée']].map(([v,l])=>`<button data-act="forme" data-v="${v}" aria-pressed="${fm===v}">${l}</button>`).join('')}</div>${c.accru?`<span class="muted small">${fm==='d'?esc(c.accru)+' '+accW(c.accru)+' : +1':esc(c.accru)+' '+accW(c.accru)+' : seulement démasqué'}</span>`:''}</div>`;
-  h+=`<h2>Caractéristiques dérivées</h2><div class="dg">`+derived(c,fm).map(([n,v,b,src])=>{const det=[b?'dont '+(b>0?'+':'')+b+' de bonus':'',...(src||[]).map(x=>'dont '+x)].filter(Boolean),tip=n+(det.length?' · '+det.join(', '):'');
-    const ab=(src||[]).map(x=>{const m=x.match(/^([+−-]?\d+)\s+(.*)$/);return m?m[1]+' '+m[2].slice(0,4)+'.':x;}).join(' ');
+/* Onglet « Fiche complète » : consultation, sans achat */
+function viewSheetFull(c){const fm=S.forme||'m',fxl=fxOf(c),x=raceRecOf(c),fee=c.type==='PJ'&&!isHum(c);let h='';
+  const val=n=>`<b class="num">${n}</b>`,row=(a,b)=>`<div class="fr"><span>${a}</span>${val(b)}</div>`;
+  const fxLines=(k,nom)=>fxl.filter(e=>e.kind===k&&nrmA(e.src)===nrmA(nom)).map(e=>`<div class="fxs${fxOn(e,fm)?'':' off'}">Effet : ${esc(fxLabel(e))}${fxQ(e.quand)==='d'?' · démasqué seulement':''}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}</div>`).join('');
+  const item=(nom,desc,fx)=>`<div class="fi"><b>${esc(nom)}</b>${desc?`<div class="s">${esc(desc)}</div>`:''}${fx||''}</div>`;
+  const spl=key=>{const L=specsOf(c).filter(y=>y.cible===key);return L.length?`<div class="fsp">${L.map(y=>{const i=specInfo(y.nom);return esc(y.nom)+(i&&i[2]?'*':'');}).join(', ')}</div>`:'';};
+  if(c.type==='PJ'){const L=pnjOf(c);if(L.length)h+=`<div class="muted small" style="margin-bottom:8px">PNJ rattaché${L.length>1?'s':''} : ${L.map(y=>esc(y.court)).join(', ')}</div>`;}
+  if(!isHum(c))h+=`<div class="formesw"><span class="muted small">Forme</span><div class="seg sm" role="group" aria-label="Forme du personnage">${[['m','Masquée'],['d','Démasquée']].map(([v,l])=>`<button data-act="forme" data-v="${v}" aria-pressed="${fm===v}">${l}</button>`).join('')}</div></div>`;
+  h+=`<h2>Caractéristiques dérivées</h2><div class="dg">`+derived(c,fm).map(([n,v,b,src])=>{const det=[b?'dont '+(b>0?'+':'')+b+' de bonus':'',...(src||[]).map(y=>'dont '+y)].filter(Boolean),tip=n+(det.length?' · '+det.join(', '):'');
+    const ab=(src||[]).map(y=>{const m=y.match(/^([+−-]?\d+)\s+(.*)$/);return m?m[1]+' '+m[2].slice(0,4)+'.':y;}).join(' ');
     return `<button class="dt" data-act="derTip" data-n="${esc(n)}" title="${esc(tip)}" aria-label="${esc(tip)} : ${v}">${derIco(n)}<b class="num">${v}</b>${ab?`<small>${esc(ab)}</small>`:''}${S.derTip===n?`<span class="dtip" role="tooltip">${esc(tip)}</span>`:''}</button>`;}).join('')+`</div>`;
-  if(c.type==='PJ'&&!isHum(c)){const pw=pwRows(c);if(pw)h+=`<h2>Pouvoirs féeriques</h2><div class="card">${pw}</div>`;}
-  h+=fxCard(c,fxl,fm);
+  if(fee){const own=c.pw||[],pal=own.some(o=>o.i===7)?'Légendaire':own.some(o=>o.i===6)?'Profond':'';
+    let b=(pal?`<div class="muted small" style="padding-bottom:4px">Palier ${pal}</div>`:'')+row('Féerie',lv(c,'feerie'))+row('Masque',lv(c,'masque'))+row('Tricherie',tricherie(c));
+    if(x&&own.length){b+=`<div class="muted small" style="margin-top:8px">Pouvoirs</div>`+[...own].sort((a,z)=>a.i-z.i).map(o=>{const p=pwCat(o.id);
+      return `<div class="fi"><b>${esc(pwFull(x,o.i))}</b>${p.desc?`<div class="s">${esc(p.desc)}</div>`:''}${(p.fx||[]).map(e=>`<div class="fxs${fxOn(e,fm)?'':' off'}">Effet : ${esc(fxLabel(e))}${fxQ(e.quand)==='d'?' · démasqué seulement':''}</div>`).join('')}</div>`;}).join('');}
+    h+=`<h2>Capacités féeriques</h2><div class="card">${b}</div>`;}
+  if(x&&c.type==='PJ'){
+    const av=(x.av||[]).filter(e=>e&&e[0]),dv=(x.dv||[]).filter(e=>e&&e[0]);
+    if(av.length||dv.length)h+=`<h2>Avantages et désavantages</h2><div class="card">${av.length?`<div class="fsub">Avantages</div>`+av.map(e=>item(e[0],e[1],fxLines('av',e[0]))).join(''):''}${dv.length?`<div class="fsub">Désavantages</div>`+dv.map(e=>item(e[0],e[1],fxLines('dv',e[0]))).join(''):''}</div>`;
+    const cap=(x.cap||[]).filter(e=>e&&e[0]).map(e=>item(e[0],e[1],fxLines('cap',e[0]))).join('')+(c.accru?`<div class="fi"><b>${esc(c.accru)} ${accW(c.accru)}</b><div class="fxs${fm==='d'?'':' off'}">Effet : ${esc(c.accru)} +1 · démasqué seulement</div></div>`:'');
+    if(cap)h+=`<h2>Capacités naturelles</h2><div class="card">${cap}</div>`;
+    const at=atoutsOf(c).filter(a=>a&&a.nom);
+    if(at.length)h+=`<h2>Atouts féeriques</h2><div class="card">${at.map(a=>{const d=(x.at||[]).find(e=>e&&nrmA(e[0])===nrmA(a.nom));return item(a.nom,d&&d[1],fxLines('at',a.nom));}).join('')}</div>`;}
+  if(c.type==='PJ'){const f=lv(c,'fortune');h+=`<h2>Fortune</h2><div class="card">${row(FORTUNE[f]?esc(FORTUNE[f][0]):'Fortune',f)}</div>`;}
+  h+=`<h2>Caractéristiques</h2><div class="card fgrid">${CARACS.map(n=>row(esc(n),lv(c,'carac:'+n)+(c.accru===n&&fm==='d'?1:0))).join('')}</div>`;
+  h+=`<h2>Profils</h2>`+(c.profils||[]).map(pr=>{let b=`<div class="fr"><b>${esc(pr.nom)}</b><span class="muted">rang ${rankOf(c,pr)}</span></div>`;
+    if(c.type==='PJ')b+=(pr.comps||[]).map(y=>row(esc(y.nom),lv(c,'comp:'+y.nom))+spl('comp:'+y.nom)).join('');
+    else{b+=spl('prof:'+pr.nom);if(pr.subs&&pr.subs.length)b+=`<div class="fsp">${pr.subs.map(esc).join(', ')}</div>`;}
+    return `<div class="card" style="margin-bottom:10px">${b}</div>`;}).join('');
+  if(c.type==='PJ'&&(c.futiles||[]).length)h+=`<h2>Compétences futiles</h2><div class="card">${c.futiles.map(f=>row(esc(f.nom),lv(c,'fut:'+f.nom))+spl('fut:'+f.nom)).join('')}</div>`;
   return h;}
 const allPJ=()=>Object.values(S.chars).filter(c=>c.type==='PJ'&&actif(c)&&!c.cache).map(c=>c.id);
 const lp=l=>l.persos!=null?l.persos:(l.nature==='Scénario'||l.nature==='Groupe')?allPJ():[];
