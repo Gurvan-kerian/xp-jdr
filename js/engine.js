@@ -306,7 +306,8 @@ const eyeCount=e=>{const l=[e.fiche,...EYE_BLOCKS.map(([k])=>e[k]),...[0,1,2,3,4
 const myRace=sing=>!!ME&&!!S.players[ME]&&(S.players[ME].persos||[]).some(id=>S.chars[id]&&S.chars[id].race===sing);
 const raceVisible=(cr,x)=>isGest()||eyeOf(cr,x).fiche||myRace(x.sing);
 const blockVisible=(cr,x,k)=>isGest()||myRace(x.sing)||(eyeOf(cr,x).fiche&&eyeOf(cr,x)[k]);
-const pwVisible=(cr,x,i)=>isGest()||(myRace(x.sing)&&i<6)||(eyeOf(cr,x).fiche&&(eyeOf(cr,x).pw||[])[i]);
+/* Pouvoirs : l'œil s'applique à tous, joueur de la race compris (le MJ dévoile le pouvoir choisi) */
+const pwVisible=(cr,x,i)=>isGest()||((myRace(x.sing)||eyeOf(cr,x).fiche)&&!!(eyeOf(cr,x).pw||[])[i]);
 /* Mise en place ponctuelle : races déjà découvertes = tous les yeux ouverts (sans nouvelle XP), les autres fermés */
 function fixEyes(){if(!S.racesReady||!S.creaturesReady||!S.races)return;let ch=false;const R={...S.races};
   for(const cr of S.creatures){const r=R[cr.id];if(r&&!r.eye){R[cr.id]={...r,eye:eyeAll(!!cr.done)};ch=true;}}
@@ -327,26 +328,29 @@ const eyeBtn=(act,attrs,open,label)=>`<button class="eye ${open?'on':'off'}" dat
 const EYE_O='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const EYE_C='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7c1.7 0 3.2-.4 4.5-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
 /* ---------- Moteur de bonus : effets des capacités, avantages, désavantages et atouts ----------
-   Effet = {t:'perm'|'jet'|'rap', cible, val, txt, quand:'tj'|'m'|'d'} rangé dans x.fx['type:nom normalisé'].
+   Effet = {t:'perm'|'jet'|'rap', cible, val, txt, quand:'m'|'d'} rangé dans x.fx['type:nom normalisé'].
    Permanent : ajouté à la valeur (seulement pour les personnages créés avec le moteur, c.fx) ; Jet : affiché, non ajouté ; Rappel : texte. */
 const FX_T={perm:'Permanent',jet:'Jet',rap:'Rappel'};
-const FX_Q={tj:'toujours',m:'masquée',d:'démasquée'};
+/* Masqué = valable sous les deux formes ; démasqué = seulement démasqué (l'ancien « toujours » vaut masqué) */
+const fxQ=q=>q==='d'?'d':'m';
+const FX_Q={m:'masqué',d:'démasqué',tj:'masqué'};
 const FX_DER=['PdV','Esquive','Parade','Résistance physique','Résistance psychique','Initiative','Base mêlée','Base tir'];
-const FX_KIND={cap:'Capacité',av:'Avantage',dv:'Désavantage',at:'Atout'};
+const FX_KIND={cap:'Capacité',av:'Avantage',dv:'Désavantage',at:'Atout',pw:'Pouvoir'};
 const fxKey=(k,n)=>k+':'+nrm(n);
 const fxTarget=c=>!c?'':c==='fortune'?'Fortune':c.replace(/^(car|comp|der):/,'');
 const sgn=v=>(v>0?'+':v<0?'−':'')+Math.abs(v);
 const fxLabel=e=>e.t==='rap'?e.txt:e.t==='perm'?fxTarget(e.cible)+' '+sgn(e.val):(e.cible||'Jet')+' '+sgn(e.val);
 function raceRecOf(c){const cr=c&&c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);return cr?raceRec(cr):null;}
 /* Effets du personnage : race (capacités, avantages, désavantages) + atouts qu'il a pris */
-function fxOf(c){const x=raceRecOf(c);if(!x||!x.fx)return [];const out=[],has=new Set(atoutsOf(c).map(a=>nrmA(a.nom)));
-  for(const k of ['cap','av','dv','at'])for(const e of (x[k]||[])){if(!e||!e[0])continue;if(k==='at'&&!has.has(nrmA(e[0])))continue;
+function fxOf(c){const x=raceRecOf(c);if(!x)return [];const out=[],has=new Set(atoutsOf(c).map(a=>nrmA(a.nom)));
+  if(x.fx)for(const k of ['cap','av','dv','at'])for(const e of (x[k]||[])){if(!e||!e[0])continue;if(k==='at'&&!has.has(nrmA(e[0])))continue;
     for(const f of (x.fx[fxKey(k,e[0])]||[]))out.push({...f,src:e[0],kind:k});}
+  for(const id of pwOwnedIds(c,x)){const p=pwCat(id);for(const f of (p.fx||[]))out.push({...f,src:p.nom,kind:'pw'});}
   return out;}
-const fxOn=(e,forme)=>e.quand==='tj'||e.quand===(forme||'m');
+const fxOn=(e,forme)=>fxQ(e.quand)==='m'||(forme||'m')==='d';
 /* Valeurs qui s'achètent : un bonus permanent « toujours » est intégré à la valeur enregistrée (le coût XP se calcule avec lui) */
 const fxPurch=cible=>cible==='fortune'||/^(car|comp):/.test(cible);
-const fxInteg=e=>e.t==='perm'&&e.quand==='tj'&&fxPurch(e.cible);
+const fxInteg=e=>e.t==='perm'&&fxQ(e.quand)==='m'&&fxPurch(e.cible);
 /* Bonus ajouté à l'affichage (valeurs calculées, ou bonus lié à une forme) */
 function fxSum(c,cible,forme){if(!c.fx)return [0,[]];let s=0;const src=[];for(const e of fxOf(c))if(e.t==='perm'&&e.cible===cible&&fxOn(e,forme)&&!fxInteg(e)){s+=+e.val||0;src.push(sgn(e.val)+' '+e.src);}return [s,src];}
 /* Origine des bonus intégrés à une valeur enregistrée */
@@ -365,7 +369,7 @@ function fixFx(){if(!S.racesReady||!S.races)return;let ch=false;const R={...S.ra
 
 /* ---------- Paramètres (écran Paramètres, droits de gestion) ----------
    meta/params = {versions:[{date, v:{...}}]} ; la version active est la plus récente dont la date d'effet est passée. */
-const PARAM_TABS=[['couts','Coûts XP'],['paliers','Paliers'],['creation','Création'],['pnj','Rangs de PNJ'],['table','Table'],['bonus','Bonus']];
+const PARAM_TABS=[['couts','Coûts XP'],['paliers','Paliers'],['creation','Création'],['pnj','Rangs de PNJ'],['table','Table'],['bonus','Bonus'],['pouvoirs','Pouvoirs']];
 const PARAM_DEF={
  couts:[['feerie','Féerie : (niveau suivant) ×',5],['masque','Masque : (niveau suivant) ×',4],['carac','Caractéristique : (niveau suivant) ×',4],['carac12','Caractéristique : passage de 1 à 2',12],['comp','Compétence : (niveau suivant) ×',3],['fut','Compétence futile : (niveau suivant) ×',1],['fortune','Fortune : (niveau suivant) ×',2],['atout','Atout féerique',8],['spec','Spécialité',8],['specFut','Spécialité futile',2],['mauvaiseMain','Mauvaise main',12],['prof','Profil de PNJ : (niveau suivant) ×',12]],
  paliers:[['p1feerie','Profond : Féerie',7],['p1carac','Profond : une caractéristique à',6],['p1comp','Profond : une compétence à',6],['p1atout','Profond : atouts féeriques',4],['p2feerie','Légendaire : Féerie',8],['p2carac','Légendaire : une caractéristique à',7],['p2comp','Légendaire : une compétence à',7],['p2atout','Légendaire : atouts féeriques',5],['palierMax','Compétences prises en compte : niveau max d\'au moins',7]],
@@ -388,3 +392,16 @@ function fixComm(){if(!S.racesReady||!S.pouvoirsReady||!S.races||!S.pouvoirs)ret
     R[k]={...r,pw:{m:sl.slice(0,4).filter((x,i)=>x||i<(r.pw.m||[]).length),d:sl.slice(4,6).filter((x,i)=>x||i<(r.pw.d||[]).length),p:sl[6],l:sl[7]},pwq:q};}
   const P={...S.pouvoirs};for(const k in OLD)delete P[k];P['pw-communication']={nom:'Communication',prec:true};
   S.pouvoirs=P;persist('meta/pouvoirs',{byId:P});S.races=R;persist('meta/races',{byId:R});rebuildRaces();render();}
+/* Mise en place ponctuelle : « toujours » devient « masqué » ; Laideur incommodante (gnome) : −1 masqué + −1 démasqué (= −2 démasqué) */
+function fixFxQ(){if(!S.racesReady||!S.races)return;let ch=false;const R=clone(S.races);
+  for(const k in R){const fx=R[k].fx;if(!fx)continue;for(const key in fx)for(const e of fx[key])if(e.quand==='tj'){e.quand='m';ch=true;}
+    if(k==='gnomes'&&!R[k].fxq){const L=fx['dv:laideur incommodante'];if(L){const d=L.find(e=>e.quand==='d'&&+e.val===-2);if(d&&L.some(e=>e.quand==='m'&&+e.val===-1)){d.val=-1;ch=true;}}R[k].fxq=1;ch=true;}}
+  if(ch){S.races=R;persist('meta/races',{byId:R});render();}}
+
+/* ---------- Pouvoirs du personnage ----------
+   c.pw = [{id, i, date}] : i = emplacement de la race (0-3 masqués, 4-5 démasqués) ; profond (6) et légendaire (7) viennent des paliers. */
+function palierOk(c,k){if(!c||c.type!=='PJ')return false;for(let j=0;j<=k;j++){const st=STAGES[j];if(lv(c,'feerie')<st.feerie)return false;if(!gaugesFor(c,st).every(g=>g.cost===0&&g.cur>=g.target))return false;}return true;}
+function pwOwnedIds(c,x){x=x||raceRecOf(c);if(!x)return [];const sl=pwSlots(x),ids=(c.pw||[]).map(o=>o.id);
+  for(const [k,i] of [[0,6],[1,7]])if(sl[i]&&sl[i]!=='?'&&palierOk(c,k))ids.push(sl[i]);return ids;}
+const pwChoiceMax=c=>Math.min(lv(c,'feerie')||0,6);
+const pwToChoose=c=>Math.max(0,pwChoiceMax(c)-(c.pw||[]).filter(o=>o.i<6).length);

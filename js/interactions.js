@@ -12,7 +12,7 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]');if(!t)return;
   const a=t.dataset.act,d=t.dataset;S._force=true;
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
-  if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel|rf2Add|rf2Del|rfChAdd|rfChDel|rfPwUnk|rfFxNew|rfFxDel|rfFxT|rfFxQ|rfFxAdd|rfFxCancel)$/.test(a)&&!isGest())return; /* Référentiel : modification réservée à la gestion */
+  if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel|rf2Add|rf2Del|rfChAdd|rfChDel|rfPwUnk|rfFxNew|rfFxDel|rfFxT|rfFxQ|rfFxAdd|rfFxCancel|rfPwOpen)$/.test(a)&&!isGest())return; /* Référentiel : modification réservée à la gestion */
   if(S.visit&&!VISIT_OK.has(a))return; /* visiteur : lecture seule */
   if(a==='tab'&&d.v==='ref'){d.v='univers';S.uni='creatures';}
   if(a==='tab'&&d.v==='players')pinRefresh();
@@ -27,6 +27,17 @@ document.addEventListener('click',ev=>{
     if(S.pushSub&&old!==ME){const js=S.pushSub.toJSON(),ep=js.endpoint;for(const pp of Object.values(S.players)){if(pp.id!==ME&&(pp.push||[]).some(x=>x.endpoint===ep)){const n=clone(pp);n.push=n.push.filter(x=>x.endpoint!==ep);savePlayer(n);}}
       const me=S.players[ME];if(me&&!(me.push||[]).some(x=>x.endpoint===ep)){const n=clone(me);n.push=[...(n.push||[]),{endpoint:ep,keys:js.keys}];savePlayer(n);}}}
   else if(a==='pTab'){S.pTab=d.v;}
+  else if(/^fxc/.test(a)){if(!isGest())return;fxcAct(a,d);}
+  else if(a==='pwEdit'){if(!isGest())return;const p=d.id?pwCat(d.id):null;S.confirm=null;S.dlg={kind:'pwEdit',id:d.id||null,nom:p?p.nom:'',desc:p&&p.desc||'',fx:clone(p&&p.fx||[]),fxEd:null};}
+  else if(a==='pwSave'){if(!isGest())return;pwSave();return;}
+  else if(a==='pwDel'){if(!isGest())return;S.confirm='pwdel:'+S.dlg.id;}
+  else if(a==='pwDelOk'){if(!isGest())return;const id=S.dlg.id;if(pwUses(id).length||pwCharsUsing(id).length)return;const P={...S.pouvoirs};delete P[id];S.pouvoirs=P;persist('meta/pouvoirs',{byId:P});S.dlg=null;S.confirm=null;}
+  else if(a==='pwToggle'){S.pwOpen={...(S.pwOpen||{}),[d.id]:!(S.pwOpen||{})[d.id]};}
+  else if(a==='pwPick'){if(!canEditC(S.chars[d.id]))return;S.dlg={kind:'pwPick',id:d.id,i:+d.i};}
+  else if(a==='pwPickOk'){pwPickOk();return;}
+  else if(a==='pwRemove'){if(!isGest())return;S.confirm='pwr:'+d.id+':'+d.i;}
+  else if(a==='pwRemoveOk'){if(!isGest())return;const c=clone(S.chars[d.id]);c.pw=(c.pw||[]).filter(o=>o.i!==+d.i);S.confirm=null;saveChar(c);return;}
+  else if(a==='rfPwOpen'){const i=+d.i;S.rf.pwOpen=S.rf.pwOpen===i?null:i;S.rf.pwx=S.rf.pwx||{};if(S.rf.pwOpen!=null&&!S.rf.pwx[i]){const id=pwIdByName(S.rf.pw[i][0]||'');const p=id?pwCat(id):{};S.rf.pwx[i]={desc:p.desc||'',fx:clone(p.fx||[]),fxEd:null,dirty:false};}}
   else if(a==='plOpen'){S.confirm=null;S.dlg={kind:'pl',id:d.pid};pinRefresh();}
   else if(a==='pcOpen'){S.dlg={kind:'pc',id:d.id};}
   else if(a==='pcSheetGo'){S.dlg=null;S.view='sheet';S.sel=d.id;window.scrollTo(0,0);}
@@ -153,7 +164,7 @@ document.addEventListener('click',ev=>{
   else if(a==='pfix'){(S.pfix=S.pfix||{})[d.id]={...(S.pfix[d.id]||{}),[d.k]:d.v};}
   else if(a==='fxActivate'){if(!isGest())return;fxActivate(d.id);return;}
   else if(a==='fxActivateRest'){if(!isGest())return;for(const r of fxFixRows())if(!r.I.length&&!r.D.length)fxActivate(r.c.id);return;}
-  else if(a==='rfFxNew'){S.rf.fxEd={key:fxKey(d.k,d.n),t:'perm',cible:'',val:'',txt:'',quand:'tj'};}
+  else if(a==='rfFxNew'){S.rf.fxEd={key:fxKey(d.k,d.n),t:'perm',cible:'',val:'',txt:'',quand:'m'};}
   else if(a==='rfFxCancel'){S.rf.fxEd=null;}
   else if(a==='rfFxT'){const e=S.rf.fxEd;e.t=d.v;e.cible='';}
   else if(a==='rfFxQ'){S.rf.fxEd.quand=d.v;}
@@ -172,7 +183,7 @@ document.addEventListener('click',ev=>{
   else if(a==='rfAtDel'){S.rf.at.splice(+d.i,1);}
   else if(a==='rfDel'){const g=S.rf,cr=S.creatures.find(c=>c.id===g.id);if(cr&&cr.done){g.err='Cette fiche de race est complète : elle ne peut pas être supprimée.';}else if(playedBy(raceRec(cr||{}).sing||'').length){g.err='Cette race est jouée par un personnage : elle ne peut pas être supprimée.';}else{g.err='';g.confirm=true;}}
   else if(a==='rfDelOk'){const id=S.rf.id;S.rf=null;saveCreatures(S.creatures.filter(c=>c.id!==id));const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}
-  else if(a==='rfSave'){const g=S.rf,rec=rfRec(g),sing=rec.sing,plur=(g.plur||'').trim()||sing;if(!sing)return;rec.pw=pwToIds(rec.pw);
+  else if(a==='rfSave'){const g=S.rf,rec=rfRec(g),sing=rec.sing,plur=(g.plur||'').trim()||sing;if(!sing)return;rec.pw=pwToIds(rec.pw);if(g.pwx){const ids=pwSlots(rec);let ch=false;const P={...S.pouvoirs};for(const k in g.pwx){const x=g.pwx[k],id=ids[+k];if(x&&x.dirty&&id&&id!=='?'&&P[id]){P[id]={...P[id],desc:(x.desc||'').trim(),fx:clone(x.fx||[])};ch=true;}}if(ch){S.pouvoirs=P;persist('meta/pouvoirs',{byId:P});}}
     if(refRows().some(r=>r.cr.id!==g.id&&nrm(r.x.sing)===nrm(sing))){g.err='Une autre race porte déjà ce nom.';render();return;}
     let list=clone(S.creatures),id=g.id;
     if(!id){id=creSlug(plur)||('race-'+Date.now().toString(36));if(list.some(c=>c.id===id))id+='-'+Date.now().toString(36);list.push({id,nom:plur,fam:g.fam,done:false});}
@@ -294,6 +305,10 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.rfq!==undefined){S.rfq=t.value;S._force=true;const pos=t.selectionStart;render();const i=q0('[data-rfq]');if(i){i.focus();try{i.setSelectionRange(pos,pos);}catch(e){}}}
   else if(t.dataset.rfk!==undefined&&S.rf){S.rf[t.dataset.rfk]=t.value;if(t.dataset.rfk==='sing'){const b=q0('[data-act="rfSave"]');if(b)b.disabled=!t.value.trim();}}
   else if(t.dataset.rfc!==undefined&&S.rf){S.rf.car[t.dataset.rfc][+t.dataset.m]=t.value;}
+  else if(t.dataset.fxcf!==undefined){const ctx=fxCtx(t.dataset.c);if(ctx&&ctx.fxEd){ctx.fxEd[t.dataset.fxcf]=t.value;const b=document.querySelector(`[data-act="fxcAdd"][data-c="${t.dataset.c}"]`);if(b)b.disabled=!fxOkEd(ctx.fxEd);}}
+  else if(t.dataset.pwe!==undefined&&S.dlg){S.dlg[t.dataset.pwe]=t.value;S.dlg.err='';}
+  else if(t.dataset.pq!==undefined){S.pq=t.value;S._force=true;render();const el=document.querySelector('[data-pq]');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}}
+  else if(t.dataset.rfpwd!==undefined&&S.rf&&S.rf.pwx){const x=S.rf.pwx[+t.dataset.rfpwd];if(x){x.desc=t.value;x.dirty=true;}}
   else if(t.dataset.pv!==undefined){pDraft().v[t.dataset.pv]=t.value;S.psaved=false;}
   else if(t.dataset.pdate!==undefined){pDraft().date=t.value;}
   else if(t.dataset.prk!==undefined){pDraft().v.pnj[+t.dataset.prk][t.dataset.pk]=t.value;}

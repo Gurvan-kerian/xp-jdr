@@ -40,12 +40,12 @@ function viewSheet(){
     const f=S.pnjForm;
     h+=`<h2>Ajouter des XP</h2><div class="card"><div class="frow"><div class="field"><label for="px">Intitulé</label><input id="px" type="text" data-pnj="titre" placeholder="ex. S12. Titre du scénario" value="${esc(f.titre)}"></div><div class="field"><label for="pm">XP</label><input id="pm" type="number" inputmode="numeric" min="0" data-pnj="montant" value="${esc(f.montant)}"></div></div><button class="btn pri" data-act="pnjXp"${f.titre.trim()&&+f.montant>0?'':' disabled'}>Ajouter à ${esc(c.court)}</button></div>`;
   }
-  const fxl=fxOf(c),fm=S.forme||'m',hasD=fxl.some(e=>e.quand!=='tj');
+  const fxl=fxOf(c),fm=S.forme||'m',hasD=fxl.some(e=>fxQ(e.quand)==='d');
   h+=`<div class="dhead"><h2>Caractéristiques dérivées</h2>${hasD?`<div class="seg sm" role="group" aria-label="Forme">${[['m','Masquée'],['d','Démasquée']].map(([v,l])=>`<button data-act="forme" data-v="${v}" aria-pressed="${fm===v}">${l}</button>`).join('')}</div>`:''}</div><div class="derived">`+derived(c,fm).map(([n,v,b,src])=>`<div><b class="num">${v}</b><span>${esc(n)}${b?' (dont '+(b>0?'+':'')+b+' de bonus)':''}${src&&src.length?`<em class="fxsrc">dont ${src.map(esc).join(', ')}</em>`:''}</span></div>`).join('')+`</div>`;
   h+=fxCard(c,fxl,fm);
   if(c.type==='PJ'){
     h+=`<h2>Ressources</h2><div class="card">`;
-    h+=itemRow(c,'feerie',s.dispo)+itemRow(c,'masque',s.dispo)+staticRow('Tricherie',tricherie(c),'calculée')+itemRow(c,'fortune',s.dispo)+(()=>{const src=fxIntSrc(c,'fortune');return src.length?`<div class="muted small fxnote">Fortune : dont ${src.map(esc).join(', ')}</div>`:'';})()+itemRow(c,'atout',s.dispo)+(c.type==='PJ'?'':namesBlock(c,'atout'))+itemRow(c,'spec',s.dispo)+specBlock(c);
+    h+=itemRow(c,'feerie',s.dispo)+pwSection(c)+itemRow(c,'masque',s.dispo)+staticRow('Tricherie',tricherie(c),'calculée')+itemRow(c,'fortune',s.dispo)+(()=>{const src=fxIntSrc(c,'fortune');return src.length?`<div class="muted small fxnote">Fortune : dont ${src.map(esc).join(', ')}</div>`:'';})()+itemRow(c,'atout',s.dispo)+(c.type==='PJ'?'':namesBlock(c,'atout'))+itemRow(c,'spec',s.dispo)+specBlock(c);
     h+=`</div>`;
   }
   h+=`<h2>Caractéristiques</h2><div class="card">`+CARACS.map(n=>itemRow(c,'carac:'+n,s.dispo)+(()=>{const src=fxIntSrc(c,'car:'+n);return src.length?`<div class="muted small fxnote">${esc(n)} : dont ${src.map(esc).join(', ')}</div>`:'';})()).join('')+`</div>`;
@@ -293,5 +293,5 @@ function viewRules(){
 
 /* Fiche : effets de race et d'atouts (moteur de bonus) */
 function fxCard(c,L,fm){if(!L.length)return '';
-  const note=c.fx?`Acquis d'office avec la race ${esc(c.race)}${L.some(e=>e.kind==='at')?' et les atouts pris':''}.${L.some(e=>e.quand!=='tj')?' Les effets qui ne s\'appliquent pas à la forme choisie sont grisés.':''}`:`À titre d'information : ce personnage a été créé avant le moteur de bonus. La gestion peut l'y faire entrer depuis Paramètres › Bonus.`;
-  return `<h2>Effets de race et d'atouts</h2><div class="card"><div class="muted small" style="margin-bottom:4px">${note}</div>${L.map(e=>`<div class="fxe${fxOn(e,fm)?'':' off'}">${fxChip(e)} <b>${esc(e.src)}</b><div class="s">${FX_KIND[e.kind]} · ${FX_Q[e.quand]}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}${e.t==='jet'?' · non ajouté aux rangs':e.t==='perm'&&c.fx?(fxInteg(e)?' · compris dans la valeur enregistrée':' · ajouté à la valeur affichée'):''}</div></div>`).join('')}</div>`;}
+  const note=c.fx?`Acquis d'office avec la race ${esc(c.race)}${L.some(e=>e.kind==='at')?' et les atouts pris':''}.${L.some(e=>fxQ(e.quand)==='d')?' Les effets qui ne s\'appliquent pas à la forme choisie sont grisés.':''}`:`À titre d'information : ce personnage a été créé avant le moteur de bonus. La gestion peut l'y faire entrer depuis Paramètres › Bonus.`;
+  return `<h2>Effets de race et d'atouts</h2><div class="card"><div class="muted small" style="margin-bottom:4px">${note}</div>${L.map(e=>`<div class="fxe${fxOn(e,fm)?'':' off'}">${fxChip(e)} <b>${esc(e.src)}</b><div class="s">${FX_KIND[e.kind]} · ${FX_Q[fxQ(e.quand)]}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}${e.t==='jet'?' · non ajouté aux rangs':e.t==='perm'&&c.fx?(fxInteg(e)?' · compris dans la valeur enregistrée':' · ajouté à la valeur affichée'):''}</div></div>`).join('')}</div>`;}

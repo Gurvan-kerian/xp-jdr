@@ -518,3 +518,14 @@ fieldset.pf{border:0;padding:0;margin:0;min-width:0}.lab2{font-size:12px;letter-
 .tgb{border:0;background:none;padding:0;cursor:pointer}.tgb:disabled{opacity:.5;cursor:default}
 .danger2{margin-top:14px;border-top:1px dashed var(--line);padding-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}.lnk-bad{border:0;background:none;color:var(--bad);font:inherit;font-weight:600;cursor:pointer;padding:0}
 .confirm2{border:1px solid var(--accent);border-radius:12px;padding:10px;margin:8px 0;background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+
+.pwt{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:0;border-left:4px solid var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--surface));padding:8px 12px;font:inherit;color:inherit;border-radius:0 0 10px 0;margin:-2px 0 6px;cursor:pointer;text-align:left}.pwt b{font-weight:600}
+.pwt .bdg{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--bad);color:#fff}
+.pwl{margin:0 0 8px 4px;border-left:2px dashed var(--line);padding-left:10px}
+.pwi{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14.5px}.pwi:last-child{border-bottom:0}
+.pwi .k{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);width:78px;flex:none}.pwi .n{flex:1;min-width:0}.pwi .n small{display:block;color:var(--muted);font-size:12px}
+.pwi.own .n{font-weight:600}.okk{color:var(--good);font-weight:700}.pwi.seal .n{font-style:italic;color:var(--muted)}.pwi.seal{background:repeating-linear-gradient(135deg,transparent 0 6px,rgba(118,102,80,.07) 6px 12px)}
+.chs{font:inherit;font-size:12.5px;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:3px 10px;background:var(--surface);cursor:pointer}
+.wait{font-size:12px;color:var(--muted);white-space:nowrap}.xs{border:0;background:none;color:var(--muted);cursor:pointer;font-size:12px}
+.warn2{font-size:12.5px;color:#8a5a12;background:#f9eeda;border-radius:10px;padding:6px 10px;margin-top:8px}
+.pwx{border:1px solid var(--accent);border-radius:12px;padding:10px;margin:4px 0 8px}.pwx textarea{width:100%;box-sizing:border-box}
