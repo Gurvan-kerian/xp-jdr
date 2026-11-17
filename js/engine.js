@@ -401,7 +401,9 @@ function fixFxQ(){if(!S.racesReady||!S.races)return;let ch=false;const R=clone(S
 /* ---------- Pouvoirs du personnage ----------
    c.pw = [{id, i, date}] : i = emplacement de la race (0-3 masqués, 4-5 démasqués) ; profond (6) et légendaire (7) viennent des paliers. */
 function palierOk(c,k){if(!c||c.type!=='PJ')return false;for(let j=0;j<=k;j++){const st=STAGES[j];if(lv(c,'feerie')<st.feerie)return false;if(!gaugesFor(c,st).every(g=>g.cost===0&&g.cur>=g.target))return false;}return true;}
-function pwOwnedIds(c,x){x=x||raceRecOf(c);if(!x)return [];const sl=pwSlots(x),ids=(c.pw||[]).map(o=>o.id);
-  for(const [k,i] of [[0,6],[1,7]])if(sl[i]&&sl[i]!=='?'&&palierOk(c,k))ids.push(sl[i]);return ids;}
+function pwOwnedIds(c){return (c.pw||[]).map(o=>o.id);}
 const pwChoiceMax=c=>Math.min(lv(c,'feerie')||0,6);
-const pwToChoose=c=>Math.max(0,pwChoiceMax(c)-(c.pw||[]).filter(o=>o.i<6).length);
+const pwHas=(c,i)=>(c.pw||[]).some(o=>o.i===i);
+/* Emplacement i ouvert au choix : rangs 1 à 6 pour les masqués et démasqués ; profond et légendaire une fois leur palier atteint (choisis à la main, comme les autres) */
+const pwSlotOpen=(c,i)=>i<6?(c.pw||[]).filter(o=>o.i<6).length<pwChoiceMax(c):palierOk(c,i-6);
+const pwToChoose=c=>Math.max(0,pwChoiceMax(c)-(c.pw||[]).filter(o=>o.i<6).length)+[6,7].filter(i=>!pwHas(c,i)&&palierOk(c,i-6)).length;

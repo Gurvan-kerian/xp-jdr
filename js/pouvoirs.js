@@ -51,19 +51,19 @@ function pwSection(c){if(isHum(c))return '';const cr=c.race&&S.creatures.find(x=
   let h=`<button class="pwt" data-act="pwToggle" data-id="${esc(c.id)}" aria-expanded="${open}"><span>✦ <b>Pouvoirs féeriques</b></span><span>${tc&&ed?`<span class="bdg">${tc} à choisir</span> `:''}${open?'▴':'▾'}</span></button>`;
   if(!open)return h;
   h+=`<div class="pwl">`;
-  for(let i=0;i<8;i++){const own=(c.pw||[]).find(o=>o.i===i),auto=i>=6&&sl[i]&&sl[i]!=='?'&&palierOk(c,i-6),has=own||auto,v=has&&!auto?true:pwVisible(cr,x,i);
+  for(let i=0;i<8;i++){const own=(c.pw||[]).find(o=>o.i===i),has=!!own,v=has||pwVisible(cr,x,i);
     const p=sl[i]&&sl[i]!=='?'?pwCat(sl[i]):null,fx=p&&(p.fx||[]).length?`<small>${p.fx.map(e=>esc(fxLabel(e))+(fxQ(e.quand)==='d'?' · démasqué':'')).join(' · ')}</small>`:'';
     let name,right='';
     if(v&&p){name=`${esc(pwFull(x,i))}${fx}`;}else if(v&&sl[i]==='?'){name='<i>Inconnu</i>';}else name='Pouvoir scellé';
     if(has)right=`<span class="okk">✓</span>${G&&own?(S.confirm==='pwr:'+c.id+':'+i?`<button class="lnk-bad" data-act="pwRemoveOk" data-id="${esc(c.id)}" data-i="${i}">Retirer ?</button>`:`<button class="xs" data-act="pwRemove" data-id="${esc(c.id)}" data-i="${i}" aria-label="Retirer le pouvoir">✕</button>`):''}`;
-    else if(i<6&&v&&p&&tc>0&&ed)right=`<button class="chs" data-act="pwPick" data-id="${esc(c.id)}" data-i="${i}">Choisir</button>`;
-    else if(i>=6&&!auto)right=`<span class="wait">palier ${i===6?'Profond':'Légendaire'}</span>`;
+    else if(v&&p&&ed&&pwSlotOpen(c,i))right=`<button class="chs" data-act="pwPick" data-id="${esc(c.id)}" data-i="${i}">Choisir</button>`;
+    else if(i>=6&&!palierOk(c,i-6))right=`<span class="wait">palier ${i===6?'Profond':'Légendaire'}</span>`;
     h+=`<div class="pwi${has?' own':''}${v&&p||has?'':' seal'}"><span class="k">${PW_LAB[i]}</span><span class="n">${name}</span>${right}</div>`;}
   return h+`</div>`;}
 function pwPickSheet(g){const c=S.chars[g.id];if(!c)return null;const x=raceRecOf(c);if(!x)return null;const id=pwSlots(x)[g.i],p=pwCat(id);
-  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Choisir un pouvoir"><div class="in"><h2>Choisir « ${esc(pwFull(x,g.i))} » ?</h2><div class="muted">Pouvoir ${g.i<4?'masqué':'démasqué'}</div>
+  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Choisir un pouvoir"><div class="in"><h2>Choisir « ${esc(pwFull(x,g.i))} » ?</h2><div class="muted">Pouvoir ${['masqué','masqué','masqué','masqué','démasqué','démasqué','profond','légendaire'][g.i]}</div>
     ${p.desc?`<div class="lab2">Description</div><div class="small">${esc(p.desc)}</div>`:''}
     ${(p.fx||[]).length?`<div class="lab2">Effet${p.fx.length>1?'s':''}</div><div class="fxl">${p.fx.map(e=>fxChip(e)).join('')}</div>`:''}
     <div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pwPickOk">Confirmer</button></div></div></div>`;}
-function pwPickOk(){const g=S.dlg,c0=S.chars[g.id];if(!c0||!canEditC(c0)||pwToChoose(c0)<1)return;const x=raceRecOf(c0),id=pwSlots(x)[g.i];if(!id||id==='?'||(c0.pw||[]).some(o=>o.i===g.i))return;
+function pwPickOk(){const g=S.dlg,c0=S.chars[g.id];if(!c0||!canEditC(c0)||!pwSlotOpen(c0,g.i))return;const x=raceRecOf(c0),id=pwSlots(x)[g.i];if(!id||id==='?'||(c0.pw||[]).some(o=>o.i===g.i))return;
   const c=clone(c0);c.pw=[...(c.pw||[]),{id,i:g.i,date:today()}];S.dlg=null;saveChar(c);}
