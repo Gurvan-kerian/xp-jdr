@@ -46,11 +46,9 @@ function pwSave(){const g=S.dlg,nom=(g.nom||'').trim();if(!nom){g.err='Le nom es
   let id=g.id;if(!id){id='pw-'+(nrm(nom).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x');while(S.pouvoirs[id])id+='-'+Math.random().toString(36).slice(2,5);}
   S.pouvoirs={...S.pouvoirs,[id]:{...(S.pouvoirs[id]||{}),nom,desc:(g.desc||'').trim(),fx:clone(g.fx||[])}};persist('meta/pouvoirs',{byId:S.pouvoirs});S.dlg=null;rebuildRaces();render();}
 /* ---------- Fiche de personnage : section dépliée sous Féerie ---------- */
-function pwSection(c){if(isHum(c))return '';const cr=c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);if(!cr)return '';
+function pwRows(c){if(isHum(c))return '';const cr=c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);if(!cr)return '';
   const x=raceRec(cr),sl=pwSlots(x),open=!!(S.pwOpen&&S.pwOpen[c.id]),ed=canEditC(c),G=isGest(),tc=pwToChoose(c);
-  let h=`<button class="pwt" data-act="pwToggle" data-id="${esc(c.id)}" aria-expanded="${open}"><span>✦ <b>Pouvoirs féeriques</b></span><span>${tc&&ed?`<span class="bdg">${tc} à choisir</span> `:''}${open?'▴':'▾'}</span></button>`;
-  if(!open)return h;
-  h+=`<div class="pwl">`;
+  let h=`<div class="pwl">`;
   for(let i=0;i<8;i++){const own=(c.pw||[]).find(o=>o.i===i),has=!!own,v=has||pwVisible(cr,x,i);
     const p=sl[i]&&sl[i]!=='?'?pwCat(sl[i]):null,fx=p&&(p.fx||[]).length?`<small>${p.fx.map(e=>esc(fxLabel(e))+(fxQ(e.quand)==='d'?' · démasqué':'')).join(' · ')}</small>`:'';
     let name,right='';
@@ -60,6 +58,8 @@ function pwSection(c){if(isHum(c))return '';const cr=c.race&&S.creatures.find(x=
     else if(i>=6&&!palierOk(c,i-6))right=`<span class="wait">palier ${i===6?'Profond':'Légendaire'}</span>`;
     h+=`<div class="pwi${has?' own':''}${v&&p||has?'':' seal'}"><span class="k">${PW_LAB[i]}</span><span class="n">${name}</span>${right}</div>`;}
   return h+`</div>`;}
+/* Sous la ligne Féerie (Progression) : liste dépliée au toucher sur « Féerie », avec la correction de niveau */
+function pwSection(c){if(isHum(c)||!(S.pwOpen&&S.pwOpen[c.id]))return '';const r=pwRows(c);return r?r+lvlLine(c,'feerie'):'';}
 function pwPickSheet(g){const c=S.chars[g.id];if(!c)return null;const x=raceRecOf(c);if(!x)return null;const id=pwSlots(x)[g.i],p=pwCat(id);
   return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Choisir un pouvoir"><div class="in"><h2>Choisir « ${esc(pwFull(x,g.i))} » ?</h2><div class="muted">Pouvoir ${['masqué','masqué','masqué','masqué','démasqué','démasqué','profond','légendaire'][g.i]}</div>
     ${p.desc?`<div class="lab2">Description</div><div class="small">${esc(p.desc)}</div>`:''}

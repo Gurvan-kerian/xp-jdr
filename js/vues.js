@@ -29,72 +29,96 @@ function emptyState(){
 }
 const PORTRAITS=['kerian','maral','massetoc','rowen','sloan','theodule'];
 function portrait(c){if(S.ptr&&c&&S.ptr[c.id])return S.ptr[c.id];const k=String(c.court||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');return PORTRAITS.includes(k)?'portraits/'+k+'.jpg':null;}
+/* Pictogrammes des valeurs dérivées (nom complet en infobulle) */
+const DER_ICO={'PdV':'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+'Esquive':'<circle cx="15.5" cy="4" r="2"/><path d="M10 21l3-6 3 2v4"/><path d="M13 15l1.5-6 3.5 3 3 .5"/><path d="M14.5 9L11 10l-2 3"/><path d="M2.5 9h4M1.5 12.5h4.5M2.5 16h4"/>',
+'Parade':'<path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/>',
+'Résistance physique':'<path d="M3 12h18"/><rect x="4" y="8" width="3" height="8" rx="1"/><rect x="17" y="8" width="3" height="8" rx="1"/><path d="M2 10v4M22 10v4"/>',
+'Résistance psychique':'<path d="M12 5a3 3 0 0 0-5.6 1.4A3 3 0 0 0 4 10a3 3 0 0 0 1.5 4.6A3 3 0 0 0 9 19a3 3 0 0 0 3-2z"/><path d="M12 5a3 3 0 0 1 5.6 1.4A3 3 0 0 1 20 10a3 3 0 0 1-1.5 4.6A3 3 0 0 1 15 19a3 3 0 0 1-3-2z"/><path d="M12 5v12"/>',
+'Initiative':'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+'Base mêlée':'<path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/><path d="M9.5 6.5L13 3h3v3l-3.5 3.5"/><path d="M5 14l-1.5 1.5"/>',
+'Base tir':'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/>'};
+const derIco=n=>`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${DER_ICO[n]||''}</svg>`;
+/* « Achetable maintenant » : la ligne peut-elle être achetée avec le dispo ? */
+function canBuyKey(c,key,dispo){const r=ref(c,key);if(!r)return false;const cu=r.o.cur||0;if(r.max!=null&&cu>=r.max)return false;return lvlCost(r.kind,cu+1)<=dispo;}
+const GSHORT={'Féerie':'Féerie','Une caractéristique':'Caract.','Une compétence':'Comp.','Atouts féeriques':'Atouts'};
+function goalBlock(c,s){const p=paliers(c);if(!p)return '';const open=!!(S.goalOpen&&S.goalOpen[c.id]);
+  if(p.done)return `<div class="goal done"><b>Palier Légendaire</b> · les quatre minima sont atteints</div>`;
+  const sum=p.gauges.map(g=>{const ok=g.cost===0&&g.cur>=g.target;return `${GSHORT[g.label]||g.label} ${ok?'✓':g.cur+'/'+g.target}`;}).join(' · ');
+  let h=`<button class="goal" data-act="goalToggle" data-id="${esc(c.id)}" aria-expanded="${open}"><span><b>Objectif ${esc(p.stage)}</b> · ${p.blocked?'maximum trop bas':p.total+' XP restants'}</span><span class="gg">${esc(sum)} ${open?'▴':'▾'}</span></button>`;
+  if(!open)return h;
+  h+=`<div class="card goald"><div class="muted small" style="margin-bottom:6px">Il faut réunir les quatre critères. ${p.stage==='Légendaire'?'Le palier Profond est déjà passé.':''}</div>`+p.gauges.map(g=>{const done=g.cost===0&&g.cur>=g.target;
+    return `<div class="gauge${done?' done':''}"><span>${esc(g.label)}${g.via?`<br><span class="muted small">le moins cher : ${esc(g.via)}</span>`:''}</span>${bar(g.cur,g.target)}<span class="lv">${g.cur}<small>/${g.target}</small> <span class="pill ${done?'good':g.blocked?'bad':''}">${done?'OK':g.blocked?'max trop bas':g.cost+' XP'}</span></span></div>`;}).join('');
+  h+=`<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)"><b>Total restant</b><b class="num">${p.blocked?'—':p.total+' XP'}</b></div>`;
+  if(!p.blocked)h+=`<div class="muted small">${p.total<=s.dispo?'Finançable avec les XP disponibles.':'Il manque '+(p.total-s.dispo)+' XP par rapport au solde disponible.'}</div>`;
+  return h+`</div>`;}
 function viewSheet(){
   if(!ids().length)return emptyState();
   const id=S.sel&&S.chars[S.sel]&&vis(S.chars[S.sel])?S.sel:ids()[0];S.sel=id;const c=S.chars[id],s=summary(c,S.events);
   const chips=ids().map(i=>{const c=S.chars[i],img=portrait(c);return `<button class="pchip" data-act="sel" data-id="${i}" aria-pressed="${i===id}" aria-label="${esc(c.court)}"><span class="ph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span class="pn">${esc(c.court)}</span></button>`;}).join('');
   let h=`<button class="back" data-act="tab" data-v="team"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Tous les personnages</button><div class="pchips">${chips}</div>`;
-  h+=`<div style="margin-bottom:12px"><div style="font-family:var(--font-display);font-size:24px;font-weight:700">${esc(c.nom)}${c.race?`<span style="font-family:var(--font-body,inherit);font-size:15px;font-weight:600;color:var(--accent)"> · ${esc(c.race)}</span>`:''}</div><div class="muted small">${whoLine(c)}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div></div>`;
-  if(!isHum(c))h+=`<div class="formesw"><span class="muted small">Forme</span><div class="seg sm" role="group" aria-label="Forme du personnage">${[['m','Masquée'],['d','Démasquée']].map(([v,l])=>`<button data-act="forme" data-v="${v}" aria-pressed="${(S.forme||'m')===v}">${l}</button>`).join('')}</div>${c.accru?`<span class="muted small">${(S.forme||'m')==='d'?esc(c.accru)+' '+accW(c.accru)+' : +1':esc(c.accru)+' '+accW(c.accru)+' : seulement démasqué'}</span>`:''}</div>`;
-  h+=`<div class="strip"><div><b class="num">${s.gains}</b><span>Gains</span></div><div><b class="num">${s.spent}</b><span>Dépensé</span></div><div class="hi"><b class="num">${s.dispo}</b><span>Dispo</span></div><div><b class="num">${s.prevu}</b><span>Prévu</span></div><div class="${s.manque?'warn':''}"><b class="num">${s.manque}</b><span>Manque</span></div></div>`;
+  h+=`<div style="margin-bottom:10px"><div style="font-family:var(--font-display);font-size:24px;font-weight:700">${esc(c.nom)}${c.race?`<span style="font-family:var(--font-body,inherit);font-size:15px;font-weight:600;color:var(--accent)"> · ${esc(c.race)}</span>`:''}</div><div class="muted small">${whoLine(c)}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div></div>`;
+  /* Bandeau XP qui reste visible */
+  h+=`<div class="xpbar"><div class="xpd"><b class="num">${s.dispo}</b><span>XP dispo</span></div><div class="xpo"><span><b class="num">${s.prevu}</b> prévu</span><span class="${s.manque?'bad':''}"><b class="num">${s.manque}</b> manque</span></div><div class="xpm">${s.gains} gagnés · ${s.spent} dépensés</div></div>`;
+  const tab=S.shTab||'prog';
+  h+=`<div class="tabs2" role="group" aria-label="Vue de la fiche"><button data-act="shTab" data-v="prog" aria-pressed="${tab==='prog'}">Progression</button><button data-act="shTab" data-v="full" aria-pressed="${tab==='full'}">Fiche complète</button></div>`;
+  if(tab==='full')return h+viewSheetFull(c);
   if(c.type==='PNJ'){
     const f=S.pnjForm;
     h+=`<h2>Ajouter des XP</h2><div class="card"><div class="frow"><div class="field"><label for="px">Intitulé</label><input id="px" type="text" data-pnj="titre" placeholder="ex. S12. Titre du scénario" value="${esc(f.titre)}"></div><div class="field"><label for="pm">XP</label><input id="pm" type="number" inputmode="numeric" min="0" data-pnj="montant" value="${esc(f.montant)}"></div></div><button class="btn pri" data-act="pnjXp"${f.titre.trim()&&+f.montant>0?'':' disabled'}>Ajouter à ${esc(c.court)}</button></div>`;
   }
-  const fxl=fxOf(c),fm=S.forme||'m';
-  h+=`<div class="dhead"><h2>Caractéristiques dérivées</h2></div><div class="derived">`+derived(c,fm).map(([n,v,b,src])=>`<div><b class="num">${v}</b><span>${esc(n)}${b?' (dont '+(b>0?'+':'')+b+' de bonus)':''}${src&&src.length?`<em class="fxsrc">dont ${src.map(esc).join(', ')}</em>`:''}</span></div>`).join('')+`</div>`;
-  h+=fxCard(c,fxl,fm);
+  if(c.type==='PJ')h+=goalBlock(c,s);
+  const OB=!!S.onlyBuy,ir=key=>OB&&!canBuyKey(c,key,s.dispo)?'':itemRow(c,key,s.dispo),none='<div class="muted small" style="padding:6px 2px">Rien d\'achetable ici pour l\'instant.</div>';
+  const card=(t,inner)=>`<h2>${t}</h2><div class="card">${inner||none}</div>`;
+  h+=`<div class="flt"><span>Achetable maintenant</span><button class="tgb" data-act="onlyBuy" role="switch" aria-checked="${OB}" aria-label="Afficher seulement ce qui est achetable maintenant"><span class="tg${OB?' on':''}"></span></button></div>`;
   if(c.type==='PJ'){
-    h+=`<h2>Ressources</h2><div class="card">`;
-    h+=itemRow(c,'feerie',s.dispo)+pwSection(c)+itemRow(c,'masque',s.dispo)+staticRow('Tricherie',tricherie(c),'calculée')+itemRow(c,'fortune',s.dispo)+(()=>{const src=fxIntSrc(c,'fortune');return src.length?`<div class="muted small fxnote">Fortune : dont ${src.map(esc).join(', ')}</div>`:'';})()+itemRow(c,'atout',s.dispo)+(c.type==='PJ'?'':namesBlock(c,'atout'))+itemRow(c,'spec',s.dispo)+specBlock(c);
-    h+=`</div>`;
+    const fe=ir('feerie');
+    h+=card('Capacités féeriques',fe+(fe?pwSection(c):'')+ir('masque')+(OB?'':staticRow('Tricherie',tricherie(c),'calculée'))+ir('atout'));
+    const fo=ir('fortune');
+    h+=card('Ressources générales',fo?fo+(()=>{const src=fxIntSrc(c,'fortune');return src.length?`<div class="muted small fxnote">Fortune : dont ${src.map(esc).join(', ')}</div>`:'';})():'');
   }
-  h+=`<h2>Caractéristiques</h2><div class="card">`+CARACS.map(n=>itemRow(c,'carac:'+n,s.dispo)+(()=>{const src=fxIntSrc(c,'car:'+n);return src.length?`<div class="muted small fxnote">${esc(n)} : dont ${src.map(esc).join(', ')}</div>`:'';})()).join('')+`</div>`;
+  h+=card('Caractéristiques',CARACS.map(n=>{const r=ir('carac:'+n);return r?r+(()=>{const src=fxIntSrc(c,'car:'+n);return src.length?`<div class="muted small fxnote">${esc(n)} : dont ${src.map(esc).join(', ')}</div>`:'';})():'';}).join(''));
   h+=`<h2>${c.type==='PNJ'?'Profils':'Compétences'}</h2>`;
+  if(c.type==='PJ'){const sp=ir('spec');if(sp)h+=`<div class="card" style="margin-bottom:10px">${sp}${specBlock(c)}</div>`;}
+  let anyP=false;
   for(const pr of c.profils||[]){
     const rk=rankOf(c,pr),nr=nextRank(c,pr);
+    let body='';
+    if(c.type==='PJ'){body=(pr.comps||[]).map(x=>ir('comp:'+x.nom)).join('');if(OB&&!body)continue;
+      body+=nr?`<div class="muted small" style="padding-top:6px">Rang ${rk+1} : <b class="num">${nr.cost} XP</b> (${esc(nr.steps.join(', '))})</div>`:`<div class="muted small" style="padding-top:6px">Rang suivant hors de portée (maxima atteints).</div>`;}
+    else{body=ir('prof:'+pr.nom);if(OB&&!body)continue;if(pr.subs&&pr.subs.length)body+=`<div class="tags">${pr.subs.map(x=>`<span class="pill">${esc(x)}</span>`).join('')}</div>`;}
+    anyP=true;
     h+=`<div class="card" style="margin-bottom:10px"><div class="prof-head"><b>${esc(pr.nom)}</b><span style="display:flex;gap:8px;align-items:center"><span class="pill acc">rang ${rk}</span>`+
-      (c.type==='PJ'?`<button class="ppf" data-act="ppOpen" data-prof="${esc(pr.nom)}" aria-label="Points de personnage ${esc(pr.nom)} : ${pr.note??0}"><small>PP</small>${esc(ppFmt(pr.note??0))}</button>`:'')+`</span></div>`;
-    if(c.type==='PJ'){
-      h+=(pr.comps||[]).map(x=>itemRow(c,'comp:'+x.nom,s.dispo)).join('');
-      h+=nr?`<div class="muted small" style="padding-top:6px">Rang ${rk+1} : <b class="num">${nr.cost} XP</b> (${esc(nr.steps.join(', '))})</div>`:`<div class="muted small" style="padding-top:6px">Rang suivant hors de portée (maxima atteints).</div>`;
-    }else{
-      h+=itemRow(c,'prof:'+pr.nom,s.dispo);
-      if(pr.subs&&pr.subs.length)h+=`<div class="tags">${pr.subs.map(x=>`<span class="pill">${esc(x)}</span>`).join('')}</div>`;
-    }
-    h+=`</div>`;
+      (c.type==='PJ'?`<button class="ppf" data-act="ppOpen" data-prof="${esc(pr.nom)}" aria-label="Points de personnage ${esc(pr.nom)} : ${pr.note??0}"><small>PP</small>${esc(ppFmt(pr.note??0))}</button>`:'')+`</span></div>${body}</div>`;
   }
-  if(c.type==='PNJ')h+=`<div class="card" style="margin-top:10px">${itemRow(c,'spec',s.dispo)}${specBlock(c)}</div>`;
+  if(OB&&!anyP)h+=`<div class="card">${none}</div>`;
+  if(c.type==='PNJ'){const sp=ir('spec');if(sp)h+=`<div class="card" style="margin-top:10px">${sp}${specBlock(c)}</div>`;}
   if(c.type==='PJ'){
-    h+=`<h2>Compétences futiles</h2><div class="card">`+((c.futiles||[]).map(f=>itemRow(c,'fut:'+f.nom,s.dispo)).join('')||'<div class="muted">Aucune.</div>');
-    if(S.futForm.open)h+=`<div class="frow" style="margin-top:10px"><div class="field"><label for="fn">Nom</label><input id="fn" type="text" data-fut="nom" value="${esc(S.futForm.nom)}"></div><div class="field"><label for="fm">Niveau max</label><input id="fm" type="number" min="1" max="12" data-fut="max" value="${esc(S.futForm.max)}"></div></div><div class="actions"><button class="btn pri" data-act="futSave">Ajouter</button><button class="btn" data-act="futCancel">Annuler</button></div>`;
-    else h+=`<div style="margin-top:10px"><button class="btn" data-act="futOpen">+ Ajouter une compétence futile</button></div>`;
+    const fu=(c.futiles||[]).map(f=>ir('fut:'+f.nom)).join('');
+    h+=`<h2>Compétences futiles</h2><div class="card">`+(fu||(OB?none:'<div class="muted">Aucune.</div>'));
+    if(!OB){if(S.futForm.open)h+=`<div class="frow" style="margin-top:10px"><div class="field"><label for="fn">Nom</label><input id="fn" type="text" data-fut="nom" value="${esc(S.futForm.nom)}"></div><div class="field"><label for="fm">Niveau max</label><input id="fm" type="number" min="1" max="12" data-fut="max" value="${esc(S.futForm.max)}"></div></div><div class="actions"><button class="btn pri" data-act="futSave">Ajouter</button><button class="btn" data-act="futCancel">Annuler</button></div>`;
+    else h+=`<div style="margin-top:10px"><button class="btn" data-act="futOpen">+ Ajouter une compétence futile</button></div>`;}
     h+=`</div>`;
-  }
-  if(c.type==='PJ'){
-    h+=`<h2>Autres dépenses</h2><div class="card">`+AUTRES.map(n=>`<div class="irow" style="grid-template-columns:minmax(0,1fr) 60px"><button class="rmain" data-act="openAutre" data-nom="${n}" style="grid-template-columns:minmax(0,1fr) auto"><span class="nm">${n}</span><span class="lv">${autreTotal(c,n)}<small> XP</small></span></button><button class="plus${s.dispo>0?' ok':''}" data-act="autrePlus" data-nom="${n}"${s.dispo>0?'':' disabled'} aria-label="Dépenser des XP en ${n}">+</button></div>`).join('')+`</div>`;
-  }
-  const p=paliers(c);
-  if(p){
-    h+=`<h2>Chemin vers ${p.done?'Légendaire':p.stage}</h2><div class="card">`;
-    if(p.done)h+=`<div class="muted">Les quatre minima du palier Légendaire sont atteints.</div>`;
-    else{
-      h+=`<div class="muted small" style="margin-bottom:6px">Il faut réunir les quatre critères. ${p.stage==='Légendaire'?'Le palier Profond est déjà passé.':''}</div>`;
-      h+=p.gauges.map(g=>{const done=g.cost===0&&g.cur>=g.target;
-        return `<div class="gauge${done?' done':''}"><span>${esc(g.label)}${g.via?`<br><span class="muted small">le moins cher : ${esc(g.via)}</span>`:''}</span>${bar(g.cur,g.target)}<span class="lv">${g.cur}<small>/${g.target}</small> <span class="pill ${done?'good':g.blocked?'bad':''}">${done?'OK':g.blocked?'max trop bas':g.cost+' XP'}</span></span></div>`;}).join('');
-      h+=`<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)"><b>Total restant</b><b class="num">${p.blocked?'—':p.total+' XP'}</b></div>`;
-      if(!p.blocked)h+=`<div class="muted small">${p.total<=s.dispo?'Finançable avec les XP disponibles.':'Il manque '+(p.total-s.dispo)+' XP par rapport au solde disponible.'}</div>`;
-    }
-    h+=`</div>`;
+    const pnjs=pnjOf(c);
+    h+=`<h2>Autres dépenses</h2><div class="card">`+AUTRES.filter(n=>n!=='PNJ'||pnjs.length).map(n=>`<div class="irow" style="grid-template-columns:minmax(0,1fr) 60px"><button class="rmain" data-act="openAutre" data-nom="${n}" style="grid-template-columns:minmax(0,1fr) auto"><span class="nm">${n}${n==='PNJ'?`<span class="nsub">vers ${pnjs.map(x=>esc(x.court)).join(', ')}</span>`:n==='Domaine'?'<span class="nsub">transfert</span>':''}</span><span class="lv">${autreTotal(c,n)}<small> XP</small></span></button><button class="plus${s.dispo>0?' ok':''}" data-act="autrePlus" data-nom="${n}"${s.dispo>0?'':' disabled'} aria-label="Dépenser des XP en ${n}">+</button></div>`).join('')+`</div>`;
   }
   const ach=[...(c.achats||[])].reverse();
   h+=`<h2>Historique des achats</h2><div class="card"><div class="muted small" style="margin-bottom:6px">${ach.length} achats · ${s.spent} XP dépensés · touche un achat pour le modifier ou l'annuler</div>`;
-  const shown=S.hist[id]?ach:ach.slice(0,8);
-  h+=shown.map(a=>`<button class="row" style="grid-template-columns:minmax(0,1fr) auto" data-act="achatEdit" data-id="${a.id}"><span><span class="t" style="font-weight:600">${a.ppNP?esc(a.label.replace(/non précisé$/,'')).concat('<i style="font-weight:400">non précisé</i>'):esc(a.label)}</span><br><span class="muted small">${a.date?fmtDate(a.date):'importé du tableur'}</span></span><span class="nx">${a.cout} XP</span></button>`).join('')||'<div class="muted">Aucun achat.</div>';
-  if(ach.length>8)h+=`<div style="margin-top:8px"><button class="btn ghost" data-act="histToggle">${S.hist[id]?'Réduire':'Tout afficher'}</button></div>`;
+  const shown=S.hist[id]?ach:ach.slice(0,3);
+  h+=shown.map(a=>`<button class="row" style="grid-template-columns:minmax(0,1fr) auto" data-act="achatEdit" data-id="${a.id}"><span><span class="t" style="font-weight:600">${a.ppNP?esc(a.label.replace(/non précisé$/,'')).concat('<i style="font-weight:400">non précisé</i>'):esc(a.label)}</span><br><span class="muted small">${a.date?fmtDate(a.date):'importé du tableur'}${a.motif?' · '+esc(a.motif):''}</span></span><span class="nx">${a.cout} XP</span></button>`).join('')||'<div class="muted">Aucun achat.</div>';
+  if(ach.length>3)h+=`<div style="margin-top:8px"><button class="btn ghost" data-act="histToggle">${S.hist[id]?'Réduire':'Tout afficher ('+ach.length+')'}</button></div>`;
   h+=`</div>`;
   return h;
 }
+/* Onglet « Fiche complète » : forme, valeurs dérivées, pouvoirs, effets */
+function viewSheetFull(c){const fm=S.forme||'m',fxl=fxOf(c);let h='';
+  if(!isHum(c))h+=`<div class="formesw"><span class="muted small">Forme</span><div class="seg sm" role="group" aria-label="Forme du personnage">${[['m','Masquée'],['d','Démasquée']].map(([v,l])=>`<button data-act="forme" data-v="${v}" aria-pressed="${fm===v}">${l}</button>`).join('')}</div>${c.accru?`<span class="muted small">${fm==='d'?esc(c.accru)+' '+accW(c.accru)+' : +1':esc(c.accru)+' '+accW(c.accru)+' : seulement démasqué'}</span>`:''}</div>`;
+  h+=`<h2>Caractéristiques dérivées</h2><div class="dg">`+derived(c,fm).map(([n,v,b,src])=>{const det=[b?'dont '+(b>0?'+':'')+b+' de bonus':'',...(src||[]).map(x=>'dont '+x)].filter(Boolean),tip=n+(det.length?' · '+det.join(', '):'');
+    const ab=(src||[]).map(x=>{const m=x.match(/^([+−-]?\d+)\s+(.*)$/);return m?m[1]+' '+m[2].slice(0,4)+'.':x;}).join(' ');
+    return `<button class="dt" data-act="derTip" data-n="${esc(n)}" title="${esc(tip)}" aria-label="${esc(tip)} : ${v}">${derIco(n)}<b class="num">${v}</b>${ab?`<small>${esc(ab)}</small>`:''}${S.derTip===n?`<span class="dtip" role="tooltip">${esc(tip)}</span>`:''}</button>`;}).join('')+`</div>`;
+  if(c.type==='PJ'&&!isHum(c)){const pw=pwRows(c);if(pw)h+=`<h2>Pouvoirs féeriques</h2><div class="card">${pw}</div>`;}
+  h+=fxCard(c,fxl,fm);
+  return h;}
 const allPJ=()=>Object.values(S.chars).filter(c=>c.type==='PJ'&&actif(c)&&!c.cache).map(c=>c.id);
 const lp=l=>l.persos!=null?l.persos:(l.nature==='Scénario'||l.nature==='Groupe')?allPJ():[];
 const lockedLine=l=>l.nature==='Groupe'&&l.persos==null;
@@ -295,4 +319,4 @@ function viewRules(){
 /* Fiche : effets de race et d'atouts (moteur de bonus) */
 function fxCard(c,L,fm){if(!L.length)return '';
   const note=c.fx?`Acquis d'office avec la race ${esc(c.race)}${L.some(e=>e.kind==='at')?' et les atouts pris':''}.${L.some(e=>fxQ(e.quand)==='d')?' Les effets qui ne s\'appliquent pas à la forme choisie sont grisés.':''}`:`À titre d'information : ce personnage a été créé avant le moteur de bonus. La gestion peut l'y faire entrer depuis Paramètres › Bonus.`;
-  return `<h2>Effets de race et d'atouts</h2><div class="card"><div class="muted small" style="margin-bottom:4px">${note}</div>${L.map(e=>`<div class="fxe${fxOn(e,fm)?'':' off'}">${fxChip(e)} <b>${esc(e.src)}</b><div class="s">${FX_KIND[e.kind]} · ${FX_Q[fxQ(e.quand)]}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}${e.t==='jet'?' · non ajouté aux rangs':e.t==='perm'&&c.fx?(fxInteg(e)?' · compris dans la valeur enregistrée':' · ajouté à la valeur affichée'):''}</div></div>`).join('')}</div>`;}
+  return `<h2>Effets de race et d'atouts</h2><div class="card">${c.fx?'':`<div class="muted small" style="margin-bottom:4px">${note}</div>`}${L.map(e=>`<div class="fxe${fxOn(e,fm)?'':' off'}">${fxChip(e)} <b>${esc(e.src)}</b><div class="s">${FX_KIND[e.kind]} · ${FX_Q[fxQ(e.quand)]}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}${e.t==='jet'?' · non ajouté aux rangs':e.t==='perm'&&c.fx?(fxInteg(e)?' · compris dans la valeur enregistrée':' · ajouté à la valeur affichée'):''}</div></div>`).join('')}</div>`;}

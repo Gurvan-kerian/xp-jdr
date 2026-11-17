@@ -52,19 +52,21 @@ function itemRow(c,key,dispo){
   const r=ref(c,key);if(!r)return '';const cur=r.o.cur||0,max=r.max,to=(c.plan||{})[key];
   const planned=!!to&&to>cur,atMax=max!=null&&cur>=max;
   const k=atMax?0:lvlCost(r.kind,cur+1),can=!atMax&&k<=dispo;
-  const acc=isAcc(c,key)&&S.forme==='d'; /* la caractéristique accrue ne vaut qu'en forme démasquée */
+  const acc=isAcc(c,key); /* onglet Progression : l'accrue s'affiche toujours (la forme ne joue que dans « Fiche complète ») */
   const lvTxt=max!=null?`${cur+(acc?1:0)}<small>/${max+(acc?1:0)}</small>`:`${cur}`;
   const tail=atMax?`<span class="pill plan" style="grid-column:2/4;justify-self:end">★ max</span>`:
     `<button class="heart${planned?' on':''}" data-act="heart" data-key="${esc(key)}" aria-pressed="${planned}" aria-label="Prévoir un niveau de ${esc(r.nom)}">${planned?'♥':'♡'}</button><button class="plus${can?' ok':''}" data-act="quick" data-key="${esc(key)}"${can?'':' disabled'} aria-label="Acheter un niveau de ${esc(r.nom)} pour ${k} XP">+<small>${k}</small></button>`;
   let sub='';
   if(r.kind==='fortune'&&FORTUNE[cur])sub=`<span class="nsub">${esc(FORTUNE[cur][0])}</span>`;
   if(r.kind==='spec'){const ta=specToAttach(c);if(ta)sub=`<span class="nsub bad">${ta} à rattacher</span>`;}
+  const pwk=r.kind==='feerie'&&c.type==='PJ'&&!isHum(c)&&!!c.race;
+  if(pwk){const tc=canEditC(c)?pwToChoose(c):0;if(tc)sub=`<span class="nsub bad">${tc} pouvoir${tc>1?'s':''} à choisir</span>`;}
   const spk=r.kind==='comp'||r.kind==='fut'||r.kind==='prof',sps=spk?specsOf(c).filter(x=>x.cible===key):[];
   const so=!!(S.specOpen&&S.specOpen[c.id+'|'+key]);
 
   let after=spk&&so?specList(c,key,dispo):'';
   if(r.kind==='atout'&&c.type==='PJ'){const ao=!!(S.specOpen&&S.specOpen[c.id+'|atout']);if(ao)after=atoutList(c,dispo);}
-  return `<div class="irow${atMax?' max':can?' can':''}"><button class="rmain" data-act="${spk||(r.kind==='atout'&&c.type==='PJ')?'specToggle':'open'}" data-key="${esc(key)}"${spk||(r.kind==='atout'&&c.type==='PJ')?` aria-expanded="${spk?so:!!(S.specOpen&&S.specOpen[c.id+'|atout'])}"`:''}><span class="nm">${esc(r.nom)}${sub}${acc?`<span class="accst" title="${esc(r.nom)} ${accW(r.nom)} : +1 hors maximum" aria-label="accru">★</span>`:''}</span>${max!=null?(acc?barAcc(cur,max,planned):bar(cur,max,planned)):'<span></span>'}<span class="lv">${lvTxt}</span></button>${tail}</div>${after}`;
+  return `<div class="irow${atMax?' max':can?' can':''}"><button class="rmain" data-act="${pwk?'pwToggle':spk||(r.kind==='atout'&&c.type==='PJ')?'specToggle':'open'}" data-key="${esc(key)}"${pwk?` data-id="${esc(c.id)}" aria-expanded="${!!(S.pwOpen&&S.pwOpen[c.id])}"`:spk||(r.kind==='atout'&&c.type==='PJ')?` aria-expanded="${spk?so:!!(S.specOpen&&S.specOpen[c.id+'|atout'])}"`:''}><span class="nm">${esc(r.nom)}${sub}${acc?`<span class="accst" title="${esc(r.nom)} ${accW(r.nom)} : +1 hors maximum" aria-label="accru">★</span>`:''}</span>${max!=null?(acc?barAcc(cur,max,planned):bar(cur,max,planned)):'<span></span>'}<span class="lv">${lvTxt}</span></button>${tail}</div>${after}`;
 }
 /* Liste dépliée sous une compétence : spécialités du livre (acquise / achat), acquises hors liste, à rattacher, et ligne libre */
 function specList(c,key,dispo){const all=specsOf(c),own=all.filter(x=>x.cible===key),ownN=new Set(own.map(x=>nrmS(x.nom))),anon=specAnon(c);
@@ -113,3 +115,6 @@ function staticRow(nom,val,note){return `<div class="irow"><div class="rmain" st
 function whoLine(c){if(c.type==='PNJ'){const pj=c.pj&&S.chars[c.pj];return pj?'PNJ · rattaché à '+esc(pj.court):'PNJ';}const o=owners(c);return o.length?'joué par '+esc(o.map(p=>p.nom).join(', ')):'Personnage joueur';}
 const STATUTS={actif:'Actif',mort:'Décédé',retire:'Retiré'};
 
+
+/* PNJ rattachés à un PJ (pour les transferts d'XP) */
+const pnjOf=c=>Object.values(S.chars).filter(x=>x.type==='PNJ'&&x.pj===c.id&&(!x.statut||x.statut==='actif')).sort((a,b)=>(a.court||'').localeCompare(b.court||''));
