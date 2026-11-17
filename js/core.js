@@ -52,7 +52,7 @@ function itemRow(c,key,dispo){
   const r=ref(c,key);if(!r)return '';const cur=r.o.cur||0,max=r.max,to=(c.plan||{})[key];
   const planned=!!to&&to>cur,atMax=max!=null&&cur>=max;
   const k=atMax?0:lvlCost(r.kind,cur+1),can=!atMax&&k<=dispo;
-  const acc=isAcc(c,key);
+  const acc=isAcc(c,key)&&S.forme==='d'; /* la caractéristique accrue ne vaut qu'en forme démasquée */
   const lvTxt=max!=null?`${cur+(acc?1:0)}<small>/${max+(acc?1:0)}</small>`:`${cur}`;
   const tail=atMax?`<span class="pill plan" style="grid-column:2/4;justify-self:end">★ max</span>`:
     `<button class="heart${planned?' on':''}" data-act="heart" data-key="${esc(key)}" aria-pressed="${planned}" aria-label="Prévoir un niveau de ${esc(r.nom)}">${planned?'♥':'♡'}</button><button class="plus${can?' ok':''}" data-act="quick" data-key="${esc(key)}"${can?'':' disabled'} aria-label="Acheter un niveau de ${esc(r.nom)} pour ${k} XP">+<small>${k}</small></button>`;

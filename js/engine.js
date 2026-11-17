@@ -25,7 +25,7 @@ function ref(c,key){
 function lv(c,key){const r=ref(c,key);return r?(r.o.cur||0):0;}
 function tricherie(c){return Math.floor((lv(c,'feerie')+lv(c,'masque'))/2);}
 function derivedBase(c,forme){
-  const A=n=>lv(c,'carac:'+n)+fxSum(c,'car:'+n,forme)[0];
+  const A=n=>lv(c,'carac:'+n)+fxSum(c,'car:'+n,forme)[0]+(forme==='d'&&isAcc(c,'carac:'+n)?1:0);
   if(c.type==='PNJ'){const P=n=>lv(c,'prof:'+n);return [['PdV',9+A('Constitution')*3],['Esquive',5+A('Agilité')+P('Aventurier')],['Parade',5+A('Agilité')+P('Combattant')],['Résistance physique',5+A('Constitution')+P('Aventurier')],['Résistance psychique',5+A('Esprit')+P('Erudit')],['Initiative',P('Combattant')+Math.max(A('Sang Froid'),A('Perception'))],['Base mêlée',A('Agilité')+P('Combattant')],['Base tir',A('Précision')+P('Combattant')]];}
   const C=n=>lv(c,'comp:'+n)+fxSum(c,'comp:'+n,forme)[0],mb=Math.max(0,lv(c,'masque')-5);
   return [['PdV',9+A('Constitution')*3],['Esquive',5+A('Agilité')+C('Mouvement')],['Parade',5+A('Agilité')+C('Mêlée')],['Résistance physique',5+A('Constitution')+C('Ressort')+mb],['Résistance psychique',5+A('Esprit')+C('Fortitude')+mb],['Initiative',C('Art de la guerre')+Math.max(A('Sang Froid'),A('Perception'))],['Base mêlée',A('Agilité')+C('Mêlée')],['Base tir',A('Précision')+C('Tir')]];
