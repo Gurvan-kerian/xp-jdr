@@ -129,7 +129,7 @@ function viewSheetFull(c){const fm=S.forme||'m',fxl=fxOf(c),x=raceRecOf(c),fee=c
   if(x&&c.type==='PJ'){
     const av=(x.av||[]).filter(e=>e&&e[0]),dv=(x.dv||[]).filter(e=>e&&e[0]);
     if(av.length||dv.length)h+=`<h2>Avantages et désavantages</h2><div class="card">${av.length?`<div class="fsub">Avantages</div>`+av.map(e=>item(e[0],e[1],fxLines('av',e[0]))).join(''):''}${dv.length?`<div class="fsub">Désavantages</div>`+dv.map(e=>item(e[0],e[1],fxLines('dv',e[0]))).join(''):''}</div>`;
-    const cap=(x.cap||[]).filter(e=>e&&e[0]).map(e=>item(e[0],e[1],fxLines('cap',e[0]))).join('')+(c.accru?`<div class="fi"><b>${esc(c.accru)} ${accW(c.accru)}</b><div class="fxs${fm==='d'?'':' off'}">Effet : ${esc(c.accru)} +1 · démasqué seulement</div></div>`:'');
+    const cap=(x.cap||[]).filter(e=>e&&e[0]).map(e=>item(capFull(e),e[1],fxLines('cap',e[0]))).join('')+(c.accru?`<div class="fi"><b>${esc(c.accru)} ${accW(c.accru)}</b><div class="fxs${fm==='d'?'':' off'}">Effet : ${esc(c.accru)} +1 · démasqué seulement</div></div>`:'');
     if(cap)h+=`<h2>Capacités naturelles</h2><div class="card">${cap}</div>`;
     const at=atoutsOf(c).filter(a=>a&&a.nom);
     if(at.length)h+=`<h2>Atouts féeriques</h2><div class="card">${at.map(a=>{const d=(x.at||[]).find(e=>e&&nrmA(e[0])===nrmA(a.nom));return item(a.nom,d&&d[1],fxLines('at',a.nom));}).join('')}</div>`;}

@@ -407,3 +407,60 @@ const pwHas=(c,i)=>(c.pw||[]).some(o=>o.i===i);
 /* Emplacement i ouvert au choix : rangs 1 à 6 pour les masqués et démasqués ; profond et légendaire une fois leur palier atteint (choisis à la main, comme les autres) */
 const pwSlotOpen=(c,i)=>i<6?(c.pw||[]).filter(o=>o.i<6).length<pwChoiceMax(c):palierOk(c,i-6);
 const pwToChoose=c=>Math.max(0,pwChoiceMax(c)-(c.pw||[]).filter(o=>o.i<6).length)+[6,7].filter(i=>!pwHas(c,i)&&palierOk(c,i-6)).length;
+/* ---------- Harmonisation avec Kanka (17/11/2026) : mise en place ponctuelle ----------
+   Pouvoirs renommés ou fusionnés (avec précision par race), descriptions et rappels repris du relevé Kanka,
+   pouvoirs placés sur les races encore vides, capacités naturelles génériques + précision (Vision (nocturne)…).
+   Fait une seule fois (marque kk sur la fiche Humain). */
+const capFull=a=>(a&&a[0]||'')+(a&&a[2]?' ('+a[2]+')':'');
+const choixFull=o=>(o&&o[1]||'')+(o&&o[2]?' ('+o[2]+')':'');
+const KK_REN=[['Chant des sirènes (pouvoir de contrôle mental)','Chant des sirènes'],['Communication','Communication animale et végétale'],['Vigilance surnaturelle','Vigilance instinctive'],
+  ['Insuffle des pensées impures et charnelles','Pouvoir inconnu – pensées impures','Insuffle des pensées impures et charnelles.'],
+  ['Trouve la source pour provoquer la colère chez quelqu\'un','Pouvoir inconnu – colère','Trouve la source pour provoquer la colère chez quelqu\'un.']];
+const KK_MERGE=[['Course intarissable','Course infinie',''],['Instinct de prédateur','Prédation',''],['Parole de l\'oubli','Paroles de l\'oubli',''],
+  ['Métamorphose','Métamorphose animale',''],['Métamorphose (rat)','Métamorphose animale','rat'],['Métamorphose animale (chat)','Métamorphose animale','chat'],['Métamorphose animale (noctule)','Métamorphose animale','noctule'],
+  ['Transformation animale (2 formes maîtrisées)','Métamorphose animale',''],
+  ['Régénération aquatique','Régénération','aquatique'],['Régénération ardente','Régénération','ardente'],['Régénération dans sa lampe','Régénération','dans sa lampe'],['Régénération électrique','Régénération','électrique'],
+  ['Régénération sanglante','Régénération','sanglante'],['Régénération souterraine','Régénération','souterraine'],['Régénération toxique','Régénération','toxique']];
+const KK_NEW=['Métamorphose animale','Régénération','Égarement','Fou rire','Imposition des mains','Liquéfaction','Main verte','Peau de pierre','Psychotopie'];
+const KK_PREC=['Métamorphose animale','Régénération'];
+const KK_PLACE={'Ondine':{m:['Égarement','Chant des sirènes','Charme','Régénération'],d:['Liquéfaction','Berceuse']},'Gargouille':{m:['Psychotopie','Terreur','Vigilance instinctive','Régénération'],d:['Peau de pierre','Ténèbres']},
+  'Ange':{m:['Paroles de l\'oubli'],d:['Éblouissement']},'Sylve':{m:['Communication animale et végétale']},'Farfadet':{m:['Communication animale et végétale']},'Gremelin':{m:['Altération structurelle']},'Léporide':{m:['Fou rire']},'Elfe':{m:['Noblesse oblige']}};
+const KK_CAP={'vision nocturne':['Vision','nocturne'],'vision electrique':['Vision','électrique'],'vision thermique':['Vision','thermique'],'nyctalopie':['Vision','nocturne'],'vue decuplee':['Sens décuplé','vue'],
+  'sens decuple (odorat)':['Sens décuplé','odorat'],'griffes retractiles':['Griffes','rétractiles'],'griffes (empoisonnees)':['Griffes','empoisonnées'],'crocs effiles':['Crocs','effilés'],'croc inalterable':['Crocs','inaltérables'],
+  'ailes retractiles':['Ailes','rétractiles'],'dissimulation desertique':['Dissimulation','désertique']};
+const kkRap=s=>(s||'').split('\n').map(t=>t.trim()).filter(Boolean).map(t=>({t:'rap',cible:'',val:0,txt:t,quand:'m'}));
+function fixKanka(){if(!S.ready||!S.racesReady||!S.pouvoirsReady||!S.creaturesReady||!S.races||!S.pouvoirs||S.visit)return;
+  if(S.races[HUM_ID]&&S.races[HUM_ID].kk)return;
+  const P=clone(S.pouvoirs),idOf=nm=>{const k=nrm(nm);for(const id in P)if(nrm(P[id].nom)===k)return id;return null;};
+  const mk=nm=>{let id='pw-'+(nrm(nm).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x');while(P[id])id+='-k';P[id]={nom:nm};return id;};
+  for(const [o,n,d] of KK_REN){const id=idOf(o);if(id&&!idOf(n)){P[id].nom=n;if(d&&!P[id].desc)P[id].desc=d;}}
+  for(const n of KK_NEW)if(!idOf(n))mk(n);
+  for(const n of KK_PREC){const id=idOf(n);if(id)P[id].prec=true;}
+  const comm=idOf('Communication animale et végétale');if(comm)delete P[comm].prec;
+  const MAP={};for(const [o,n,q] of KK_MERGE){const id=idOf(o),to=idOf(n)||mk(n);if(id&&id!==to)MAP[id]=[to,q];}
+  for(const id in MAP)delete P[id];
+  for(const id in P){const p=P[id],k=KANKA_PW[p.nom];if(!k||p.nom==='Métamorphose animale')continue;
+    if(!p.desc)p.desc=k[0]+(k[1]?'\n'+k[1]:'');if(k[2]&&!(p.fx||[]).length)p.fx=kkRap(k[2]);}
+  const R=clone(S.races);
+  const recOf=sing=>{const cr=S.creatures.find(c=>raceRec(c).sing===sing);if(!cr)return null;if(!R[cr.id])R[cr.id]={sing,car:null,acc:[],pred:[],fut:[],at:[],typ:[],sp:[],spf:[],cap:[],choix:[],av:[],dv:[],pw:{m:[],d:[],p:'',l:''}};return R[cr.id];};
+  const setPw=(r,sl,q)=>{r.pw={m:sl.slice(0,4),d:sl.slice(4,6),p:sl[6],l:sl[7]};r.pwq=q;};
+  for(const k in R){const r=R[k];if(!r||r.hum)continue;
+    if(r.pw){const sl=pwSlots(r),q=((r.pwq||[]).concat(Array(8).fill(''))).slice(0,8);let ch=false;
+      sl.forEach((x,i)=>{if(MAP[x]){sl[i]=MAP[x][0];if(!q[i])q[i]=MAP[x][1];ch=true;}if(comm&&x===comm){const v=nrm(q[i]);if(v==='animale et vegetale'){q[i]='';ch=true;}else if(v==='animale'){q[i]='animale uniquement';ch=true;}}});if(ch)setPw(r,sl,q);}
+    if((r.cap||[]).length||(r.choix||[]).length){const fx=r.fx?clone(r.fx):null,cap=[];
+      const mv=(o,n)=>{if(!fx)return;const a=fxKey('cap',o),b=fxKey('cap',n);if(a===b||!fx[a])return;fx[b]=[...(fx[b]||[]),...fx[a]];delete fx[a];};
+      for(const a of r.cap||[]){if(!a||!a[0])continue;const key=nrm(a[0]);
+        if(key==='crocs et griffes retractiles'){mv(a[0],'Crocs');cap.push(['Crocs',a[1]||'',''],['Griffes','','rétractiles']);continue;}
+        const m=KK_CAP[key];if(m){mv(a[0],m[0]);cap.push([m[0],a[1]||'',m[1]]);}else cap.push([a[0],a[1]||'',a[2]||'']);}
+      r.choix=(r.choix||[]).map(o=>{if(o[0]!=='cap')return o;const m=KK_CAP[nrm(o[1])];return m?['cap',m[0],m[1]]:o;});
+      for(const a of cap){const k2=KANKA_CAP[a[0]];if(!k2)continue;if(!a[1])a[1]=[k2[0],...k2[1].split('\n')].join(' ');
+        if(k2[2]){const key=fxKey('cap',a[0]);if(r.fx&&!(fx[key]||[]).length)fx[key]=kkRap(k2[2]);}}
+      r.cap=cap;if(fx)r.fx=fx;}}
+  const gr=recOf('Gremelin');if(gr&&!(gr.cap||[]).some(a=>nrm(a[0])==='doigts adhesifs')){const k2=KANKA_CAP['Doigts adhésifs'];gr.cap=[...(gr.cap||[]),['Doigts adhésifs',[k2[0],...k2[1].split('\n')].join(' '),'']];}
+  for(const [sing,pl] of Object.entries(KK_PLACE)){const r=recOf(sing);if(!r)continue;const sl=pwSlots(r),q=((r.pwq||[]).concat(Array(8).fill(''))).slice(0,8);let ch=false;
+    for(const [t,a,b] of [['m',0,4],['d',4,6]])for(const nm of pl[t]||[]){const id=idOf(nm);if(!id||sl.includes(id))continue;const i=sl.findIndex((x,j)=>j>=a&&j<b&&!x);if(i<0)continue;sl[i]=id;ch=true;}
+    if(ch)setPw(r,sl,q);}
+  R[HUM_ID]={...(R[HUM_ID]||clone(HUM_SEED)),kk:1};
+  S.pouvoirs=P;persist('meta/pouvoirs',{byId:P});S.races=R;persist('meta/races',{byId:R});
+  for(const c0 of Object.values(S.chars)){if(!(c0.pw||[]).some(o=>MAP[o.id]))continue;const c=clone(c0);c.pw=c.pw.map(o=>MAP[o.id]?{...o,id:MAP[o.id][0]}:o);S.chars[c.id]=c;persist('chars/'+c.id,c);}
+  rebuildRaces();fxSyncAll();render();}

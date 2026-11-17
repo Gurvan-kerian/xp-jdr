@@ -550,3 +550,5 @@ fieldset.pf{border:0;padding:0;margin:0;min-width:0}.lab2{font-size:12px;letter-
 .fxs{font-size:12.5px;color:var(--good);margin-top:2px}.fxs.off{opacity:.45}
 .fsub{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:6px 0 2px}.fsub~.fsub{margin-top:12px}
 .fsp{font-size:13px;color:var(--muted);padding:0 0 5px 12px;line-height:1.4}
+
+.fi .s{white-space:pre-line}.lab2+.small{white-space:pre-line}

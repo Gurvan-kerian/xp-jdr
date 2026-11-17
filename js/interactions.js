@@ -180,9 +180,9 @@ document.addEventListener('click',ev=>{
   else if(a==='rfFxAdd'){const e=S.rf.fxEd;if(!e)return;const f={t:e.t,cible:e.t==='rap'?'':e.cible,val:e.t==='rap'?0:Math.round(+e.val||0),txt:(e.txt||'').trim(),quand:e.quand};if(f.t==='perm')f.txt='';
     S.rf.fx={...S.rf.fx,[e.key]:[...(S.rf.fx[e.key]||[]),f]};S.rf.fxEd=null;}
   else if(a==='rfFxDel'){const L=(S.rf.fx[d.key]||[]).slice();L.splice(+d.j,1);S.rf.fx={...S.rf.fx,[d.key]:L};}
-  else if(a==='rf2Add'){S.rf[d.k].push(['','']);}
+  else if(a==='rf2Add'){S.rf[d.k].push(d.k==='cap'?['','','']:['','']);}
   else if(a==='rf2Del'){S.rf[d.k].splice(+d.i,1);}
-  else if(a==='rfChAdd'){const g=S.rf,v=(g.cb||'').trim();if(!v)return;if(!g.choix.some(o=>o[0]===g.ca&&nrm(o[1])===nrm(v)))g.choix.push([g.ca,v]);g.cb='';}
+  else if(a==='rfChAdd'){const g=S.rf,v=(g.cb||'').trim();if(!v)return;const mm=g.ca==='cap'&&v.match(/^(.*?)\s*\((.*)\)$/),o2=mm?['cap',mm[1].trim(),mm[2].trim()]:[g.ca,v];if(!g.choix.some(o=>o[0]===o2[0]&&nrm(choixFull(o))===nrm(choixFull(o2))))g.choix.push(o2);g.cb='';}
   else if(a==='rfChDel'){S.rf.choix.splice(+d.i,1);}
   else if(a==='rfPwUnk'){const s=S.rf.pw[+d.i];s[1]=!s[1];if(s[1])s[0]='';}
   else if(a==='rfSpAdd'){(S.rf[d.k]=S.rf[d.k]||[]).push(['','','']);}
