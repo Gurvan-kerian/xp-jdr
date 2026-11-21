@@ -176,7 +176,7 @@ function render(){
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;
   const v=S.view,app=document.getElementById('app');
-  app.innerHTML=idBanners()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():viewRules());
+  app.innerHTML=idBanners()+socleBanner()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():viewRules());
   renderSheet();
   const w=whoGate();let wr=document.getElementById('whoRoot');if(!wr){wr=document.createElement('div');wr.id='whoRoot';document.body.appendChild(wr);}if(wr.innerHTML!==w)wr.innerHTML=w;
 }

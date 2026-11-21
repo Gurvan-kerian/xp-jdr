@@ -1,0 +1,13 @@
+{
+  "name": "la-belle-appli",
+  "private": true,
+  "description": "La belle appli de la Belle Époque — tests",
+  "scripts": {
+    "test": "node tests/migration.test.js && node tests/e2e.test.js",
+    "test:migration": "node tests/migration.test.js",
+    "test:e2e": "node tests/e2e.test.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0"
+  }
+}

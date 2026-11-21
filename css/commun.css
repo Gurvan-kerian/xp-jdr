@@ -1,0 +1,28 @@
+/* La belle appli — composants partagés (préfixe ui-), définis une seule fois.
+   Les écrans les adoptent au fil des lots ; chaque écran garde ses propres styles sous son préfixe. */
+.ui-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 14px;box-shadow:inset 0 0 0 3px var(--surface),inset 0 0 0 4px var(--line)}
+.ui-card>b{display:block;font-family:var(--font-display);font-size:17px;margin-bottom:6px}
+.ui-mig{border-color:var(--brass);box-shadow:inset 0 0 0 3px var(--surface),inset 0 0 0 4px var(--brass)}
+.ui-ok{border-color:var(--good)}
+.ui-band{background:var(--accent-soft);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 14px;font-size:14px}
+.ui-warn{background:var(--bad-soft)}
+.ui-small{font-size:13.5px;line-height:1.5;margin-top:6px}
+.ui-err{background:var(--bad-soft);color:var(--fg);border-radius:10px;padding:8px 10px;margin-top:10px;font-size:13.5px}
+.ui-err b{display:block;color:var(--bad)}
+.ui-act{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:12px}
+.ui-kv{display:grid;grid-template-columns:auto auto;gap:4px 16px;font-size:14px;justify-content:start}
+.ui-kv span{color:var(--muted)}
+.ui-det{margin-top:10px;font-size:13.5px}
+.ui-det summary{cursor:pointer;color:var(--accent)}
+.ui-sig{display:inline-flex;vertical-align:-2px;margin-left:6px;color:var(--bad)}
+.ui-sigl{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.ui-sigr{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--surface2)}
+.ui-sigr.ok{opacity:.65}
+.ui-sigm{flex:1;min-width:0;display:flex;gap:8px;align-items:flex-start;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer}
+.ui-sigm:disabled{cursor:default}
+.ui-sigm>svg{flex:none;color:var(--bad);margin-top:2px}
+.ui-sigr.ok .ui-sigm{color:var(--muted)}
+.ui-sigm span{font-size:14px;line-height:1.4}
+.ui-sigm small{display:block;color:var(--muted);font-size:12.5px}
+.ui-xs{padding:4px 10px;font-size:13px;white-space:nowrap}
+.ui-form{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}

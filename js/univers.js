@@ -88,20 +88,7 @@ function secSheet(g){
     <div class="muted small">${g.confirm?(xh?'Cet élément est caché : le retirer ne change pas l\'XP.':`Retirer cette découverte enlève ${lost} XP de groupe${g.k==='vm'&&s.bonus?' (bonus du secret compris)':''} et les lignes correspondantes du journal d'XP. Les découvertes reprises du tableur n'ont pas de ligne dans le journal.`):'Modifier le texte ne change pas l\'XP.'}</div>
     <div class="actions"><button class="btn pri" data-act="seSave"${g.txt.trim()?'':' disabled'}>Enregistrer</button>${g.confirm?`<button class="btn" style="color:var(--bad)" data-act="seDelOk">Confirmer le retrait</button>`:`<button class="btn" data-act="seDel">Retirer la découverte</button>`}<button class="btn ghost" data-act="closeSheet">Fermer</button></div></div></div>`;
 }
-/* Correction unique : deux indices validés mais non cochés dans le tableur (Féérie, Malédiction des faux-semblants).
-   Leur XP figure déjà dans l'ancien journal : on les reprend sans XP et on retire les lignes créées s'ils ont été saisis à la main. */
-function fixOnce(){
-  if(S._fix1Done||!S.secretsReady||!S.eventsReady||S.secretsFix1)return;S._fix1Done=true;
-  const L=clone(S.secrets);let evs=S.events,evChanged=false;
-  for(const [n,i,re] of [[5,3,/enray/i],[11,3,/th[ée]orie/i]]){
-    const b=L.find(z=>z.n===n),a=SECRETS_SEED.find(z=>z.n===n);if(!b||!a||!b.slots||!b.slots.h)continue;
-    const j=b.slots.h.findIndex(y=>y&&re.test(y.txt||''));
-    if(j>=0){const y=b.slots.h[j];if(y.date){const before=evs.length;evs=evs.filter(e=>!(e.secret&&e.secret.n===n&&e.secret.k==='h'&&e.secret.i===j));if(evs.length!==before)evChanged=true;delete y.date;}}
-    else{const k=b.slots.h[i]?b.slots.h.findIndex(y=>!y):i;if(k>=0)b.slots.h[k]=clone(a.slots.h[i]);}
-  }
-  S.secretsFix1=true;saveSecrets(L);if(evChanged)saveEvents(evs);
-}
-function saveSecrets(list){S.secrets=list;persist('meta/secrets',{list,fix1:true});}
+function saveSecrets(list){S.secrets=list;S.secretsDoc={...(S.secretsDoc||{}),list,props:S.secretProps||[]};persist('meta/secrets',S.secretsDoc);}
 function secEvent(n,k,i,montant,titre,date,sid){const t=allPJ();if(!t.length)return null;const e={id:'g'+Date.now().toString(36)+'-s'+n+k+i,date,titre,type:SEC_TYPE,secret:{n,k,i},entries:t.map(p=>({perso:p,nature:'Groupe',montant}))};if(sid&&sessById(sid))e.sessionId=sid;return e;}
 const secEv=(n,k,i)=>S.events.find(e=>e.secret&&e.secret.n===n&&e.secret.k===k&&e.secret.i===i);
 const creEv=id=>S.events.find(e=>e.creature&&e.creature.id===id);

@@ -26,9 +26,11 @@ function lv(c,key){const r=ref(c,key);return r?(r.o.cur||0):0;}
 function tricherie(c){return Math.floor((lv(c,'feerie')+lv(c,'masque'))/2);}
 function derivedBase(c,forme){
   const A=n=>lv(c,'carac:'+n)+fxSum(c,'car:'+n,forme)[0]+(forme==='d'&&isAcc(c,'carac:'+n)?1:0);
-  if(c.type==='PNJ'){const P=n=>lv(c,'prof:'+n);return [['PdV',9+A('Constitution')*3],['Esquive',5+A('Agilité')+P('Aventurier')],['Parade',5+A('Agilité')+P('Combattant')],['Résistance physique',5+A('Constitution')+P('Aventurier')],['Résistance psychique',5+A('Esprit')+P('Erudit')],['Initiative',P('Combattant')+Math.max(A('Sang Froid'),A('Perception'))],['Base mêlée',A('Agilité')+P('Combattant')],['Base tir',A('Précision')+P('Combattant')]];}
+  /* Règle fixe : la Constitution accrue compte pour les PdV sous les deux formes (les jets suivent la forme) */
+  const pdv=()=>9+(A('Constitution')+(forme!=='d'&&isAcc(c,'carac:Constitution')?1:0))*3;
+  if(c.type==='PNJ'){const P=n=>lv(c,'prof:'+n);return [['PdV',pdv()],['Esquive',5+A('Agilité')+P('Aventurier')],['Parade',5+A('Agilité')+P('Combattant')],['Résistance physique',5+A('Constitution')+P('Aventurier')],['Résistance psychique',5+A('Esprit')+P('Erudit')],['Initiative',P('Combattant')+Math.max(A('Sang Froid'),A('Perception'))],['Base mêlée',A('Agilité')+P('Combattant')],['Base tir',A('Précision')+P('Combattant')]];}
   const C=n=>lv(c,'comp:'+n)+fxSum(c,'comp:'+n,forme)[0],mb=Math.max(0,lv(c,'masque')-5);
-  return [['PdV',9+A('Constitution')*3],['Esquive',5+A('Agilité')+C('Mouvement')],['Parade',5+A('Agilité')+C('Mêlée')],['Résistance physique',5+A('Constitution')+C('Ressort')+mb],['Résistance psychique',5+A('Esprit')+C('Fortitude')+mb],['Initiative',C('Art de la guerre')+Math.max(A('Sang Froid'),A('Perception'))],['Base mêlée',A('Agilité')+C('Mêlée')],['Base tir',A('Précision')+C('Tir')]];
+  return [['PdV',pdv()],['Esquive',5+A('Agilité')+C('Mouvement')],['Parade',5+A('Agilité')+C('Mêlée')],['Résistance physique',5+A('Constitution')+C('Ressort')+mb],['Résistance psychique',5+A('Esprit')+C('Fortitude')+mb],['Initiative',C('Art de la guerre')+Math.max(A('Sang Froid'),A('Perception'))],['Base mêlée',A('Agilité')+C('Mêlée')],['Base tir',A('Précision')+C('Tir')]];
 }
 function derived(c,forme){return derivedBase(c,forme).map(([n,v])=>{const b=(c.bonus&&c.bonus[n])||0,[fb,src]=fxSum(c,'der:'+n,forme);return [n,v+b+fb,b,src];});}
 function rankOf(c,p){if(c.type==='PNJ')return p.cur||0;const cs=p.comps||[];return Math.floor(cs.reduce((s,x)=>s+(x.cur||0),0)/4);}
@@ -133,23 +135,21 @@ const COMPS_ALL=['Conduite','Mouvement','Ressort','Survie','Art de la guerre','A
 /* Structures dérivées (clé = nom de race au singulier) */
 let RACES={},CARMAX={},PRED={},PREDFUT={},ACCRU={};
 /* Spécialités de prédilection (colonnes T et U du tableau des races) : [nom, compétence, note] */
-for(const k in SP_SEED)if(RACE_SEED[k])Object.assign(RACE_SEED[k],SP_SEED[k]);
-for(const k in RACE_DOC)if(RACE_SEED[k])Object.assign(RACE_SEED[k],JSON.parse(JSON.stringify(RACE_DOC[k])));
 /* Humain : réservé aux PNJ, hors féerie (caracs 1 à 6, profils et compétences max 6) */
 const HUMAIN='Humain',HUM_ID='humain',HUM_SEED={sing:HUMAIN,hum:true,car:Object.fromEntries(CARCOL.map(k=>[k,[1,6]]))};
 const humRec=()=>(S.racesReady&&S.races&&S.races[HUM_ID])||HUM_SEED;
 const isHum=c=>!!c&&c.type==='PNJ'&&c.race===HUMAIN;
 const humCar=nom=>{const x=humRec().car||{};return x[nom]||[1,6];};
 const singOf=n=>(n||'').split(' ').map(w=>w.length>3&&/s$/.test(w)&&!/x$/.test(w)?w.slice(0,-1):w).join(' ').replace(/s-/g,'-');
-function raceRules(){return S.racesReady&&S.races?S.races:RACE_SEED;}
-function raceCres(){return S.creaturesReady?S.creatures:CREATURES_SEED;}
+function raceRules(){if(!S.racesReady||!S.races)return {};return modelV1()?racesView():S.races;}
+function raceCres(){return S.creaturesReady?S.creatures:[];}
 function raceRec(cr){const x=raceRules()[cr.id];return x||{sing:singOf(cr.nom),car:null,acc:[],pred:[],fut:[],at:[],typ:[],sp:[],spf:[],cap:[],choix:[],av:[],dv:[],pw:{m:[],d:[],p:'',l:''}};}
 /* Caractéristiques accrues possibles = options « accrue » du choix définitif (à défaut, l'ancienne liste) */
 const accOf=x=>{const c=(x&&x.choix)||[];return c.length?c.filter(o=>o[0]==='acc').map(o=>o[1]):((x&&x.acc)||[]);};
 /* Pouvoirs : 4 masqués, 2 démasqués, 1 profond, 1 légendaire ; '?' = inconnu en jeu */
 const PWN={m:4,d:2};
 const pwSlots=x=>{const p=(x&&x.pw)||{};return [...Array(4)].map((_,i)=>(p.m||[])[i]||'').concat([...Array(2)].map((_,i)=>(p.d||[])[i]||''),[p.p||'',p.l||'']);};
-const pwCat=id=>(S.pouvoirs&&S.pouvoirs[id])||POUVOIRS_SEED[id]||{nom:id};
+const pwCat=id=>(S.pouvoirs&&S.pouvoirs[id])||{nom:id};
 const pwName=id=>id==='?'?'Inconnu':!id?'':pwCat(id).nom;
 /* Précision propre à la race (ex. Communication (animale)) ; obligatoire pour un pouvoir du catalogue marqué « prec » */
 const pwPrec=(x,i)=>((x&&x.pwq)||[])[i]||'';
@@ -162,13 +162,6 @@ function rebuildRaces(){RACES={};CARMAX={};PRED={};PREDFUT={};ACCRU={};
     if((x.pred||[]).length)PRED[n]=x.pred;if((x.fut||[]).length)PREDFUT[n]=x.fut;const ac=accOf(x);if(ac.length)ACCRU[n]=ac;}}
 function raceBlocks(x){x=x||{};return [['Caractéristiques',carOk(x)],['Capacités naturelles et choix définitif',(x.cap||[]).length>0&&(x.choix||[]).length>0],['Avantages et désavantages',(x.av||[]).length>0&&(x.dv||[]).length>0],['Compétences utiles de prédilection',(x.pred||[]).length>0],['Compétences futiles de prédilection',(x.fut||[]).length>0],['Atouts féeriques',(x.at||[]).some(a=>a&&a[0])],['Spécialités typiques',(x.typ||[]).filter(t=>t&&t[0]).length>=2],['Pouvoirs',pwSlots(x).every(v=>v)]];}
 function raceStatus(cr,x){const b=raceBlocks(x),n=b.filter(v=>v[1]).length;if(cr&&cr.done&&n<b.length)return 'todo';return n===0?'no':n===b.length?'ok':'mid';}
-/* Mise en place ponctuelle : capacités, choix définitif, avantages, désavantages et pouvoirs repris du doc « Fiches de race » ;
-   pour une race découverte, un pouvoir absent du doc devient « Inconnu » */
-function fixRaceDoc(){if(!S.racesReady||!S.creaturesReady||!S.pouvoirsReady||!S.races)return;let ch=false;
-  for(const k in RACE_DOC){const r=S.races[k];if(!r||r.doc)continue;const d=clone(RACE_DOC[k]),cr=S.creatures.find(c=>c.id===k);
-    if(cr&&cr.done){while(d.pw.m.length<4)d.pw.m.push('?');while(d.pw.d.length<2)d.pw.d.push('?');if(!d.pw.p)d.pw.p='?';if(!d.pw.l)d.pw.l='?';}
-    const ac=accOf(d);S.races={...S.races,[k]:{...r,...d,acc:ac.length?ac:(r.acc||[]),doc:1}};ch=true;}
-  if(ch){persist('meta/races',{byId:S.races});rebuildRaces();render();}}
 const RST={no:'Vide',mid:'Partielle',ok:'Remplie',todo:'À compléter'};
 const playedBy=sing=>Object.values(S.chars).filter(c=>c.type==='PJ'&&c.race&&c.race===sing);
 /* Résout les choix « X ou Y » : choix enregistré sur le personnage, sinon d'après la fiche (max 7, sinon présent, sinon le premier) */
@@ -181,18 +174,6 @@ function maxFor(c,kind,nom,o){if(isHum(c)){if(kind==='carac'){const v=humCar(nom
   if(kind==='fut'){if(!PREDFUT[c.race])return o.max;return predOf(c,PREDFUT[c.race],c.futiles||[]).includes(nrm(nom))?7:6;}
   return o.max;}
 const minFor=(c,nom)=>{if(isHum(c)){const v=humCar(nom)[0];return v===''||v==null?1:+v;}const t=CARMAX[c.race],i=CARCOL.indexOf(nom);return t&&i>=0?t[i][0]:0;};
-/* Mise en place ponctuelle du référentiel : choix « X ou Y » figés, ajustement de Masse Toc, coquille « Astronimie » de Maral */
-function fixRef(){for(const c0 of Object.values(S.chars)){if(c0.type!=='PJ'||c0.refFix||!c0.race)continue;const c=clone(c0);
-    if(c.id==='maral')for(const f of c.futiles||[])if(f.nom==='Astronimie')f.nom='Astronomie';
-    c.choix={...(c.choix||{})};const all=(c.profils||[]).flatMap(p=>p.comps||[]);
-    for(const [k,v] of predGuess(PRED[c.race],all))if(!c.choix[k])c.choix[k]=v;
-    for(const [k,v] of predGuess(PREDFUT[c.race],c.futiles||[]))if(!c.choix[k])c.choix[k]=v;
-    if(c.id==='massetoc'&&!c.ajust)c.ajust={moins:'Constitution',plus:'Esprit'};
-    c.refFix=true;saveChar(c);}}
-/* Mise en place ponctuelle : Ismaël et Anselme sont humains ; Ismaël reçoit Équitation (offerte, rattachée à Aventurier) */
-function fixHumain(){for(const id of ['ismael','anselme']){const c0=S.chars[id];if(!c0||c0.type!=='PNJ'||c0.humFix)continue;const c=clone(c0);if(!c.race)c.race=HUMAIN;
-    if(id==='ismael'){c.spec=c.spec||{cur:0};c.specs=specsOf(c).slice();if(!c.specs.some(x=>nrmS(x.nom)==='equitation')){c.specs.push({nom:'Équitation',cible:'prof:Aventurier',offert:true});c.spec.cur=(c.spec.cur||0)+1;}}
-    c.humFix=true;saveChar(c);}}
 /* Création d'un PJ : au premier choix de race, ajoute gratuitement ses spécialités de prédilection */
 function grantPredSp(c){c.spPred=true;const r=RACES[c.race];if(!r)return c;c.spec=c.spec||{cur:0};c.specs=specsOf(c).slice();c.achats=c.achats||[];
   const add=(nom,cible)=>{const from=c.spec.cur||0,id='a'+Date.now().toString(36)+Math.floor(Math.random()*1e6),choix=/au choix/i.test(nom);c.spec.cur=from+1;
@@ -218,23 +199,6 @@ function grantTyp(n,entry){const r=RACES[n.race];n.spec=n.spec||{cur:0};n.specs=
   else{n.spec.cur=(n.spec.cur||0)+2;entry.typAnon=2;}}
 function revokeTyp(n,entry){if(!entry)return;n.specs=specsOf(n).slice();for(const sp of entry.typ||[]){const i=n.specs.findIndex(x=>x.typ&&nrmS(x.nom)===nrmS(sp));if(i>=0){const ac=n.specs[i].achat;if(ac&&n.achats)n.achats=n.achats.filter(x=>x.id!==ac);n.specs.splice(i,1);n.spec.cur=Math.max(0,(n.spec.cur||0)-1);}}
   if(entry.typAnon)n.spec.cur=Math.max(n.specs.length,(n.spec.cur||0)-entry.typAnon);}
-/* Correction ponctuelle (16/11/2026) : Kerian avait l'atout Spécialités typiques sans ses deux spécialités d'elfe */
-function fixTypKerian(){const c0=S.chars.kerian;if(!c0||c0.fixTypK||c0.race!=='Elfe')return;const e0=atoutsOf(c0).find(x=>isTyp(x.nom));if(!e0)return;
-  const c=clone(c0);c.spec=c.spec||{cur:0};c.specs=specsOf(c).slice();c.achats=c.achats||[];const e=c.atouts.find(x=>isTyp(x.nom));e.typ=e.typ||[];
-  for(const [sp,comp] of RACES.Elfe.t){if(c.specs.some(x=>nrmS(x.nom)===nrmS(sp)))continue;const from=c.spec.cur||0,id='a'+Date.now().toString(36)+Math.floor(Math.random()*1e3)+sp.length;c.spec.cur=from+1;
-    c.achats.push({id,date:today(),label:`Spécialité (${sp}) · offerte par Spécialités typiques`,cout:0,key:'spec',from,to:from+1});c.specs.push({nom:sp,cible:'comp:'+comp,achat:id,typ:1});e.typ.push(sp);}
-  c.fixTypK=true;saveChar(c);}
-/* Remise à plat ponctuelle (16/11/2026) : ne garder, en nombre et en nom, que les spécialités et atouts présents dans l'historique des achats */
-function fromJournal(c,re){const named=[];let anon=0;for(const a of c.achats||[]){const l=(a.label||'').trim();if(!re.test(l))continue;const m=/\(([^)]*)\)/.exec(l);
-    if(m&&/^\s*\d+\s*(→|->)\s*\d+\s*$/.test(m[1])){const [x,y]=m[1].split(/→|->/).map(v=>+v);anon+=Math.max(0,y-x);}else if(m&&m[1].trim())named.push({nom:m[1].trim(),achat:a.id});else anon+=1;}
-  return{named,anon};}
-function renameVM(){for(const c0 of Object.values(S.chars)){if(c0.race!=='Fouinard')continue;const sl=specsOf(c0);const i=sl.findIndex(x=>/^vehicules? a moteur$/.test(nrm(x.nom)));if(i<0)continue;
-    const c=clone(c0);c.specs=sl.slice();c.specs[i]={...c.specs[i],nom:'Tous véhicules à moteur'};const ac=c.specs[i].achat&&(c.achats||[]).find(x=>x.id===c.specs[i].achat);if(ac)ac.label='Spécialité (Tous véhicules à moteur)';saveChar(c);}}
-function resetSA(){for(const c0 of Object.values(S.chars)){if(c0.resetSA)continue;const c=clone(c0);
-    const sp=fromJournal(c,/^sp[ée]cialit[ée]s?(?=\s|\(|$)/i);c.specs=sp.named.map(x=>({nom:x.nom,cible:null,achat:x.achat}));c.spec={...(c.spec||{}),cur:sp.named.length+sp.anon};
-    if(c.type==='PJ'){const at=fromJournal(c,/^atouts?\s+f[ée]eriques?(?=\s|\(|$)/i),rl=RACES[c.race]?RACES[c.race].a:[];
-      c.atouts=at.named.map(x=>({nom:isTyp(x.nom)?TYP:((rl.find(r=>nrmA(r[0])===nrmA(x.nom))||[x.nom])[0]),achat:x.achat}));c.atout={...(c.atout||{}),cur:at.named.length+at.anon};}
-    c.noms={...(c.noms||{}),spec:[],atout:[]};c.resetSA=true;saveChar(c);}}
 function buyAtout(c,nom,today){const n=clone(c);n.atout=n.atout||{cur:0};const from=n.atout.cur||0;n.atout.cur=from+1;const id='a'+Date.now().toString(36)+Math.floor(Math.random()*1e3);
   n.achats=n.achats||[];n.achats.push({id,date:today,label:`Atout féerique (${nom})`,cout:RULES.atout,key:'atout',from,to:from+1});const e={nom,achat:id};if(nom===TYP)grantTyp(n,e);n.atouts=[...atoutsOf(n),e];return n;}
 /* Points de personnage : atteindre le rang N d'un profil ajoute N PP (à partir de maintenant) */
@@ -308,10 +272,6 @@ const raceVisible=(cr,x)=>isGest()||eyeOf(cr,x).fiche||myRace(x.sing);
 const blockVisible=(cr,x,k)=>isGest()||myRace(x.sing)||(eyeOf(cr,x).fiche&&eyeOf(cr,x)[k]);
 /* Pouvoirs : l'œil s'applique à tous, joueur de la race compris (le MJ dévoile le pouvoir choisi) */
 const pwVisible=(cr,x,i)=>isGest()||((myRace(x.sing)||eyeOf(cr,x).fiche)&&!!(eyeOf(cr,x).pw||[])[i]);
-/* Mise en place ponctuelle : races déjà découvertes = tous les yeux ouverts (sans nouvelle XP), les autres fermés */
-function fixEyes(){if(!S.racesReady||!S.creaturesReady||!S.races)return;let ch=false;const R={...S.races};
-  for(const cr of S.creatures){const r=R[cr.id];if(r&&!r.eye){R[cr.id]={...r,eye:eyeAll(!!cr.done)};ch=true;}}
-  if(ch){S.races=R;persist('meta/races',{byId:R});render();}}
 /* Ouvre ou ferme un œil ; k = 'fiche' | bloc | 'pw' (avec i) | 'all'. Gère le passage à « complète » et la ligne d'XP. */
 function raceEyeSet(id,k,i,open,sid){
   const cr0=S.creatures.find(c=>c.id===id);if(!cr0)return;const x0=raceRec(cr0),before=eyeOf(cr0,x0),e=clone(before);
@@ -342,7 +302,7 @@ const sgn=v=>(v>0?'+':v<0?'−':'')+Math.abs(v);
 const fxLabel=e=>e.t==='rap'?e.txt:e.t==='perm'?fxTarget(e.cible)+' '+sgn(e.val):(e.cible||'Jet')+' '+sgn(e.val);
 function raceRecOf(c){const cr=c&&c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);return cr?raceRec(cr):null;}
 /* Effets du personnage : race (capacités, avantages, désavantages) + atouts qu'il a pris */
-function fxOf(c){const x=raceRecOf(c);if(!x)return [];const out=[],has=new Set(atoutsOf(c).map(a=>nrmA(a.nom)));
+function fxOf(c){if(modelV1())return fxListV1(c,raceStoredOf(c),S.pouvoirs||{},S.capacites||{});const x=raceRecOf(c);if(!x)return [];const out=[],has=new Set(atoutsOf(c).map(a=>nrmA(a.nom)));
   if(x.fx)for(const k of ['cap','av','dv','at'])for(const e of (x[k]||[])){if(!e||!e[0])continue;if(k==='at'&&!has.has(nrmA(e[0])))continue;
     for(const f of (x.fx[fxKey(k,e[0])]||[]))out.push({...f,src:e[0],kind:k});}
   for(const id of pwOwnedIds(c,x)){const p=pwCat(id);for(const f of (p.fx||[]))out.push({...f,src:p.nom,kind:'pw'});}
@@ -356,20 +316,18 @@ function fxSum(c,cible,forme){if(!c.fx)return [0,[]];let s=0;const src=[];for(co
 /* Origine des bonus intégrés à une valeur enregistrée */
 function fxIntSrc(c,cible){if(!c.fx)return [];return fxOf(c).filter(e=>fxInteg(e)&&e.cible===cible).map(e=>sgn(e.val)+' '+e.src);}
 const fxRefKey=cible=>cible==='fortune'?'fortune':cible.startsWith('car:')?'carac:'+cible.slice(4):'comp:'+cible.slice(5);
-const fxIntKey=e=>e.kind+'|'+nrm(e.src)+'|'+e.cible;
+/* Bonus intégrés : suivis par identifiant d'effet (modèle 1) */
+const fxIntKey=e=>e.id?e.id+'|'+e.cible:e.kind+'|'+nrm(e.src)+'|'+e.cible;
+const fxIntCible=k=>k.slice(k.lastIndexOf('|')+1);
 /* Tient à jour les bonus intégrés d'un personnage du moteur : ajoute ce qui est nouveau, retire ce qui a disparu */
 function fxSync(c0){if(!c0||!c0.fx)return c0;const want={};for(const e of fxOf(c0))if(fxInteg(e))want[fxIntKey(e)]=(want[fxIntKey(e)]||0)+(+e.val||0);
   const had=c0.fxInt||{},keys=new Set([...Object.keys(want),...Object.keys(had)]);let c=null;
-  for(const k of keys){const d=(want[k]||0)-(had[k]||0);if(!d)continue;if(!c)c=clone(c0);const r=ref(c,fxRefKey(k.split('|')[2]));if(r&&r.o)r.o.cur=Math.max(0,(r.o.cur||0)+d);}
+  for(const k of keys){const d=(want[k]||0)-(had[k]||0);if(!d)continue;if(!c)c=clone(c0);const r=ref(c,fxRefKey(fxIntCible(k)));if(r&&r.o)r.o.cur=Math.max(0,(r.o.cur||0)+d);}
   if(!c&&JSON.stringify(had)===JSON.stringify(want))return c0;c=c||clone(c0);c.fxInt=want;return c;}
-/* Mise en place ponctuelle : effets préremplis (à vérifier) sur les races qui n'en ont pas encore */
-function fixFx(){if(!S.racesReady||!S.races)return;let ch=false;const R={...S.races};
-  for(const k in FX_SEED){const r=R[k];if(!r||r.fxv)continue;R[k]={...r,fx:{...clone(FX_SEED[k]),...(r.fx||{})},fxv:1};ch=true;}
-  if(ch){S.races=R;persist('meta/races',{byId:R});render();}}
 
 /* ---------- Paramètres (écran Paramètres, droits de gestion) ----------
    meta/params = {versions:[{date, v:{...}}]} ; la version active est la plus récente dont la date d'effet est passée. */
-const PARAM_TABS=[['couts','Coûts XP'],['paliers','Paliers'],['creation','Création'],['pnj','Rangs de PNJ'],['table','Table'],['bonus','Bonus'],['pouvoirs','Pouvoirs']];
+const PARAM_TABS=[['couts','Coûts XP'],['paliers','Paliers'],['creation','Création'],['pnj','Rangs de PNJ'],['table','Table'],['pouvoirs','Pouvoirs'],['donnees','Données']];
 const PARAM_DEF={
  couts:[['feerie','Féerie : (niveau suivant) ×',5],['masque','Masque : (niveau suivant) ×',4],['carac','Caractéristique : (niveau suivant) ×',4],['carac12','Caractéristique : passage de 1 à 2',12],['comp','Compétence : (niveau suivant) ×',3],['fut','Compétence futile : (niveau suivant) ×',1],['fortune','Fortune : (niveau suivant) ×',2],['atout','Atout féerique',8],['spec','Spécialité',8],['specFut','Spécialité futile',2],['mauvaiseMain','Mauvaise main',12],['prof','Profil de PNJ : (niveau suivant) ×',12]],
  paliers:[['p1feerie','Profond : Féerie',7],['p1carac','Profond : une caractéristique à',6],['p1comp','Profond : une compétence à',6],['p1atout','Profond : atouts féeriques',4],['p2feerie','Légendaire : Féerie',8],['p2carac','Légendaire : une caractéristique à',7],['p2comp','Légendaire : une compétence à',7],['p2atout','Légendaire : atouts féeriques',5],['palierMax','Compétences prises en compte : niveau max d\'au moins',7]],
@@ -383,20 +341,7 @@ function applyParams(){PRM=paramActive();for(const [k] of PARAM_DEF.couts)if(PRM
   for(const [i,p] of [[0,'p1'],[1,'p2']])for(const f of ['feerie','carac','comp','atout'])if(PRM[p+f]!==''&&PRM[p+f]!=null)STAGES[i][f]=+PRM[p+f];if(PRM.palierMax)PALIER_MAX=+PRM.palierMax;
   if(typeof SKIND!=='undefined'){SKIND.titre.pts=+PRM.secTitre;SKIND.vm.pts=+PRM.secVM;SKIND.vmin.pts=+PRM.secVmin;SKIND.h.pts=+PRM.secH;SEC_BONUS=+PRM.secBonus;}}
 /* Après chargement : remet à jour les bonus intégrés des personnages du moteur (si une fiche de race a changé) */
-function fxSyncAll(){if(!S.ready||!S.racesReady||!S.creaturesReady)return;for(const c of Object.values(S.chars)){if(!c.fx)continue;const n=fxSync(c);if(n!==c){S.chars[n.id]=n;persist('chars/'+n.id,n);}}}
-/* Mise en place ponctuelle : « Communication animale et végétale » et sa variante Troll deviennent « Communication » + précision par race */
-function fixComm(){if(!S.racesReady||!S.pouvoirsReady||!S.races||!S.pouvoirs)return;const OLD={'pw-communication-animale-et-vegetale':'animale et végétale','pw-communication-animale-et-vegetale-animale-uniquement':'animale'};
-  if(!Object.keys(OLD).some(k=>S.pouvoirs[k]))return;const R={...S.races};
-  for(const k in R){const r=R[k];if(!r||!r.pw)continue;const sl=pwSlots(r);if(!sl.some(x=>OLD[x]))continue;const q=((r.pwq||[]).concat(Array(8).fill(''))).slice(0,8);
-    sl.forEach((x,i)=>{if(OLD[x]){if(!q[i])q[i]=OLD[x];sl[i]='pw-communication';}});
-    R[k]={...r,pw:{m:sl.slice(0,4).filter((x,i)=>x||i<(r.pw.m||[]).length),d:sl.slice(4,6).filter((x,i)=>x||i<(r.pw.d||[]).length),p:sl[6],l:sl[7]},pwq:q};}
-  const P={...S.pouvoirs};for(const k in OLD)delete P[k];P['pw-communication']={nom:'Communication',prec:true};
-  S.pouvoirs=P;persist('meta/pouvoirs',{byId:P});S.races=R;persist('meta/races',{byId:R});rebuildRaces();render();}
-/* Mise en place ponctuelle : « toujours » devient « masqué » ; Laideur incommodante (gnome) : −1 masqué + −1 démasqué (= −2 démasqué) */
-function fixFxQ(){if(!S.racesReady||!S.races)return;let ch=false;const R=clone(S.races);
-  for(const k in R){const fx=R[k].fx;if(!fx)continue;for(const key in fx)for(const e of fx[key])if(e.quand==='tj'){e.quand='m';ch=true;}
-    if(k==='gnomes'&&!R[k].fxq){const L=fx['dv:laideur incommodante'];if(L){const d=L.find(e=>e.quand==='d'&&+e.val===-2);if(d&&L.some(e=>e.quand==='m'&&+e.val===-1)){d.val=-1;ch=true;}}R[k].fxq=1;ch=true;}}
-  if(ch){S.races=R;persist('meta/races',{byId:R});render();}}
+function fxSyncAll(){if(!S.ready||!S.racesReady||!S.creaturesReady||writesLocked())return;for(const c of Object.values(S.chars)){if(!c.fx)continue;const n=fxSync(c);if(n!==c){S.chars[n.id]=n;persist('chars/'+n.id,n);}}}
 
 /* ---------- Pouvoirs du personnage ----------
    c.pw = [{id, i, date}] : i = emplacement de la race (0-3 masqués, 4-5 démasqués) ; profond (6) et légendaire (7) viennent des paliers. */
@@ -407,60 +352,6 @@ const pwHas=(c,i)=>(c.pw||[]).some(o=>o.i===i);
 /* Emplacement i ouvert au choix : rangs 1 à 6 pour les masqués et démasqués ; profond et légendaire une fois leur palier atteint (choisis à la main, comme les autres) */
 const pwSlotOpen=(c,i)=>i<6?(c.pw||[]).filter(o=>o.i<6).length<pwChoiceMax(c):palierOk(c,i-6);
 const pwToChoose=c=>Math.max(0,pwChoiceMax(c)-(c.pw||[]).filter(o=>o.i<6).length)+[6,7].filter(i=>!pwHas(c,i)&&palierOk(c,i-6)).length;
-/* ---------- Harmonisation avec Kanka (17/11/2026) : mise en place ponctuelle ----------
-   Pouvoirs renommés ou fusionnés (avec précision par race), descriptions et rappels repris du relevé Kanka,
-   pouvoirs placés sur les races encore vides, capacités naturelles génériques + précision (Vision (nocturne)…).
-   Fait une seule fois (marque kk sur la fiche Humain). */
+/* Capacité ou option de choix avec sa variante, pour l'affichage */
 const capFull=a=>(a&&a[0]||'')+(a&&a[2]?' ('+a[2]+')':'');
 const choixFull=o=>(o&&o[1]||'')+(o&&o[2]?' ('+o[2]+')':'');
-const KK_REN=[['Chant des sirènes (pouvoir de contrôle mental)','Chant des sirènes'],['Communication','Communication animale et végétale'],['Vigilance surnaturelle','Vigilance instinctive'],
-  ['Insuffle des pensées impures et charnelles','Pouvoir inconnu – pensées impures','Insuffle des pensées impures et charnelles.'],
-  ['Trouve la source pour provoquer la colère chez quelqu\'un','Pouvoir inconnu – colère','Trouve la source pour provoquer la colère chez quelqu\'un.']];
-const KK_MERGE=[['Course intarissable','Course infinie',''],['Instinct de prédateur','Prédation',''],['Parole de l\'oubli','Paroles de l\'oubli',''],
-  ['Métamorphose','Métamorphose animale',''],['Métamorphose (rat)','Métamorphose animale','rat'],['Métamorphose animale (chat)','Métamorphose animale','chat'],['Métamorphose animale (noctule)','Métamorphose animale','noctule'],
-  ['Transformation animale (2 formes maîtrisées)','Métamorphose animale',''],
-  ['Régénération aquatique','Régénération','aquatique'],['Régénération ardente','Régénération','ardente'],['Régénération dans sa lampe','Régénération','dans sa lampe'],['Régénération électrique','Régénération','électrique'],
-  ['Régénération sanglante','Régénération','sanglante'],['Régénération souterraine','Régénération','souterraine'],['Régénération toxique','Régénération','toxique']];
-const KK_NEW=['Métamorphose animale','Régénération','Égarement','Fou rire','Imposition des mains','Liquéfaction','Main verte','Peau de pierre','Psychotopie'];
-const KK_PREC=['Métamorphose animale','Régénération'];
-const KK_PLACE={'Ondine':{m:['Égarement','Chant des sirènes','Charme','Régénération'],d:['Liquéfaction','Berceuse']},'Gargouille':{m:['Psychotopie','Terreur','Vigilance instinctive','Régénération'],d:['Peau de pierre','Ténèbres']},
-  'Ange':{m:['Paroles de l\'oubli'],d:['Éblouissement']},'Sylve':{m:['Communication animale et végétale']},'Farfadet':{m:['Communication animale et végétale']},'Gremelin':{m:['Altération structurelle']},'Léporide':{m:['Fou rire']},'Elfe':{m:['Noblesse oblige']}};
-const KK_CAP={'vision nocturne':['Vision','nocturne'],'vision electrique':['Vision','électrique'],'vision thermique':['Vision','thermique'],'nyctalopie':['Vision','nocturne'],'vue decuplee':['Sens décuplé','vue'],
-  'sens decuple (odorat)':['Sens décuplé','odorat'],'griffes retractiles':['Griffes','rétractiles'],'griffes (empoisonnees)':['Griffes','empoisonnées'],'crocs effiles':['Crocs','effilés'],'croc inalterable':['Crocs','inaltérables'],
-  'ailes retractiles':['Ailes','rétractiles'],'dissimulation desertique':['Dissimulation','désertique']};
-const kkRap=s=>(s||'').split('\n').map(t=>t.trim()).filter(Boolean).map(t=>({t:'rap',cible:'',val:0,txt:t,quand:'m'}));
-function fixKanka(){if(!S.ready||!S.racesReady||!S.pouvoirsReady||!S.creaturesReady||!S.races||!S.pouvoirs||S.visit)return;
-  if(S.races[HUM_ID]&&S.races[HUM_ID].kk)return;
-  const P=clone(S.pouvoirs),idOf=nm=>{const k=nrm(nm);for(const id in P)if(nrm(P[id].nom)===k)return id;return null;};
-  const mk=nm=>{let id='pw-'+(nrm(nm).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x');while(P[id])id+='-k';P[id]={nom:nm};return id;};
-  for(const [o,n,d] of KK_REN){const id=idOf(o);if(id&&!idOf(n)){P[id].nom=n;if(d&&!P[id].desc)P[id].desc=d;}}
-  for(const n of KK_NEW)if(!idOf(n))mk(n);
-  for(const n of KK_PREC){const id=idOf(n);if(id)P[id].prec=true;}
-  const comm=idOf('Communication animale et végétale');if(comm)delete P[comm].prec;
-  const MAP={};for(const [o,n,q] of KK_MERGE){const id=idOf(o),to=idOf(n)||mk(n);if(id&&id!==to)MAP[id]=[to,q];}
-  for(const id in MAP)delete P[id];
-  for(const id in P){const p=P[id],k=KANKA_PW[p.nom];if(!k||p.nom==='Métamorphose animale')continue;
-    if(!p.desc)p.desc=k[0]+(k[1]?'\n'+k[1]:'');if(k[2]&&!(p.fx||[]).length)p.fx=kkRap(k[2]);}
-  const R=clone(S.races);
-  const recOf=sing=>{const cr=S.creatures.find(c=>raceRec(c).sing===sing);if(!cr)return null;if(!R[cr.id])R[cr.id]={sing,car:null,acc:[],pred:[],fut:[],at:[],typ:[],sp:[],spf:[],cap:[],choix:[],av:[],dv:[],pw:{m:[],d:[],p:'',l:''}};return R[cr.id];};
-  const setPw=(r,sl,q)=>{r.pw={m:sl.slice(0,4),d:sl.slice(4,6),p:sl[6],l:sl[7]};r.pwq=q;};
-  for(const k in R){const r=R[k];if(!r||r.hum)continue;
-    if(r.pw){const sl=pwSlots(r),q=((r.pwq||[]).concat(Array(8).fill(''))).slice(0,8);let ch=false;
-      sl.forEach((x,i)=>{if(MAP[x]){sl[i]=MAP[x][0];if(!q[i])q[i]=MAP[x][1];ch=true;}if(comm&&x===comm){const v=nrm(q[i]);if(v==='animale et vegetale'){q[i]='';ch=true;}else if(v==='animale'){q[i]='animale uniquement';ch=true;}}});if(ch)setPw(r,sl,q);}
-    if((r.cap||[]).length||(r.choix||[]).length){const fx=r.fx?clone(r.fx):null,cap=[];
-      const mv=(o,n)=>{if(!fx)return;const a=fxKey('cap',o),b=fxKey('cap',n);if(a===b||!fx[a])return;fx[b]=[...(fx[b]||[]),...fx[a]];delete fx[a];};
-      for(const a of r.cap||[]){if(!a||!a[0])continue;const key=nrm(a[0]);
-        if(key==='crocs et griffes retractiles'){mv(a[0],'Crocs');cap.push(['Crocs',a[1]||'',''],['Griffes','','rétractiles']);continue;}
-        const m=KK_CAP[key];if(m){mv(a[0],m[0]);cap.push([m[0],a[1]||'',m[1]]);}else cap.push([a[0],a[1]||'',a[2]||'']);}
-      r.choix=(r.choix||[]).map(o=>{if(o[0]!=='cap')return o;const m=KK_CAP[nrm(o[1])];return m?['cap',m[0],m[1]]:o;});
-      for(const a of cap){const k2=KANKA_CAP[a[0]];if(!k2)continue;if(!a[1])a[1]=[k2[0],...k2[1].split('\n')].join(' ');
-        if(k2[2]){const key=fxKey('cap',a[0]);if(r.fx&&!(fx[key]||[]).length)fx[key]=kkRap(k2[2]);}}
-      r.cap=cap;if(fx)r.fx=fx;}}
-  const gr=recOf('Gremelin');if(gr&&!(gr.cap||[]).some(a=>nrm(a[0])==='doigts adhesifs')){const k2=KANKA_CAP['Doigts adhésifs'];gr.cap=[...(gr.cap||[]),['Doigts adhésifs',[k2[0],...k2[1].split('\n')].join(' '),'']];}
-  for(const [sing,pl] of Object.entries(KK_PLACE)){const r=recOf(sing);if(!r)continue;const sl=pwSlots(r),q=((r.pwq||[]).concat(Array(8).fill(''))).slice(0,8);let ch=false;
-    for(const [t,a,b] of [['m',0,4],['d',4,6]])for(const nm of pl[t]||[]){const id=idOf(nm);if(!id||sl.includes(id))continue;const i=sl.findIndex((x,j)=>j>=a&&j<b&&!x);if(i<0)continue;sl[i]=id;ch=true;}
-    if(ch)setPw(r,sl,q);}
-  R[HUM_ID]={...(R[HUM_ID]||clone(HUM_SEED)),kk:1};
-  S.pouvoirs=P;persist('meta/pouvoirs',{byId:P});S.races=R;persist('meta/races',{byId:R});
-  for(const c0 of Object.values(S.chars)){if(!(c0.pw||[]).some(o=>MAP[o.id]))continue;const c=clone(c0);c.pw=c.pw.map(o=>MAP[o.id]?{...o,id:MAP[o.id][0]}:o);S.chars[c.id]=c;persist('chars/'+c.id,c);}
-  rebuildRaces();fxSyncAll();render();}

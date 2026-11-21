@@ -16,9 +16,6 @@ const owners=c=>Object.values(S.players).filter(p=>(p.persos||[]).includes(c.id)
 const hasGest=p=>!!(p&&p.gestion&&!p.parti);
 const isGest=()=>!S.asPlayer&&!!ME&&hasGest(S.players[ME]);
 const gestCount=()=>Object.values(S.players).filter(hasGest).length;
-/* Mise en place ponctuelle : si personne n'a encore de droits de gestion, les donner au(x) MJ et à Gurvan */
-function fixGestion(){const P=Object.values(S.players);if(!P.length||P.some(p=>'gestion' in p))return;
-  for(const p0 of P){const p=clone(p0);p.gestion=p.role==='MJ'||p.id==='lorenzo';S.players[p.id]=p;persist('players/'+p.id,p);}render();}
 const meOwns=c=>!!ME&&!!S.players[ME]&&(S.players[ME].persos||[]).includes(c.id);
 const vis=c=>!c.cache||meOwns(c)||owners(c).length===0;
 const ids=()=>Object.keys(S.chars).filter(i=>vis(S.chars[i])).sort((a,b)=>{const i=ORDER.indexOf(a),j=ORDER.indexOf(b);return (i<0?99:i)-(j<0?99:j)||(S.chars[a].court||'').localeCompare(S.chars[b].court||'');});
@@ -28,8 +25,8 @@ const slug=s=>(String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').r
 let DB=null;
 const queue={};
 function chain(path,fn){queue[path]=(queue[path]||Promise.resolve()).then(fn).then(()=>setSync('ok')).catch(e=>{console.error(e);setSync('err','Enregistrement refusé');});}
-function persist(path,data){if(S.visit)return;if(DB)chain(path,()=>DB.doc(path).set(data));}
-function persistDel(path){if(S.visit)return;if(DB)chain(path,()=>DB.doc(path).delete());}
+function persist(path,data){if(S.visit)return;if(writesLocked()){if(!S.lockMsg){S.lockMsg=true;setTimeout(()=>alert("Mise à jour des données en attente : cette modification n'est pas enregistrée. L'appli reste en lecture seule jusqu'à la mise à jour."),0);}return;}if(DB)chain(path,()=>DB.doc(path).set(data));}
+function persistDel(path){if(S.visit||writesLocked())return;if(DB)chain(path,()=>DB.doc(path).delete());}
 function setSync(st,msg){S.sync=st;const el=document.getElementById('sync');if(!el)return;el.className='sync '+(st==='ok'?'ok':st==='err'?'err':'');
   el.querySelector('span').textContent=msg||(st==='ok'?'Synchronisé':st==='loading'?'Connexion…':st==='local'?'Hors ligne':'Erreur');}
 function saveChar(c){c=fxSync(c);S.chars[c.id]=c;render();persist('chars/'+c.id,c);}

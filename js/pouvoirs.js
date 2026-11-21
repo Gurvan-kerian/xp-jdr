@@ -29,7 +29,7 @@ function viewPwCat(){if(!isGest())return `<div class="card"><div class="muted">R
   const q=nrm(S.pq||''),L=Object.entries(S.pouvoirs||{}).map(([id,p])=>({id,p,u:pwUses(id)})).filter(r=>!q||nrm(r.p.nom).includes(q)).sort((a,b)=>a.p.nom.localeCompare(b.p.nom,'fr'));
   return `<div class="card"><h3 class="rs" style="margin-top:0">Catalogue des pouvoirs <span class="muted small" style="text-transform:none;letter-spacing:0">${Object.keys(S.pouvoirs||{}).length}</span></h3>
     <input type="search" data-pq="1" value="${esc(S.pq||'')}" placeholder="Rechercher un pouvoir…" aria-label="Rechercher un pouvoir" style="width:100%;margin-bottom:6px">
-    ${L.map(r=>`<button class="lrow" data-act="pwEdit" data-id="${esc(r.id)}"><span class="lm"><span class="lt">${esc(r.p.nom)}</span><span class="ls">${r.u.length?r.u.map(u=>esc(u.x.sing)+(u.q?' ('+esc(u.q)+')':'')).join(' · '):'<span class="muted">aucune race (inutilisé)</span>'}${(r.p.fx||[]).length?' · '+r.p.fx.length+' effet'+(r.p.fx.length>1?'s':''):''}${r.p.desc?'':' · <span style="color:var(--bad)">description à compléter</span>'}</span></span><span class="chev">›</span></button>`).join('')||'<div class="muted small">Aucun pouvoir.</div>'}
+    ${L.map(r=>`<button class="lrow" data-act="pwEdit" data-id="${esc(r.id)}"><span class="lm"><span class="lt">${esc(r.p.nom)}${sigPicto('pouvoir',r.id)}</span><span class="ls">${r.u.length?r.u.map(u=>esc(u.x.sing)+(u.q?' ('+esc(u.q)+')':'')).join(' · '):'<span class="muted">aucune race (inutilisé)</span>'}${(r.p.fx||[]).length?' · '+r.p.fx.length+' effet'+(r.p.fx.length>1?'s':''):''}${r.p.desc?'':' · <span style="color:var(--bad)">description à compléter</span>'}</span></span><span class="chev">›</span></button>`).join('')||'<div class="muted small">Aucun pouvoir.</div>'}
     <div class="actions" style="margin-top:10px"><button class="btn" data-act="pwEdit" data-id="">+ Nouveau pouvoir</button></div></div>`;}
 function pwEditSheet(g){const u=g.id?pwUses(g.id):[],chs=g.id?pwCharsUsing(g.id):[],arm=S.confirm==='pwdel:'+g.id;
   return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Pouvoir"><div class="in"><div class="shd"><h2>${g.id?esc(pwCat(g.id).nom):'Nouveau pouvoir'}</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>
@@ -44,7 +44,7 @@ function pwEditSheet(g){const u=g.id?pwUses(g.id):[],chs=g.id?pwCharsUsing(g.id)
 function pwSave(){const g=S.dlg,nom=(g.nom||'').trim();if(!nom){g.err='Le nom est obligatoire.';render();return;}
   const dup=Object.entries(S.pouvoirs||{}).find(([id,p])=>id!==g.id&&nrm(p.nom)===nrm(nom));if(dup){g.err='Un pouvoir porte déjà ce nom.';render();return;}
   let id=g.id;if(!id){id='pw-'+(nrm(nom).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x');while(S.pouvoirs[id])id+='-'+Math.random().toString(36).slice(2,5);}
-  S.pouvoirs={...S.pouvoirs,[id]:{...(S.pouvoirs[id]||{}),nom,desc:(g.desc||'').trim(),fx:clone(g.fx||[])}};persist('meta/pouvoirs',{byId:S.pouvoirs});S.dlg=null;rebuildRaces();render();}
+  savePouvoirs({...S.pouvoirs,[id]:{...(S.pouvoirs[id]||{}),nom,desc:(g.desc||'').trim(),fx:clone(g.fx||[])}});S.dlg=null;rebuildRaces();render();}
 /* ---------- Fiche de personnage : section dépliée sous Féerie ---------- */
 function pwRows(c){if(isHum(c))return '';const cr=c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);if(!cr)return '';
   const x=raceRec(cr),sl=pwSlots(x),open=!!(S.pwOpen&&S.pwOpen[c.id]),ed=canEditC(c),G=isGest(),tc=pwToChoose(c);
@@ -66,4 +66,4 @@ function pwPickSheet(g){const c=S.chars[g.id];if(!c)return null;const x=raceRecO
     ${(p.fx||[]).length?`<div class="lab2">Effet${p.fx.length>1?'s':''}</div><div class="fxl">${p.fx.map(e=>fxChip(e)).join('')}</div>`:''}
     <div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pwPickOk">Confirmer</button></div></div></div>`;}
 function pwPickOk(){const g=S.dlg,c0=S.chars[g.id];if(!c0||!canEditC(c0)||!pwSlotOpen(c0,g.i))return;const x=raceRecOf(c0),id=pwSlots(x)[g.i];if(!id||id==='?'||(c0.pw||[]).some(o=>o.i===g.i))return;
-  const c=clone(c0);c.pw=[...(c.pw||[]),{id,i:g.i,date:today()}];S.dlg=null;saveChar(c);}
+  const c=clone(c0);c.pw=[...(c.pw||[]),{id,i:g.i,date:today(),v:raceVarAt(x,g.i)}];S.dlg=null;saveChar(c);}
