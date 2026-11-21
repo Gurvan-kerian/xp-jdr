@@ -32,6 +32,29 @@ function derivedBase(c,forme){
   const C=n=>lv(c,'comp:'+n)+fxSum(c,'comp:'+n,forme)[0],mb=Math.max(0,lv(c,'masque')-5);
   return [['PdV',pdv()],['Esquive',5+A('Agilité')+C('Mouvement')],['Parade',5+A('Agilité')+C('Mêlée')],['Résistance physique',5+A('Constitution')+C('Ressort')+mb],['Résistance psychique',5+A('Esprit')+C('Fortitude')+mb],['Initiative',C('Art de la guerre')+Math.max(A('Sang Froid'),A('Perception'))],['Base mêlée',A('Agilité')+C('Mêlée')],['Base tir',A('Précision')+C('Tir')]];
 }
+/* Lot 2 : détail du calcul d'une valeur dérivée (infobulle de la fiche complète) */
+const CAR_AB={'Agilité':'AGI','Constitution':'CON','Esprit':'ESP','Sang Froid':'SAN','Perception':'PER','Précision':'PRÉC','Force':'FOR','Présence':'PRES'};
+function derFormula(c,forme,n){
+  const A=x=>lv(c,'carac:'+x)+fxSum(c,'car:'+x,forme)[0]+(forme==='d'&&isAcc(c,'carac:'+x)?1:0);
+  const a=x=>`${CAR_AB[x]||x} (${A(x)})`,pnj=c.type==='PNJ';
+  const k=x=>pnj?`${x} (${lv(c,'prof:'+x)})`:`${x} (${lv(c,'comp:'+x)+fxSum(c,'comp:'+x,forme)[0]})`;
+  const mb=pnj?0:Math.max(0,lv(c,'masque')-5),mT=mb?[`Masque au-delà de 5 (${mb})`]:[];
+  const ini=()=>{const s=A('Sang Froid'),p=A('Perception');return s>=p?a('Sang Froid'):a('Perception');};
+  let t;
+  if(n==='PdV'){const acc=isAcc(c,'carac:Constitution');t=['9',`${CAR_AB.Constitution} (${A('Constitution')+(forme!=='d'&&acc?1:0)}) × 3`];}
+  else if(n==='Esquive')t=['5',a('Agilité'),k(pnj?'Aventurier':'Mouvement')];
+  else if(n==='Parade')t=['5',a('Agilité'),k(pnj?'Combattant':'Mêlée')];
+  else if(n==='Résistance physique')t=['5',a('Constitution'),k(pnj?'Aventurier':'Ressort'),...mT];
+  else if(n==='Résistance psychique')t=['5',a('Esprit'),k(pnj?'Erudit':'Fortitude'),...mT];
+  else if(n==='Initiative')t=[k(pnj?'Combattant':'Art de la guerre'),ini()];
+  else if(n==='Base mêlée')t=[a('Agilité'),k(pnj?'Combattant':'Mêlée')];
+  else if(n==='Base tir')t=[a('Précision'),k(pnj?'Combattant':'Tir')];
+  else t=[];
+  const b=(c.bonus&&c.bonus[n])||0,[,src]=fxSum(c,'der:'+n,forme);
+  if(b)t.push(`${b>0?'':'− '}${Math.abs(b)} bonus`);
+  let out=n+' : '+t.join(' + ');for(const y of src){const m=String(y).match(/^([+−-])\s*(\d+)\s+(.*)$/);out+=m?` ${m[1]==='+'?'+':'−'} ${m[2]} ${m[3]}`:' + '+y;}
+  if(n==='PdV'&&isAcc(c,'carac:Constitution'))out+=' (Constitution accrue comprise, sous les deux formes)';
+  return out.replace(/\+ − /g,'− ');}
 function derived(c,forme){return derivedBase(c,forme).map(([n,v])=>{const b=(c.bonus&&c.bonus[n])||0,[fb,src]=fxSum(c,'der:'+n,forme);return [n,v+b+fb,b,src];});}
 function rankOf(c,p){if(c.type==='PNJ')return p.cur||0;const cs=p.comps||[];return Math.floor(cs.reduce((s,x)=>s+(x.cur||0),0)/4);}
 function nextRank(c,p){
@@ -74,6 +97,15 @@ function paliers(c){
     if(!ok)return{stage:st.nom,gauges:gs,total:gs.reduce((s,g)=>s+(g.cost||0),0),done:false,blocked:gs.some(g=>g.blocked)};}
   return{stage:'Légendaire',gauges:[],total:0,done:true,blocked:false};
 }
+/* Lot 2 : rang d'un personnage. PJ : Ordinaire, puis Profond ou Légendaire dès le pouvoir acquis ; PNJ : rang choisi dans Paramètres › Rangs de PNJ */
+const PJ_RANGS=['Ordinaire','Profond','Légendaire'];
+function rangPJ(c){const own=c.pw||[];return own.some(o=>o.i===7)?2:own.some(o=>o.i===6)?1:0;}
+const pnjRangs=()=>((PRM&&PRM.pnj)||[]).map(r=>r.nom).filter(Boolean);
+function rangOf(c){if(c.type==='PNJ'){const L=pnjRangs();return c.rang&&L.includes(c.rang)?c.rang:(c.rang||L[0]||'Larbin');}return PJ_RANGS[rangPJ(c)];}
+/* Prochain rang d'un PJ : jauges du palier ; ready = les quatre critères sont remplis, il ne reste qu'à acquérir le pouvoir */
+function rangInfo(c){if(c.type!=='PJ')return null;const r=rangPJ(c);if(r>=2)return{rang:PJ_RANGS[r],next:null,done:true};
+  const st=STAGES[r],gs=gaugesFor(c,st),ready=gs.every(g=>g.cost===0&&g.cur>=g.target);
+  return{rang:PJ_RANGS[r],next:st.nom,gauges:gs,total:gs.reduce((s,g)=>s+(g.cost||0),0),blocked:gs.some(g=>g.blocked),ready,done:false};}
 const clone=o=>JSON.parse(JSON.stringify(o));
 const AUTRES=['Domaine','Triche','PNJ'];
 function autreTotal(c,nom){return (c.achats||[]).filter(a=>a.key==='autre:'+nom).reduce((s,a)=>s+(a.cout||0),0);}
@@ -153,6 +185,9 @@ const pwCat=id=>(S.pouvoirs&&S.pouvoirs[id])||{nom:id};
 const pwName=id=>id==='?'?'Inconnu':!id?'':pwCat(id).nom;
 /* Précision propre à la race (ex. Communication (animale)) ; obligatoire pour un pouvoir du catalogue marqué « prec » */
 const pwPrec=(x,i)=>((x&&x.pwq)||[])[i]||'';
+/* Lot 2 : case « inconnu » indépendante du nom ; la table voit « Inconnu » tant qu'elle est cochée */
+const pwUnk=(x,i)=>pwSlots(x)[i]==='?'||!!((x.pwu||[])[i]);
+const pwShown=(x,i)=>pwUnk(x,i)&&!isGest()?'Inconnu':pwFull(x,i);
 const pwFull=(x,i)=>{const id=pwSlots(x)[i];if(!id||id==='?')return pwName(id);const q=pwPrec(x,i);return pwName(id)+(q?' ('+q+')':pwCat(id).prec?' (précision à compléter)':'');};
 const carOk=x=>!!(x&&x.car&&CARCOL.every(k=>x.car[k]&&x.car[k][0]!==''&&x.car[k][0]!=null&&x.car[k][1]!==''&&x.car[k][1]!=null));
 function rebuildRaces(){RACES={};CARMAX={};PRED={};PREDFUT={};ACCRU={};
@@ -327,7 +362,7 @@ function fxSync(c0){if(!c0||!c0.fx)return c0;const want={};for(const e of fxOf(c
 
 /* ---------- Paramètres (écran Paramètres, droits de gestion) ----------
    meta/params = {versions:[{date, v:{...}}]} ; la version active est la plus récente dont la date d'effet est passée. */
-const PARAM_TABS=[['couts','Coûts XP'],['paliers','Paliers'],['creation','Création'],['pnj','Rangs de PNJ'],['table','Table'],['pouvoirs','Pouvoirs'],['donnees','Données']];
+const PARAM_TABS=[['couts','Ratios'],['paliers','Rang PJ'],['creation','Création'],['pnj','Rangs de PNJ'],['table','XP Groupe'],['pouvoirs','Pouvoirs'],['donnees','Données']];
 const PARAM_DEF={
  couts:[['feerie','Féerie : (niveau suivant) ×',5],['masque','Masque : (niveau suivant) ×',4],['carac','Caractéristique : (niveau suivant) ×',4],['carac12','Caractéristique : passage de 1 à 2',12],['comp','Compétence : (niveau suivant) ×',3],['fut','Compétence futile : (niveau suivant) ×',1],['fortune','Fortune : (niveau suivant) ×',2],['atout','Atout féerique',8],['spec','Spécialité',8],['specFut','Spécialité futile',2],['mauvaiseMain','Mauvaise main',12],['prof','Profil de PNJ : (niveau suivant) ×',12]],
  paliers:[['p1feerie','Profond : Féerie',7],['p1carac','Profond : une caractéristique à',6],['p1comp','Profond : une compétence à',6],['p1atout','Profond : atouts féeriques',4],['p2feerie','Légendaire : Féerie',8],['p2carac','Légendaire : une caractéristique à',7],['p2comp','Légendaire : une compétence à',7],['p2atout','Légendaire : atouts féeriques',5],['palierMax','Compétences prises en compte : niveau max d\'au moins',7]],

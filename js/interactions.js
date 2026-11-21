@@ -10,8 +10,11 @@ function setCache(c,v){const n=clone(c);n.cache=v;S.chars[n.id]=n;persist('chars
 document.addEventListener('click',ev=>{
   if(S.gate)return;
   const t=ev.target.closest('[data-act]');if(!t)return;
-  const a=t.dataset.act,d=t.dataset;S._force=true;
+  let a=t.dataset.act;const d=t.dataset;S._force=true;
+  if((a==='rfUnkKeep'||a==='rfUnkReveal')&&S.rf&&S.rf.unkAsk){if(a==='rfUnkKeep')for(const i of S.rf.unkAsk)S.rf.pw[i][1]=true;S.rf.unkOk=true;delete S.rf.unkAsk;a='rfSave';}
+  else if(a==='rfUnkCancel'&&S.rf){delete S.rf.unkAsk;render();return;}
   if(socleAct(a,d,t)){render();return;}
+  if(a==='planHelp'){S.planHelp=!S.planHelp;render();return;}
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
   if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel|rf2Add|rf2Del|rfChAdd|rfChDel|rfPwUnk|rfFxNew|rfFxDel|rfFxT|rfFxQ|rfFxAdd|rfFxCancel|rfPwOpen)$/.test(a)&&!isGest())return; /* Référentiel : modification réservée à la gestion */
   if(S.visit&&!VISIT_OK.has(a))return; /* visiteur : lecture seule */
@@ -118,9 +121,20 @@ document.addEventListener('click',ev=>{
   else if(a==='secFilter'){S.secFilter=d.v;}
   else if(a==='secOpen'){S.sec=+d.n;window.scrollTo(0,0);}
   else if(a==='secBack'){S.sec=null;}
-  else if(a==='secAdd'){const s=secById(S.sec);if(!s)return;const k=!s.titre?'titre':['vm','vmin','h'].find(x=>secFree(s,x));if(!k)return;S.dlg={kind:'sx',n:s.n,k,txt:'',sess:(sessList()[0]||{}).id||''};}
+  else if(a==='secAdd'){if(!isGest())return;const s=secById(S.sec);if(!s)return;const k=!s.titre?'titre':['vm','vmin','h'].find(x=>secFree(s,x));if(!k)return;S.dlg={kind:'sx',n:s.n,k,txt:'',sess:(sessList()[0]||{}).id||''};}
   else if(a==='sxKind'){S.dlg.k=d.k;}
-  else if(a==='sxOk'){const g=S.dlg,txt=(g.txt||'').trim();S.dlg=null;if(txt)secConsign(g.n,g.k,txt,g.sess,!!g.hid&&isGest());else render();return;}
+  else if(a==='sxOk'){const g=S.dlg,txt=(g.txt||'').trim();S.dlg=null;if(txt&&isGest())secConsign(g.n,g.k,txt,'',true);else render();return;}
+  else if(a==='propNew'){const s=secById(S.sec);if(!s||!ME||S.visit)return;const ks=propKinds(s);if(!ks.length)return;S.dlg={kind:'pp2',n:s.n,k:ks[0],txt:''};}
+  else if(a==='propK'){if(S.dlg&&S.dlg.kind==='pp2'){S.dlg.k=d.v;}}
+  else if(a==='propSend'){propSend();return;}
+  else if(a==='propRej'){propReject(d.id);return;}
+  else if(a==='propHide'){const L=(S.secretProps||[]).map(x=>x.id===d.id&&x.by===ME&&x.st==='rej'?{...x,st:'vu'}:x);saveProps(L);return;}
+  else if(a==='propOk'){if(!isGest())return;const p=(S.secretProps||[]).find(x=>x.id===d.id),s=p&&secById(p.n);if(!s)return;
+    const hid=(s.slots.h||[]).map((x,i)=>x&&x.hid?i:-1).filter(i=>i>=0);
+    S.dlg={kind:'rv',id:p.id,sess:(sessList()[0]||{}).id||'',chg:false,txt:p.k==='titre'?(s.titre&&s.titreHid?s.titre:p.txt):p.txt,pick:p.k==='titre'?'':(hid.length?'':((s.slots.h||[]).some(x=>!x)?'new':''))};}
+  else if(a==='rvPick'){if(S.dlg&&S.dlg.kind==='rv')S.dlg.pick=d.v;}
+  else if(a==='rvChg'){if(S.dlg&&S.dlg.kind==='rv')S.dlg.chg=true;}
+  else if(a==='rvOk'){propReveal();return;}
   else if(a==='secEntry'){const s=secById(S.sec);if(!s)return;const x=d.k==='titre'?s.titre:(s.slots[d.k][+d.i]||{}).txt;const ev0=secEv(s.n,d.k,+d.i);S.dlg={kind:'se',n:s.n,k:d.k,i:+d.i,txt:x||'',confirm:false,sess:ev0?(ev0.sessionId||''):''};}
   else if(a==='seSave'){const g=S.dlg,txt=(g.txt||'').trim();S.dlg=null;if(!txt){render();return;}
     const ev0=secEv(g.n,g.k,g.i);if(ev0&&(ev0.sessionId||'')!==(g.sess||'')){const sid=g.sess&&sessById(g.sess)?g.sess:undefined;
@@ -182,7 +196,7 @@ document.addEventListener('click',ev=>{
   else if(a==='rf2Del'){S.rf[d.k].splice(+d.i,1);}
   else if(a==='rfChAdd'){const g=S.rf,v=(g.cb||'').trim();if(!v)return;const mm=g.ca==='cap'&&v.match(/^(.*?)\s*\((.*)\)$/),o2=mm?['cap',mm[1].trim(),mm[2].trim()]:[g.ca,v];if(!g.choix.some(o=>o[0]===o2[0]&&nrm(choixFull(o))===nrm(choixFull(o2))))g.choix.push(o2);g.cb='';}
   else if(a==='rfChDel'){S.rf.choix.splice(+d.i,1);}
-  else if(a==='rfPwUnk'){const s=S.rf.pw[+d.i];s[1]=!s[1];if(s[1])s[0]='';}
+  else if(a==='rfPwUnk'){const s=S.rf.pw[+d.i];s[1]=!s[1];}
   else if(a==='rfSpAdd'){(S.rf[d.k]=S.rf[d.k]||[]).push(['','','']);}
   else if(a==='rfSpDel'){S.rf[d.k].splice(+d.i,1);}
   else if(a==='rfHum'){S.dlg=null;S.view='univers';S.uni='creatures';const x=humRec(),car={};for(const k of CARCOL){const v=x.car&&x.car[k];car[k]=[v?v[0]:'',v?v[1]:''];}S.rf={hum:true,car};window.scrollTo(0,0);}
@@ -190,7 +204,8 @@ document.addEventListener('click',ev=>{
   else if(a==='rfAtDel'){S.rf.at.splice(+d.i,1);}
   else if(a==='rfDel'){const g=S.rf,cr=S.creatures.find(c=>c.id===g.id);if(cr&&cr.done){g.err='Cette fiche de race est complète : elle ne peut pas être supprimée.';}else if(playedBy(raceRec(cr||{}).sing||'').length){g.err='Cette race est jouée par un personnage : elle ne peut pas être supprimée.';}else{g.err='';g.confirm=true;}}
   else if(a==='rfDelOk'){const id=S.rf.id;S.rf=null;saveCreatures(S.creatures.filter(c=>c.id!==id));const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}
-  else if(a==='rfSave'){const g=S.rf,rec=rfRec(g),sing=rec.sing,plur=(g.plur||'').trim()||sing;if(!sing)return;rec.pw=pwToIds(rec.pw);if(g.pwx){const ids=pwSlots(rec);let ch=false;const P={...S.pouvoirs};for(const k in g.pwx){const x=g.pwx[k],id=ids[+k];if(x&&x.dirty&&id&&id!=='?'&&P[id]){P[id]={...P[id],desc:(x.desc||'').trim(),fx:clone(x.fx||[])};ch=true;}}if(ch)savePouvoirs(P);}
+  else if(a==='rfSave'&&S.rf&&!S.rf.unkOk&&rfUnkAsk(S.rf).length){S.rf.unkAsk=rfUnkAsk(S.rf);}
+  else if(a==='rfSave'){const g=S.rf;delete g.unkOk;const rec=rfRec(g),sing=rec.sing,plur=(g.plur||'').trim()||sing;if(!sing)return;rec.pw=pwToIds(rec.pw);if(g.pwx){const ids=pwSlots(rec);let ch=false;const P={...S.pouvoirs};for(const k in g.pwx){const x=g.pwx[k],id=ids[+k];if(x&&x.dirty&&id&&id!=='?'&&P[id]){P[id]={...P[id],desc:(x.desc||'').trim(),fx:clone(x.fx||[])};ch=true;}}if(ch)savePouvoirs(P);}
     if(refRows().some(r=>r.cr.id!==g.id&&nrm(r.x.sing)===nrm(sing))){g.err='Une autre race porte déjà ce nom.';render();return;}
     let list=clone(S.creatures),id=g.id;
     if(!id){id=creSlug(plur)||('race-'+Date.now().toString(36));if(list.some(c=>c.id===id))id+='-'+Date.now().toString(36);list.push({id,nom:plur,fam:g.fam,done:false});}
@@ -278,10 +293,10 @@ document.addEventListener('click',ev=>{
   else if(a==='hideAll'){const p=S.players[d.pid];const mine=ids().map(i=>S.chars[i]).filter(c=>(p.persos||[]).includes(c.id));const target=!mine.every(c=>c.cache);mine.forEach(c=>setCache(c,target));}
   else if(a==='cHide'){if(!canEditC(S.chars[d.id]))return;setCache(S.chars[d.id],!S.chars[d.id].cache);}
   else if(a==='cMoy'){if(!canEditC(S.chars[d.id]))return;const n=clone(S.chars[d.id]);n.horsMoyenne=!n.horsMoyenne;saveChar(n);return;}
-  else if(a==='gestToggle'){if(!isGest())return;const p=clone(S.players[d.pid]);if(hasGest(p)&&gestCount()<=1)return;p.gestion=!hasGest(p);savePlayer(p);return;}
+  else if(a==='gestToggle'){if(!isGest()||(S.players[d.pid]||{}).role==='MJ')return;const p=clone(S.players[d.pid]);if(hasGest(p)&&gestCount()<=1)return;p.gestion=!hasGest(p);savePlayer(p);return;}
   else if(a==='asPlayer'){S.asPlayer=true;S.rf=null;window.scrollTo(0,0);}
   else if(a==='asPlayerOff'){S.asPlayer=false;}
-  else if(a==='partiToggle'){if(!canEditP(S.players[d.pid]))return;const p=clone(S.players[d.pid]);p.parti=!p.parti;savePlayer(p);return;}
+  else if(a==='partiToggle'){if(!canEditP(S.players[d.pid])||lastMJ(S.players[d.pid]))return;const p=clone(S.players[d.pid]);p.parti=!p.parti;savePlayer(p);return;}
   else if(a==='pDel'){if(!isGest())return;S.dlg={kind:'p',id:d.pid};}
   else if(a==='cDel'){if(!isGest())return;S.dlg={kind:'c',id:d.id};}
   else if(a==='logout'){try{localStorage.removeItem('xp.code');}catch(e){}location.reload();return;}
@@ -348,7 +363,8 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.sd!==undefined&&S.dlg){if(t.dataset.sd==='type'&&S.dlg.kind==='sn'){const old=S.dlg.titre||'';if(!old.trim()||old===sessPrefix(S.dlg.type)){S.dlg.titre=sessPrefix(t.value);const i=q0('#sdi');if(i)i.value=S.dlg.titre;const b=q0('#sheetRoot [data-act="sessCreate"]');if(b)b.disabled=!S.dlg.titre.trim();}}S.dlg[t.dataset.sd]=t.value;if(t.dataset.sd==='titre'){const b=q0('#sheetRoot [data-act="sessCreate"],#sheetRoot [data-act="sessSave"]');if(b)b.disabled=!t.value.trim();}if(S.dlg.kind==='rat'){const g=S.dlg,b=q0('#sheetRoot [data-act="ratOk"]'),n=Math.floor(+g.montant||0);if(b){b.disabled=!(n>0&&g.who.length&&(g.titre||'').trim());b.textContent='Attribuer '+n+' XP';}}}
   else if(t.dataset.sxs!==undefined&&S.dlg){S.dlg.sess=t.value;if(S.dlg.gain){S._force=true;render();}}
   else if(t.dataset.cr!==undefined&&S.dlg){S.dlg.nom=t.value;const v=t.value.trim(),dup=!!v&&S.creatures.some(c=>c.id!==S.dlg.id&&c.nom.toLowerCase()===v.toLowerCase());const b=q0('#sheetRoot [data-act="creAddOk"],#sheetRoot [data-act="creSave"]');if(b)b.disabled=!v||dup;const w=document.getElementById('crdup');if(w)w.style.display=dup?'':'none';}
-  else if(t.dataset.sx!==undefined&&S.dlg){S.dlg.txt=t.value;const b=q0('#sheetRoot [data-act="sxOk"],#sheetRoot [data-act="seSave"]');if(b)b.disabled=!t.value.trim();}
+  else if(t.dataset.sx!==undefined&&S.dlg){S.dlg.txt=t.value;const b=q0('#sheetRoot [data-act="sxOk"],#sheetRoot [data-act="seSave"],#sheetRoot [data-act="propSend"]');if(b)b.disabled=!t.value.trim();}
+  else if(t.dataset.rvt!==undefined&&S.dlg&&S.dlg.kind==='rv'){S.dlg.txt=t.value;const b=q0('#sheetRoot [data-act="rvOk"]');if(b)b.disabled=!t.value.trim();}
   const q=s=>document.querySelector(s);
   if(t.dataset.k==='montant'){const b=q('[data-act="sessAdd"]');if(b){const cs=curSession();b.disabled=!(cs&&S.form.lines.some(l=>+l.montant>0&&slp(l,cs).length));}}
   if(t.dataset.f==='titre'||t.dataset.k==='montant'){const b=q('[data-act="gainSave"]');if(b){const f=S.form;b.disabled=!(f.titre.trim()&&(f.lines.some(l=>+l.montant>0&&lp(l).length)||(f.editId&&(f.keep||[]).length)));}}
@@ -370,7 +386,7 @@ document.addEventListener('change',ev=>{
   else if(t.dataset.k==='nature'){S.form.lines[+t.dataset.l].persos=null;render();}
   else if(t.dataset.me&&!pinOn()){ME=t.value||null;try{if(ME)localStorage.setItem('xp.me',ME);else localStorage.removeItem('xp.me');}catch(e){}render();}
   else if(t.dataset.owner){if(S.dlg&&S.dlg.kind==='pc'){S.dlg.own=t.value||'';render();}}
-  else if(t.dataset.pf){if(!canEditP(S.players[t.dataset.pid])||(t.dataset.pf==='role'&&!isGest()))return;const p=clone(S.players[t.dataset.pid]);p[t.dataset.pf]=t.dataset.pf==='nom'?(t.value.trim()||p.nom):t.value;savePlayer(p);}
+  else if(t.dataset.pf){if(!canEditP(S.players[t.dataset.pid])||(t.dataset.pf==='role'&&(!isGest()||lastMJ(S.players[t.dataset.pid]))))return;const p=clone(S.players[t.dataset.pid]);p[t.dataset.pf]=t.dataset.pf==='nom'?(t.value.trim()||p.nom):t.value;savePlayer(p);}
   else if(t.dataset.rfa!==undefined&&S.rf){const k=t.dataset.rfa,a=S.rf.acc;S.rf.acc=t.checked?(a.includes(k)?a:[...a,k]):a.filter(x=>x!==k);render();}
   else if(t.dataset.rfjump!==undefined){S.rf=rfDraft(t.value);render();}
   else if(t.dataset.rfk==='ca'&&S.rf){S.rf.ca=t.value;S.rf.cb='';render();}
@@ -381,6 +397,7 @@ document.addEventListener('change',ev=>{
     rd.onload=()=>{const im=new Image();im.onload=()=>{window._ptrImg=im;const w=im.naturalWidth,h=im.naturalHeight,base=Math.max(220/w,220/h);S.dlg={kind:'ptr',cid,src:rd.result,w,h,base,z:1,x:130-w*base/2,y:130-h*base/2};S._force=true;render();};im.src=rd.result;};rd.readAsDataURL(f);}
   else if(t.dataset.cf&&!canEditC(S.chars[t.dataset.id])){render();}
   else if(t.dataset.cf==='race'){if(S.chars[t.dataset.id].race&&!isGest())return;let c=clone(S.chars[t.dataset.id]);c.race=t.value||null;if(c.race&&c.creation&&!c.spPred)c=grantPredSp(c);saveChar(c);}
+  else if(t.dataset.cf==='kanka'){if(!isGest())return;const c=clone(S.chars[t.dataset.id]);const v=t.value.trim();if(v&&!/^https?:\/\//.test(v)){render();return;}c.kanka=v;saveChar(c);}
   else if(t.dataset.cf==='pj'){const c=clone(S.chars[t.dataset.id]);const v=t.value||null;if(v!==(c.pj||null)){c.pj=v;c.pjDate=v?today():null;}saveChar(c);}
   else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'?t.value:(t.value.trim()||c[k]);saveChar(c);}
   else if(t.dataset.np==='role'||t.dataset.nc==='type'||t.dataset.nc==='owner'){render();}

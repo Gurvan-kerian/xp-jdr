@@ -2,18 +2,29 @@
 /* ---------- Application ---------- */
 const ORDER=['kerian','massetoc','rowen','sloan','theodule','maral','ismael','anselme'];
 if(location.hash==='#dates'){try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}window.__openDates=true;}
+{const m=location.hash.match(/^#secret-(\d+)$/);if(m){try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}window.__openSec=+m[1];}}
 let ME=null;try{ME=localStorage.getItem('xp.me')||null;}catch(e){}
 const S={chars:{},players:{},events:[],ready:false,view:window.__openDates?'planning':'home',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
   futForm:{open:false,nom:'',max:'6'},pnjForm:{titre:'',montant:''},newP:{nom:'',role:'Joueur'},newC:{court:'',nom:'',type:'PJ',owner:''},
   secrets:[],secretsReady:false,dates:[],datesReady:false,plan:{view:window.__openDates?'com':'mes',y:new Date().getFullYear(),m:new Date().getMonth(),open:null},curSess:null,creatures:[],creaturesReady:false,uni:'secrets',sec:null,secFilter:'all',
   form:{titre:'',type:'Scénario',date:'',lines:[{nature:'Scénario',montant:'',persos:null}]},hist:{},dirty:false,sync:'loading'};
+/* Lot 2 : au rechargement, l'appli rouvre la même page et le même onglet (mémoire de l'onglet du navigateur) */
+const KANKA_URL='https://app.kanka.io/w/350361';
+const kankaHref=(lien,nom)=>(lien&&/^https?:\/\//.test(lien))?lien:KANKA_URL+'/search?q='+encodeURIComponent(nom||'');
+const NAV_KEYS=['view','sel','shTab','uni','sec','ptab','forme'];
+function navSave(){try{const o={};for(const k of NAV_KEYS)o[k]=S[k];o.pv=S.plan&&S.plan.view;sessionStorage.setItem('xp.nav',JSON.stringify(o));}catch(e){}}
+if(window.__openSec){S.view='univers';S.uni='secrets';S.sec=window.__openSec;}
+(function navLoad(){if(window.__openDates||window.__openSec)return;try{const o=JSON.parse(sessionStorage.getItem('xp.nav')||'null');if(!o)return;for(const k of NAV_KEYS)if(o[k]!==undefined&&o[k]!==null)S[k]=o[k];if(o.pv)S.plan.view=o.pv;}catch(e){}})();
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const fmtDate=d=>{if(!d)return '';const [y,m,j]=d.split('-');return `${j}/${m}/${y.slice(2)}`;};
 const actif=c=>(c.statut||'actif')==='actif';
 const owners=c=>Object.values(S.players).filter(p=>(p.persos||[]).includes(c.id));
 /* Droits de gestion (indépendants du rôle MJ) ; « voir comme un joueur » les suspend */
-const hasGest=p=>!!(p&&p.gestion&&!p.parti);
+/* Lot 2 : le MJ a les droits de gestion d'office ; il y a toujours au moins un MJ */
+const hasGest=p=>!!(p&&(p.gestion||p.role==='MJ')&&!p.parti);
+const mjCount=()=>Object.values(S.players).filter(p=>p.role==='MJ'&&!p.parti).length;
+const lastMJ=p=>!!p&&p.role==='MJ'&&!p.parti&&mjCount()<=1;
 const isGest=()=>!S.asPlayer&&!!ME&&hasGest(S.players[ME]);
 const gestCount=()=>Object.values(S.players).filter(hasGest).length;
 const meOwns=c=>!!ME&&!!S.players[ME]&&(S.players[ME].persos||[]).includes(c.id);

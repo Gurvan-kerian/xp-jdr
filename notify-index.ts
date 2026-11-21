@@ -11,6 +11,7 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX", "XXI", "XXII"];
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 
 function jour(iso: string, sl: string) {
@@ -49,6 +50,7 @@ Deno.serve(async (req) => {
 
   let msg: { title: string; body: string; tag: string; url: string } | null = null;
   let exclude: string | null = null;
+  let only: ((r: any) => boolean) | null = null;
   if (p.kind === "prop") {
     const d = dates.find((x) => x.id === p.dateId);
     if (!d) return json({ error: "date introuvable" }, 404);
@@ -67,12 +69,36 @@ Deno.serve(async (req) => {
       body: `Rappel : ${jour(d.date, d.sl)}${d.type ? " (" + d.type + ")" : ""}.`,
       tag: "rappel-" + d.id, url: APP_URL + "#dates",
     };
+  } else if (p.kind === "secProp" || p.kind === "secRej" || p.kind === "secRev") {
+    // Lot 2 : propositions de découverte des secrets
+    const sec = (rows.find((r) => r.coll === "meta" && r.id === "secrets") || { data: {} }).data;
+    const props: any[] = Array.isArray(sec.props) ? sec.props : [];
+    const pr = props.find((x) => x.id === p.propId);
+    if (!pr) return json({ error: "proposition introuvable" }, 404);
+    const n = ROMAN[(pr.n | 0) - 1] || String(pr.n);
+    const quoi = pr.k === "titre" ? "titre" : "indice";
+    const url = APP_URL + "#secret-" + pr.n;
+    exclude = p.from || null;
+    if (p.kind === "secProp") {
+      only = (r) => r.data?.role === "MJ";
+      msg = { title: "Proposition de découverte", body: `${nom(pr.by)} propose un ${quoi} pour le Secret ${n}`, tag: "sp-" + pr.id, url };
+    } else if (p.kind === "secRej") {
+      only = (r) => r.id === pr.by;
+      msg = { title: "Proposition rejetée", body: `Le MJ a rejeté ta proposition ${quoi === "titre" ? "de titre" : "d'indice"} pour le Secret ${n}`, tag: "sp-" + pr.id, url };
+    } else {
+      const xp = Number(p.xp) || 0;
+      msg = {
+        title: "Découverte révélée",
+        body: `${quoi === "titre" ? "Le titre" : "Un indice"} du Secret ${n} a été révélé grâce à une proposition de ${nom(pr.by)}.${xp ? ` La table gagne ${xp} XP de groupe.` : ""}`,
+        tag: "sp-" + pr.id, url,
+      };
+    }
   } else return json({ error: "type inconnu" }, 400);
 
   webpush.setVapidDetails(APP_URL, Deno.env.get("VAPID_PUBLIC_KEY")!, Deno.env.get("VAPID_PRIVATE_KEY")!);
   let sent = 0, failed = 0;
   for (const r of players) {
-    if (r.id === exclude || r.data?.parti) continue;
+    if (r.id === exclude || r.data?.parti || (only && !only(r))) continue;
     const subs: any[] = Array.isArray(r.data?.push) ? r.data.push : [];
     if (!subs.length) continue;
     const dead: string[] = [];

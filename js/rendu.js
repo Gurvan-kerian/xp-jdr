@@ -3,8 +3,9 @@
 function viewHome(){
   const V=validDates()[0],np=openProps().length;
   const tile=(v,ic,l)=>`<button class="htile" data-act="tab" data-v="${v}"><span class="hic">${ICON[ic]}</span><span class="hl">${l}</span></button>`;
-  return `<div class="home-in"><button class="htile hplan" data-act="tab" data-v="planning" data-pv="com"><span class="hic" style="position:relative">${ICON.cal}${unseenProps()?`<span class="bdg">${unseenProps()}</span>`:''}</span><span class="ht"><span class="hl">Planning</span><span class="muted small">${V?'Prochaine partie validée':'Prochaine partie'}</span><b>${V?dLine(V):'Aucune partie validée'}</b>${V?`<span class="muted small">${esc(V.type||'Scénario')}${np?' · '+np+' date'+(np>1?'s':'')+' proposée'+(np>1?'s':'')+' en attente':''}</span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''} en attente</span>`:''}</span></button>
-  <div class="hgrid">${tile('gains','xp','XP')}${tile('team','perso','Personnages')}${tile('univers','univers','Univers')}</div>
+  return `<div class="home-in"><button class="htile hplan" data-act="tab" data-v="planning" data-pv="com"><span class="hic" style="position:relative">${ICON.calp}${unseenProps()?`<span class="bdg">${unseenProps()}</span>`:''}</span><span class="ht"><span class="hl">Planning</span><span class="muted small">${V?'Prochaine partie validée':'Prochaine partie'}</span><b>${V?dLine(V):'Aucune partie validée'}</b>${V?`<span class="muted small">${esc(V.type||'Scénario')}${np?' · '+np+' date'+(np>1?'s':'')+' proposée'+(np>1?'s':'')+' en attente':''}</span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''} en attente</span>`:''}</span></button>
+  <div class="hgrid">${tile('gains','medaille','XP')}${tile('team','masque','Personnages')}${tile('univers','livre','Univers')}</div>
+  <div class="card hmsg">La belle appli est une application pour aider la gestion des éléments ludiques des Héritiers. Elle vient en complément des éléments de lore présents sur le <a href="${KANKA_URL}" target="_blank" rel="noopener">Kanka</a>, qui reste la référence pour le contenu de nos belles aventures.</div>
   <div class="hlinks"><button class="btn ghost" data-act="tab" data-v="players">Joueurs</button><button class="btn ghost" data-act="tab" data-v="rules">Règles</button><button class="btn ghost" data-act="tab" data-v="params">Paramètres</button></div></div>`;
 }
 /* ---------- Qui es-tu ? ---------- */
@@ -50,10 +51,10 @@ function pushCard(){
 const unseenProps=()=>{if(!ME||!S.players[ME])return 0;const r=S.players[ME].rep||{};return openProps().filter(x=>!r[x.id]&&x.by!==ME).length;};
 function renderSheet(){
   const root=document.getElementById('sheetRoot');
-  {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se'||S.dlg.kind==='ca'||S.dlg.kind==='ce'||S.dlg.kind==='sn'||S.dlg.kind==='sm'||S.dlg.kind==='pd')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt'||ae0.id==='crn'||ae0.id==='sdi'||ae0.id==='pdn'||ae0.id==='pdd')&&root.contains(ae0))return;}
+  {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se'||S.dlg.kind==='ca'||S.dlg.kind==='ce'||S.dlg.kind==='sn'||S.dlg.kind==='sm'||S.dlg.kind==='pd'||S.dlg.kind==='pp2'||S.dlg.kind==='rv')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt'||ae0.id==='rvt'||ae0.id==='crn'||ae0.id==='sdi'||ae0.id==='pdn'||ae0.id==='pdd')&&root.contains(ae0))return;}
   if(S.dlg){
     const g=S.dlg;let titre='',txt='';
-    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.joueurs}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.regles}Règles</button><button data-act="tab" data-v="params"${S.view==='params'?' aria-current="page"':''}>${ICON.ref}Paramètres</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.groupe}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.de}Règles</button><button data-act="tab" data-v="params"${S.view==='params'?' aria-current="page"':''}>${ICON.baguette}Paramètres</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
     if(g.kind==='me'){root.innerHTML=idSheet();return;}
     if(g.kind==='pwEdit'||g.kind==='pwPick'){const html=g.kind==='pwEdit'?pwEditSheet(g):pwPickSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
@@ -61,7 +62,7 @@ function renderSheet(){
     if(g.kind==='ne'){const e=sessById(g.id);if(!e){S.dlg=null;root.innerHTML='';return;}
       let body;
       if(g.one){const tg=orderPJ(natTargets(e,g.n));body=`<div class="field"><label for="ne-m">XP par personnage</label><input id="ne-m" type="number" inputmode="numeric" min="0" data-nem="1" value="${esc(g.m)}" placeholder="0"></div>
-        <div class="muted small">${g.n==='Scénario'?'Pour les PJ présents':'Pour'} : ${tg.map(i=>esc(S.chars[i].court)).join(', ')||'aucun PJ'}.${g.mixed?' Les montants actuels diffèrent : enregistrer alignera tout le monde sur ce montant.':''} Mets 0 pour retirer cette nature de la session.</div>`;}
+        <div class="muted small">${g.n==='Scénario'?'Pour les PJ présents':'Pour'} : ${tg.filter(i=>vis(S.chars[i])).map(i=>esc(S.chars[i].court)).join(', ')||'aucun PJ'}.${g.mixed?' Les montants actuels diffèrent : enregistrer alignera tout le monde sur ce montant.':''} Mets 0 pour retirer cette nature de la session.</div>`;}
       else body=natList(e,g).map(i=>`<div class="ped"><label for="ne-${i}">${esc(S.chars[i].court)}</label><input id="ne-${i}" type="number" inputmode="numeric" min="0" data-nv="${i}" value="${g.vals[i]?g.vals[i]:''}" placeholder="0"></div>`).join('')+`<div class="muted small">PJ présents à la session. Mets 0 ou laisse vide pour retirer le gain d'un personnage.</div>`;
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Modifier ${esc(g.n)}"><div class="in"><div><h2>${esc(g.n)}</h2><div class="muted small">${esc(e.titre)}</div></div>
       ${body}
@@ -107,6 +108,7 @@ function renderSheet(){
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button>${g.kind==='sm'?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="sessDelOk">Confirmer la suppression</button>`:`<button class="btn" data-act="sessDel"${kids?' disabled':''}>Supprimer</button>`):''}<button class="btn pri" data-act="${g.kind==='sn'?'sessCreate':'sessSave'}"${g.titre.trim()?'':' disabled'}>${g.kind==='sn'?'Créer la session':'Enregistrer'}</button></div></div></div>`;return;}
     if(g.kind==='ca'||g.kind==='ct'||g.kind==='ce'){const html=creSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='eye'){const html=g.t==='sec'?eyeSecSheet(g):eyeRaceSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
+    if(g.kind==='pp2'||g.kind==='rv'){const html=g.kind==='pp2'?propSheet(g):revSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='sx'||g.kind==='se'){const html=secSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='c'){const c=S.chars[g.id];if(!c){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+c.court+' ?';txt="La fiche, les achats et les gains de ce personnage seront supprimés définitivement. Pour garder l'historique, passe plutôt son statut à « Décédé » ou « Retiré ».";}
     else if(g.kind==='p'){const p=S.players[g.id];if(!p){S.dlg=null;root.innerHTML='';return;}titre='Supprimer '+p.nom+' ?';txt="Le joueur disparaît de la liste. Ses personnages ne sont pas supprimés.";}
@@ -164,9 +166,9 @@ function render(){
   if(S.gate)return; /* écran du code : rien ne doit le remplacer */
   const cur=k=>S.view===k||(k==='team'&&S.view==='sheet');
   const tabs=[['gains','XP'],['team','Personnages'],['univers','Univers'],['planning','Planning'],['players','Joueurs'],['rules','Règles'],['params','Paramètres']];
-  const nb=unseenProps(),bdg=k=>k==='planning'&&nb?`<span class="bdg" aria-label="${nb} date${nb>1?'s':''} proposée${nb>1?'s':''} sans réponse">${nb}</span>`:'';
+  const nb=unseenProps(),ns=propBadge(),bdg=k=>k==='planning'&&nb?`<span class="bdg" aria-label="${nb} date${nb>1?'s':''} proposée${nb>1?'s':''} sans réponse">${nb}</span>`:k==='univers'&&ns?`<span class="bdg" aria-label="${ns} proposition${ns>1?'s':''} de découverte en attente">${ns}</span>`:'';
   document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${l}${bdg(k)}</button>`).join('');
-  const bn=[['gains','XP','xp'],['team','Personnages','perso'],['univers','Univers','univers'],['planning','Planning','cal']];
+  const bn=[['gains','XP','medaille'],['team','Personnages','masque'],['univers','Univers','livre'],['planning','Planning','calp']];
   const inMenu=S.view==='players'||S.view==='rules'||S.view==='params';
   document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}" style="position:relative">${ICON[ic]}<span>${l}</span>${bdg(k)}</button>`).join('')+
     `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles, Paramètres" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
@@ -174,7 +176,7 @@ function render(){
   {const mb=document.getElementById('meBtn');if(mb){const me=ME&&S.players[ME];const lab=me?esc(me.nom):'Qui es-tu ?';const html=`${ICON.perso}<span>${lab}</span>`;if(mb.innerHTML!==html)mb.innerHTML=html;mb.setAttribute('aria-label',me?'Connecté en tant que '+me.nom+', changer de joueur':'Choisir qui tu es');}}
   const ae=document.activeElement;
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
-  S._force=false;S.dirty=false;
+  S._force=false;S.dirty=false;navSave();
   const v=S.view,app=document.getElementById('app');
   app.innerHTML=idBanners()+socleBanner()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():viewRules());
   renderSheet();

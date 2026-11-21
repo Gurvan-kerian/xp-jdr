@@ -52,9 +52,9 @@ function pwRows(c){if(isHum(c))return '';const cr=c.race&&S.creatures.find(x=>ra
   for(let i=0;i<8;i++){const own=(c.pw||[]).find(o=>o.i===i),has=!!own,v=has||pwVisible(cr,x,i);
     const p=sl[i]&&sl[i]!=='?'?pwCat(sl[i]):null,fx=p&&(p.fx||[]).length?`<small>${p.fx.map(e=>esc(fxLabel(e))+(fxQ(e.quand)==='d'?' · démasqué':'')).join(' · ')}</small>`:'';
     let name,right='';
-    if(v&&p){name=`${esc(pwFull(x,i))}${fx}`;}else if(v&&sl[i]==='?'){name='<i>Inconnu</i>';}else name='Pouvoir scellé';
+    if(v&&p&&(has||G||!pwUnk(x,i))){name=`${esc(pwFull(x,i))}${pwUnk(x,i)&&G?' <i class="muted">(inconnu pour la table)</i>':''}${fx}`;}else if(v&&pwUnk(x,i)){name='<i>Inconnu</i>';}else name='Pouvoir scellé';
     if(has)right=`<span class="okk">✓</span>${G&&own?(S.confirm==='pwr:'+c.id+':'+i?`<button class="lnk-bad" data-act="pwRemoveOk" data-id="${esc(c.id)}" data-i="${i}">Retirer ?</button>`:`<button class="xs" data-act="pwRemove" data-id="${esc(c.id)}" data-i="${i}" aria-label="Retirer le pouvoir">✕</button>`):''}`;
-    else if(v&&p&&ed&&pwSlotOpen(c,i))right=`<button class="chs" data-act="pwPick" data-id="${esc(c.id)}" data-i="${i}">Choisir</button>`;
+    else if(v&&p&&ed&&pwSlotOpen(c,i)&&(G||!pwUnk(x,i)))right=`<button class="chs" data-act="pwPick" data-id="${esc(c.id)}" data-i="${i}">Choisir</button>`;
     else if(i>=6&&!palierOk(c,i-6))right=`<span class="wait">palier ${i===6?'Profond':'Légendaire'}</span>`;
     h+=`<div class="pwi${has?' own':''}${v&&p||has?'':' seal'}"><span class="k">${PW_LAB[i]}</span><span class="n">${name}</span>${right}</div>`;}
   return h+`</div>`;}

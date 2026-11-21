@@ -16,9 +16,10 @@ function viewPlanning(){
     const me=ME&&S.players[ME]&&!S.players[ME].parti?S.players[ME]:null;
     h+=`<div class="card" style="display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:10px"><label for="pme" class="small" style="white-space:nowrap">Je suis</label><select id="pme" data-me="1" style="flex:1"><option value="">— choisir —</option>${pl.map(p=>`<option value="${p.id}"${me&&me.id===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}</select></div>`;
     if(!me)return h+`<div class="card empty">Choisis ton nom pour remplir tes disponibilités.</div>`;
-    h+=`<div class="muted small" style="margin-bottom:8px">Touche un créneau pour te dire disponible. Week-ends en orangé, ★ = créneau préféré (samedi soir, dimanche journée). À droite : dispos de la table, journée puis soirée.</div><div class="pdays">`;
+    const aide='Touche un créneau pour te dire disponible ; un second toucher l\'enlève. Week-ends en orangé, ★ = créneau préféré (samedi soir, dimanche journée). À droite : dispos de la table, journée puis soirée.';
+    h+=`<div class="phelp"><button class="qhelp" data-act="planHelp" aria-expanded="${!!S.planHelp}" aria-label="Aide : comment remplir mes dispos">?</button>${S.planHelp?`<div class="qtip" role="note">${aide}</div>`:''}<span class="muted small phl">${aide}</span></div><div class="pdays">`;
     for(let d=1;d<=nd;d++){const wd=new Date(y,m,d).getDay(),we=wd===0||wd===6;
-      const b=sl=>{const k=pkey(y,m,d,sl),on=!!(me.dispo&&me.dispo[k]),pf=isPref(wd,sl);return `<button class="pslot${on?' on':''}${pf?' pref':''}" data-act="planSet" data-p="${me.id}" data-k="${k}" aria-pressed="${on}">${sl==='J'?'☀ Journée':'☾ Soirée'}${pf?' ★':''}</button>`;};
+      const b=sl=>{const k=pkey(y,m,d,sl),on=!!(me.dispo&&me.dispo[k]),pf=isPref(wd,sl);return `<button class="pslot${on?' on':''}${pf?' pref':''}" data-act="planSet" data-p="${me.id}" data-k="${k}" aria-pressed="${on}" aria-label="${sl==='J'?'Journée':'Soirée'}${pf?', créneau préféré':''}"><span class="pslic" aria-hidden="true">${sl==='J'?ICON.soleil:ICON.lune}</span><span class="psll" aria-hidden="true">${sl==='J'?'☀ Journée':'☾ Soirée'}</span>${pf?'<span aria-hidden="true"> ★</span>':''}</button>`;};
       const cj=planCount(y,m,d,'J').n,cs=planCount(y,m,d,'S').n;
       h+=`<div class="pday${we?' we':''}${wd===1&&d>1?' wk':''}"><span class="pd"><small>${PJOURS[wd]}</small><b>${d}</b></span>${b('J')}${b('S')}<span class="pc">${cj}/${T}<br>${cs}/${T}</span></div>`;}
     return h+`</div>`;

@@ -39,7 +39,7 @@ function raceView(r,P,C){
   const o={...r},fx={};delete o.pwi;
   const slots=pwSlots(r),pwi=r.pwi||[],pwv=(r.pwv||[]).concat(Array(8).fill('')).slice(0,8);
   const sl=slots.map((id,i)=>!id&&pwi[i]?'?':id);
-  o.pw={m:sl.slice(0,4),d:sl.slice(4,6),p:sl[6],l:sl[7]};o.pwv=pwv;
+  o.pw={m:sl.slice(0,4),d:sl.slice(4,6),p:sl[6],l:sl[7]};o.pwv=pwv;o.pwu=slots.map((id,i)=>!!pwi[i]);
   o.pwq=sl.map((id,i)=>{const v=id&&id!=='?'&&varOf(P[id],pwv[i]);return v?v.nom:'';});
   o.cap=(r.cap||[]).map(e=>{const k=C[e.id]||{nom:e.id,desc:''},v=varOf(k,e.v),L=e.fx?e.fx:[...(k.fx||[]),...((v&&v.fx)||[])];
     if(L.length)fx[fxKey('cap',k.nom)]=L;return [k.nom,e.d!=null?e.d:(k.desc||''),v?v.nom:''];});
@@ -57,7 +57,7 @@ const modelV1=()=>(S.schemaV||0)>=1;
    rec = race dans l'ancienne forme (éditeur) ; prev = race enregistrée ; P, C = catalogues (modifiés sur place s'il faut créer un élément ou une variante).
    Les avantages, désavantages et atouts gardent leur identifiant tant que leur nom ou leur place ne change pas. */
 function raceFromView(rec,prev,P,C){
-  prev=prev||{};const fx=rec.fx||{},r={...rec};for(const k of ['pwq','fx'])delete r[k];
+  prev=prev||{};const fx=rec.fx||{},r={...rec};for(const k of ['pwq','fx','pwu'])delete r[k];
   /* marqueurs des anciennes mises en place : gardés tels qu'ils étaient (un appareil resté sur l'ancienne version ne les relance pas) */
   for(const k of LEGACY_MARKS){if(prev[k]!=null)r[k]=prev[k];else delete r[k];}
   /* capacités */
@@ -75,7 +75,7 @@ function raceFromView(rec,prev,P,C){
       const taken={};for(const e of old)taken[e.id]=1;for(const x of used)taken[x]=1;
       const id=o?o.id:freeId(taken,t+'-'+slugOf(nom));used.add(id);return {id,nom,desc:(a[1]||'').trim(),fx:fxNorm(fx[fxKey(t,nom)])};});}
   /* pouvoirs : « ? » = case inconnu ; précision = variante du pouvoir */
-  const sl=pwSlots(rec),pwi=sl.map(x=>x==='?'),ids=sl.map(x=>x==='?'?'':x),q=rec.pwq||[];
+  const sl=pwSlots(rec),pwi=sl.map((x,i)=>x==='?'||(!!x&&!!(rec.pwu||[])[i])),ids=sl.map(x=>x==='?'?'':x),q=rec.pwq||[];
   r.pw={m:ids.slice(0,4),d:ids.slice(4,6),p:ids[6]||'',l:ids[7]||''};r.pwi=pwi;
   r.pwv=ids.map((id,i)=>{if(!id||!P[id]||!(q[i]||'').trim())return '';P[id]=elFull(P[id]);return varIdByName(P[id],q[i],true);});
   if(r.kanka==null)r.kanka=prev.kanka!=null?prev.kanka:'';
