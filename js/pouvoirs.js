@@ -53,7 +53,7 @@ function viewElCat(k){if(!isGest())return `<div class="card"><div class="muted">
     const todo=[];if(pw&&!pwNat(r.id))todo.push('nature');if(!el.type)todo.push('type');if(todo.length)warn.push(todo.join(' et ')+' à compléter');
     if(miss.length)warn.push('sous-type manquant ('+miss.join(', ')+')');
     if(!pw){const dd=capDiffs(r.id);if(dd.length)warn.push('effets différents selon les races ('+elRaceNames(dd).join(', ')+')');}
-    return `<button class="lrow" data-act="elEdit" data-k="${k}" data-id="${esc(r.id)}">${illThumb(k,r.id,36)}<span class="lm"><span class="lt">${esc(el.nom)}${sigPicto(pw?'pouvoir':'capacite',r.id)}</span><span class="ls">${meta.map(esc).join(' · ')}${races.length?' · '+races.map(esc).join(' · '):' · <span class="muted">aucune race</span>'}</span>${warn.length?`<span class="ls" style="color:var(--bad)">${warn.map(esc).join(' · ')}</span>`:''}</span><span class="chev">›</span></button>`;};
+    return `<div class="lrw">${illSlot(k,r.id,el.nom,36)}<button class="lrow" data-act="elEdit" data-k="${k}" data-id="${esc(r.id)}"><span class="lm"><span class="lt">${esc(el.nom)}${sigPicto(pw?'pouvoir':'capacite',r.id)}</span><span class="ls">${meta.map(esc).join(' · ')}${races.length?' · '+races.map(esc).join(' · '):' · <span class="muted">aucune race</span>'}</span>${warn.length?`<span class="ls" style="color:var(--bad)">${warn.map(esc).join(' · ')}</span>`:''}</span><span class="chev">›</span></button></div>`;};
   return `<div class="card"><h3 class="rs" style="margin-top:0">${pw?'Catalogue des pouvoirs':'Capacités naturelles'} <span class="muted small" style="text-transform:none;letter-spacing:0">${Object.keys(M).length}</span></h3>
     ${pw?`<div class="seg" style="margin-bottom:8px" role="group" aria-label="Catégorie">${[['all','Tous'],['ordinaire','Ordinaires'],['profond','Profonds'],['legendaire','Légendaires']].map(([v,l])=>`<button data-act="elFilt" data-v="${v}" aria-pressed="${f===v}">${l}</button>`).join('')}</div>`:''}
     <input type="search" data-pq="${k}" value="${esc(qv)}" placeholder="${pw?'Rechercher un pouvoir…':'Rechercher une capacité…'}" aria-label="${pw?'Rechercher un pouvoir':'Rechercher une capacité'}" style="width:100%;margin-bottom:6px">
@@ -73,9 +73,9 @@ function elEditSheet(g){const k=g.k,pw=k==='pw',u=g.id?elUses(k,g.id):[],races=e
   const common=(g.fx||[]);
   let h=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${pw?'Pouvoir':'Capacité naturelle'}"><div class="in"><div class="shd"><h2>${g.id?esc(elMap(k)[g.id]&&elMap(k)[g.id].nom||g.nom):pw?'Nouveau pouvoir':'Nouvelle capacité'}</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>
     ${races.length?`<div class="muted small">${races.map(esc).join(' · ')}</div>`:''}
-    <div class="field"><label for="ele-n">Nom ${req}</label><input id="ele-n" type="text" data-pwe="nom" value="${esc(g.nom)}"></div>
-    ${pw?`<div class="field"><label>Catégorie ${req}</label>${seg('cat',PW_CATS)}</div><div class="field"><label>Nature ${req}</label>${seg('nat',[['m','Masqué'],['d','Démasqué']])}</div>`:''}
-    <div class="field"><label>Type ${req}</label>${seg('type',pw?EL_TYPES:EL_TYPES.filter(t=>t[0]!=='metamorphose'))}</div>
+    <div class="field${elMiss(g,'nom')}"><label for="ele-n">Nom ${req}</label><input id="ele-n" type="text" data-pwe="nom" value="${esc(g.nom)}"></div>
+    ${pw?`<div class="field${elMiss(g,'cat')}"><label>Catégorie ${req}</label>${seg('cat',PW_CATS)}</div><div class="field${elMiss(g,'nat')}"><label>Nature ${req}</label>${seg('nat',[['m','Masqué'],['d','Démasqué']])}</div>`:''}
+    <div class="field${elMiss(g,'type')}"><label>Type ${req}</label>${seg('type',pw?EL_TYPES:EL_TYPES.filter(t=>t[0]!=='metamorphose'))}</div>
     <div class="field"><label>Illustration <span class="muted small">(facultatif)</span></label>${illEdit(k,g.id,g.nom)}</div>
     <div class="field"><label for="ele-d">Description générale <span class="muted small">(règles comprises, commune à toutes les races)</span></label><textarea id="ele-d" data-pwe="desc" rows="3">${esc(g.desc)}</textarea></div>
     <div class="lab2">Règles <span class="muted small" style="text-transform:none;letter-spacing:0">(facultatives, selon ce qui est utile)</span></div><div class="elrg">${rules.map(f=>`<label><span>${RL[f]}</span><input type="text" data-pwe="${f}" value="${esc(g[f])}" aria-label="${RL[f]}"></label>`).join('')}</div>
@@ -93,7 +93,7 @@ function elEditSheet(g){const k=g.k,pw=k==='pw',u=g.id?elUses(k,g.id):[],races=e
         <div class="seg" role="group" aria-label="Harmoniser ${esc(x.nom)}" style="margin-top:6px">${[['al','Aligner'],['ref','Référence'],['gar','Garder']].map(([v,l])=>`<button data-act="elHz" data-r="${esc(id)}" data-v="${v}" aria-pressed="${cur===v}">${l}</button>`).join('')}</div></div>`;}
     h+=`<div class="muted small">Aligner : la race reprend les effets du catalogue. Référence : ses effets deviennent ceux du catalogue${''} (du sous-type s'il y en a un). Garder : elle garde ses effets propres, et le signalement se ferme.</div>`;}}
   if(races.length>1)h+=`<div class="warn2">Modifie cet élément pour les ${races.length} races qui l'ont. Le sous-type se règle dans chaque fiche de race.</div>`;
-  h+=`${g.err?`<div class="pinerr">${esc(g.err)}</div>`:''}
+  h+=`${g.err?`<div class="pinerr" role="alert">${esc(g.err)}</div>`:''}
     <div class="muted small" style="margin-top:6px">${req} obligatoire : ${pw?'nom, catégorie, nature et type':'nom et type'}.</div>
     <div class="actions" style="margin-top:10px"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="elSave"${g.vEd?' disabled title="Valide d\'abord le sous-type en cours"':''}>Enregistrer</button></div>
     ${g.id?`<div class="danger2"><span>Zone sensible</span>${u.length||chs.length?`<span class="muted small">Suppression impossible : ${pw?'pouvoir':'capacité'} utilisé${pw?'':'e'}</span>`:arm?`<button class="lnk-bad" data-act="elDelOk">Confirmer la suppression</button>`:`<button class="lnk-bad" data-act="elDel">Supprimer ${pw?'le pouvoir':'la capacité'}</button>`}</div>`:''}</div></div>`;
@@ -124,9 +124,9 @@ function elAct(a,d){const g=S.dlg;
   else if(a==='elDelOk'){const id=g.id;if(elUses(g.k,id).length||(g.k==='pw'&&pwCharsUsing(id).length))return;const M={...elMap(g.k)};delete M[id];elSaveMap(g.k,M);S.dlg=null;S.confirm=null;rebuildRaces();}
   else if(a==='elSave'){elSave();return false;}}
 function elSave(){const g=S.dlg,k=g.k,pw=k==='pw',nom=(g.nom||'').trim();
-  const miss=[];if(!nom)miss.push('le nom');if(pw&&!g.cat)miss.push('la catégorie');if(pw&&!g.nat)miss.push('la nature');if(!g.type)miss.push('le type');
-  if(miss.length){g.err='À compléter : '+miss.join(', ')+'.';render();return;}
-  const M0=elMap(k);if(Object.entries(M0).some(([id,x])=>id!==g.id&&nrm(x.nom)===nrm(nom))){g.err=(pw?'Un pouvoir':'Une capacité')+' porte déjà ce nom.';render();return;}
+  const miss=[],mf=[];if(!nom){miss.push('le nom');mf.push('nom');}if(pw&&!g.cat){miss.push('la catégorie');mf.push('cat');}if(pw&&!g.nat){miss.push('la nature');mf.push('nat');}if(!g.type){miss.push('le type');mf.push('type');}
+  g.errF=mf;if(miss.length){g.err='Enregistrement impossible. À compléter : '+miss.join(', ')+'.';refuse();render();return;}
+  const M0=elMap(k);if(Object.entries(M0).some(([id,x])=>id!==g.id&&nrm(x.nom)===nrm(nom))){g.err='Enregistrement impossible : '+(pw?'un pouvoir':'une capacité')+' porte déjà ce nom.';g.errF=['nom'];refuse();render();return;}
   let id=g.id;if(!id){id=freeId(M0,(pw?'pw-':'cap-')+slugOf(nom));}
   const old=elFull(M0[id]||{}),oldVar={};for(const v of old.var||[])oldVar[v.id]=v;
   const el={...old,nom,desc:(g.desc||'').trim(),type:g.type,prec:!!g.prec,fx:clone(g.fx||[]),var:g.var.map(v=>({id:v.id,nom:v.nom,desc:(oldVar[v.id]&&oldVar[v.id].desc)||'',fx:clone(v.fx||[])}))};
@@ -140,7 +140,7 @@ function elSave(){const g=S.dlg,k=g.k,pw=k==='pw',nom=(g.nom||'').trim();
       if(ch==='ref'){if(e.fx){const v=e.v&&base.var.find(z=>z.id===e.v);if(v){const com=fxBare(base.fx);v.fx=fxNorm(e.fx.filter(f=>!com.includes(fxBare([f])[0])));}else base.fx=fxNorm(e.fx);}if(e.d!=null)base.desc=e.d;}
       delete e.fx;delete e.d;delete e.keep;}
     M[id]=base;if(R)saveRaces(R);}
-  elSaveMap(k,M);S.dlg=null;rebuildRaces();render();}
+  elSaveMap(k,M);S.dlg=null;rebuildRaces();render();toast('Enregistré');}
 /* ---------- Fiche de personnage : section dépliée sous Féerie ---------- */
 function pwRows(c){if(isHum(c))return '';const cr=c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);if(!cr)return '';
   const x=raceRec(cr),sl=pwSlots(x),open=!!(S.pwOpen&&S.pwOpen[c.id]),ed=canEditC(c),G=isGest(),tc=pwToChoose(c);
@@ -164,3 +164,5 @@ function pwPickSheet(g){const c=S.chars[g.id];if(!c)return null;const x=raceRecO
     <div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pwPickOk">Confirmer</button></div></div></div>`;}
 function pwPickOk(){const g=S.dlg,c0=S.chars[g.id];if(!c0||!canEditC(c0)||!pwSlotOpen(c0,g.i))return;const x=raceRecOf(c0),id=pwSlots(x)[g.i];if(!id||id==='?'||(c0.pw||[]).some(o=>o.i===g.i))return;
   const c=clone(c0);c.pw=[...(c.pw||[]),{id,i:g.i,date:today(),v:raceVarAt(x,g.i)}];S.dlg=null;saveChar(c);}
+
+const elMiss=(g,k)=>(g.errF||[]).includes(k)?' miss':'';

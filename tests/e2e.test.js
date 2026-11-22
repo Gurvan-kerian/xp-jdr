@@ -200,7 +200,7 @@ async function open(browser,base,db,me){const ctx=await browser.newContext();con
       ok(vz[0]&&!vz[1],'personnage masqué : visible par la gestion, caché en « Voir comme un joueur »');
       /* illustrations */
       await page.evaluate(id=>{S.ptr={...(S.ptr||{}),[illId('pw',id)]:'data:image/gif;base64,R0lGODlhAQABAAAAACw='};S.view='params';S.ptab='pouvoirs';render();},pid);
-      ok(!!(await page.$(`[data-act="elEdit"][data-id="${pid}"] img.illt`)),'illustration affichée dans le catalogue');
+      ok(await page.evaluate(id=>!!document.querySelector(`[data-act="elEdit"][data-id="${id}"]`).closest('.lrw').querySelector('img.illt'),pid),'illustration affichée dans le catalogue');
       ok(!errs.length,'aucune erreur dans la console'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
     console.log('7. Lot 4 « Référentiel : profils, points de personnage, traits »');
     {const {page,errs,ctx}=await open(browser,base,db,'lorenzo');let t;
@@ -228,7 +228,7 @@ async function open(browser,base,db,me){const ctx=await browser.newContext();con
       t=await page.textContent('#app');ok(/Titre d'Aventurier/.test(t)&&/16 \/ 22/.test(t)&&!/Titre d'Érudit/.test(t),'ligne du titre au rang 4 seulement (Aventurier 16 / 22)');
       ok(/Traits de caractère/.test(t)&&/Aucun trait renseigné/.test(t),'bloc des traits (vide à l\'installation)');
       await page.click('[data-act="ppOpen"][data-prof="Aventurier"]');t=await page.textContent('#sheetRoot');
-      ok(/dépense ses PP Aventurier/.test(t)&&/courtisane ou gigolo/.test(t)&&!/dandy/.test(t)&&/Titre d'Aventurier/.test(t),'tableau d\'achat : activités ouvertes des autres profils, pas les réservées');
+      ok(/dépense ses PP Aventurier/.test(t)&&!/courtisane ou gigolo/.test(t)&&!/dandy/.test(t)&&/philanthrope \*/.test(t)&&/Titre d'Aventurier/.test(t),'tableau d\'achat : tableau d\'origine du profil seulement, réservés marqués *');
       const gid=await page.evaluate(()=>Object.entries(ppEls()).find(([,e])=>e.nom==='garde-forestier')[0]);
       await page.click(`[data-act="ppPick"][data-id="${gid}"]`);t=await page.textContent('#sheetRoot');ok(/Fortune 3/.test(t)&&/Reste après l'achat/.test(t),'confirmation : effet et reste');
       await page.click('[data-act="ppBuyOk"]');await page.waitForTimeout(300);
@@ -245,10 +245,12 @@ async function open(browser,base,db,me){const ctx=await browser.newContext();con
       await page.click('[data-act="ppOpen"][data-prof="Aventurier"]');await page.click('[data-act="ppOther"]');await page.fill('[data-ppb="olab"]','Cheval de trait');await page.fill('[data-ppb="ocost"]','1');
       await page.click('[data-act="ppBuyOk"]');await page.waitForTimeout(300);K=db.get('chars/kerian');ok(K.profils[0].note===2&&K.achats.some(a=>a.label==='PP Aventurier - 1 - Cheval de trait'&&!a.ppel),'autre achat en saisie libre');
       /* traits et nature féerique */
-      await page.click('[data-act="trOpen"]');await page.click('[data-act="trNat"][data-v="mod"]');
+      await page.click('[data-act="trOpen"]');ok(!(await page.$('[data-act="trNat"]'))&&/fée traditionnelle/.test(await page.textContent('#sheetRoot')),'nature reprise de la race, non modifiable');
       await page.selectOption('[data-trf="maj"]','Curieux');await page.fill('[data-trf="libre"]','Mélancolique');await page.click('[data-act="trSave"]');await page.waitForTimeout(300);
-      K=db.get('chars/kerian');ok(K.natf==='mod'&&K.traits.maj.n==='Curieux'&&K.traits.maj.p==='Aventurier'&&K.traits.libre==='Mélancolique','traits et nature enregistrés');
-      t=await page.textContent('#app');ok(/fée moderne/.test(t)&&/Curieux/.test(t),'traits et nature affichés sur la fiche');
+      K=db.get('chars/kerian');ok(!K.natf&&K.traits.maj.n==='Curieux'&&K.traits.maj.p==='Aventurier'&&K.traits.libre==='Mélancolique','traits et nature enregistrés');
+      t=await page.textContent('#app');ok(/fée traditionnelle/.test(t)&&/Curieux/.test(t),'traits et nature affichés sur la fiche');
+      ok(/Fortune : dont[^]*antiquaire|Fortune : dont/.test(t),'note des sources de la Fortune présente');
+      ok(await page.$$eval('.ppf.on',l=>l.length)>=1,'bouton PP mis en évidence quand il reste des PP');
       /* fiche complète */
       await page.evaluate(()=>{S.shTab='full';render();});t=await page.textContent('#app');
       ok(/Contacts et points de personnage/.test(t)&&/antiquaire ou conservateur/.test(t)&&/Cheval de trait/.test(t),'fiche complète : acquisitions et autres dépenses');
@@ -262,6 +264,29 @@ async function open(browser,base,db,me){const ctx=await browser.newContext();con
       R=db.get('meta/races').byId[elfe];ok(R.traits&&R.traits.includes('Noble')&&R.infos&&R.infos.length===1,'enregistrer la fiche de race garde traits et informations');
       await page.evaluate(()=>{S.view='sheet';S.sel='kerian';render();});await page.click('[data-act="trOpen"]');
       ok(await page.$$eval('[data-trf="race"] option',l=>l.map(o=>o.textContent).includes('Noble')),'trait de race proposé sur la fiche');await page.click('#sheetRoot button[data-act="closeSheet"]');
+      /* correctifs : fenêtres, refus visibles, listes, Fief */
+      await page.evaluate(()=>{S.dlg=null;S.view='params';S.ptab='profils';render();});await page.click('[data-act="pfOpen"][data-p="Savant"]');
+      t=await page.textContent('#sheetRoot');ok(/Traits de caractère/.test(t)&&!/saillant/.test(t),'libellé « saillants » retiré');
+      await page.evaluate(()=>{const sh=document.querySelector('#sheetRoot .sheet');sh.scrollTop=sh.scrollHeight;});
+      let y0=await page.evaluate(()=>document.querySelector('#sheetRoot .sheet').scrollTop);await page.click('#sheetRoot [data-act="fxcNew"]');
+      let y1=await page.evaluate(()=>document.querySelector('#sheetRoot .sheet').scrollTop);
+      ok(y0>200&&y1>=y0-5&&await page.evaluate(()=>{const e=document.querySelector('#sheetRoot .fxed'),r=e.getBoundingClientRect(),R=document.querySelector('#sheetRoot .sheet').getBoundingClientRect();return r.top>=R.top-1&&r.top<R.bottom;}),'fenêtre : pas de retour en haut, le bloc d\'effet ouvert est à l\'écran');
+      await page.click('[data-act="pfTab"][data-v="tab"]');await page.evaluate(()=>{document.querySelector('#sheetRoot .sheet').scrollTop=400;});
+      const eid=await page.evaluate(()=>Object.entries(ppEls()).find(([,e])=>e.prof==='Savant'&&e.rub==='A')[0]);await page.evaluate(id=>document.querySelector(`[data-act="ppElOpen"][data-id="${id}"]`).click(),eid);await page.evaluate(()=>document.querySelector('[data-act="ppElBack"]').click());
+      {const y=await page.evaluate(()=>document.querySelector('#sheetRoot .sheet').scrollTop);ok(Math.abs(y-400)<5,'retour d\'une sous-fenêtre : position retrouvée ('+y+')');}
+      await page.click('#sheetRoot button[data-act="closeSheet"]');
+      await page.evaluate(()=>{S.ptab='pouvoirs';render();});const pw0=await page.evaluate(()=>Object.keys(S.pouvoirs)[0]);
+      await page.evaluate(id=>{S.dlg=elDraft('pw',id);S.dlg.type='';render();},pw0);await page.evaluate(()=>{document.querySelector('#sheetRoot .sheet').scrollTop=0;});await page.click('[data-act="elSave"]');
+      ok(await page.evaluate(()=>{const e=document.querySelector('#sheetRoot [role=alert]'),R=document.querySelector('#sheetRoot .sheet').getBoundingClientRect(),r=e&&e.getBoundingClientRect();return !!e&&/Enregistrement impossible/.test(e.textContent)&&r.top>=R.top-1&&r.bottom<=R.bottom+1;}),'refus : message à l\'écran');
+      {const n=await page.$$eval('#sheetRoot .field.miss',l=>l.length),m=await page.textContent('#sheetRoot [role=alert]');ok(n>=1,'refus : champ manquant surligné ('+n+' · '+m+')');}
+      await page.click('#sheetRoot [data-act="elSeg"][data-f="type"]');if(await page.$('#sheetRoot [data-act="elSeg"][data-f="nat"][aria-pressed="false"]')&&!(await page.$('#sheetRoot [data-act="elSeg"][data-f="nat"][aria-pressed="true"]')))await page.click('#sheetRoot [data-act="elSeg"][data-f="nat"]');await page.click('[data-act="elSave"]');await page.waitForTimeout(200);
+      {const tt=await page.evaluate(()=>{const t=document.getElementById('toast');return (t?t.textContent:'—')+' | '+(S.dlg?S.dlg.err+' '+S.dlg.type+' '+S.dlg.nat:'fermé');});ok(/Enregistré/.test(tt),'réussite : « Enregistré » affiché ('+tt+')');}
+      ok(await page.$$eval('.lrw .illslot.ed',l=>l.length)>5,'liste des pouvoirs : emplacement d\'illustration cliquable');
+      await page.evaluate(()=>{S.view='univers';S.uni='creatures';S.rf=null;render();});t=await page.textContent('#app');
+      ok(/Elfe · Elfe|Elfe/.test(t)&&await page.$$eval('.lr.lri .illslot',l=>l.length)>5,'liste des races : emplacements d\'illustration');
+      await page.evaluate(id=>{const r=S.races[id];S.races={...S.races,[id]:{...r,fem:'Elfette'}};rebuildRaces();render();},elfe);
+      ok(/Elfe · Elfette/.test(await page.textContent('#app')),'liste des races : nom féminin affiché');
+      await page.evaluate(()=>{S.view='sheet';S.sel='kerian';S.shTab='prog';render();});ok(/Fief/.test(await page.textContent('#app'))&&!/>Domaine</.test(await page.innerHTML('#app')),'« Domaine » devient « Fief »');
       ok(!errs.length,'aucune erreur dans la console'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
     {const {page,errs,ctx}=await open(browser,base,db,'peter');let t;
       const elfe=await page.evaluate(()=>S.creatures.find(c=>raceRec(c).sing==='Elfe').id);

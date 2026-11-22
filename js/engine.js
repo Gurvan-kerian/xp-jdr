@@ -108,9 +108,10 @@ function rangInfo(c){if(c.type!=='PJ')return null;const r=rangPJ(c);if(r>=2)retu
   return{rang:PJ_RANGS[r],next:st.nom,gauges:gs,total:gs.reduce((s,g)=>s+(g.cost||0),0),blocked:gs.some(g=>g.blocked),ready,done:false};}
 const clone=o=>JSON.parse(JSON.stringify(o));
 const AUTRES=['Domaine','Triche','PNJ'];
+const AUTRE_LAB={Domaine:'Fief'},autreLab=n=>AUTRE_LAB[n]||n;
 function autreTotal(c,nom){return (c.achats||[]).filter(a=>a.key==='autre:'+nom).reduce((s,a)=>s+(a.cout||0),0);}
 function lastAutre(c,nom){const A=c.achats||[];for(let i=A.length-1;i>=0;i--)if(A[i].key==='autre:'+nom)return A[i];return null;}
-function spendAutre(c,nom,pts,today){const n=clone(c);n.achats=n.achats||[];n.achats.push({id:'a'+Date.now().toString(36)+Math.floor(Math.random()*1e3),date:today,label:'Dépense · '+nom,cout:pts,key:'autre:'+nom});return n;}
+function spendAutre(c,nom,pts,today){const n=clone(c);n.achats=n.achats||[];n.achats.push({id:'a'+Date.now().toString(36)+Math.floor(Math.random()*1e3),date:today,label:'Dépense · '+autreLab(nom),cout:pts,key:'autre:'+nom});return n;}
 function undoAutre(c,nom){const a=lastAutre(c,nom);if(!a)return null;const n=clone(c);n.achats=n.achats.filter(x=>x.id!==a.id);return{c:n,refund:a.cout||0};}
 /* Fortune : [situation, revenu annuel, argent de poche, argent disponible par mois, modificateur Classe/Entregent] */
 const FORTUNE=[['Invivable','moins de 300',5,50,-2],['Pauvre','500 à 800',15,150,-1],['Modeste','900 à 1 800',30,250,-1],['Moyenne','2 000 à 4 000',60,500,-1],['Aisée','5 000 à 8 000',100,750,0],['Confortable','9 000 à 12 000',200,1500,0],['À l\'abri','13 000 à 16 000',300,2500,0],['Opulente','16 000 à 20 000',400,4000,1],['Riche','21 000 à 30 000',600,6000,1],['Prospère','31 000 à 50 000',800,8000,1],['Florissante','51 000 à 75 000',1000,10000,1],['Fastueuse','76 000 à 100 000',2000,20000,2],['Richissime','110 000 à 150 000',3000,30000,2],['Scandaleuse','151 000 à 199 000',4000,40000,2],['Royale','200 000 à 250 000',5000,60000,2],['Inimaginable','250 000 et plus',7000,80000,3]];

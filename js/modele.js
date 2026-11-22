@@ -355,4 +355,9 @@ function ppFx(c){const out=[];if(!c||!(c.achats||[]).length)return out;const E=p
 function profMajMin(c){const L=(c.profils||[]).slice().sort((a,b)=>rankOf(c,b)-rankOf(c,a)||ppSum(c,b)-ppSum(c,a));return [L[0]&&L[0].nom,L[1]&&L[1].nom];}
 function traitsOf(c){const t=c.traits||{},out=[];if(!isHum(c)&&t.race)out.push([t.race,'race']);for(const k of isHum(c)?['maj']:['maj','min'])if(t[k]&&t[k].n)out.push([t[k].n,profLab(t[k].p,c)]);if(t.libre)out.push([t.libre,'libre']);return out;}
 const NATF={trad:'fée traditionnelle',mod:'fée moderne'};
-function natfOf(c){if(isHum(c))return '';if(c.natf)return c.natf;const cr=c.race&&(S.creatures||[]).find(x=>raceRec(x).sing===c.race);return cr&&(cr.fam==='trad'||cr.fam==='mod')?cr.fam:'';}
+function natfOf(c){if(isHum(c))return '';const cr=c.race&&(S.creatures||[]).find(x=>raceRec(x).sing===c.race);return cr&&(cr.fam==='trad'||cr.fam==='mod')?cr.fam:'';}
+
+/* Correctif : emplacement d'illustration dans les listes (vide et cliquable pour la gestion) */
+function illSlot(t,id,lab,sz){const s=illOf(t,id),st=`width:${sz}px;height:${sz}px`,img=s?`<img class="illt" src="${s}" alt="" style="${st}">`:'';
+  if(!isGest())return `<span class="illslot" style="${st}">${img}</span>`;
+  return `<label class="illslot ed${s?'':' vide'}" style="${st}" aria-label="${s?'Changer':'Ajouter'} l'illustration : ${esc(lab||'')}">${img||'<span aria-hidden="true">+</span>'}<input type="file" accept="image/*" data-ptrfile="${illId(t,id)}" data-plab="${esc(lab||'')}" hidden></label>`;}

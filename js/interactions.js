@@ -202,7 +202,7 @@ document.addEventListener('click',ev=>{
   else if(a==='rfAtDel'){S.rf.at.splice(+d.i,1);}
   else if(a==='rfDel'){const g=S.rf,cr=S.creatures.find(c=>c.id===g.id);if(cr&&cr.done){g.err='Cette fiche de race est complète : elle ne peut pas être supprimée.';}else if(playedBy(raceRec(cr||{}).sing||'').length){g.err='Cette race est jouée par un personnage : elle ne peut pas être supprimée.';}else{g.err='';g.confirm=true;}}
   else if(a==='rfDelOk'){const id=S.rf.id;S.rf=null;saveCreatures(S.creatures.filter(c=>c.id!==id));const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}
-  else if(a==='rfSave'&&S.rf&&!S.rf.hum&&rfPwCheck(S.rf)){S.rf.err=rfPwCheck(S.rf);}
+  else if(a==='rfSave'&&S.rf&&!S.rf.hum&&rfPwCheck(S.rf)){S.rf.err='Enregistrement impossible. '+rfPwCheck(S.rf);refuse();}
   else if(a==='rfPwN'&&S.rf){const o=(S.rf.pwn=S.rf.pwn||{})[d.i]=(S.rf.pwn||{})[d.i]||{};o[d.f]=o[d.f]===d.v?'':d.v;S.rf.err='';}
   else if(a==='rfSave'&&S.rf&&!S.rf.unkOk&&rfUnkAsk(S.rf).length){S.rf.unkAsk=rfUnkAsk(S.rf);}
   else if(a==='rfSave'){const g=S.rf;delete g.unkOk;const rec=rfRec(g),sing=rec.sing,plur=((g.id&&S.creatures.find(c=>c.id===g.id))||{}).nom||sing;if(!sing)return;rec.pw=pwToIds(rec.pw,g.pwn);if(g.pwx){const ids=pwSlots(rec);let ch=false;const P={...S.pouvoirs};for(const k in g.pwx){const x=g.pwx[k],id=ids[+k];if(x&&x.dirty&&id&&id!=='?'&&P[id]){P[id]={...P[id],desc:(x.desc||'').trim(),fx:clone(x.fx||[])};ch=true;}}if(ch)savePouvoirs(P);}
@@ -212,7 +212,7 @@ document.addEventListener('click',ev=>{
     else{const cr=list.find(c=>c.id===id);if(cr){cr.fam=g.fam;}}
     {const pv=S.races[id]||{};for(const k of ['traits','infos'])if(pv[k])rec[k]=pv[k];}const old=S.races[id]&&S.races[id].sing;rec.eye=(S.races[id]&&S.races[id].eye)||eyeAll(false);saveRaceView(id,rec);saveCreatures(list);rebuildRaces();
     if(old&&old!==sing)for(const c of Object.values(S.chars))if(c.race===old){const n=clone(c);n.race=sing;saveChar(n);}
-    S.rf=rfDraft(id);S.rf.err='';S.rf.saved=true;}
+    S.rf=rfDraft(id);S.rf.err='';S.rf.saved=true;setTimeout(()=>toast('Race enregistrée'),0);}
   else if(a==='ptrSave'){const g=S.dlg,im=window._ptrImg;if(!g||!im)return;const s2=g.base*g.z,cv=document.createElement('canvas');cv.width=cv.height=256;
     const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,256,256);cx.drawImage(im,(20-g.x)/s2,(20-g.y)/s2,220/s2,220/s2,0,0,256,256);
     let q=.82,data=cv.toDataURL('image/jpeg',q);while(data.length>60000&&q>.4){q-=.1;data=cv.toDataURL('image/jpeg',q);}
@@ -308,7 +308,7 @@ document.addEventListener('click',ev=>{
       if(g.nom==='PNJ'){const L=pnjOf(c),to=L.length===1?L[0].id:g.pnj;const pn=S.chars[to];if(!pn||pn.pj!==c.id){render();return;}
         const ev={id:'g'+Date.now().toString(36)+'-x',date:today(),titre:'Transfert de '+c.court,type:'Autre',entries:[{perso:pn.id,nature:'Transfert',montant:p}]};
         A.label='Dépense · PNJ → '+pn.court;A.xfer=ev.id;saveChar(n);saveEvents([...S.events,ev]);return;}
-      if(g.nom==='Domaine'){A.label='Dépense · Domaine (transfert)';A.dom=true;}
+      if(g.nom==='Domaine'){A.label='Dépense · Fief (transfert)';A.dom=true;}
       saveChar(n);return;}
     if(g.kind==='u'){const c=S.chars[g.id],l=c&&lastAutre(c,g.nom),u=c&&undoAutre(c,g.nom);if(u){saveChar(u.c);if(l&&l.xfer)saveEvents(S.events.filter(e=>e.id!==l.xfer));}else render();return;}
     if(g.kind==='b'){const c=S.chars[g.id],r=c&&ref(c,g.key),nm=(g.nom||'').trim(),named=r&&(r.kind==='atout'||r.kind==='spec');if(r&&(!named||nm)&&(r.o.cur||0)===g.from&&lvlCost(r.kind,g.from+1)<=summary(c,S.events).dispo&&(r.max==null||g.from<r.max))saveChar(buy(c,g.key,g.from+1,today(),named?nm:undefined));else render();return;}if(g.kind==='c')removeChar(g.id);else if(g.kind==='p')removePlayer(g.id);else if(g.kind==='g')saveEvents(S.events.filter(e=>e.id!==g.id));return;}

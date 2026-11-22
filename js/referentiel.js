@@ -225,7 +225,7 @@ function viewRaces(){if(!S.creaturesReady||!S.racesReady||!S.pouvoirsReady)retur
   for(const [f,lab] of CFAM){const L=rows.filter(r=>r.cr.fam===f);if(!L.length)continue;
     h+=`<h2>${lab}</h2><div class="card" style="padding:2px 12px">`+L.map(r=>{const e=eyeOf(r.cr,r.x),[o,t]=eyeCount(e),full=eyeFull(e);
       const pill=full?'<span class="rst ok">★ Complète</span>':G?(e.fiche?`<span class="rst mid">${o} / ${t}</span>`:'<span class="rst no">Cachée</span>'):'<span></span>';
-      return `<div class="lr"><button class="nm" data-act="rfOpen" data-id="${esc(r.cr.id)}"><b>${esc(r.x.sing)}</b>${r.pj.length?` <span class="rpj">· ${r.pj.map(c=>esc(c.court)).join(', ')}</span>`:''}</button>${pill}${G?eyeBtn('eye',`data-id="${esc(r.cr.id)}" data-k="fiche"`,e.fiche,'Fiche '+r.x.sing):'<span></span>'}</div>`;}).join('')+`</div>`;}
+      return `<div class="lr lri">${illSlot('race',r.cr.id,r.x.sing,36)}<button class="nm" data-act="rfOpen" data-id="${esc(r.cr.id)}"><b>${esc(r.x.sing)}${esc(raceFem(r.x))}</b>${r.pj.length?` <span class="rpj">· ${r.pj.map(c=>esc(c.court)).join(', ')}</span>`:''}</button>${pill}${G?eyeBtn('eye',`data-id="${esc(r.cr.id)}" data-k="fiche"`,e.fiche,'Fiche '+r.x.sing):'<span></span>'}</div>`;}).join('')+`</div>`;}
   if(!rows.length)h+=`<div class="card empty" style="margin-top:12px">Aucune race découverte pour l'instant.</div>`;
   const pn=Object.values(S.chars).filter(isHum);
   h+=`<h2>Hors féerie</h2><div class="card" style="padding:2px 12px"><div class="lr"><button class="nm" data-act="rfHum"><b>${HUMAIN}</b>${pn.length?` <span class="rpj">· ${pn.map(c=>esc(c.court)).join(', ')}</span>`:''}</button><span class="muted small">règles</span><span></span></div></div>`;
