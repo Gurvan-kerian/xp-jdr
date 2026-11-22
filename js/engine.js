@@ -299,7 +299,12 @@ function starCount(events,delta){return Math.max(0,Math.min(STARS,scenarioCount(
    Fiche complète (+1 XP de groupe) quand tous les yeux sont ouverts. */
 const EYE_BLOCKS=[['car','Caractéristiques'],['cap','Capacités naturelles'],['av','Avantages féeriques'],['dv','Désavantages féeriques'],['pred','Compétences utiles de prédilection'],['fut','Compétences futiles de prédilection'],['at','Atouts féeriques'],['typ','Spécialités typiques'],['sp','Spécialités de prédilection']];
 const PW_LAB=['Masqué','Masqué','Masqué','Masqué','Démasqué','Démasqué','Profond','Légendaire'];
-const eyeAll=v=>{const e={fiche:v,pw:[v,v,v,v,v,v,v,v]};for(const [k] of EYE_BLOCKS)e[k]=v;return e;};
+const eyeAll=v=>{const e={fiche:v,por:v,pw:[v,v,v,v,v,v,v,v]};for(const [k] of EYE_BLOCKS)e[k]=v;return e;};
+/* Fiche de race en onglets : un œil peut couvrir plusieurs blocs enregistrés ; 'por' = Portrait (hors XP, absent de EYE_BLOCKS) */
+const EYE_GROUPS={comp:['pred','fut','sp'],atyp:['at','typ']};
+const EYE_LABELS={comp:'Compétences de prédilection',atyp:'Atouts féeriques',por:'Portrait'};
+const eyeIsOpen=(e,k,i)=>k==='pw'?!!(e.pw||[])[i]:EYE_GROUPS[k]?EYE_GROUPS[k].every(b=>e[b]):!!e[k];
+function eyeApply(e,k,i,open){if(k==='all')Object.assign(e,eyeAll(open));else if(k==='pw'){e.pw=(e.pw||[]).slice();e.pw[i]=open;}else if(EYE_GROUPS[k]){for(const b of EYE_GROUPS[k])e[b]=open;}else e[k]=open;return e;}
 const eyeOf=(cr,x)=>(x&&x.eye)?x.eye:eyeAll(!!(cr&&cr.done));
 const eyeFull=e=>!!e.fiche&&EYE_BLOCKS.every(([k])=>e[k])&&[0,1,2,3,4,5,6,7].every(i=>(e.pw||[])[i]);
 const eyeCount=e=>{const l=[e.fiche,...EYE_BLOCKS.map(([k])=>e[k]),...[0,1,2,3,4,5,6,7].map(i=>(e.pw||[])[i])];return [l.filter(Boolean).length,l.length];};
@@ -308,11 +313,12 @@ const myRace=sing=>!!ME&&!!S.players[ME]&&(S.players[ME].persos||[]).some(id=>S.
 const raceVisible=(cr,x)=>isGest()||eyeOf(cr,x).fiche||myRace(x.sing);
 const blockVisible=(cr,x,k)=>isGest()||myRace(x.sing)||(eyeOf(cr,x).fiche&&eyeOf(cr,x)[k]);
 /* Pouvoirs : l'œil s'applique à tous, joueur de la race compris (le MJ dévoile le pouvoir choisi) */
+const porVisible=(cr,x)=>isGest()||myRace(x.sing)||(eyeOf(cr,x).fiche&&!!eyeOf(cr,x).por);
 const pwVisible=(cr,x,i)=>isGest()||((myRace(x.sing)||eyeOf(cr,x).fiche)&&!!(eyeOf(cr,x).pw||[])[i]);
 /* Ouvre ou ferme un œil ; k = 'fiche' | bloc | 'pw' (avec i) | 'all'. Gère le passage à « complète » et la ligne d'XP. */
 function raceEyeSet(id,k,i,open,sid){
   const cr0=S.creatures.find(c=>c.id===id);if(!cr0)return;const x0=raceRec(cr0),before=eyeOf(cr0,x0),e=clone(before);
-  if(k==='all'){Object.assign(e,eyeAll(open));}else if(k==='pw'){e.pw=(e.pw||[]).slice();e.pw[i]=open;}else e[k]=open;
+  eyeApply(e,k,i,open);
   const wasFull=eyeFull(before),isFull=eyeFull(e);
   const base=S.races[id]||{sing:x0.sing,car:null,acc:[],pred:[],fut:[],at:[],typ:[]};
   S.races={...S.races,[id]:{...base,eye:e}};persist('meta/races',{byId:S.races});

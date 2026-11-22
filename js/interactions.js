@@ -14,7 +14,7 @@ document.addEventListener('click',ev=>{
   if((a==='rfUnkKeep'||a==='rfUnkReveal')&&S.rf&&S.rf.unkAsk){if(a==='rfUnkKeep')for(const i of S.rf.unkAsk)S.rf.pw[i][1]=true;S.rf.unkOk=true;delete S.rf.unkAsk;a='rfSave';}
   else if(a==='rfUnkCancel'&&S.rf){delete S.rf.unkAsk;render();return;}
   if(rfLeaveAsk(a,d,ev))return; /* lot 4 bis : éditeur de race avec changements non enregistrés */
-  if(S.rfEd&&S.rf&&/^rf/.test(a)&&!/^(rfSave|rfEdOn|rfEdOff|rfBack|rfOpen|rfTab|rfHum|rfNew|rfUnkCancel)$/.test(a))S.edDirty=true;
+  if(S.rfEd&&S.rf&&/^rf/.test(a)&&!/^(rfSave|rfEdOn|rfEdOff|rfBack|rfOpen|rfTab|rfHum|rfNew|rfUnkCancel|rfFold|rfEdBlk|rfPorSave|rfPorCancel)$/.test(a))S.edDirty=true;
   if(socleAct(a,d,t)){render();return;}
   if(lnkAct(a,d))return; /* lot 4 bis : liens, retour, mode édition */
   if(a==='planHelp'){S.planHelp=!S.planHelp;render();return;}
@@ -23,7 +23,7 @@ document.addEventListener('click',ev=>{
   if(S.visit&&!VISIT_OK.has(a))return; /* visiteur : lecture seule */
   if(a==='tab'&&d.v==='ref'){d.v='univers';S.uni='creatures';}
   if(a==='tab'&&d.v==='players')pinRefresh();
-  if(a==='tab'){ev.preventDefault();navClear();S.rfEd=false;if(d.v==='univers')S.sec=null;if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
+  if(a==='tab'){ev.preventDefault();navClear();S.rfEd=false;S.rfBlk=null;S.rfPor=null;if(d.v==='univers')S.sec=null;if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
   else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max,sp:{}};}
   else if(a==='closeSheet'&&S.dlg&&S.dlg.nav){navBack();return;}
@@ -111,7 +111,7 @@ document.addEventListener('click',ev=>{
   else if(a==='creAddOk'){const g=S.dlg,nom=(g.nom||'').trim();if(!nom||S.creatures.some(c=>c.nom.toLowerCase()===nom.toLowerCase()))return;S.dlg=null;saveCreatures([...clone(S.creatures),{id:creSlug(nom),nom,fam:g.fam,done:false}]);render();return;}
   else if(a==='eye'){if(!isGest())return;const sess=(sessList()[0]||{}).id||'';
     if(d.t==='sec'){const s=secById(+d.n);if(!s)return;const x=d.k==='titre'?null:s.slots[d.k][+d.i];const cur=d.k==='titre'?!s.titreHid:!!(x&&!x.hid);if(cur&&!canEdit())return;S.dlg={kind:'eye',t:'sec',n:+d.n,k:d.k,i:+d.i||0,open:!cur,sess};}
-    else{const cr=S.creatures.find(c=>c.id===d.id);if(!cr)return;const e=eyeOf(cr,raceRec(cr)),cur=d.k==='pw'?!!(e.pw||[])[+d.i]:!!e[d.k];if(cur&&!canEdit())return;S.dlg={kind:'eye',t:'race',id:d.id,k:d.k,i:+d.i||0,open:!cur,sess};}}
+    else{const cr=S.creatures.find(c=>c.id===d.id);if(!cr)return;const e=eyeOf(cr,raceRec(cr)),cur=eyeIsOpen(e,d.k,+d.i||0);if(cur&&!canEdit())return;S.dlg={kind:'eye',t:'race',id:d.id,k:d.k,i:+d.i||0,open:!cur,sess};}}
   else if(a==='eyeOk'){const g=S.dlg;S.dlg=null;if(!isGest()||(!g.open&&!canEdit())){render();return;}if(g.t==='sec')secEyeSet(g.n,g.k,g.i,g.open,g.sess);else raceEyeSet(g.id,g.k,g.i,g.open,g.sess);return;}
   else if(a==='creToggle'){if(!isGest())return;S.dlg={kind:'ct',id:d.id,sess:(sessList()[0]||{}).id||''};}
   else if(a==='creToggleOk'){if(!isGest())return;const g=S.dlg;S.dlg=null;creToggle(g.id,g.sess);return;}
@@ -162,10 +162,10 @@ document.addEventListener('click',ev=>{
     let c;if(specAnon(c0)>0){c=clone(c0);c.specs=[...specsOf(c),{nom,cible:key}];}
     else{const k=specCost(key,nom);if(k>summary(c0,S.events).dispo)return;c=buySpec(c0,key,nom,k,today());}
     if(a==='spBuyO'&&S.spOther)delete S.spOther[c0.id+'|'+key];saveChar(c);return;}
-  else if(a==='rfOpen'){S.dlg=null;S.view='univers';S.uni='creatures';S.rf=rfDraft(d.id);S.rfEd=false;window.scrollTo(0,0);}
+  else if(a==='rfOpen'){S.dlg=null;S.view='univers';S.uni='creatures';S.rf=rfDraft(d.id);S.rfEd=false;S.rfBlk=null;S.rfPor=null;window.scrollTo(0,0);}
   else if(a==='rfNew'){if(!canEdit())return;S.rf=rfDraft(null);S.rfEd=true;S.edDirty=false;window.scrollTo(0,0);}
   else if(a==='raceFull'){if(!isGest())return;const cr=S.creatures.find(c=>c.id===d.id);if(!cr||eyeFull(eyeOf(cr,raceRec(cr))))return;S.dlg={kind:'eye',t:'race',id:d.id,k:'all',i:0,open:true,sess:(sessList()[0]||{}).id||''};}
-  else if(a==='rfBack'){S.rf=null;S.rfEd=false;}
+  else if(a==='rfBack'){S.rf=null;S.rfEd=false;S.rfBlk=null;S.rfPor=null;}
   else if(a==='rfFlt'){S.rff=d.v;}
   else if(a==='rfFam'){S.rffam=S.rffam===d.v?'':d.v;}
   else if(a==='rfUni'){ev.preventDefault();S.view='univers';S.uni='creatures';S.rf=null;}
@@ -216,9 +216,9 @@ document.addEventListener('click',ev=>{
     let list=clone(S.creatures),id=g.id;
     if(!id){id=creSlug(plur)||('race-'+Date.now().toString(36));if(list.some(c=>c.id===id))id+='-'+Date.now().toString(36);list.push({id,nom:plur,fam:g.fam,done:false});}
     else{const cr=list.find(c=>c.id===id);if(cr){cr.fam=g.fam;}}
-    {const pv=S.races[id]||{};for(const k of ['traits','infos'])if(pv[k])rec[k]=pv[k];}const old=S.races[id]&&S.races[id].sing;rec.eye=(S.races[id]&&S.races[id].eye)||eyeAll(false);saveRaceView(id,rec);saveCreatures(list);rebuildRaces();
+    {const pv=S.races[id]||{};for(const k of ['traits','infos','por'])if(pv[k])rec[k]=pv[k];}const old=S.races[id]&&S.races[id].sing;rec.eye=(S.races[id]&&S.races[id].eye)||eyeAll(false);saveRaceView(id,rec);saveCreatures(list);rebuildRaces();
     if(old&&old!==sing)for(const c of Object.values(S.chars))if(c.race===old){const n=clone(c);n.race=sing;saveChar(n);}
-    S.rf=rfDraft(id);S.rf.err='';S.rf.saved=true;setTimeout(()=>toast('Race enregistrée'),0);}
+    S.rf=rfDraft(id);S.rf.err='';S.rf.saved=true;if(S.rfBlk){S.rfEd=false;S.rfBlk=null;}setTimeout(()=>toast('Race enregistrée'),0);}
   else if(a==='ptrSave'){const g=S.dlg,im=window._ptrImg;if(!g||!im)return;const s2=g.base*g.z,cv=document.createElement('canvas');cv.width=cv.height=256;
     const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,256,256);cx.drawImage(im,(20-g.x)/s2,(20-g.y)/s2,220/s2,220/s2,0,0,256,256);
     let q=.82,data=cv.toDataURL('image/jpeg',q);while(data.length>60000&&q>.4){q-=.1;data=cv.toDataURL('image/jpeg',q);}
