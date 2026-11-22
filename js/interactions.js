@@ -13,6 +13,8 @@ document.addEventListener('click',ev=>{
   let a=t.dataset.act;const d=t.dataset;S._force=true;
   if((a==='rfUnkKeep'||a==='rfUnkReveal')&&S.rf&&S.rf.unkAsk){if(a==='rfUnkKeep')for(const i of S.rf.unkAsk)S.rf.pw[i][1]=true;S.rf.unkOk=true;delete S.rf.unkAsk;a='rfSave';}
   else if(a==='rfUnkCancel'&&S.rf){delete S.rf.unkAsk;render();return;}
+  if(rfLeaveAsk(a,d,ev))return; /* lot 4 bis : éditeur de race avec changements non enregistrés */
+  if(S.rfEd&&S.rf&&/^rf/.test(a)&&!/^(rfSave|rfEdOn|rfEdOff|rfBack|rfOpen|rfTab|rfHum|rfNew|rfUnkCancel)$/.test(a))S.edDirty=true;
   if(socleAct(a,d,t)){render();return;}
   if(lnkAct(a,d))return; /* lot 4 bis : liens, retour, mode édition */
   if(a==='planHelp'){S.planHelp=!S.planHelp;render();return;}
@@ -339,7 +341,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.sxh!==undefined&&S.dlg){S.dlg.hid=t.checked;S._force=true;render();}
   else if(t.dataset.ptrz!==undefined&&S.dlg&&S.dlg.kind==='ptr'){const g=S.dlg,s0=g.base*g.z,cx=(130-g.x)/s0,cy=(130-g.y)/s0;g.z=+t.value;const s1=g.base*g.z;g.x=130-cx*s1;g.y=130-cy*s1;ptrClamp(g);ptrPaint();}
   else if(t.dataset.rfq!==undefined){S.rfq=t.value;S._force=true;const pos=t.selectionStart;render();const i=q0('[data-rfq]');if(i){i.focus();try{i.setSelectionRange(pos,pos);}catch(e){}}}
-  else if(t.dataset.rfk!==undefined&&S.rf){S.rf[t.dataset.rfk]=t.value;if(t.dataset.rfk==='sing'){const b=q0('[data-act="rfSave"]');if(b)b.disabled=!t.value.trim();}}
+  else if(t.dataset.rfk!==undefined&&S.rf){S.rf[t.dataset.rfk]=t.value;if(t.dataset.rfk==='sing'||t.dataset.rfk==='fem'){const b=q0('[data-act="rfSave"]');if(b)b.disabled=!((S.rf.sing||'').trim()||(S.rf.fem||'').trim());}}
   else if(t.dataset.rfc!==undefined&&S.rf){S.rf.car[t.dataset.rfc][+t.dataset.m]=t.value;}
   else if(t.dataset.fxcf!==undefined){const ctx=fxCtx(t.dataset.c);if(ctx&&ctx.fxEd){ctx.fxEd[t.dataset.fxcf]=t.value;const b=document.querySelector(`[data-act="fxcAdd"][data-c="${t.dataset.c}"]`);if(b)b.disabled=!fxOkEd(ctx.fxEd);}}
   else if(t.dataset.pwe!==undefined&&S.dlg){S.dlg[t.dataset.pwe]=t.value;S.dlg.err='';}

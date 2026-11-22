@@ -193,7 +193,7 @@ if(window.addEventListener)window.addEventListener('popstate',()=>{if(!S.nav.len
   navPop();});
 /* Nom principal d'une race : réglage de la fiche (masculin par défaut, sinon féminin) ; l'autre nom suit */
 const raceNm=x=>{if(!x)return '';const f=(x.fem||'').trim();return x.nomP==='f'&&f?f:(x.sing||f);};
-const raceNmOther=x=>{if(!x)return '';const f=(x.fem||'').trim(),p=raceNm(x),o=p===x.sing?f:x.sing;return o&&nrm(o)!==nrm(p)?' · '+o:'';};
+const raceNmOther=x=>{if(!x||x.mVide)return '';const f=(x.fem||'').trim(),p=raceNm(x),o=p===x.sing?f:x.sing;return o&&nrm(o)!==nrm(p)?' · '+o:'';};
 /* Mode édition : quitter avec un éditeur ouvert ne pose la question que s'il reste des changements non enregistrés */
 const EDIT_DLG=new Set(['elEdit','pfEd','ppEl','se','ce']);
 const SAVE_ACTS=new Set(['rfSave','rfHumSave','elSave','pfSave','ppElSave','seSave','creSave','pSave']);
@@ -201,18 +201,25 @@ const editorOpen=()=>!!((S.rfEd&&S.rf)||(S.dlg&&EDIT_DLG.has(S.dlg.kind)));
 function editOff(){S.edit=false;S.rfEd=false;S.edDirty=false;S.edQuit=false;if(S.dlg&&EDIT_DLG.has(S.dlg.kind))S.dlg=null;if(S.view==='params')S.view='home';S._force=true;render();}
 function editToggle(){if(!isGest()||S.visit)return;if(!S.edit){S.edit=true;S.edDirty=false;S._force=true;render();return;}
   if(editorOpen()&&S.edDirty){S.edQuit=true;S._force=true;render();return;}editOff();}
-function edQuitSheet(){return `<div class="sheet-bg" data-act="edqStay"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Quitter le mode édition"><div class="in"><h2>Quitter le mode édition ?</h2><div class="muted">Des changements ne sont pas encore enregistrés.</div><div class="actions"><button class="btn ghost" data-act="edqStay">Rester</button><button class="btn" data-act="edqDrop">Abandonner</button><button class="btn pri" data-act="edqSave">Enregistrer</button></div></div></div>`;}
+/* Quitter l'éditeur de race (Terminer, ‹ Races, retour, onglet, lien) avec des changements non enregistrés : même question */
+const RF_LEAVE=new Set(['rfEdOff','rfBack','tab','navBack','lnk','rfOpen','rfHum','rfNew']);
+function rfLeaveAsk(a,d,ev){if(!(S.rfEd&&S.rf&&S.edDirty&&RF_LEAVE.has(a)))return false;if(ev)ev.preventDefault();S.edQuit={a,d:{...d}};S._force=true;render();return true;}
+function edReplay(q){if(!q||q.a==='rfEdOff'){S._force=true;render();return;}const b=document.createElement('button');b.hidden=true;b.dataset.act=q.a;for(const k in q.d)b.dataset[k]=q.d[k];document.body.appendChild(b);b.click();b.remove();}
+function rfDiscard(){S.rfEd=false;S.edDirty=false;if(S.rf)S.rf=S.rf.id?rfDraft(S.rf.id):null;}
+function edQuitSheet(){const rf=!!(S.edQuit&&S.edQuit.a),t=rf?'Quitter la modification ?':'Quitter le mode édition ?';return `<div class="sheet-bg" data-act="edqStay"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${t}"><div class="in"><h2>${t}</h2><div class="muted">Des changements ne sont pas encore enregistrés.</div><div class="actions"><button class="btn ghost" data-act="edqStay">Rester</button><button class="btn" data-act="edqDrop">Abandonner</button><button class="btn pri" data-act="edqSave">Enregistrer</button></div></div></div>`;}
 /* Clics propres au lot 4 bis ; renvoie true si le clic est traité */
 function lnkAct(a,d){
   if(a==='lnk'){if(navGo({t:d.t,id:d.id,n:d.n,k:d.k,i:d.i}))render();return true;}
   if(a==='navBack'){navBack();return true;}
   if(a==='editToggle'){editToggle();return true;}
   if(a==='edqStay'){S.edQuit=false;S._force=true;render();return true;}
-  if(a==='edqDrop'){editOff();return true;}
+  if(a==='edqDrop'){if(S.edQuit&&S.edQuit.a){const q=S.edQuit;S.edQuit=false;rfDiscard();edReplay(q);return true;}editOff();return true;}
+  if(a==='edqSave'&&S.edQuit&&S.edQuit.a){const q=S.edQuit;S.edQuit=false;S._force=true;render();const b=document.querySelector('#app [data-act="rfSave"]');if(b&&!b.disabled)b.click();
+    if(document.querySelector('#app [role="alert"]')||(S.rf&&(S.rf.unkAsk||S.rf.err)))return true;S.edDirty=false;if(q.a==='rfEdOff')rfDiscard();edReplay(q);return true;}
   if(a==='edqSave'){S.edQuit=false;S._force=true;render();const b=document.querySelector('#sheetRoot [data-act="'+[...SAVE_ACTS].join('"],#sheetRoot [data-act="')+'"],#app [data-act="'+[...SAVE_ACTS].join('"],#app [data-act="')+'"]');
     if(b&&!b.disabled)b.click();if(!document.querySelector('#app [role="alert"],#sheetRoot [role="alert"]'))editOff();return true;}
   if(a==='rfEdOn'){if(!canEdit())return true;S.rfEd=true;S.edDirty=false;S._force=true;render();window.scrollTo(0,0);return true;}
-  if(a==='rfEdOff'){S.rfEd=false;S.edDirty=false;if(S.rf&&S.rf.id)S.rf=rfDraft(S.rf.id);S._force=true;render();return true;}
+  if(a==='rfEdOff'){rfDiscard();S._force=true;render();return true;}
   if(a==='consEdit'){if(!canEdit())return true;const g=S.dlg;if(!g||g.kind!=='cons')return true;const back={...g};S.dlg=elDraft(g.t,g.id);S.dlg.back=back;S.edDirty=false;S._force=true;render();return true;}
   if(a==='secJump'){const el=document.getElementById('seck-'+d.k);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});return true;}
   if(SAVE_ACTS.has(a))setTimeout(()=>{if(!document.querySelector('#app [role="alert"],#sheetRoot [role="alert"]'))S.edDirty=false;},0);
