@@ -23,6 +23,7 @@ document.addEventListener('click',ev=>{
   if(a==='tab'){ev.preventDefault();if(d.v==='univers')S.sec=null;if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
   else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max,sp:{}};}
+  else if(a==='closeSheet'&&S.dlg&&S.dlg.kind==='ptr'&&S.dlg.back){S.dlg=S.dlg.back;window._ptrImg=null;}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;if(S.id.state==='ok')S.pinF=null;}
   else if(a==='menu'){S.dlg={kind:'menu'};}
   else if(a==='pushOn'){pushEnable();return;}
@@ -32,10 +33,7 @@ document.addEventListener('click',ev=>{
       const me=S.players[ME];if(me&&!(me.push||[]).some(x=>x.endpoint===ep)){const n=clone(me);n.push=[...(n.push||[]),{endpoint:ep,keys:js.keys}];savePlayer(n);}}}
   else if(a==='pTab'){S.pTab=d.v;}
   else if(/^fxc/.test(a)){if(!isGest())return;fxcAct(a,d);}
-  else if(a==='pwEdit'){if(!isGest())return;const p=d.id?pwCat(d.id):null;S.confirm=null;S.dlg={kind:'pwEdit',id:d.id||null,nom:p?p.nom:'',desc:p&&p.desc||'',fx:clone(p&&p.fx||[]),fxEd:null};}
-  else if(a==='pwSave'){if(!isGest())return;pwSave();return;}
-  else if(a==='pwDel'){if(!isGest())return;S.confirm='pwdel:'+S.dlg.id;}
-  else if(a==='pwDelOk'){if(!isGest())return;const id=S.dlg.id;if(pwUses(id).length||pwCharsUsing(id).length)return;const P={...S.pouvoirs};delete P[id];S.pouvoirs=P;persist('meta/pouvoirs',{byId:P});S.dlg=null;S.confirm=null;}
+  else if(EL_ACTS.has(a)){if(!isGest())return;if(elAct(a,d)===false)return;}
   else if(a==='pwToggle'){S.pwOpen={...(S.pwOpen||{}),[d.id]:!(S.pwOpen||{})[d.id]};}
   else if(a==='pwPick'){if(!canEditC(S.chars[d.id]))return;S.dlg={kind:'pwPick',id:d.id,i:+d.i};}
   else if(a==='pwPickOk'){pwPickOk();return;}
@@ -204,19 +202,21 @@ document.addEventListener('click',ev=>{
   else if(a==='rfAtDel'){S.rf.at.splice(+d.i,1);}
   else if(a==='rfDel'){const g=S.rf,cr=S.creatures.find(c=>c.id===g.id);if(cr&&cr.done){g.err='Cette fiche de race est complète : elle ne peut pas être supprimée.';}else if(playedBy(raceRec(cr||{}).sing||'').length){g.err='Cette race est jouée par un personnage : elle ne peut pas être supprimée.';}else{g.err='';g.confirm=true;}}
   else if(a==='rfDelOk'){const id=S.rf.id;S.rf=null;saveCreatures(S.creatures.filter(c=>c.id!==id));const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}
+  else if(a==='rfSave'&&S.rf&&!S.rf.hum&&rfPwCheck(S.rf)){S.rf.err=rfPwCheck(S.rf);}
+  else if(a==='rfPwN'&&S.rf){const o=(S.rf.pwn=S.rf.pwn||{})[d.i]=(S.rf.pwn||{})[d.i]||{};o[d.f]=o[d.f]===d.v?'':d.v;S.rf.err='';}
   else if(a==='rfSave'&&S.rf&&!S.rf.unkOk&&rfUnkAsk(S.rf).length){S.rf.unkAsk=rfUnkAsk(S.rf);}
-  else if(a==='rfSave'){const g=S.rf;delete g.unkOk;const rec=rfRec(g),sing=rec.sing,plur=(g.plur||'').trim()||sing;if(!sing)return;rec.pw=pwToIds(rec.pw);if(g.pwx){const ids=pwSlots(rec);let ch=false;const P={...S.pouvoirs};for(const k in g.pwx){const x=g.pwx[k],id=ids[+k];if(x&&x.dirty&&id&&id!=='?'&&P[id]){P[id]={...P[id],desc:(x.desc||'').trim(),fx:clone(x.fx||[])};ch=true;}}if(ch)savePouvoirs(P);}
+  else if(a==='rfSave'){const g=S.rf;delete g.unkOk;const rec=rfRec(g),sing=rec.sing,plur=((g.id&&S.creatures.find(c=>c.id===g.id))||{}).nom||sing;if(!sing)return;rec.pw=pwToIds(rec.pw,g.pwn);if(g.pwx){const ids=pwSlots(rec);let ch=false;const P={...S.pouvoirs};for(const k in g.pwx){const x=g.pwx[k],id=ids[+k];if(x&&x.dirty&&id&&id!=='?'&&P[id]){P[id]={...P[id],desc:(x.desc||'').trim(),fx:clone(x.fx||[])};ch=true;}}if(ch)savePouvoirs(P);}
     if(refRows().some(r=>r.cr.id!==g.id&&nrm(r.x.sing)===nrm(sing))){g.err='Une autre race porte déjà ce nom.';render();return;}
     let list=clone(S.creatures),id=g.id;
     if(!id){id=creSlug(plur)||('race-'+Date.now().toString(36));if(list.some(c=>c.id===id))id+='-'+Date.now().toString(36);list.push({id,nom:plur,fam:g.fam,done:false});}
-    else{const cr=list.find(c=>c.id===id);if(cr){cr.nom=plur;cr.fam=g.fam;}}
+    else{const cr=list.find(c=>c.id===id);if(cr){cr.fam=g.fam;}}
     const old=S.races[id]&&S.races[id].sing;rec.eye=(S.races[id]&&S.races[id].eye)||eyeAll(false);saveRaceView(id,rec);saveCreatures(list);rebuildRaces();
     if(old&&old!==sing)for(const c of Object.values(S.chars))if(c.race===old){const n=clone(c);n.race=sing;saveChar(n);}
     S.rf=rfDraft(id);S.rf.err='';S.rf.saved=true;}
   else if(a==='ptrSave'){const g=S.dlg,im=window._ptrImg;if(!g||!im)return;const s2=g.base*g.z,cv=document.createElement('canvas');cv.width=cv.height=256;
     const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,256,256);cx.drawImage(im,(20-g.x)/s2,(20-g.y)/s2,220/s2,220/s2,0,0,256,256);
     let q=.82,data=cv.toDataURL('image/jpeg',q);while(data.length>60000&&q>.4){q-=.1;data=cv.toDataURL('image/jpeg',q);}
-    S.ptr={...(S.ptr||{}),[g.cid]:data};S.dlg=null;window._ptrImg=null;persist('portraits/'+g.cid,{img:data,t:Date.now()});S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});render();return;}
+    S.ptr={...(S.ptr||{}),[g.cid]:data};S.dlg=g.back||null;window._ptrImg=null;persist('portraits/'+g.cid,{img:data,t:Date.now()});S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});render();return;}
   else if(a==='ptrDel'){if(!S.ptr||!S.ptr[d.id])return;const m={...S.ptr};delete m[d.id];S.ptr=m;persistDel('portraits/'+d.id);S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});}
   else if(a==='atBuy'||a==='atBuyO'){const c0=S.chars[S.sel];if(!c0)return;let nom=a==='atBuy'?d.nom:((S.spOther||{})[c0.id+'|atout']||'').trim();if(!nom)return;if(isTyp(nom))nom=TYP;
     if(atoutsOf(c0).some(x=>nrmA(x.nom)===nrmA(nom)))return;let c;
@@ -336,7 +336,8 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.rfc!==undefined&&S.rf){S.rf.car[t.dataset.rfc][+t.dataset.m]=t.value;}
   else if(t.dataset.fxcf!==undefined){const ctx=fxCtx(t.dataset.c);if(ctx&&ctx.fxEd){ctx.fxEd[t.dataset.fxcf]=t.value;const b=document.querySelector(`[data-act="fxcAdd"][data-c="${t.dataset.c}"]`);if(b)b.disabled=!fxOkEd(ctx.fxEd);}}
   else if(t.dataset.pwe!==undefined&&S.dlg){S.dlg[t.dataset.pwe]=t.value;S.dlg.err='';}
-  else if(t.dataset.pq!==undefined){S.pq=t.value;S._force=true;render();const el=document.querySelector('[data-pq]');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}}
+  else if(t.dataset.pwv!==undefined&&S.dlg&&S.dlg.vEd){S.dlg.vEd[t.dataset.pwv]=t.value;S.dlg.vEd.err='';}
+  else if(t.dataset.pq!==undefined){if(t.dataset.pq==='cap')S.cq=t.value;else S.pq=t.value;S._force=true;render();const el=document.querySelector('[data-pq]');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}}
   else if(t.dataset.rfpwd!==undefined&&S.rf&&S.rf.pwx){const x=S.rf.pwx[+t.dataset.rfpwd];if(x){x.desc=t.value;x.dirty=true;}}
   else if(t.dataset.pv!==undefined){pDraft().v[t.dataset.pv]=t.value;S.psaved=false;}
   else if(t.dataset.pdate!==undefined){pDraft().date=t.value;}
@@ -393,13 +394,13 @@ document.addEventListener('change',ev=>{
   else if(t.dataset.rfpw!==undefined&&S.rf){S.rf.pw[+t.dataset.rfpw][0]=t.value;render();}
   else if(t.dataset.rfpwq!==undefined&&S.rf){S.rf.pw[+t.dataset.rfpwq][2]=t.value;render();}
   else if((t.dataset.rfk==='fam'||t.dataset.rfk==='pa'||t.dataset.rfk==='pb'||t.dataset.rft!==undefined)&&S.rf){if(t.dataset.rft!==undefined)S.rf.typ[+t.dataset.rft][+t.dataset.p]=t.value;else S.rf[t.dataset.rfk]=t.value;render();}
-  else if(t.dataset.ptrfile){const f=t.files&&t.files[0],cid=t.dataset.ptrfile;t.value='';if(!f)return;const rd=new FileReader();
-    rd.onload=()=>{const im=new Image();im.onload=()=>{window._ptrImg=im;const w=im.naturalWidth,h=im.naturalHeight,base=Math.max(220/w,220/h);S.dlg={kind:'ptr',cid,src:rd.result,w,h,base,z:1,x:130-w*base/2,y:130-h*base/2};S._force=true;render();};im.src=rd.result;};rd.readAsDataURL(f);}
+  else if(t.dataset.ptrfile){const f=t.files&&t.files[0],cid=t.dataset.ptrfile,lab=t.dataset.plab||'',back=S.dlg&&S.dlg.kind!=='ptr'?S.dlg:null;t.value='';if(!f)return;const rd=new FileReader();
+    rd.onload=()=>{const im=new Image();im.onload=()=>{window._ptrImg=im;const w=im.naturalWidth,h=im.naturalHeight,base=Math.max(220/w,220/h);S.dlg={kind:'ptr',cid,lab,back,src:rd.result,w,h,base,z:1,x:130-w*base/2,y:130-h*base/2};S._force=true;render();};im.src=rd.result;};rd.readAsDataURL(f);}
   else if(t.dataset.cf&&!canEditC(S.chars[t.dataset.id])){render();}
   else if(t.dataset.cf==='race'){if(S.chars[t.dataset.id].race&&!isGest())return;let c=clone(S.chars[t.dataset.id]);c.race=t.value||null;if(c.race&&c.creation&&!c.spPred)c=grantPredSp(c);saveChar(c);}
   else if(t.dataset.cf==='kanka'){if(!isGest())return;const c=clone(S.chars[t.dataset.id]);const v=t.value.trim();if(v&&!/^https?:\/\//.test(v)){render();return;}c.kanka=v;saveChar(c);}
   else if(t.dataset.cf==='pj'){const c=clone(S.chars[t.dataset.id]);const v=t.value||null;if(v!==(c.pj||null)){c.pj=v;c.pjDate=v?today():null;}saveChar(c);}
-  else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'?t.value:(t.value.trim()||c[k]);saveChar(c);}
+  else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'||k==='genre'?t.value:(t.value.trim()||c[k]);saveChar(c);}
   else if(t.dataset.np==='role'||t.dataset.nc==='type'||t.dataset.nc==='owner'){render();}
 });
 document.addEventListener('focusout',()=>{setTimeout(()=>{if(S.dirty&&!(document.activeElement&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))){S._force=true;render();}},60);});

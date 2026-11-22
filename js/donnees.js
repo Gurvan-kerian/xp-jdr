@@ -9,12 +9,12 @@ const SIG_OBJ={race:'Race',pouvoir:'Pouvoir',capacite:'Capacité',perso:'Personn
 const SIG_ICO='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>';
 /* Manques détectables, recalculés à chaque affichage */
 function sigAuto(){if(!modelV1())return [];const out=[],add=(t,id,champ,statut,note)=>out.push({id:'auto:'+t+':'+id+':'+champ,auto:true,obj:{t,id},champ,statut,note:note||'',ok:false});
-  for(const [id,p] of Object.entries(S.pouvoirs||{})){if(!p.type)add('pouvoir',id,'Type','completer');if(!(p.desc||'').trim())add('pouvoir',id,'Description','completer');}
+  for(const [id,p] of Object.entries(S.pouvoirs||{})){if(!p.type)add('pouvoir',id,'Type','completer');if(!pwNat(id))add('pouvoir',id,'Nature','completer','Nature (masqué / démasqué) impossible à déduire des emplacements de race');if(!(p.desc||'').trim())add('pouvoir',id,'Description','completer');}
   for(const [id,k] of Object.entries(S.capacites||{})){if(!k.type)add('capacite',id,'Type','completer');if(!(k.desc||'').trim())add('capacite',id,'Description','completer');}
   for(const cr of S.creatures||[]){const r=S.races&&S.races[cr.id];if(!r||r.hum)continue;
     if(isLegacyRace(r)){add('race',cr.id,'Format','confirmer',"Fiche enregistrée par un appareil resté sur l'ancienne version : ouvre-la et enregistre-la pour la convertir.");continue;}
-    pwSlots(r).forEach((id,i)=>{const p=id&&S.pouvoirs[id];if(p&&p.prec&&!((r.pwv||[])[i]))add('race',cr.id,'Pouvoir '+PW_LAB[i].toLowerCase()+' '+(i<4?i+1:i<6?i-3:'')+' › variante de '+p.nom,'completer','Variante obligatoire absente');});
-    for(const e of r.cap||[]){const k=capOf(e.id);if(k&&k.prec&&!e.v)add('race',cr.id,'Capacité '+k.nom+' › variante','completer','Variante obligatoire absente');}}
+    pwSlots(r).forEach((id,i)=>{const p=id&&S.pouvoirs[id];if(p&&p.prec&&!((r.pwv||[])[i]))add('race',cr.id,'Pouvoir '+PW_LAB[i].toLowerCase()+' '+(i<4?i+1:i<6?i-3:'')+' › sous-type de '+p.nom,'completer','Sous-type obligatoire absent');});
+    for(const e of r.cap||[]){const k=capOf(e.id);if(k&&k.prec&&!e.v)add('race',cr.id,'Capacité '+k.nom+' › sous-type','completer','Sous-type obligatoire absent');}}
   for(const c of Object.values(S.chars||{})){const n=specToAttach(c);if(n>0)add('perso',c.id,'Spécialités','completer',n+' spécialité'+(n>1?'s':'')+' non rattachée'+(n>1?'s':''));}
   return out;}
 const sigStored=()=>((S.signalDoc&&S.signalDoc.list)||[]);

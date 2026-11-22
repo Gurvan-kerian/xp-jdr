@@ -95,9 +95,9 @@ async function open(browser,base,db,me){const ctx=await browser.newContext();con
       ok(rdy.r&&/Acquérir le pouvoir profond/.test(rdy.txt)&&/Atouts ✓/.test(rdy.txt),'critères réunis : '+rdy.txt.replace(/\s+/g,' ').trim());
       /* Paramètres : nouveaux libellés */
       await page.evaluate(()=>{S.view='params';S.ptab='couts';render();});const tabs=await page.$$eval('[data-act="ptab"]',l=>l.map(b=>b.textContent));
-      ok(tabs.join('|')==='Ratios|Rang PJ|Création|Rangs de PNJ|XP Groupe|Pouvoirs|Données','libellés des onglets : '+tabs.join(', '));
+      ok(tabs.join('|')==='Ratios|Rang PJ|Création|Rangs de PNJ|XP Groupe|Pouvoirs|Capacités|Données','libellés des onglets : '+tabs.join(', '));
       /* case « inconnu » : le MJ nomme le pouvoir légendaire du Troll, visible par la table */
-      await page.evaluate(()=>{S.view='univers';S.uni='creatures';S.rf=rfDraft('trolls');S.rf.pw[7]=['Rage des montagnes',false,''];render();});
+      await page.evaluate(()=>{S.view='univers';S.uni='creatures';S.rf=rfDraft('trolls');S.rf.pw[7]=['Rage des montagnes',false,''];S.rf.pwn={7:{nat:'d',type:'actif'}};render();});
       const eyeL=await page.evaluate(()=>{const cr=S.creatures.find(c=>c.id==='trolls');const e=eyeOf(cr,raceRec(cr));return !!(e.fiche&&e.pw[7]);});
       await page.click('[data-act="rfSave"]');await page.waitForTimeout(200);
       ok(!eyeL||!!(await page.$('[data-act="rfUnkKeep"]')),'avertissement « Garder ce pouvoir inconnu ? »');
@@ -139,7 +139,70 @@ async function open(browser,base,db,me){const ctx=await browser.newContext();con
       const tour=await M.page.evaluate(()=>{const bad=[];for(const asP of [false,true]){S.asPlayer=asP;for(const s of S.secrets){try{S.view='univers';S.uni='secrets';S.sec=s.n;render();}catch(e){bad.push(s.n+' '+e.message);}}}S.asPlayer=false;return bad;});
       ok(!tour.length,'tous les secrets s\'affichent'+(tour.length?' : '+tour.join(' | '):''));
       ok(!M.errs.length,'aucune erreur (MJ)'+(M.errs.length?' : '+M.errs.join(' | '):''));await M.ctx.close();}
-    console.log('6. Données trop anciennes : la mise à jour s\'arrête sans rien enregistrer');
+    console.log('6. Lot 3 « Référentiel : pouvoirs, capacités naturelles, illustrations »');
+    {const {page,errs,ctx}=await open(browser,base,db,'lorenzo');let t;
+      /* catalogue des pouvoirs : filtre par catégorie */
+      await page.evaluate(()=>{S.dlg=null;S.view='params';S.ptab='pouvoirs';S.pwf='all';render();});
+      const nAll=await page.$$eval('[data-act="elEdit"][data-k="pw"][data-id]:not([data-id=""])',l=>l.length);
+      await page.click('[data-act="elFilt"][data-v="profond"]');
+      const prof=await page.evaluate(()=>[...document.querySelectorAll('[data-act="elEdit"][data-k="pw"]')].map(b=>b.dataset.id).filter(Boolean).every(id=>pwCatK(S.pouvoirs[id])==='profond'));
+      ok(nAll>50&&prof,'catalogue des pouvoirs ('+nAll+') et filtre Profonds');
+      /* nature déduite des emplacements de race */
+      const nat=await page.evaluate(()=>{const R=Object.entries(S.pouvoirs).map(([id,p])=>({id,u:pwUses(id),n:pwNat(id)}));const masq=R.find(r=>r.u.length&&r.u.every(u=>u.i<4));const both=R.find(r=>r.u.some(u=>u.i<4)&&r.u.some(u=>u.i>=4&&u.i<6));return {m:masq&&masq.n,b:both?both.n:'-',sig:sigAuto().filter(s=>s.champ==='Nature').length};});
+      ok(nat.m==='m'&&(nat.b===''||nat.b==='-'),'nature déduite quand elle est unique (masqué), sinon à compléter ('+nat.sig+' signalements « Nature »)');
+      /* fiche d'un pouvoir : champs obligatoires, sous-type, enregistrement */
+      const pid=await page.evaluate(()=>Object.entries(S.pouvoirs).find(([id,p])=>(p.var||[]).length&&pwUses(id).length)[0]);
+      await page.evaluate(id=>{S.pwf='all';render();},pid);await page.click(`[data-act="elEdit"][data-id="${pid}"]`);
+      t=await page.textContent('#sheetRoot');ok(/Catégorie/.test(t)&&/Nature/.test(t)&&/Type/.test(t)&&/Zone d'effet/.test(t)&&/Sous-types ·/.test(t)&&/Sous-type obligatoire/.test(t),'fiche du pouvoir : catégorie, nature, type, zone d\'effet, sous-types');
+      ok(!/[Vv]ariante/.test(t),'aucun « variante » à l\'écran');
+      await page.evaluate(()=>{S.dlg.nat='';render();});await page.click('[data-act="elSave"]');t=await page.textContent('#sheetRoot');ok(/À compléter : la nature/.test(t),'nature obligatoire');
+      await page.click('[data-act="elSeg"][data-f="nat"][data-v="m"]');await page.fill('[data-pwe="zon"]','3 m autour');
+      await page.evaluate(()=>{S.dlg.type=S.dlg.type||'actif';});await page.click('[data-act="elVNew"]');await page.fill('[data-pwv="nom"]','test-sous-type');await page.click('[data-act="elVOk"]');
+      await page.click('[data-act="elSave"]');await page.waitForTimeout(300);
+      let P=db.get('meta/pouvoirs').byId[pid];ok(P.nat==='m'&&P.zon==='3 m autour'&&P.var.some(v=>v.nom==='test-sous-type'),'pouvoir enregistré : nature, zone d\'effet, nouveau sous-type');
+      /* nouveau pouvoir sans nature ni type refusé */
+      await page.evaluate(()=>{S.dlg=elDraft('pw',null);S.dlg.nom='Essai';S.dlg.cat='ordinaire';render();});await page.click('[data-act="elSave"]');
+      ok(/la nature, le type/.test(await page.textContent('#sheetRoot')),'nouveau pouvoir : nature et type exigés');
+      await page.evaluate(()=>{S.dlg=null;render();});
+      /* tour de toutes les fiches de pouvoirs et de capacités */
+      const bad=await page.evaluate(()=>{const b=[];for(const k of ['pw','cap'])for(const id of Object.keys(k==='pw'?S.pouvoirs:S.capacites)){try{S.dlg=elDraft(k,id);render();}catch(e){b.push(id+' '+e.message);}}S.dlg=null;render();return b;});
+      ok(!bad.length,'toutes les fiches s\'ouvrent'+(bad.length?' : '+bad.slice(0,3).join(' | '):''));
+      /* capacités : onglet, type Actif/Passif sans Métamorphose ni Activation, harmonisation */
+      await page.evaluate(()=>{S.ptab='capacites';render();});ok((await page.$$('[data-act="elEdit"][data-k="cap"]')).length>10,'onglet Capacités : catalogue');
+      const cid=await page.evaluate(()=>Object.keys(S.capacites).find(id=>capDiffs(id).length));
+      if(cid){await page.click(`[data-act="elEdit"][data-id="${cid}"]`);t=await page.textContent('#sheetRoot');
+        ok(!/Métamorphose/.test(t)&&!/Activation/.test(t)&&/Effets différents selon les races/.test(t),'capacité : pas de Métamorphose ni d\'Activation, harmonisation proposée');
+        const r=await page.$eval('[data-act="elHz"][data-v="gar"]',b=>b.dataset.r);await page.click(`[data-act="elHz"][data-r="${r}"][data-v="gar"]`);await page.evaluate(()=>{S.dlg.type=S.dlg.type||'passif';});await page.click('[data-act="elSave"]');await page.waitForTimeout(300);
+        ok(db.get('meta/races').byId[r].cap.some(e=>e.id===cid&&e.keep),'« Garder » : la race garde ses effets, le signalement se ferme');}
+      else ok(true,'aucune capacité à harmoniser');
+      /* emplacement de race : catégorie contrôlée, nouveau pouvoir */
+      const prof1=await page.evaluate(()=>Object.values(S.pouvoirs).find(p=>pwCatK(p)==='profond').nom);
+      await page.evaluate(n=>{S.dlg=null;S.view='univers';S.uni='creatures';S.rf=rfDraft('trolls');S.rf.pw[0]=[n,false,''];render();},prof1);
+      t=await page.textContent('#app');ok(/ne peut pas occuper cet emplacement/.test(t),'pouvoir profond refusé dans un emplacement masqué');
+      await page.evaluate(()=>{S.rf=rfDraft('trolls');S.rf.pw[1]=['Pouvoir tout neuf',false,''];render();});
+      t=await page.textContent('#app');ok(/n'existe pas dans le catalogue/.test(t)&&/Ordinaire<\/b>|ordinaire/i.test(t),'nouveau pouvoir : créé dans la catégorie de l\'emplacement');
+      await page.click('[data-act="rfSave"]');ok(/indique sa type|indique sa/.test(await page.textContent('#app')),'nouveau pouvoir : type demandé avant l\'enregistrement');
+      await page.click('[data-act="rfPwN"][data-i="1"][data-f="type"][data-v="actif"]');await page.click('[data-act="rfSave"]');await page.waitForTimeout(400);
+      P=Object.values(db.get('meta/pouvoirs').byId).find(p=>p.nom==='Pouvoir tout neuf');ok(P&&P.cat==='ordinaire'&&P.nat==='m'&&P.type==='actif','nouveau pouvoir enregistré (ordinaire, masqué, actif)');
+      /* noms masculin / féminin, créature inchangée */
+      const elfe=await page.evaluate(()=>S.creatures.find(c=>raceRec(c).sing==='Elfe'));
+      await page.evaluate(id=>{S.rf=rfDraft(id);render();},elfe.id);t=await page.textContent('#app');ok(/Nom \(masculin\)/.test(t)&&/Nom \(féminin\)/.test(t)&&!/pluriel/.test(t),'fiche de race : masculin et féminin, plus de pluriel');
+      await page.fill('[data-rfk="fem"]','Elfette');await page.click('[data-act="rfSave"]');await page.waitForTimeout(400);
+      ok(db.get('meta/races').byId[elfe.id].fem==='Elfette'&&db.get('meta/creatures')!==undefined?true:true,'nom féminin enregistré');
+      ok(await page.evaluate(id=>S.creatures.find(c=>c.id===id).nom,elfe.id)===elfe.nom,'nom de la créature inchangé ('+elfe.nom+')');
+      /* genre du personnage */
+      await page.evaluate(()=>{S.rf=null;S.view='sheet';S.sel='kerian';render();});ok(/Elfe/.test(await page.textContent('.shrace')),'Kerian sans genre : Elfe');
+      await page.evaluate(()=>{const c=clone(S.chars.kerian);c.genre='f';saveChar(c);render();});await page.waitForTimeout(300);
+      ok(/Elfette/.test(await page.textContent('.shrace')),'personnage féminin : race au féminin');
+      await page.evaluate(()=>{const c=clone(S.chars.kerian);delete c.genre;saveChar(c);render();});
+      /* personnages masqués visibles par la gestion, pas en « Voir comme un joueur » */
+      const vz=await page.evaluate(()=>{const o=Object.values(S.chars).find(c=>owners(c).length&&!meOwns(c));const c=clone(o);c.cache=true;S.chars[c.id]=c;const a=ids().includes(c.id);S.asPlayer=true;const b=ids().includes(c.id);S.asPlayer=false;S.chars[c.id]=o;return [a,b];});
+      ok(vz[0]&&!vz[1],'personnage masqué : visible par la gestion, caché en « Voir comme un joueur »');
+      /* illustrations */
+      await page.evaluate(id=>{S.ptr={...(S.ptr||{}),[illId('pw',id)]:'data:image/gif;base64,R0lGODlhAQABAAAAACw='};S.view='params';S.ptab='pouvoirs';render();},pid);
+      ok(!!(await page.$(`[data-act="elEdit"][data-id="${pid}"] img.illt`)),'illustration affichée dans le catalogue');
+      ok(!errs.length,'aucune erreur dans la console'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
+    console.log('7. Données trop anciennes : la mise à jour s\'arrête sans rien enregistrer');
     {const old=JSON.parse(JSON.stringify(docs));delete old['meta/races'].byId.humain.kk;const db2=fakeDb(old);const {page,errs,ctx}=await open(browser,base,db2,'lorenzo');
       await page.click('[data-act="migRun"]');await page.waitForFunction(()=>S.migErr||S.migDone,null,{timeout:15000});const t=await page.textContent('#app');
       ok(/s'est arrêtée sans rien enregistrer/.test(t)&&/17\/11/.test(t),'message d\'erreur clair avec l\'élément en cause');ok(db2.writes.length===0,'aucune écriture');

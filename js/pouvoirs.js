@@ -1,6 +1,6 @@
-/* La belle appli — Pouvoirs : catalogue (Paramètres › Pouvoirs), description et effets communs, choix des pouvoirs sur la fiche */
+/* La belle appli — Pouvoirs et capacités naturelles : catalogues (Paramètres › Pouvoirs, Capacités), sous-types, illustrations, choix des pouvoirs sur la fiche */
 /* ---------- Éditeur d'effets générique (catalogue, emplacement de pouvoir d'une fiche de race) ---------- */
-function fxCtx(k){if(k==='dlg')return S.dlg;if(k&&k.startsWith('pw:')&&S.rf&&S.rf.pwx)return S.rf.pwx[+k.slice(3)];return null;}
+function fxCtx(k){if(k==='dlg')return S.dlg;if(k==='var')return S.dlg&&S.dlg.vEd;if(k&&k.startsWith('pw:')&&S.rf&&S.rf.pwx)return S.rf.pwx[+k.slice(3)];return null;}
 const fxOkEd=e=>e.t==='rap'?(e.txt||'').trim():e.t==='perm'?e.cible&&+e.val:+e.val;
 function fxBox(k,ctx){const L=ctx.fx||[],ed=ctx.fxEd;
   let h=`<div class="fxl">${L.map((e,j)=>fxChip(e,`<button data-act="fxcDel" data-c="${k}" data-j="${j}" aria-label="Retirer l'effet">✕</button>`)).join('')||'<span class="muted small">Aucun effet.</span>'}${ed?'':`<button class="fxadd" data-act="fxcNew" data-c="${k}">+ Effet</button>`}</div>`;
@@ -21,36 +21,132 @@ function fxcAct(a,d){const ctx=fxCtx(d.c);if(!ctx)return;
   else if(a==='fxcQ')ctx.fxEd.quand=d.v;
   else if(a==='fxcAdd'){const e=ctx.fxEd;if(!e||!fxOkEd(e))return;const f={t:e.t,cible:e.t==='rap'?'':e.cible,val:e.t==='rap'?0:Math.round(+e.val||0),txt:e.t==='perm'?'':(e.txt||'').trim(),quand:fxQ(e.quand)};ctx.fx=[...(ctx.fx||[]),f];ctx.fxEd=null;ctx.dirty=true;}
   else if(a==='fxcDel'){const L=(ctx.fx||[]).slice();L.splice(+d.j,1);ctx.fx=L;ctx.dirty=true;}}
-/* ---------- Usages d'un pouvoir ---------- */
+/* ---------- Lot 3 : référentiel des pouvoirs et des capacités naturelles ----------
+   Un « élément » = un pouvoir (k='pw', meta/pouvoirs) ou une capacité naturelle (k='cap', meta/capacites).
+   Sous-type = variante (champ var des données) : nom + effets propres, qui s'ajoutent aux effets communs. */
+const elMap=k=>(k==='pw'?S.pouvoirs:S.capacites)||{};
+const elSaveMap=(k,M)=>k==='pw'?savePouvoirs(M):saveCapacites(M);
+/* ---------- Usages ---------- */
 function pwUses(id){const out=[];for(const cr of raceCres()){const x=raceRec(cr),sl=pwSlots(x);sl.forEach((v,i)=>{if(v===id)out.push({cr,x,i,q:pwPrec(x,i)});});}return out;}
 const pwCharsUsing=id=>Object.values(S.chars).filter(c=>(c.pw||[]).some(o=>o.id===id));
-/* ---------- Paramètres › Pouvoirs ---------- */
-function viewPwCat(){if(!isGest())return `<div class="card"><div class="muted">Réservé aux personnes ayant les droits de gestion.</div></div>`;
-  const q=nrm(S.pq||''),L=Object.entries(S.pouvoirs||{}).map(([id,p])=>({id,p,u:pwUses(id)})).filter(r=>!q||nrm(r.p.nom).includes(q)).sort((a,b)=>a.p.nom.localeCompare(b.p.nom,'fr'));
-  return `<div class="card"><h3 class="rs" style="margin-top:0">Catalogue des pouvoirs <span class="muted small" style="text-transform:none;letter-spacing:0">${Object.keys(S.pouvoirs||{}).length}</span></h3>
-    <input type="search" data-pq="1" value="${esc(S.pq||'')}" placeholder="Rechercher un pouvoir…" aria-label="Rechercher un pouvoir" style="width:100%;margin-bottom:6px">
-    ${L.map(r=>`<button class="lrow" data-act="pwEdit" data-id="${esc(r.id)}"><span class="lm"><span class="lt">${esc(r.p.nom)}${sigPicto('pouvoir',r.id)}</span><span class="ls">${r.u.length?r.u.map(u=>esc(u.x.sing)+(u.q?' ('+esc(u.q)+')':'')).join(' · '):'<span class="muted">aucune race (inutilisé)</span>'}${(r.p.fx||[]).length?' · '+r.p.fx.length+' effet'+(r.p.fx.length>1?'s':''):''}${r.p.desc?'':' · <span style="color:var(--bad)">description à compléter</span>'}</span></span><span class="chev">›</span></button>`).join('')||'<div class="muted small">Aucun pouvoir.</div>'}
-    <div class="actions" style="margin-top:10px"><button class="btn" data-act="pwEdit" data-id="">+ Nouveau pouvoir</button></div></div>`;}
-function pwEditSheet(g){const u=g.id?pwUses(g.id):[],chs=g.id?pwCharsUsing(g.id):[],arm=S.confirm==='pwdel:'+g.id;
-  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Pouvoir"><div class="in"><div class="shd"><h2>${g.id?esc(pwCat(g.id).nom):'Nouveau pouvoir'}</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>
-    ${u.length?`<div class="muted small">${u.map(x=>esc(x.x.sing)+(x.q?' ('+esc(x.q)+')':'')).join(' · ')}</div>`:''}
-    <div class="field"><label for="pwe-n">Nom</label><input id="pwe-n" type="text" data-pwe="nom" value="${esc(g.nom)}"></div>
-    <div class="field"><label for="pwe-d">Description (commune à toutes les races)</label><textarea id="pwe-d" data-pwe="desc" rows="3">${esc(g.desc)}</textarea></div>
-    <div class="lab2">Effets</div>${fxBox('dlg',g)}
-    ${u.length>1?`<div class="warn2">Modifie ce pouvoir pour les ${u.length} races qui l'ont. La précision (animale, végétale…) se règle dans chaque fiche de race.</div>`:''}
-    ${g.err?`<div class="pinerr">${esc(g.err)}</div>`:''}
-    <div class="actions" style="margin-top:10px"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pwSave">Enregistrer</button></div>
-    ${g.id?`<div class="danger2"><span>Zone sensible</span>${u.length||chs.length?`<span class="muted small">Suppression impossible : pouvoir utilisé</span>`:arm?`<button class="lnk-bad" data-act="pwDelOk">Confirmer la suppression</button>`:`<button class="lnk-bad" data-act="pwDel">Supprimer le pouvoir</button>`}</div>`:''}</div></div>`;}
-function pwSave(){const g=S.dlg,nom=(g.nom||'').trim();if(!nom){g.err='Le nom est obligatoire.';render();return;}
-  const dup=Object.entries(S.pouvoirs||{}).find(([id,p])=>id!==g.id&&nrm(p.nom)===nrm(nom));if(dup){g.err='Un pouvoir porte déjà ce nom.';render();return;}
-  let id=g.id;if(!id){id='pw-'+(nrm(nom).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x');while(S.pouvoirs[id])id+='-'+Math.random().toString(36).slice(2,5);}
-  savePouvoirs({...S.pouvoirs,[id]:{...(S.pouvoirs[id]||{}),nom,desc:(g.desc||'').trim(),fx:clone(g.fx||[])}});S.dlg=null;rebuildRaces();render();}
+/* Usages d'un élément par les races : {cr, nom de la race, vid (sous-type retenu), e (entrée de capacité enregistrée)} */
+function elUses(k,id){const out=[];
+  if(k==='pw'){for(const u of pwUses(id)){const r=S.races&&S.races[u.cr.id];out.push({cr:u.cr,nom:u.x.sing,vid:(r&&!isLegacyRace(r)&&(r.pwv||[])[u.i])||'',vnom:u.q,i:u.i});}return out;}
+  for(const cr of raceCres()){const r=S.races&&S.races[cr.id];if(!r||r.hum||isLegacyRace(r))continue;const nom=raceRec(cr).sing;
+    (r.cap||[]).forEach((e,j)=>{if(e&&e.id===id)out.push({cr,nom,vid:e.v||'',e,j});});
+    (r.choix||[]).forEach(c=>{if(c[0]==='cap'&&c[1]===id)out.push({cr,nom,vid:c[2]||'',choix:true});});}
+  return out;}
+const elRaceNames=L=>[...new Set(L.map(u=>u.nom))];
+/* Races qui doivent préciser le sous-type et ne l'ont pas fait */
+const elMissing=(k,id,el)=>el&&el.prec?elRaceNames(elUses(k,id).filter(u=>!u.choix&&!u.vid&&!u.vnom)):[];
+/* Capacités : races dont les effets ou la description diffèrent du catalogue (gardés propres à la race) */
+const capDiffs=id=>elUses('cap',id).filter(u=>u.e&&!u.e.keep&&(u.e.fx||u.e.d!=null));
+function elVarUses(k,id,vid){const L=elRaceNames(elUses(k,id).filter(u=>u.vid===vid));
+  if(k==='pw')for(const c of Object.values(S.chars))if((c.pw||[]).some(o=>o.id===id&&o.v===vid))L.push(c.court);return L;}
+/* ---------- Paramètres › Pouvoirs / Capacités : catalogue ---------- */
+function viewElCat(k){if(!isGest())return `<div class="card"><div class="muted">Réservé aux personnes ayant les droits de gestion.</div></div>`;
+  const pw=k==='pw',M=elMap(k),qv=pw?(S.pq||''):(S.cq||''),q=nrm(qv),f=pw?(S.pwf||'all'):'all';
+  const L=Object.entries(M).map(([id,el])=>({id,el,u:elUses(k,id)})).filter(r=>(!q||nrm(r.el.nom).includes(q))&&(f==='all'||pwCatK(r.el)===f)).sort((a,b)=>a.el.nom.localeCompare(b.el.nom,'fr'));
+  const row=r=>{const el=r.el,nv=(el.var||[]).length,nf=(el.fx||[]).length,miss=elMissing(k,r.id,el),races=elRaceNames(r.u),warn=[];
+    const meta=[];if(pw){meta.push(CAT_L[pwCatK(el)]);const n=pwNat(r.id);if(n)meta.push(NAT_L[n]);}if(el.type)meta.push(TYPE_L[el.type]||el.type);
+    if(nv)meta.push(nv+' sous-type'+(nv>1?'s':''));else if(nf)meta.push(nf+' effet'+(nf>1?'s':''));
+    const todo=[];if(pw&&!pwNat(r.id))todo.push('nature');if(!el.type)todo.push('type');if(todo.length)warn.push(todo.join(' et ')+' à compléter');
+    if(miss.length)warn.push('sous-type manquant ('+miss.join(', ')+')');
+    if(!pw){const dd=capDiffs(r.id);if(dd.length)warn.push('effets différents selon les races ('+elRaceNames(dd).join(', ')+')');}
+    return `<button class="lrow" data-act="elEdit" data-k="${k}" data-id="${esc(r.id)}">${illThumb(k,r.id,36)}<span class="lm"><span class="lt">${esc(el.nom)}${sigPicto(pw?'pouvoir':'capacite',r.id)}</span><span class="ls">${meta.map(esc).join(' · ')}${races.length?' · '+races.map(esc).join(' · '):' · <span class="muted">aucune race</span>'}</span>${warn.length?`<span class="ls" style="color:var(--bad)">${warn.map(esc).join(' · ')}</span>`:''}</span><span class="chev">›</span></button>`;};
+  return `<div class="card"><h3 class="rs" style="margin-top:0">${pw?'Catalogue des pouvoirs':'Capacités naturelles'} <span class="muted small" style="text-transform:none;letter-spacing:0">${Object.keys(M).length}</span></h3>
+    ${pw?`<div class="seg" style="margin-bottom:8px" role="group" aria-label="Catégorie">${[['all','Tous'],['ordinaire','Ordinaires'],['profond','Profonds'],['legendaire','Légendaires']].map(([v,l])=>`<button data-act="elFilt" data-v="${v}" aria-pressed="${f===v}">${l}</button>`).join('')}</div>`:''}
+    <input type="search" data-pq="${k}" value="${esc(qv)}" placeholder="${pw?'Rechercher un pouvoir…':'Rechercher une capacité…'}" aria-label="${pw?'Rechercher un pouvoir':'Rechercher une capacité'}" style="width:100%;margin-bottom:6px">
+    ${L.map(row).join('')||`<div class="muted small">${pw?'Aucun pouvoir.':'Aucune capacité.'}</div>`}
+    <div class="actions" style="margin-top:10px"><button class="btn" data-act="elEdit" data-k="${k}" data-id="">${pw?'+ Nouveau pouvoir':'+ Nouvelle capacité'}</button></div></div>
+    <div class="muted small" style="margin-top:8px">${pw?'Chaque ligne montre la catégorie, la nature, le type, les sous-types ou effets, et les races qui utilisent le pouvoir.':'Pas de catégorie ni de nature : une capacité naturelle a seulement un type (actif ou passif).'} Le ⚠ reprend les signalements de Paramètres › Données.</div>`;}
+/* ---------- Fiche d'un élément ---------- */
+function elDraft(k,id){const el=id?elFull(elMap(k)[id]||{nom:id}):elFull({});
+  const g={kind:'elEdit',k,id:id||null,nom:el.nom,desc:el.desc||'',type:el.type||'',prec:!!el.prec,fx:clone(el.fx||[]),fxEd:null,var:(el.var||[]).map(v=>({id:v.id,nom:v.nom,fx:clone(v.fx||[])})),vEd:null,hz:{},err:''};
+  for(const f of EL_FIELDS)g[f]=el[f]||'';
+  if(k==='pw'){g.cat=id?pwCatK(el):'';g.nat=el.nat||(id?pwNatGuess(id):'');}
+  return g;}
+function elEditSheet(g){const k=g.k,pw=k==='pw',u=g.id?elUses(k,g.id):[],races=elRaceNames(u),chs=pw&&g.id?pwCharsUsing(g.id):[],arm=S.confirm==='eldel:'+g.id;
+  const seg=(f,opts)=>`<div class="seg" role="group">${opts.map(([v,l])=>`<button data-act="elSeg" data-f="${f}" data-v="${v}" aria-pressed="${g[f]===v}">${l}</button>`).join('')}</div>`;
+  const req='<span style="color:var(--bad)">*</span>';
+  const rules=(pw?EL_FIELDS:EL_FIELDS.filter(f=>f!=='act'));const RL={act:'Activation',cib:'Cible',dur:'Durée',por:'Portée',zon:"Zone d'effet",res:'Résistance'};
+  const common=(g.fx||[]);
+  let h=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${pw?'Pouvoir':'Capacité naturelle'}"><div class="in"><div class="shd"><h2>${g.id?esc(elMap(k)[g.id]&&elMap(k)[g.id].nom||g.nom):pw?'Nouveau pouvoir':'Nouvelle capacité'}</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>
+    ${races.length?`<div class="muted small">${races.map(esc).join(' · ')}</div>`:''}
+    <div class="field"><label for="ele-n">Nom ${req}</label><input id="ele-n" type="text" data-pwe="nom" value="${esc(g.nom)}"></div>
+    ${pw?`<div class="field"><label>Catégorie ${req}</label>${seg('cat',PW_CATS)}</div><div class="field"><label>Nature ${req}</label>${seg('nat',[['m','Masqué'],['d','Démasqué']])}</div>`:''}
+    <div class="field"><label>Type ${req}</label>${seg('type',pw?EL_TYPES:EL_TYPES.filter(t=>t[0]!=='metamorphose'))}</div>
+    <div class="field"><label>Illustration <span class="muted small">(facultatif)</span></label>${illEdit(k,g.id,g.nom)}</div>
+    <div class="field"><label for="ele-d">Description générale <span class="muted small">(règles comprises, commune à toutes les races)</span></label><textarea id="ele-d" data-pwe="desc" rows="3">${esc(g.desc)}</textarea></div>
+    <div class="lab2">Règles <span class="muted small" style="text-transform:none;letter-spacing:0">(facultatives, selon ce qui est utile)</span></div><div class="elrg">${rules.map(f=>`<label><span>${RL[f]}</span><input type="text" data-pwe="${f}" value="${esc(g[f])}" aria-label="${RL[f]}"></label>`).join('')}</div>
+    <div class="lab2">Effets communs <span class="muted small" style="text-transform:none;letter-spacing:0">(toutes les races, tous les sous-types)</span></div>${fxBox('dlg',g)}
+    <div class="optrow2"><span><b>Sous-type obligatoire</b><br><span class="muted small">chaque race doit préciser son sous-type</span></span><button class="tgb" data-act="elPrec" role="switch" aria-checked="${!!g.prec}" aria-label="Sous-type obligatoire"><span class="tg${g.prec?' on':''}"></span></button></div>
+    <div class="lab2">Sous-types · ${g.var.length} <span class="muted small" style="text-transform:none;letter-spacing:0">(nom + effets propres, qui s'ajoutent aux effets communs)</span></div>`;
+  g.var.forEach((v,i)=>{if(g.vEd&&g.vEd.i===i){h+=elVarEditor(g);return;}const us=g.id?elVarUses(k,g.id,v.id):[];
+    h+=`<div class="elvar"><div class="row2"><b>${esc(v.nom)}</b><button class="lnk" data-act="elVEdit" data-i="${i}">Modifier</button></div>${(v.fx||[]).length?`<div class="fxl">${v.fx.map(e=>fxChip(e)).join('')}</div>`:''}<div class="muted small">Utilisé par : ${us.length?us.map(esc).join(', '):'aucune race'}</div></div>`;});
+  if(g.vEd&&g.vEd.i<0)h+=elVarEditor(g);else if(!g.vEd)h+=`<div class="actions" style="margin-top:6px;justify-content:flex-start"><button class="btn ghost" data-act="elVNew">+ Ajouter un sous-type</button></div>`;
+  const miss=g.id&&g.prec?elMissing(k,g.id,{prec:true}):[];
+  if(miss.length)h+=`<div class="warn2">Sous-type obligatoire manquant : ${miss.map(esc).join(', ')} — à préciser sur leur fiche de race.</div>`;
+  if(!pw&&g.id){const dd=capDiffs(g.id);if(dd.length){h+=`<div class="lab2">Effets différents selon les races</div><div class="muted small">Ces races ont gardé leurs propres effets ou leur propre description. Choisis pour chacune :</div>`;
+    for(const x of dd){const id=x.cr.id,cur=g.hz[id]||'',vn=x.vid?(g.var.find(v=>v.id===x.vid)||{}).nom:'';
+      h+=`<div class="elvar"><div class="row2"><b>${esc(x.nom)}</b><span class="muted small">${vn?'sous-type '+esc(vn):'effets propres'}</span></div>${x.e.fx?`<div class="fxl">${x.e.fx.map(e=>fxChip(e)).join('')||'<span class="muted small">aucun effet</span>'}</div>`:''}${x.e.d!=null?`<div class="small">Description propre : ${esc(x.e.d)}</div>`:''}
+        <div class="seg" role="group" aria-label="Harmoniser ${esc(x.nom)}" style="margin-top:6px">${[['al','Aligner'],['ref','Référence'],['gar','Garder']].map(([v,l])=>`<button data-act="elHz" data-r="${esc(id)}" data-v="${v}" aria-pressed="${cur===v}">${l}</button>`).join('')}</div></div>`;}
+    h+=`<div class="muted small">Aligner : la race reprend les effets du catalogue. Référence : ses effets deviennent ceux du catalogue${''} (du sous-type s'il y en a un). Garder : elle garde ses effets propres, et le signalement se ferme.</div>`;}}
+  if(races.length>1)h+=`<div class="warn2">Modifie cet élément pour les ${races.length} races qui l'ont. Le sous-type se règle dans chaque fiche de race.</div>`;
+  h+=`${g.err?`<div class="pinerr">${esc(g.err)}</div>`:''}
+    <div class="muted small" style="margin-top:6px">${req} obligatoire : ${pw?'nom, catégorie, nature et type':'nom et type'}.</div>
+    <div class="actions" style="margin-top:10px"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="elSave"${g.vEd?' disabled title="Valide d\'abord le sous-type en cours"':''}>Enregistrer</button></div>
+    ${g.id?`<div class="danger2"><span>Zone sensible</span>${u.length||chs.length?`<span class="muted small">Suppression impossible : ${pw?'pouvoir':'capacité'} utilisé${pw?'':'e'}</span>`:arm?`<button class="lnk-bad" data-act="elDelOk">Confirmer la suppression</button>`:`<button class="lnk-bad" data-act="elDel">Supprimer ${pw?'le pouvoir':'la capacité'}</button>`}</div>`:''}</div></div>`;
+  return h;}
+function elVarEditor(g){const v=g.vEd,us=v.i>=0&&g.id?elVarUses(g.k,g.id,g.var[v.i].id):[];
+  return `<div class="elvar ed"><div class="field"><label for="elv-n">Nom du sous-type</label><input id="elv-n" type="text" data-pwv="nom" value="${esc(v.nom)}"></div>
+    <div class="lab2" style="margin-top:4px">Effets propres <span class="muted small" style="text-transform:none;letter-spacing:0">(s'ajoutent aux effets communs)</span></div>${fxBox('var',v)}
+    ${(g.fx||[]).length?`<div class="muted small" style="margin-top:4px">Effets communs rappelés : ${g.fx.map(e=>esc(fxLabel(e))).join(' · ')}</div>`:''}
+    ${v.i>=0?`<div class="muted small">Utilisé par : ${us.length?us.map(esc).join(', '):'aucune race'}</div>`:''}
+    ${v.err?`<div class="pinerr">${esc(v.err)}</div>`:''}
+    <div class="actions" style="margin-top:8px">${v.i>=0?(us.length?`<span class="muted small" style="margin-right:auto">Supprimer : impossible tant qu'il est utilisé</span>`:`<button class="lnk-bad" style="margin-right:auto" data-act="elVDel">Supprimer</button>`):''}<button class="btn ghost" data-act="elVCancel">Annuler</button><button class="btn pri" data-act="elVOk">Valider</button></div></div>`;}
+const EL_ACTS=new Set(['elEdit','elSeg','elPrec','elVNew','elVEdit','elVCancel','elVOk','elVDel','elHz','elSave','elDel','elDelOk','elFilt']);
+function elAct(a,d){const g=S.dlg;
+  if(a==='elFilt'){S.pwf=d.v;return;}
+  if(a==='elEdit'){S.confirm=null;S.dlg=elDraft(d.k,d.id||null);return;}
+  if(!g||g.kind!=='elEdit')return false;
+  if(a==='elSeg'){g[d.f]=g[d.f]===d.v&&d.f!=='cat'?'':d.v;g.err='';}
+  else if(a==='elPrec')g.prec=!g.prec;
+  else if(a==='elVNew')g.vEd={i:-1,nom:'',fx:[],fxEd:null};
+  else if(a==='elVEdit'){const v=g.var[+d.i];if(v)g.vEd={i:+d.i,nom:v.nom,fx:clone(v.fx||[]),fxEd:null};}
+  else if(a==='elVCancel')g.vEd=null;
+  else if(a==='elVOk'){const v=g.vEd,nom=(v.nom||'').trim();if(!nom){v.err='Le nom du sous-type est obligatoire.';return;}
+    if(g.var.some((x,i)=>i!==v.i&&nrm(x.nom)===nrm(nom))){v.err='Un autre sous-type porte déjà ce nom.';return;}
+    if(v.i>=0){g.var[v.i]={...g.var[v.i],nom,fx:clone(v.fx||[])};}else{const ids={};for(const x of g.var)ids[x.id]=1;g.var.push({id:freeId(ids,'v-'+slugOf(nom)),nom,fx:clone(v.fx||[])});}g.vEd=null;}
+  else if(a==='elVDel'){const v=g.vEd;if(!v||v.i<0)return;if(g.id&&elVarUses(g.k,g.id,g.var[v.i].id).length)return;g.var.splice(v.i,1);g.vEd=null;}
+  else if(a==='elHz'){g.hz[d.r]=g.hz[d.r]===d.v?'':d.v;}
+  else if(a==='elDel')S.confirm='eldel:'+g.id;
+  else if(a==='elDelOk'){const id=g.id;if(elUses(g.k,id).length||(g.k==='pw'&&pwCharsUsing(id).length))return;const M={...elMap(g.k)};delete M[id];elSaveMap(g.k,M);S.dlg=null;S.confirm=null;rebuildRaces();}
+  else if(a==='elSave'){elSave();return false;}}
+function elSave(){const g=S.dlg,k=g.k,pw=k==='pw',nom=(g.nom||'').trim();
+  const miss=[];if(!nom)miss.push('le nom');if(pw&&!g.cat)miss.push('la catégorie');if(pw&&!g.nat)miss.push('la nature');if(!g.type)miss.push('le type');
+  if(miss.length){g.err='À compléter : '+miss.join(', ')+'.';render();return;}
+  const M0=elMap(k);if(Object.entries(M0).some(([id,x])=>id!==g.id&&nrm(x.nom)===nrm(nom))){g.err=(pw?'Un pouvoir':'Une capacité')+' porte déjà ce nom.';render();return;}
+  let id=g.id;if(!id){id=freeId(M0,(pw?'pw-':'cap-')+slugOf(nom));}
+  const old=elFull(M0[id]||{}),oldVar={};for(const v of old.var||[])oldVar[v.id]=v;
+  const el={...old,nom,desc:(g.desc||'').trim(),type:g.type,prec:!!g.prec,fx:clone(g.fx||[]),var:g.var.map(v=>({id:v.id,nom:v.nom,desc:(oldVar[v.id]&&oldVar[v.id].desc)||'',fx:clone(v.fx||[])}))};
+  for(const f of EL_FIELDS)el[f]=(g[f]||'').trim();
+  if(pw){el.cat=g.cat;el.nat=g.nat;}
+  const M={...M0,[id]:el};
+  /* harmonisation des capacités (choix par race) */
+  if(!pw&&g.id){let R=null;const base=elFull(el);
+    for(const x of capDiffs(id)){const ch=g.hz[x.cr.id];if(!ch)continue;R=R||clone(S.races);const r=R[x.cr.id],e=r&&(r.cap||[])[x.j];if(!e||e.id!==id)continue;
+      if(ch==='gar'){e.keep=true;continue;}
+      if(ch==='ref'){if(e.fx){const v=e.v&&base.var.find(z=>z.id===e.v);if(v){const com=fxBare(base.fx);v.fx=fxNorm(e.fx.filter(f=>!com.includes(fxBare([f])[0])));}else base.fx=fxNorm(e.fx);}if(e.d!=null)base.desc=e.d;}
+      delete e.fx;delete e.d;delete e.keep;}
+    M[id]=base;if(R)saveRaces(R);}
+  elSaveMap(k,M);S.dlg=null;rebuildRaces();render();}
 /* ---------- Fiche de personnage : section dépliée sous Féerie ---------- */
 function pwRows(c){if(isHum(c))return '';const cr=c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);if(!cr)return '';
   const x=raceRec(cr),sl=pwSlots(x),open=!!(S.pwOpen&&S.pwOpen[c.id]),ed=canEditC(c),G=isGest(),tc=pwToChoose(c);
   let h=`<div class="pwl">`;
   for(let i=0;i<8;i++){const own=(c.pw||[]).find(o=>o.i===i),has=!!own,v=has||pwVisible(cr,x,i);
-    const p=sl[i]&&sl[i]!=='?'?pwCat(sl[i]):null,fx=p&&(p.fx||[]).length?`<small>${p.fx.map(e=>esc(fxLabel(e))+(fxQ(e.quand)==='d'?' · démasqué':'')).join(' · ')}</small>`:'';
+    const p=sl[i]&&sl[i]!=='?'?pwCat(sl[i]):null,vv=p&&varOf(p,(own&&own.v)||raceVarAt(x,i)),fl=p?[...(p.fx||[]),...((vv&&vv.fx)||[])]:[],fx=fl.length?`<small>${fl.map(e=>esc(fxLabel(e))+(fxQ(e.quand)==='d'?' · démasqué':'')).join(' · ')}</small>`:'';
     let name,right='';
     if(v&&p&&(has||G||!pwUnk(x,i))){name=`${esc(pwFull(x,i))}${pwUnk(x,i)&&G?' <i class="muted">(inconnu pour la table)</i>':''}${fx}`;}else if(v&&pwUnk(x,i)){name='<i>Inconnu</i>';}else name='Pouvoir scellé';
     if(has)right=`<span class="okk">✓</span>${G&&own?(S.confirm==='pwr:'+c.id+':'+i?`<button class="lnk-bad" data-act="pwRemoveOk" data-id="${esc(c.id)}" data-i="${i}">Retirer ?</button>`:`<button class="xs" data-act="pwRemove" data-id="${esc(c.id)}" data-i="${i}" aria-label="Retirer le pouvoir">✕</button>`):''}`;
@@ -60,10 +156,11 @@ function pwRows(c){if(isHum(c))return '';const cr=c.race&&S.creatures.find(x=>ra
   return h+`</div>`;}
 /* Sous la ligne Féerie (Progression) : liste dépliée au toucher sur « Féerie », avec la correction de niveau */
 function pwSection(c){if(isHum(c)||!(S.pwOpen&&S.pwOpen[c.id]))return '';const r=pwRows(c);return r?r+lvlLine(c,'feerie'):'';}
-function pwPickSheet(g){const c=S.chars[g.id];if(!c)return null;const x=raceRecOf(c);if(!x)return null;const id=pwSlots(x)[g.i],p=pwCat(id);
+function pwPickSheet(g){const c=S.chars[g.id];if(!c)return null;const x=raceRecOf(c);if(!x)return null;const id=pwSlots(x)[g.i],p=pwCat(id),vv=varOf(p,raceVarAt(x,g.i)),pfx=[...(p.fx||[]),...((vv&&vv.fx)||[])];
   return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Choisir un pouvoir"><div class="in"><h2>Choisir « ${esc(pwFull(x,g.i))} » ?</h2><div class="muted">Pouvoir ${['masqué','masqué','masqué','masqué','démasqué','démasqué','profond','légendaire'][g.i]}</div>
     ${p.desc?`<div class="lab2">Description</div><div class="small">${esc(p.desc)}</div>`:''}
-    ${(p.fx||[]).length?`<div class="lab2">Effet${p.fx.length>1?'s':''}</div><div class="fxl">${p.fx.map(e=>fxChip(e)).join('')}</div>`:''}
+    ${illOf('pw',id)?`<div style="margin-top:8px">${illThumb('pw',id,64)}</div>`:''}
+    ${pfx.length?`<div class="lab2">Effet${pfx.length>1?'s':''}</div><div class="fxl">${pfx.map(e=>fxChip(e)).join('')}</div>`:''}
     <div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pwPickOk">Confirmer</button></div></div></div>`;}
 function pwPickOk(){const g=S.dlg,c0=S.chars[g.id];if(!c0||!canEditC(c0)||!pwSlotOpen(c0,g.i))return;const x=raceRecOf(c0),id=pwSlots(x)[g.i];if(!id||id==='?'||(c0.pw||[]).some(o=>o.i===g.i))return;
   const c=clone(c0);c.pw=[...(c.pw||[]),{id,i:g.i,date:today(),v:raceVarAt(x,g.i)}];S.dlg=null;saveChar(c);}

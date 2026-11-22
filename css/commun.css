@@ -57,3 +57,22 @@
 .rvs{font-size:14px}
 .lnk{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer}
 .sec .rn .bdg{margin-left:6px}
+/* Lot 3 : référentiel des pouvoirs et capacités, sous-types, illustrations */
+#ptrStage .ring.sq{border-radius:12px}
+.illt{object-fit:cover;border-radius:10px;border:1px solid var(--line);flex:none;background:var(--surface)}
+.illed{display:flex;align-items:center;gap:10px}
+.illph{width:64px;height:64px;border-radius:10px;border:1.5px dashed var(--line);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);font-size:22px;flex:none}
+.lrow .illt{margin-right:8px}
+.rhd .illt{margin-right:8px;vertical-align:middle}
+.elrg{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+.elrg label{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--muted)}
+.elrg input{min-height:38px}
+.elvar{border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:6px 0;background:var(--surface)}
+.elvar.ed{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.elvar .row2{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pwnew{border:1px dashed var(--brass);border-radius:10px;padding:8px 10px;margin:4px 0 6px;background:var(--surface)}
+.pwnew .lab2{margin-top:6px}
+.fi.fil{display:flex;gap:10px;align-items:flex-start}
+/* Volets trop hauts pour l'écran : défilement dans le volet (fiche d'un pouvoir avec ses sous-types…) */
+.sheet{max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain}
+.field .illed label.btn{font-family:inherit;text-transform:none;letter-spacing:0;font-size:15px;color:var(--fg);font-weight:600}

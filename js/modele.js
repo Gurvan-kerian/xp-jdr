@@ -20,15 +20,30 @@ const fxBare=L=>(L||[]).map(e=>stableJ({t:e.t,cible:e.cible||'',val:+e.val||0,tx
 const fxSame=(a,b)=>fxBare(a).join('|')===fxBare(b).join('|');
 const PW_CATS=[['ordinaire','Ordinaire'],['profond','Profond'],['legendaire','Légendaire']];
 const EL_TYPES=[['actif','Actif'],['passif','Passif'],['metamorphose','Métamorphose']];
-const EL_FIELDS=['act','cib','dur','por','res'];
+const EL_FIELDS=['act','cib','dur','por','zon','res'];
 /* Un élément du référentiel (pouvoir ou capacité) complété de ses champs fixes */
-function elFull(x){const o={nom:'',desc:'',type:'',prec:false,kanka:'',...x};for(const k of EL_FIELDS)if(o[k]==null)o[k]='';o.fx=fxNorm(o.fx);o.var=(o.var||[]).map(v=>({id:v.id,nom:v.nom||'',desc:v.desc||'',fx:fxNorm(v.fx)}));return o;}
+function elFull(x){const o={nom:'',desc:'',type:'',prec:false,kanka:'',...x};if(o.nat==null)o.nat='';for(const k of EL_FIELDS)if(o[k]==null)o[k]='';o.fx=fxNorm(o.fx);o.var=(o.var||[]).map(v=>({id:v.id,nom:v.nom||'',desc:v.desc||'',fx:fxNorm(v.fx)}));return o;}
 const varOf=(el,vid)=>vid&&el&&(el.var||[]).find(v=>v.id===vid)||null;
 function varIdByName(el,nom,create){if(!el||!(nom||'').trim())return '';const k=nrm(nom);const v=(el.var||[]).find(x=>nrm(x.nom)===k);if(v)return v.id;if(!create)return '';
   const ids={};for(const x of el.var||[])ids[x.id]=1;const id=freeId(ids,'v-'+slugOf(nom));el.var=[...(el.var||[]),{id,nom:nom.trim(),desc:'',fx:[]}];return id;}
 const capCat=()=>(S.capacites||{});
 const capOf=id=>capCat()[id]||null;
 function capIdByName(C,nom){const k=nrm(nom);for(const id in C)if(nrm(C[id].nom)===k)return id;return null;}
+
+/* ---------- Lot 3 : catégorie, nature, type ; illustrations ---------- */
+const SLOT_CAT=i=>i<6?'ordinaire':i===6?'profond':'legendaire';
+const SLOT_NAT=i=>i<4?'m':i<6?'d':'';
+const NAT_L={m:'Masqué',d:'Démasqué'},CAT_L={ordinaire:'Ordinaire',profond:'Profond',legendaire:'Légendaire'},TYPE_L={actif:'Actif',passif:'Passif',metamorphose:'Métamorphose'};
+const pwCatK=p=>(p&&p.cat)||'ordinaire';
+/* Nature d'un pouvoir : enregistrée, sinon déduite des emplacements de race quand elle est unique (masqués 1-4, démasqués 1-2) */
+function pwNatGuess(id){const s=new Set();for(const cr of raceCres()){const x=raceRec(cr);pwSlots(x).forEach((v,i)=>{if(v===id&&i<6)s.add(SLOT_NAT(i));});}return s.size===1?[...s][0]:'';}
+const pwNat=id=>{const p=S.pouvoirs&&S.pouvoirs[id];return (p&&p.nat)||pwNatGuess(id);};
+/* Illustrations : rangées comme les portraits (collection portraits), identifiant ill-<sorte>-<id> */
+const illId=(t,id)=>'ill-'+t+'-'+id;
+const illOf=(t,id)=>(id&&S.ptr&&S.ptr[illId(t,id)])||null;
+const illThumb=(t,id,sz)=>{const s=illOf(t,id);return s?`<img class="illt" src="${s}" alt="" style="width:${sz}px;height:${sz}px">`:'';};
+function illEdit(t,id,lab){if(!id)return `<div class="muted small">Enregistre d'abord pour ajouter une illustration.</div>`;const s=illOf(t,id);
+  return `<div class="illed">${s?`<img class="illt" src="${s}" alt="" style="width:64px;height:64px">`:'<span class="illph" aria-hidden="true">+</span>'}<span style="display:flex;gap:6px;flex-wrap:wrap"><label class="btn ghost" style="cursor:pointer">${s?'Changer':'Ajouter une image'}<input type="file" accept="image/*" data-ptrfile="${illId(t,id)}" data-plab="${esc(lab||'')}" hidden></label>${s?`<button class="btn ghost" data-act="ptrDel" data-id="${illId(t,id)}">Retirer</button>`:''}</span></div>`;}
 
 /* ---------- Vue d'une race (ancienne forme, lue par les écrans) ---------- */
 const LEGACY_MARKS=['doc','fxv','fxq','kk'];
@@ -65,7 +80,8 @@ function raceFromView(rec,prev,P,C){
     const k=C[id]=elFull(C[id]);const v=varIdByName(k,vn,true);return {id,v,k};};
   r.cap=(rec.cap||[]).filter(a=>a&&(a[0]||'').trim()).map(a=>{const {id,v,k}=capOne(a[0],a[1],a[2]),e={id,v},d=(a[1]||'').trim();
     if(d&&!k.desc)k.desc=d;else if(d&&d!==k.desc)e.d=d;
-    const L=fxNorm(fx[fxKey('cap',a[0])]),base=[...k.fx,...((varOf(k,v)||{}).fx||[])];if(!fxSame(L,base))e.fx=L;return e;});
+    const L=fxNorm(fx[fxKey('cap',a[0])]),base=[...k.fx,...((varOf(k,v)||{}).fx||[])];if(!fxSame(L,base))e.fx=L;
+    const pe=(prev.cap||[]).find(z=>z&&!Array.isArray(z)&&z.id===id);if(pe&&pe.keep&&(e.fx||e.d!=null))e.keep=true;return e;});
   r.choix=(rec.choix||[]).map(c=>{if(c[0]!=='cap')return c;const {id,v}=capOne(c[1],'',c[2]);return ['cap',id,v];});
   /* avantages, désavantages, atouts */
   for(const t of ['av','dv','at']){const old=Array.isArray(prev[t])?prev[t].filter(e=>e&&typeof e==='object'&&!Array.isArray(e)):[],used=new Set(),names=new Set((rec[t]||[]).map(a=>nrm(a&&a[0])));

@@ -57,7 +57,7 @@ function renderSheet(){
     if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.groupe}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.de}Règles</button><button data-act="tab" data-v="params"${S.view==='params'?' aria-current="page"':''}>${ICON.baguette}Paramètres</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
     if(g.kind==='me'){root.innerHTML=idSheet();return;}
-    if(g.kind==='pwEdit'||g.kind==='pwPick'){const html=g.kind==='pwEdit'?pwEditSheet(g):pwPickSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
+    if(g.kind==='elEdit'||g.kind==='pwPick'){const html=g.kind==='elEdit'?elEditSheet(g):pwPickSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='pl'||g.kind==='pc'||g.kind==='newp'||g.kind==='newc'){const html=g.kind==='pl'?plSheet(g):g.kind==='pc'?pcSheet(g):g.kind==='newp'?newPSheet():newCSheet();if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='ne'){const e=sessById(g.id);if(!e){S.dlg=null;root.innerHTML='';return;}
       let body;
@@ -67,9 +67,9 @@ function renderSheet(){
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Modifier ${esc(g.n)}"><div class="in"><div><h2>${esc(g.n)}</h2><div class="muted small">${esc(e.titre)}</div></div>
       ${body}
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="natSave">Enregistrer</button></div></div></div>`;return;}
-    if(g.kind==='ptr'){const c=S.chars[g.cid];if(!c){S.dlg=null;root.innerHTML='';return;}const s2=g.base*g.z;
-      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Portrait"><div class="in"><div><h2>Portrait de ${esc(c.court)}</h2><div class="muted small">Fais glisser la photo pour la cadrer dans le cercle, et zoome avec le curseur.</div></div>
-      <div id="ptrStage"><img id="ptrImg" src="${g.src}" alt="" style="left:${g.x}px;top:${g.y}px;width:${g.w*s2}px;height:${g.h*s2}px"><div class="ring"></div></div>
+    if(g.kind==='ptr'){const c=S.chars[g.cid],ill=/^ill-/.test(g.cid);if(!c&&!ill){S.dlg=null;root.innerHTML='';return;}const s2=g.base*g.z;
+      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${ill?'Illustration':'Portrait'}"><div class="in"><div><h2>${ill?'Illustration'+(g.lab?' : '+esc(g.lab):''):'Portrait de '+esc(c.court)}</h2><div class="muted small">Fais glisser l'image pour la cadrer dans le ${ill?'carré':'cercle'}, et zoome avec le curseur.</div></div>
+      <div id="ptrStage"><img id="ptrImg" src="${g.src}" alt="" style="left:${g.x}px;top:${g.y}px;width:${g.w*s2}px;height:${g.h*s2}px"><div class="ring${ill?' sq':''}"></div></div>
       <div class="field"><label for="ptrz">Zoom</label><input id="ptrz" type="range" min="1" max="4" step="0.01" data-ptrz="1" value="${g.z}" style="width:100%"></div>
       <div class="muted small">L'image est recadrée et réduite (environ 30 Ko) avant l'envoi.</div>
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="ptrSave">Enregistrer</button></div></div></div>`;return;}

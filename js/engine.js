@@ -188,7 +188,7 @@ const pwPrec=(x,i)=>((x&&x.pwq)||[])[i]||'';
 /* Lot 2 : case « inconnu » indépendante du nom ; la table voit « Inconnu » tant qu'elle est cochée */
 const pwUnk=(x,i)=>pwSlots(x)[i]==='?'||!!((x.pwu||[])[i]);
 const pwShown=(x,i)=>pwUnk(x,i)&&!isGest()?'Inconnu':pwFull(x,i);
-const pwFull=(x,i)=>{const id=pwSlots(x)[i];if(!id||id==='?')return pwName(id);const q=pwPrec(x,i);return pwName(id)+(q?' ('+q+')':pwCat(id).prec?' (précision à compléter)':'');};
+const pwFull=(x,i)=>{const id=pwSlots(x)[i];if(!id||id==='?')return pwName(id);const q=pwPrec(x,i);return pwName(id)+(q?' ('+q+')':pwCat(id).prec?' (sous-type à compléter)':'');};
 const carOk=x=>!!(x&&x.car&&CARCOL.every(k=>x.car[k]&&x.car[k][0]!==''&&x.car[k][0]!=null&&x.car[k][1]!==''&&x.car[k][1]!=null));
 function rebuildRaces(){RACES={};CARMAX={};PRED={};PREDFUT={};ACCRU={};
   for(const cr of raceCres()){const x=raceRec(cr),n=x.sing;if(!n)continue;
@@ -335,6 +335,8 @@ const fxKey=(k,n)=>k+':'+nrm(n);
 const fxTarget=c=>!c?'':c==='fortune'?'Fortune':c.replace(/^(car|comp|der):/,'');
 const sgn=v=>(v>0?'+':v<0?'−':'')+Math.abs(v);
 const fxLabel=e=>e.t==='rap'?e.txt:e.t==='perm'?fxTarget(e.cible)+' '+sgn(e.val):(e.cible||'Jet')+' '+sgn(e.val);
+/* Nom de race affiché pour un personnage : au féminin si le personnage est féminin et que la race a un nom féminin */
+function raceLabel(c){if(!c||!c.race)return '';if(c.genre!=='f')return c.race;const x=raceRecOf(c);return (x&&(x.fem||'').trim())||c.race;}
 function raceRecOf(c){const cr=c&&c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);return cr?raceRec(cr):null;}
 /* Effets du personnage : race (capacités, avantages, désavantages) + atouts qu'il a pris */
 function fxOf(c){if(modelV1())return fxListV1(c,raceStoredOf(c),S.pouvoirs||{},S.capacites||{});const x=raceRecOf(c);if(!x)return [];const out=[],has=new Set(atoutsOf(c).map(a=>nrmA(a.nom)));
@@ -362,7 +364,7 @@ function fxSync(c0){if(!c0||!c0.fx)return c0;const want={};for(const e of fxOf(c
 
 /* ---------- Paramètres (écran Paramètres, droits de gestion) ----------
    meta/params = {versions:[{date, v:{...}}]} ; la version active est la plus récente dont la date d'effet est passée. */
-const PARAM_TABS=[['couts','Ratios'],['paliers','Rang PJ'],['creation','Création'],['pnj','Rangs de PNJ'],['table','XP Groupe'],['pouvoirs','Pouvoirs'],['donnees','Données']];
+const PARAM_TABS=[['couts','Ratios'],['paliers','Rang PJ'],['creation','Création'],['pnj','Rangs de PNJ'],['table','XP Groupe'],['pouvoirs','Pouvoirs'],['capacites','Capacités'],['donnees','Données']];
 const PARAM_DEF={
  couts:[['feerie','Féerie : (niveau suivant) ×',5],['masque','Masque : (niveau suivant) ×',4],['carac','Caractéristique : (niveau suivant) ×',4],['carac12','Caractéristique : passage de 1 à 2',12],['comp','Compétence : (niveau suivant) ×',3],['fut','Compétence futile : (niveau suivant) ×',1],['fortune','Fortune : (niveau suivant) ×',2],['atout','Atout féerique',8],['spec','Spécialité',8],['specFut','Spécialité futile',2],['mauvaiseMain','Mauvaise main',12],['prof','Profil de PNJ : (niveau suivant) ×',12]],
  paliers:[['p1feerie','Profond : Féerie',7],['p1carac','Profond : une caractéristique à',6],['p1comp','Profond : une compétence à',6],['p1atout','Profond : atouts féeriques',4],['p2feerie','Légendaire : Féerie',8],['p2carac','Légendaire : une caractéristique à',7],['p2comp','Légendaire : une compétence à',7],['p2atout','Légendaire : atouts féeriques',5],['palierMax','Compétences prises en compte : niveau max d\'au moins',7]],
@@ -387,6 +389,6 @@ const pwHas=(c,i)=>(c.pw||[]).some(o=>o.i===i);
 /* Emplacement i ouvert au choix : rangs 1 à 6 pour les masqués et démasqués ; profond et légendaire une fois leur palier atteint (choisis à la main, comme les autres) */
 const pwSlotOpen=(c,i)=>i<6?(c.pw||[]).filter(o=>o.i<6).length<pwChoiceMax(c):palierOk(c,i-6);
 const pwToChoose=c=>Math.max(0,pwChoiceMax(c)-(c.pw||[]).filter(o=>o.i<6).length)+[6,7].filter(i=>!pwHas(c,i)&&palierOk(c,i-6)).length;
-/* Capacité ou option de choix avec sa variante, pour l'affichage */
+/* Capacité ou option de choix avec son sous-type, pour l'affichage */
 const capFull=a=>(a&&a[0]||'')+(a&&a[2]?' ('+a[2]+')':'');
 const choixFull=o=>(o&&o[1]||'')+(o&&o[2]?' ('+o[2]+')':'');

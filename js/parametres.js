@@ -4,7 +4,8 @@ function viewParams(){if(!S.paramsReady)return `<h2 style="margin-top:4px">Param
   const tab=S.ptab||'creation',G=isGest(),g=pDraft();
   let h=`<h2 style="margin-top:4px">Paramètres</h2><div class="ptabs" role="group" aria-label="Sections">${PARAM_TABS.map(([k,l])=>`<button data-act="ptab" data-v="${k}" aria-pressed="${tab===k}">${l}</button>`).join('')}</div>`;
   if(tab==='donnees')return h+viewDonnees();
-  if(tab==='pouvoirs')return h+viewPwCat();
+  if(tab==='pouvoirs')return h+viewElCat('pw');
+  if(tab==='capacites')return h+viewElCat('cap');
   const conf='<span class="tagc">à confirmer</span>';
   const row=([k,l,,c])=>`<div class="pr2"><label for="p-${k}">${esc(l)} ${c?conf:''}</label><span class="pv">${k==='ppBareme'?`<select id="p-${k}" data-pv="${k}">${['1, 3, 6, 10, 15','1, 4, 10, 20, 35'].map(o=>`<option${g.v[k]===o?' selected':''}>${o}</option>`).join('')}</select>`:`<input id="p-${k}" type="number" min="0" data-pv="${k}" value="${esc(g.v[k])}">`}</span></div>`;
   const T={couts:'Ratios',paliers:'Rang PJ : conditions Profond et Légendaire',creation:'Règles de création',pnj:'Rangs de PNJ',table:'XP Groupe'};

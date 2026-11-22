@@ -28,7 +28,7 @@ const lastMJ=p=>!!p&&p.role==='MJ'&&!p.parti&&mjCount()<=1;
 const isGest=()=>!S.asPlayer&&!!ME&&hasGest(S.players[ME]);
 const gestCount=()=>Object.values(S.players).filter(hasGest).length;
 const meOwns=c=>!!ME&&!!S.players[ME]&&(S.players[ME].persos||[]).includes(c.id);
-const vis=c=>!c.cache||meOwns(c)||owners(c).length===0;
+const vis=c=>!c.cache||meOwns(c)||owners(c).length===0||isGest();
 const ids=()=>Object.keys(S.chars).filter(i=>vis(S.chars[i])).sort((a,b)=>{const i=ORDER.indexOf(a),j=ORDER.indexOf(b);return (i<0?99:i)-(j<0?99:j)||(S.chars[a].court||'').localeCompare(S.chars[b].court||'');});
 const pjIds=()=>ids().filter(i=>S.chars[i].type==='PJ');
 const playersSorted=()=>Object.values(S.players).sort((a,b)=>(a.nom||'').localeCompare(b.nom||''));
