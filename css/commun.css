@@ -76,3 +76,18 @@
 /* Volets trop hauts pour l'écran : défilement dans le volet (fiche d'un pouvoir avec ses sous-types…) */
 .sheet{max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain}
 .field .illed label.btn{font-family:inherit;text-transform:none;letter-spacing:0;font-size:15px;color:var(--fg);font-weight:600}
+/* Lot 4 : profils, points de personnage, traits, informations de race */
+.prl{display:flex;flex-direction:column;gap:6px}.prr{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;border:1px solid var(--line);background:var(--surface);color:inherit;border-radius:12px;padding:10px 12px;font:inherit;cursor:pointer}
+.prr small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.pfc{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}.pfc small{display:block;color:var(--muted);font-size:12.5px}
+.ptc{margin-top:12px;background:var(--surface2)}.ptc svg,.ptl svg{width:18px;height:18px;vertical-align:-3px;color:var(--brass,var(--accent))}
+.ptl{display:flex;align-items:center;gap:6px;font-size:13.5px;margin:2px 0 6px}.ptl span:first-of-type{flex:1}
+.ppl{display:flex;flex-direction:column;gap:4px}.ppi{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;border:1px solid var(--line);background:var(--surface);color:inherit;border-radius:10px;padding:8px 10px;font:inherit;font-size:14px;cursor:pointer;width:100%}
+.ppi small{color:var(--muted);font-size:12px}.ppi small.bad{color:var(--bad)}.ppi.off{opacity:.45;cursor:default}.ppi.got{background:var(--surface2);cursor:default}.ppi.oth{margin-top:10px;border-style:dashed}
+.ppi b{white-space:nowrap}
+.spr{display:flex;gap:6px;align-items:center;margin-bottom:6px}.spr input[type=text]{flex:1;min-width:0}
+.tgrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0}.tgrow small{display:block}
+.rinf{border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:8px}
+.bad{color:var(--bad)}
+input[type=search]{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0;width:100%;box-shadow:inset 0 1px 3px rgba(60,40,10,.15)}
+.ppi+.ppi{margin-top:0}

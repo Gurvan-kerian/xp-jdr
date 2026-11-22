@@ -1,8 +1,10 @@
 /* La belle appli — Référentiel des races */
 /* --- Référentiel › Races --- */
 function viewRef(){if(!S.creaturesReady||!S.racesReady||!S.pouvoirsReady)return `<div class="card empty">Chargement…</div>`;if(!S.rf)return viewRaces();
-  if(!S.rf.hum&&!isGest())return refRead();
-  let h=S.rf.hum?refHum():refSheet();
+  if(!S.rf.hum&&S.rf.id&&S.rfTab==='info')return raceInfoView();
+  const tabsIn=x=>{if(S.rf.hum||!S.rf.id)return x;const k=x.indexOf('</div>');return k<0?x:x.slice(0,k+6)+raceTabs()+x.slice(k+6);};
+  if(!S.rf.hum&&!isGest())return tabsIn(refRead());
+  let h=S.rf.hum?refHum():tabsIn(refSheet());
   if(!isGest()){const i=h.indexOf('<div class="card"'),k=h.indexOf('>',i)+1,e=h.lastIndexOf('</div>');
     if(i>=0&&e>k)h=h.slice(0,k)+'<div class="rolock">Lecture seule : la modification des races est réservée aux personnes ayant les droits de gestion.</div><fieldset disabled class="ro">'+h.slice(k,e)+'</fieldset>'+h.slice(e);}
   return h;}
@@ -229,3 +231,29 @@ function viewRaces(){if(!S.creaturesReady||!S.racesReady||!S.pouvoirsReady)retur
   h+=`<h2>Hors féerie</h2><div class="card" style="padding:2px 12px"><div class="lr"><button class="nm" data-act="rfHum"><b>${HUMAIN}</b>${pn.length?` <span class="rpj">· ${pn.map(c=>esc(c.court)).join(', ')}</span>`:''}</button><span class="muted small">règles</span><span></span></div></div>`;
   if(G)h+=`<div class="actions" style="margin-top:12px"><button class="btn pri cta" data-act="rfNew">+ Nouvelle race</button></div>`;
   return h;}
+/* ---------- Lot 4 : fiche de race, onglet Informations (traits de caractère, informations libres) ---------- */
+const RI_ACTS=new Set(['rfTab','rfTrAdd','rfTrDel','rfInfAdd','rfInfDel','riEye','riEyeOk']);
+const raceTabs=()=>`<div class="tabs2" role="group" aria-label="Vue de la fiche de race" style="margin-bottom:8px"><button data-act="rfTab" data-v="fiche" aria-pressed="${S.rfTab!=='info'}">Fiche</button><button data-act="rfTab" data-v="info" aria-pressed="${S.rfTab==='info'}">Informations</button></div>`;
+function raceInfoSave(id,fn){const r0=S.races[id];if(!r0)return false;const r=clone(r0);fn(r);saveRaces({...S.races,[id]:r});return true;}
+function raceInfoView(){const g=S.rf,cr=S.creatures.find(c=>c.id===g.id);if(!cr){S.rf=null;return viewRaces();}const x=raceRec(cr),r=S.races[cr.id],G=isGest();
+  if(!G&&!raceVisible(cr,x)){S.rf=null;return viewRaces();}
+  const T=(r&&r.traits)||[],I=((r&&r.infos)||[]).filter(i=>G||!i.cache);
+  let h=`<div style="margin-bottom:8px"><button class="btn ghost" style="white-space:nowrap" data-act="rfBack">‹ Races</button></div>${raceTabs()}<div class="card"><h2 class="rhd" style="margin:0 0 4px">${illThumb('race',cr.id,56)}<span>${esc(x.sing)}${esc(raceFem(x))}</span></h2>`;
+  if(!r)return h+`<div class="muted small">Enregistre d'abord la fiche de la race (onglet Fiche).</div></div>`;
+  h+=`<h3 class="rs">Traits de caractère de la race</h3><div class="fxl">${T.map((t,i)=>`<span class="rchip">${esc(t)}${G?`<button data-act="rfTrDel" data-i="${i}" aria-label="Retirer ${esc(t)}">✕</button>`:''}</span>`).join('')||'<span class="muted small">Aucun trait saisi.</span>'}</div>
+  ${G?`<div class="radd"><input type="text" data-rftr="1" value="${esc(S.rfTrNew||'')}" placeholder="Nouveau trait…" aria-label="Nouveau trait"><button class="btn" data-act="rfTrAdd">Ajouter</button></div><div class="muted small">Nombre libre. Chaque trait ajouté rejoint la liste proposée pour le trait de race des personnages.</div>`:''}
+  <h3 class="rs">Informations complémentaires</h3>`;
+  if(G)h+=(r.infos||[]).map((i,k)=>`<div class="rinf"><div class="frow"><div class="field"><label for="ril${k}">Intitulé</label><input id="ril${k}" type="text" data-rfi="${k}" data-f="lab" value="${esc(i.lab||'')}"></div><div style="display:flex;gap:6px;align-items:flex-end">${eyeBtn('riEye',`data-i="${k}"`,!i.cache,i.lab||'Information')}<button class="btn ghost" data-act="rfInfDel" data-i="${k}" aria-label="Supprimer l'information">✕</button></div></div>
+    <div class="field"><label for="rit${k}">Texte</label><textarea id="rit${k}" rows="2" data-rfi="${k}" data-f="txt">${esc(i.txt||'')}</textarea></div></div>`).join('')+`<button class="btn ghost" data-act="rfInfAdd">+ Information</button><div class="muted small" style="margin-top:6px">Un intitulé et un texte libre, avec son œil (visible par la table ou non). Rien de cet onglet ne s'affiche sur la feuille de personnage.</div>`;
+  else h+=I.length?I.map(i=>`<div class="fi"><b>${esc(i.lab||'')}</b><div class="s">${esc(i.txt||'')}</div></div>`).join(''):'<span class="muted small">—</span>';
+  return h+'</div>';}
+function riAct(a,d){const g=S.rf;if(!g)return false;if(a==='rfTab'){S.rfTab=d.v;return;}if(!isGest())return false;const id=g.id;
+  if(a==='rfTrAdd'){const v=(S.rfTrNew||'').trim();if(!v)return;raceInfoSave(id,r=>{r.traits=r.traits||[];if(!r.traits.some(x=>nrm(x)===nrm(v)))r.traits.push(v);});S.rfTrNew='';}
+  else if(a==='rfTrDel')raceInfoSave(id,r=>{r.traits=(r.traits||[]).filter((x,i)=>i!==+d.i);});
+  else if(a==='rfInfAdd')raceInfoSave(id,r=>{r.infos=[...(r.infos||[]),{id:'i'+Date.now().toString(36),lab:'',txt:'',cache:true}];});
+  else if(a==='rfInfDel')raceInfoSave(id,r=>{r.infos=(r.infos||[]).filter((x,i)=>i!==+d.i);});
+  else if(a==='riEye'){const i=((S.races[id]||{}).infos||[])[+d.i];if(!i)return;S.dlg={kind:'riEye',id,i:+d.i,open:!!i.cache};}
+  else if(a==='riEyeOk'){const e=S.dlg;S.dlg=null;if(e&&e.kind==='riEye')raceInfoSave(e.id,r=>{const i=(r.infos||[])[e.i];if(i)i.cache=!e.open;});}}
+function riInput(t,ev){const D=t.dataset;if(D.rftr!==undefined){S.rfTrNew=t.value;return true;}
+  if(D.rfi!==undefined&&S.rf){if(ev==='change'&&isGest())raceInfoSave(S.rf.id,r=>{const i=(r.infos||[])[+D.rfi];if(i)i[D.f]=t.value.trim();});return true;}return false;}
+const riEyeSheet=g=>{const i=((S.races[g.id]||{}).infos||[])[g.i]||{};return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Confirmation"><div class="in"><div><h2>${g.open?'Rendre visible':'Masquer'} « ${esc(i.lab||'Information')} » ?</h2></div><div class="muted small">${g.open?'Toute la table pourra lire cette information.':'Seules les personnes ayant les droits de gestion la verront.'}</div><div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="riEyeOk">Confirmer</button></div></div></div>`;};

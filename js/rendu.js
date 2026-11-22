@@ -56,6 +56,7 @@ function renderSheet(){
     const g=S.dlg;let titre='',txt='';
     if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.groupe}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.de}Règles</button><button data-act="tab" data-v="params"${S.view==='params'?' aria-current="page"':''}>${ICON.baguette}Paramètres</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
+    if(PF_KINDS.has(g.kind)){const html=pfSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='me'){root.innerHTML=idSheet();return;}
     if(g.kind==='elEdit'||g.kind==='pwPick'){const html=g.kind==='elEdit'?elEditSheet(g):pwPickSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='pl'||g.kind==='pc'||g.kind==='newp'||g.kind==='newc'){const html=g.kind==='pl'?plSheet(g):g.kind==='pc'?pcSheet(g):g.kind==='newp'?newPSheet():newCSheet();if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}

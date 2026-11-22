@@ -267,6 +267,7 @@ function undo(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(!a||
 
 function cancelAchat(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(!a)return{c:n,reverted:false};let rev=false;if(a.key){const r=ref(n,a.key);if(r&&(r.kind==='atout'||r.kind==='spec')){if((r.o.cur||0)>0){r.o.cur=r.o.cur-1;rev=true;}}else if(r&&(r.o.cur||0)===a.to){r.o.cur=a.from;rev=true;}}if(a.key==='spec'&&Array.isArray(n.specs))n.specs=n.specs.filter(x=>x.achat!==id);
   if(a.key==='atout'&&Array.isArray(n.atouts)){const e=n.atouts.find(x=>x.achat===id);if(e){revokeTyp(n,e);n.atouts=n.atouts.filter(x=>x!==e);}}
+  if(a.ppel&&Array.isArray(n.specs)){const k=n.specs.length;n.specs=n.specs.filter(x=>x.ppa!==id);if(n.specs.length<k&&n.spec)n.spec.cur=Math.max(0,(n.spec.cur||0)-(k-n.specs.length));}
   if((a.key||'').startsWith('pp:')){const p=(n.profils||[]).find(x=>x.nom===a.key.slice(3));if(p){const v=p.note==null||p.note===''?0:+p.note;if(!isNaN(v))p.note=v+(+a.pp||0);}rev=true;}
   n.achats=n.achats.filter(x=>x.id!==id);return{c:ppSync(c,n),reverted:rev};}
 function editAchat(c,id,p){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(a){if(p.label!==undefined)a.label=p.label;if(p.cout!==undefined)a.cout=p.cout;if(p.date!==undefined)a.date=p.date||null;}return n;}
@@ -339,7 +340,8 @@ const fxLabel=e=>e.t==='rap'?e.txt:e.t==='perm'?fxTarget(e.cible)+' '+sgn(e.val)
 function raceLabel(c){if(!c||!c.race)return '';if(c.genre!=='f')return c.race;const x=raceRecOf(c);return (x&&(x.fem||'').trim())||c.race;}
 function raceRecOf(c){const cr=c&&c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);return cr?raceRec(cr):null;}
 /* Effets du personnage : race (capacités, avantages, désavantages) + atouts qu'il a pris */
-function fxOf(c){if(modelV1())return fxListV1(c,raceStoredOf(c),S.pouvoirs||{},S.capacites||{});const x=raceRecOf(c);if(!x)return [];const out=[],has=new Set(atoutsOf(c).map(a=>nrmA(a.nom)));
+function fxOf(c){const L=fxOf0(c);return typeof ppFx==='function'?L.concat(ppFx(c)):L;}
+function fxOf0(c){if(modelV1())return fxListV1(c,raceStoredOf(c),S.pouvoirs||{},S.capacites||{});const x=raceRecOf(c);if(!x)return [];const out=[],has=new Set(atoutsOf(c).map(a=>nrmA(a.nom)));
   if(x.fx)for(const k of ['cap','av','dv','at'])for(const e of (x[k]||[])){if(!e||!e[0])continue;if(k==='at'&&!has.has(nrmA(e[0])))continue;
     for(const f of (x.fx[fxKey(k,e[0])]||[]))out.push({...f,src:e[0],kind:k});}
   for(const id of pwOwnedIds(c,x)){const p=pwCat(id);for(const f of (p.fx||[]))out.push({...f,src:p.nom,kind:'pw'});}
@@ -364,7 +366,7 @@ function fxSync(c0){if(!c0||!c0.fx)return c0;const want={};for(const e of fxOf(c
 
 /* ---------- Paramètres (écran Paramètres, droits de gestion) ----------
    meta/params = {versions:[{date, v:{...}}]} ; la version active est la plus récente dont la date d'effet est passée. */
-const PARAM_TABS=[['couts','Ratios'],['paliers','Rang PJ'],['creation','Création'],['pnj','Rangs de PNJ'],['table','XP Groupe'],['pouvoirs','Pouvoirs'],['capacites','Capacités'],['donnees','Données']];
+const PARAM_TABS=[['couts','Ratios'],['paliers','Rang PJ'],['creation','Création'],['pnj','Rangs de PNJ'],['table','XP Groupe'],['pouvoirs','Pouvoirs'],['capacites','Capacités'],['profils','Profils'],['donnees','Données']];
 const PARAM_DEF={
  couts:[['feerie','Féerie : (niveau suivant) ×',5],['masque','Masque : (niveau suivant) ×',4],['carac','Caractéristique : (niveau suivant) ×',4],['carac12','Caractéristique : passage de 1 à 2',12],['comp','Compétence : (niveau suivant) ×',3],['fut','Compétence futile : (niveau suivant) ×',1],['fortune','Fortune : (niveau suivant) ×',2],['atout','Atout féerique',8],['spec','Spécialité',8],['specFut','Spécialité futile',2],['mauvaiseMain','Mauvaise main',12],['prof','Profil de PNJ : (niveau suivant) ×',12]],
  paliers:[['p1feerie','Profond : Féerie',7],['p1carac','Profond : une caractéristique à',6],['p1comp','Profond : une compétence à',6],['p1atout','Profond : atouts féeriques',4],['p2feerie','Légendaire : Féerie',8],['p2carac','Légendaire : une caractéristique à',7],['p2comp','Légendaire : une compétence à',7],['p2atout','Légendaire : atouts féeriques',5],['palierMax','Compétences prises en compte : niveau max d\'au moins',7]],

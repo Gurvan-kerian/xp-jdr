@@ -95,7 +95,7 @@ async function open(browser,base,db,me){const ctx=await browser.newContext();con
       ok(rdy.r&&/Acquérir le pouvoir profond/.test(rdy.txt)&&/Atouts ✓/.test(rdy.txt),'critères réunis : '+rdy.txt.replace(/\s+/g,' ').trim());
       /* Paramètres : nouveaux libellés */
       await page.evaluate(()=>{S.view='params';S.ptab='couts';render();});const tabs=await page.$$eval('[data-act="ptab"]',l=>l.map(b=>b.textContent));
-      ok(tabs.join('|')==='Ratios|Rang PJ|Création|Rangs de PNJ|XP Groupe|Pouvoirs|Capacités|Données','libellés des onglets : '+tabs.join(', '));
+      ok(tabs.join('|')==='Ratios|Rang PJ|Création|Rangs de PNJ|XP Groupe|Pouvoirs|Capacités|Profils|Données','libellés des onglets : '+tabs.join(', '));
       /* case « inconnu » : le MJ nomme le pouvoir légendaire du Troll, visible par la table */
       await page.evaluate(()=>{S.view='univers';S.uni='creatures';S.rf=rfDraft('trolls');S.rf.pw[7]=['Rage des montagnes',false,''];S.rf.pwn={7:{nat:'d',type:'actif'}};render();});
       const eyeL=await page.evaluate(()=>{const cr=S.creatures.find(c=>c.id==='trolls');const e=eyeOf(cr,raceRec(cr));return !!(e.fiche&&e.pw[7]);});
@@ -202,7 +202,75 @@ async function open(browser,base,db,me){const ctx=await browser.newContext();con
       await page.evaluate(id=>{S.ptr={...(S.ptr||{}),[illId('pw',id)]:'data:image/gif;base64,R0lGODlhAQABAAAAACw='};S.view='params';S.ptab='pouvoirs';render();},pid);
       ok(!!(await page.$(`[data-act="elEdit"][data-id="${pid}"] img.illt`)),'illustration affichée dans le catalogue');
       ok(!errs.length,'aucune erreur dans la console'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
-    console.log('7. Données trop anciennes : la mise à jour s\'arrête sans rien enregistrer');
+    console.log('7. Lot 4 « Référentiel : profils, points de personnage, traits »');
+    {const {page,errs,ctx}=await open(browser,base,db,'lorenzo');let t;
+      ok(!db.get('meta/profils'),'pas de document profils avant la première modification (valeurs par défaut)');
+      ok(await page.evaluate(()=>Object.keys(ppEls()).length)>300,'tableaux des 6 profils chargés par défaut');
+      await page.evaluate(()=>{S.dlg=null;S.view='params';S.ptab='profils';render();});
+      ok(await page.$$eval('[data-act="pfOpen"]',l=>l.length)===6,'Paramètres › Profils : 6 profils');
+      await page.click('[data-act="pfOpen"][data-p="Aventurier"]');t=await page.textContent('#sheetRoot');
+      ok(/Audacieux/.test(t)&&/Titre d'Aventurier/.test(t)&&/22 points de compétences/.test(t),'édition du profil : traits et carte du titre');
+      await page.fill('[data-pfe="tnew"]','Rêveur');await page.click('[data-act="pfTrAdd"]');
+      await page.click('[data-act="pfSpEd"][data-k="Conduite"]');await page.click('[data-act="pfSpAdd"]');
+      await page.fill('[data-pfs="5"][data-c="0"]','Moto');await page.fill('[data-pfs="5"][data-c="1"]','AGI');await page.click('[data-act="pfSpOk"]');
+      await page.click('[data-act="pfSave"]');await page.waitForTimeout(300);
+      let D=db.get('meta/profils');ok(D&&D.byId.Aventurier.traits.includes('Rêveur')&&Object.keys(D.el).length>300,'profil enregistré (trait ajouté, tableau complet)');
+      ok(D.byId.Aventurier.specs.Conduite.some(x=>x[0]==='Moto')&&await page.evaluate(()=>CATSPEC.Conduite.some(x=>x[0]==='Moto')),'spécialité ajoutée et appliquée');
+      await page.click('[data-act="pfOpen"][data-p="Aventurier"]');await page.click('[data-act="pfTab"][data-v="tab"]');await page.click('[data-act="pfRub"][data-v="C"]');
+      t=await page.textContent('#sheetRoot');ok(/antiquaire ou conservateur/.test(t)&&/1 \/ 2/.test(t),'tableau : contacts avec coût humain / fée');
+      await page.click('[data-act="ppElNew"]');await page.fill('[data-ppe="nom"]','Objet de test');await page.click('[data-act="ppElSave"]');
+      ok(/À compléter : le coût/.test(await page.textContent('#sheetRoot')),'élément : coût obligatoire');
+      await page.fill('[data-ppe="ca"]','1');await page.click('[data-act="ppElSave"]');await page.waitForTimeout(300);
+      ok(Object.values(db.get('meta/profils').el).some(e=>e.nom==='Objet de test'&&e.rub==='C'&&e.cost.a===1),'nouvel élément enregistré');
+      await page.click('#sheetRoot button[data-act="closeSheet"]');
+      /* fiche : titre à partir du rang 4, achat dans le tableau */
+      await page.evaluate(()=>{S.dlg=null;S.view='sheet';S.sel='kerian';S.shTab='prog';S.onlyBuy=false;render();});
+      t=await page.textContent('#app');ok(/Titre d'Aventurier/.test(t)&&/16 \/ 22/.test(t)&&!/Titre d'Érudit/.test(t),'ligne du titre au rang 4 seulement (Aventurier 16 / 22)');
+      ok(/Traits de caractère/.test(t)&&/Aucun trait renseigné/.test(t),'bloc des traits (vide à l\'installation)');
+      await page.click('[data-act="ppOpen"][data-prof="Aventurier"]');t=await page.textContent('#sheetRoot');
+      ok(/dépense ses PP Aventurier/.test(t)&&/courtisane ou gigolo/.test(t)&&!/dandy/.test(t)&&/Titre d'Aventurier/.test(t),'tableau d\'achat : activités ouvertes des autres profils, pas les réservées');
+      const gid=await page.evaluate(()=>Object.entries(ppEls()).find(([,e])=>e.nom==='garde-forestier')[0]);
+      await page.click(`[data-act="ppPick"][data-id="${gid}"]`);t=await page.textContent('#sheetRoot');ok(/Fortune 3/.test(t)&&/Reste après l'achat/.test(t),'confirmation : effet et reste');
+      await page.click('[data-act="ppBuyOk"]');await page.waitForTimeout(300);
+      let K=db.get('chars/kerian');let A=K.achats.find(a=>a.ppel&&a.ppel.nom==='garde-forestier');
+      ok(A&&A.pp===2&&K.profils[0].note===2&&A.ppel.opt==='p'&&A.ppel.fort===3,'achat enregistré : 2 PP, activité principale, Fortune 3 indicative');
+      ok(K.fortune.cur===7,'Fortune enregistrée inchangée');
+      const aid=await page.evaluate(()=>Object.entries(ppEls()).find(([,e])=>e.nom.startsWith('antiquaire ou conservateur'))[0]);
+      await page.click('[data-act="ppOpen"][data-prof="Aventurier"]');await page.click(`[data-act="ppPick"][data-id="${aid}"]`);await page.click('[data-act="ppOpt"][data-v="f"]');
+      ok(/2 PP/.test(await page.textContent('#sheetRoot .calc')),'contact fée : coût 2');await page.click('[data-act="ppOpt"][data-v="h"]');await page.click('[data-act="ppBuyOk"]');await page.waitForTimeout(300);
+      K=db.get('chars/kerian');ok(K.profils[0].note===1&&K.achats.some(a=>a.ppel&&a.ppel.opt==='h'&&a.pp===1),'contact humain : 1 PP');
+      ok(await page.evaluate(()=>ppPreMiss({pre:[{t:'comp',n:'Sciences',v:6},{t:'comp',n:'Culture',v:3}]},S.chars.kerian).length)===1,'prérequis : Sciences 6 manquant, Culture 3 rempli');
+      await page.evaluate(id=>{const r=cancelAchat(S.chars.kerian,id);saveChar(r.c);},A.id);await page.waitForTimeout(300);
+      ok(db.get('chars/kerian').profils[0].note===3,'annulation : PP rendus');
+      await page.click('[data-act="ppOpen"][data-prof="Aventurier"]');await page.click('[data-act="ppOther"]');await page.fill('[data-ppb="olab"]','Cheval de trait');await page.fill('[data-ppb="ocost"]','1');
+      await page.click('[data-act="ppBuyOk"]');await page.waitForTimeout(300);K=db.get('chars/kerian');ok(K.profils[0].note===2&&K.achats.some(a=>a.label==='PP Aventurier - 1 - Cheval de trait'&&!a.ppel),'autre achat en saisie libre');
+      /* traits et nature féerique */
+      await page.click('[data-act="trOpen"]');await page.click('[data-act="trNat"][data-v="mod"]');
+      await page.selectOption('[data-trf="maj"]','Curieux');await page.fill('[data-trf="libre"]','Mélancolique');await page.click('[data-act="trSave"]');await page.waitForTimeout(300);
+      K=db.get('chars/kerian');ok(K.natf==='mod'&&K.traits.maj.n==='Curieux'&&K.traits.maj.p==='Aventurier'&&K.traits.libre==='Mélancolique','traits et nature enregistrés');
+      t=await page.textContent('#app');ok(/fée moderne/.test(t)&&/Curieux/.test(t),'traits et nature affichés sur la fiche');
+      /* fiche complète */
+      await page.evaluate(()=>{S.shTab='full';render();});t=await page.textContent('#app');
+      ok(/Contacts et points de personnage/.test(t)&&/antiquaire ou conservateur/.test(t)&&/Cheval de trait/.test(t),'fiche complète : acquisitions et autres dépenses');
+      /* fiche de race : onglet Informations */
+      const elfe=await page.evaluate(()=>S.creatures.find(c=>raceRec(c).sing==='Elfe').id);
+      await page.evaluate(id=>{S.shTab='prog';S.view='univers';S.uni='creatures';S.rf=rfDraft(id);S.rfTab='fiche';render();},elfe);
+      await page.click('[data-act="rfTab"][data-v="info"]');await page.fill('[data-rftr]','Noble');await page.click('[data-act="rfTrAdd"]');await page.click('[data-act="rfInfAdd"]');
+      await page.fill('[data-rfi="0"][data-f="lab"]','Taille');await page.press('[data-rfi="0"][data-f="lab"]','Tab');await page.waitForTimeout(300);
+      let R=db.get('meta/races').byId[elfe];ok(R.traits.includes('Noble')&&R.infos[0].lab==='Taille'&&R.infos[0].cache===true,'race : trait et information enregistrés (masquée par défaut)');
+      await page.click('[data-act="rfTab"][data-v="fiche"]');await page.click('[data-act="rfSave"]');await page.waitForTimeout(300);
+      R=db.get('meta/races').byId[elfe];ok(R.traits&&R.traits.includes('Noble')&&R.infos&&R.infos.length===1,'enregistrer la fiche de race garde traits et informations');
+      await page.evaluate(()=>{S.view='sheet';S.sel='kerian';render();});await page.click('[data-act="trOpen"]');
+      ok(await page.$$eval('[data-trf="race"] option',l=>l.map(o=>o.textContent).includes('Noble')),'trait de race proposé sur la fiche');await page.click('#sheetRoot button[data-act="closeSheet"]');
+      ok(!errs.length,'aucune erreur dans la console'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
+    {const {page,errs,ctx}=await open(browser,base,db,'peter');let t;
+      const elfe=await page.evaluate(()=>S.creatures.find(c=>raceRec(c).sing==='Elfe').id);
+      await page.evaluate(id=>{S.view='univers';S.uni='creatures';S.rf=rfDraft(id);S.rfTab='info';render();},elfe);t=await page.textContent('#app');
+      ok(!/Taille/.test(t),'joueur : information masquée invisible');
+      await page.evaluate(()=>{S.rf=null;S.view='params';S.ptab='profils';render();});await page.click('[data-act="pfOpen"][data-p="Savant"]');
+      ok(!(await page.$('#sheetRoot [data-act="pfSave"]')),'joueur : profils en lecture seule');
+      ok(!errs.length,'aucune erreur (joueur)'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
+    console.log('8. Données trop anciennes : la mise à jour s\'arrête sans rien enregistrer');
     {const old=JSON.parse(JSON.stringify(docs));delete old['meta/races'].byId.humain.kk;const db2=fakeDb(old);const {page,errs,ctx}=await open(browser,base,db2,'lorenzo');
       await page.click('[data-act="migRun"]');await page.waitForFunction(()=>S.migErr||S.migDone,null,{timeout:15000});const t=await page.textContent('#app');
       ok(/s'est arrêtée sans rien enregistrer/.test(t)&&/17\/11/.test(t),'message d\'erreur clair avec l\'élément en cause');ok(db2.writes.length===0,'aucune écriture');

@@ -210,7 +210,7 @@ document.addEventListener('click',ev=>{
     let list=clone(S.creatures),id=g.id;
     if(!id){id=creSlug(plur)||('race-'+Date.now().toString(36));if(list.some(c=>c.id===id))id+='-'+Date.now().toString(36);list.push({id,nom:plur,fam:g.fam,done:false});}
     else{const cr=list.find(c=>c.id===id);if(cr){cr.fam=g.fam;}}
-    const old=S.races[id]&&S.races[id].sing;rec.eye=(S.races[id]&&S.races[id].eye)||eyeAll(false);saveRaceView(id,rec);saveCreatures(list);rebuildRaces();
+    {const pv=S.races[id]||{};for(const k of ['traits','infos'])if(pv[k])rec[k]=pv[k];}const old=S.races[id]&&S.races[id].sing;rec.eye=(S.races[id]&&S.races[id].eye)||eyeAll(false);saveRaceView(id,rec);saveCreatures(list);rebuildRaces();
     if(old&&old!==sing)for(const c of Object.values(S.chars))if(c.race===old){const n=clone(c);n.race=sing;saveChar(n);}
     S.rf=rfDraft(id);S.rf.err='';S.rf.saved=true;}
   else if(a==='ptrSave'){const g=S.dlg,im=window._ptrImg;if(!g||!im)return;const s2=g.base*g.z,cv=document.createElement('canvas');cv.width=cv.height=256;
@@ -248,7 +248,9 @@ document.addEventListener('click',ev=>{
     const c=clone(c0);c.specs=specsOf(c).slice();
     if(e.offert){c.spec.cur=Math.max(0,(c.spec.cur||0)-1);c.specs.splice(+d.i,1);}else c.specs[+d.i]={nom:e.nom,cible:null};
     saveChar(c);return;}
-  else if(a==='ppOpen'){S.dlg={kind:'pp',cid:S.sel,prof:d.prof,spent:'',why:''};}
+  else if(a==='ppOpen'){S.dlg={kind:'ppBuy',cid:S.sel,prof:d.prof,rub:'all',q:'',sel:null};}
+  else if(RI_ACTS.has(a)){if(riAct(a,d)===false)return;}
+  else if(PF_ACTS.has(a)){if(pfAct(a,d,t)===false)return;}
   else if(a==='ppSave'){const g=S.dlg,c0=S.chars[g.cid];if(!c0)return;const n=+String(g.spent).replace(',','.')||0;if(n<=0)return;const c=clone(c0),pr=c.profils.find(x=>x.nom===g.prof);if(!pr)return;
     const have=pr.note==null||pr.note===''?0:+pr.note;if(isNaN(have))return;pr.note=have-n;const why=(g.why||'').trim();
     c.achats=c.achats||[];c.achats.push({id:'a'+Date.now().toString(36)+Math.floor(Math.random()*1e3),date:today(),label:`PP ${g.prof} - ${ppFmt(n)} - ${why||'non précisé'}`,cout:0,key:'pp:'+g.prof,pp:n,ppNP:!why});
@@ -353,6 +355,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.spo!==undefined){S.spOther=S.spOther||{};S.spOther[S.sel+'|'+t.dataset.spo]=t.value;}
   else if(t.dataset.spt!==undefined&&S.sheet){S.sheet.sp={...(S.sheet.sp||{}),txt:t.value};const b=q0('#sheetRoot [data-act="specAdd"]');if(b){const nm=t.value.trim();b.disabled=!nm;}}
   else if(t.dataset.ppv!==undefined&&S.dlg&&S.dlg.kind==='pp'){S.dlg[t.dataset.ppv]=t.value;if(t.dataset.ppv==='spent'){const c=S.chars[S.dlg.cid],pr=c&&c.profils.find(x=>x.nom===S.dlg.prof),have=pr&&pr.note!=null&&pr.note!==''?+pr.note:0,n=+String(t.value).replace(',','.')||0,b=q0('#sheetRoot [data-act="ppSave"]'),inf=q0('#ppinfo');if(b)b.disabled=!(n>0);if(inf)inf.innerHTML=(n>0&&!isNaN(have)?`Il restera ${esc(ppFmt(have-n))} PP. `:'')+`Atteindre le rang N de ce profil ajoute N PP automatiquement. La dépense est inscrite dans l'historique des achats et peut y être annulée.`;}}
+  else if(pfInput(t,'input')||riInput(t,'input')){}
   else if(t.dataset.nm!==undefined){S.nameForm.nom=t.value;}
   else if(t.dataset.dn!==undefined){S.dlg.nom=t.value;}
   else if(t.dataset.dp!==undefined){S.dlg.pts=t.value;}
@@ -397,6 +400,7 @@ document.addEventListener('change',ev=>{
   else if(t.dataset.ptrfile){const f=t.files&&t.files[0],cid=t.dataset.ptrfile,lab=t.dataset.plab||'',back=S.dlg&&S.dlg.kind!=='ptr'?S.dlg:null;t.value='';if(!f)return;const rd=new FileReader();
     rd.onload=()=>{const im=new Image();im.onload=()=>{window._ptrImg=im;const w=im.naturalWidth,h=im.naturalHeight,base=Math.max(220/w,220/h);S.dlg={kind:'ptr',cid,lab,back,src:rd.result,w,h,base,z:1,x:130-w*base/2,y:130-h*base/2};S._force=true;render();};im.src=rd.result;};rd.readAsDataURL(f);}
   else if(t.dataset.cf&&!canEditC(S.chars[t.dataset.id])){render();}
+  else if(pfInput(t,'change')||riInput(t,'change')){}
   else if(t.dataset.cf==='race'){if(S.chars[t.dataset.id].race&&!isGest())return;let c=clone(S.chars[t.dataset.id]);c.race=t.value||null;if(c.race&&c.creation&&!c.spPred)c=grantPredSp(c);saveChar(c);}
   else if(t.dataset.cf==='kanka'){if(!isGest())return;const c=clone(S.chars[t.dataset.id]);const v=t.value.trim();if(v&&!/^https?:\/\//.test(v)){render();return;}c.kanka=v;saveChar(c);}
   else if(t.dataset.cf==='pj'){const c=clone(S.chars[t.dataset.id]);const v=t.value||null;if(v!==(c.pj||null)){c.pj=v;c.pjDate=v?today():null;}saveChar(c);}

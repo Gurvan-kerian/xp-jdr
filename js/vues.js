@@ -59,7 +59,7 @@ function viewSheet(){
   const id=S.sel&&S.chars[S.sel]&&vis(S.chars[S.sel])?S.sel:ids()[0];S.sel=id;const c=S.chars[id],s=summary(c,S.events);
   const chips=ids().map(i=>{const c=S.chars[i],img=portrait(c);return `<button class="pchip" data-act="sel" data-id="${i}" aria-pressed="${i===id}" aria-label="${esc(c.court)}"><span class="ph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span class="pn">${esc(c.court)}</span></button>`;}).join('');
   let h=`<button class="back" data-act="tab" data-v="team"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Tous les personnages</button><div class="pchips">${chips}</div>`;
-  h+=`<div style="margin-bottom:10px"><div class="shname"><span>${esc(c.nom)}</span>${kankaBtn(c.kanka,c.nom||c.court,'Fiche Kanka de '+(c.court||c.nom))}</div><div class="shrace">${c.race?`<span class="rc">${esc(raceLabel(c))}</span> · `:''}<span class="rg">${esc(rangOf(c))}</span></div><div class="muted small">${whoLine(c)}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div></div>`;
+  h+=`<div style="margin-bottom:10px"><div class="shname"><span>${esc(c.nom)}</span>${kankaBtn(c.kanka,c.nom||c.court,'Fiche Kanka de '+(c.court||c.nom))}</div><div class="shrace">${c.race?`<span class="rc">${esc(raceLabel(c))}</span> · `:''}<span class="rg">${esc(rangOf(c))}</span>${natfOf(c)?` · <span class="rg">${esc(NATF[natfOf(c)])}</span>`:''}</div><div class="muted small">${whoLine(c)}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div></div>`;
   /* Bandeau XP qui reste visible */
   h+=`<div class="xpbar"><div class="xpd"><b class="num">${s.dispo}</b><span>XP dispo</span></div><div class="xpo"><span><b class="num">${s.prevu}</b> prévu</span><span class="${s.manque?'bad':''}"><b class="num">${s.manque}</b> manque</span></div><div class="xpm">${s.gains} gagnés · ${s.spent} dépensés</div></div>`;
   const tab=S.shTab||'prog';
@@ -80,6 +80,7 @@ function viewSheet(){
     h+=card('Ressources générales',fo?fo+(()=>{const src=fxIntSrc(c,'fortune');return src.length?`<div class="muted small fxnote">Fortune : dont ${src.map(esc).join(', ')}</div>`:'';})():'');
   }
   h+=card('Caractéristiques',CARACS.map(n=>{const r=ir('carac:'+n);return r?r+(()=>{const src=fxIntSrc(c,'car:'+n);return src.length?`<div class="muted small fxnote">${esc(n)} : dont ${src.map(esc).join(', ')}</div>`:'';})():'';}).join(''));
+  if(!OB)h+=traitsCard(c);
   h+=`<h2>${c.type==='PNJ'?'Profils':'Compétences'}</h2>`;
   if(c.type==='PJ'){const sp=ir('spec');if(sp)h+=`<div class="card" style="margin-bottom:10px">${sp}${specBlock(c)}</div>`;}
   let anyP=false;
@@ -90,8 +91,9 @@ function viewSheet(){
       body+=nr?`<div class="muted small" style="padding-top:6px">Rang ${rk+1} : <b class="num">${nr.cost} XP</b> (${esc(nr.steps.join(', '))})</div>`:`<div class="muted small" style="padding-top:6px">Rang suivant hors de portée (maxima atteints).</div>`;}
     else{body=ir('prof:'+pr.nom);if(OB&&!body)continue;if(pr.subs&&pr.subs.length)body+=`<div class="tags">${pr.subs.map(x=>`<span class="pill">${esc(x)}</span>`).join('')}</div>`;}
     anyP=true;
-    h+=`<div class="card" style="margin-bottom:10px"><div class="prof-head"><b>${esc(pr.nom)}</b><span style="display:flex;gap:8px;align-items:center"><span class="pill acc">rang ${rk}</span>`+
-      (c.type==='PJ'?`<button class="ppf" data-act="ppOpen" data-prof="${esc(pr.nom)}" aria-label="Points de personnage ${esc(pr.nom)} : ${pr.note??0}"><small>PP</small>${esc(ppFmt(pr.note??0))}</button>`:'')+`</span></div>${body}</div>`;
+    if(c.type==='PJ'&&rk>=4)body=titreLine(c,pr)+body;
+    h+=`<div class="card" style="margin-bottom:10px"><div class="prof-head"><b>${esc(profLab(pr.nom,c))}</b><span style="display:flex;gap:8px;align-items:center"><span class="pill acc">rang ${rk}</span>`+
+      (c.type==='PJ'?`<button class="ppf" data-act="ppOpen" data-prof="${esc(pr.nom)}" aria-label="Points de personnage ${esc(profLab(pr.nom,c))} : ${pr.note??0}"><small>PP</small>${esc(ppFmt(pr.note??0))}</button>`:'')+`</span></div>${body}</div>`;
   }
   if(OB&&!anyP)h+=`<div class="card">${none}</div>`;
   if(c.type==='PNJ'){const sp=ir('spec');if(sp)h+=`<div class="card" style="margin-top:10px">${sp}${specBlock(c)}</div>`;}
@@ -138,11 +140,13 @@ function viewSheetFull(c){const fm=S.forme||'m',fxl=fxOf(c),x=raceRecOf(c),fee=c
     if(at.length)h+=`<h2>Atouts féeriques</h2><div class="card">${at.map(a=>{const d=(x.at||[]).find(e=>e&&nrmA(e[0])===nrmA(a.nom));return item(a.nom,d&&d[1],fxLines('at',a.nom));}).join('')}</div>`;}
   if(c.type==='PJ'){const f=lv(c,'fortune');h+=`<h2>Fortune</h2><div class="card">${row(FORTUNE[f]?esc(FORTUNE[f][0]):'Fortune',f)}</div>`;}
   h+=`<h2>Caractéristiques</h2><div class="card fgrid">${CARACS.map(n=>row(esc(n),lv(c,'carac:'+n)+(c.accru===n&&fm==='d'?1:0))).join('')}</div>`;
-  h+=`<h2>Profils</h2>`+(c.profils||[]).map(pr=>{let b=`<div class="fr"><b>${esc(pr.nom)}</b><span class="muted">rang ${rankOf(c,pr)}</span></div>`;
+  {const T=traitsOf(c);if(T.length)h+=`<h2>Traits de caractère</h2><div class="card"><div class="fxl">${T.map(([n,s])=>`<span class="rchip">${esc(n)} <small class="muted">· ${esc(s)}</small></span>`).join('')}</div></div>`;}
+  h+=`<h2>Profils</h2>`+(c.profils||[]).map(pr=>{let b=`<div class="fr"><b>${esc(profLab(pr.nom,c))}</b><span class="muted">rang ${rankOf(c,pr)}</span></div>`;
     if(c.type==='PJ')b+=(pr.comps||[]).map(y=>row(esc(y.nom),lv(c,'comp:'+y.nom))+spl('comp:'+y.nom)).join('');
     else{b+=spl('prof:'+pr.nom);if(pr.subs&&pr.subs.length)b+=`<div class="fsp">${pr.subs.map(esc).join(', ')}</div>`;}
     return `<div class="card" style="margin-bottom:10px">${b}</div>`;}).join('');
   if(c.type==='PJ'&&(c.futiles||[]).length)h+=`<h2>Compétences futiles</h2><div class="card">${c.futiles.map(f=>row(esc(f.nom),lv(c,'fut:'+f.nom))+spl('fut:'+f.nom)).join('')}</div>`;
+  if(c.type==='PJ')h+=ppFullBlock(c);
   return h;}
 const allPJ=()=>Object.values(S.chars).filter(c=>c.type==='PJ'&&actif(c)&&!c.cache).map(c=>c.id);
 const lp=l=>l.persos!=null?l.persos:(l.nature==='Scénario'||l.nature==='Groupe')?allPJ():[];
@@ -349,3 +353,20 @@ function viewRules(){
 function fxCard(c,L,fm){if(!L.length)return '';
   const note=c.fx?`Acquis d'office avec la race ${esc(c.race)}${L.some(e=>e.kind==='at')?' et les atouts pris':''}.${L.some(e=>fxQ(e.quand)==='d')?' Les effets qui ne s\'appliquent pas à la forme choisie sont grisés.':''}`:`À titre d'information : ce personnage a été créé avant le moteur de bonus. La gestion peut l'y faire entrer depuis Paramètres › Bonus.`;
   return `<h2>Effets de race et d'atouts</h2><div class="card">${c.fx?'':`<div class="muted small" style="margin-bottom:4px">${note}</div>`}${L.map(e=>`<div class="fxe${fxOn(e,fm)?'':' off'}">${fxChip(e)} <b>${esc(e.src)}</b><div class="s">${FX_KIND[e.kind]} · ${FX_Q[fxQ(e.quand)]}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}${e.t==='jet'?' · non ajouté aux rangs':e.t==='perm'&&c.fx?(fxInteg(e)?' · compris dans la valeur enregistrée':' · ajouté à la valeur affichée'):''}</div></div>`).join('')}</div>`;}
+
+/* Lot 4 : traits, titre du profil, Contacts et points de personnage */
+function traitsCard(c){const T=traitsOf(c),ed=canEditC(c);if(!T.length&&!ed)return '';
+  return `<h2>Traits de caractère</h2><div class="card"><div class="prof-head" style="margin:0">${T.length?`<div class="fxl" style="margin:0">${T.map(([n,s])=>`<span class="rchip">${esc(n)} <small class="muted">· ${esc(s)}</small></span>`).join('')}</div>`:'<span class="muted small">Aucun trait renseigné.</span>'}${ed?`<button class="btn ghost" data-act="trOpen" data-id="${esc(c.id)}">Modifier</button>`:''}</div></div>`;}
+function titreLine(c,pr){const P=prOf(pr.nom),got=ppBought(c).some(a=>a.ppel.id==='titre:'+pr.nom),sum=ppSum(c,pr);
+  return `<div class="ptl">${ICON.medaille||''}<span>${esc(P.titre.nom)}</span>${got?'<span class="pill acc">acquis</span>':`<span class="num muted">${sum} / ${PPT_PTS}</span>`}</div>`;}
+function ppFullBlock(c){const B=ppBought(c),free=(c.achats||[]).filter(a=>(a.key||'').startsWith('pp:')&&!a.ppel);
+  let h=`<h2>Contacts et points de personnage</h2><div class="card"><div class="fgrid">${(c.profils||[]).map(pr=>`<div class="fr"><span>PP ${esc(profLab(pr.nom,c))}</span><b class="num">${esc(ppFmt(ppHave(pr)))}</b></div>`).join('')}</div>`;
+  const G=[['A','Activités'],['E','Possessions'],['L','Langues'],['C','Contacts'],['T','Famille, titres et statuts']];
+  for(const [r,l] of G){const L=B.filter(a=>a.ppel.rub===r);if(!L.length)continue;
+    h+=`<div class="fsub">${l}</div>`+L.map(a=>{const x=a.ppel,bits=[PPOPT[x.opt]||'',x.fort!=null?'Fortune '+x.fort:'',x.fortS!=null?'Fortune +'+x.fortS:'',x.spec?'spécialité '+x.spec:'',x.prec||''].filter(Boolean);
+      const fx=fxOf(c).filter(e=>e.kind==='pp'&&e.src===x.nom);return `<div class="fi"><b>${esc(x.nom)}</b>${bits.length?` <span class="muted small">· ${bits.map(esc).join(' · ')}</span>`:''}${fx.map(e=>`<div class="fxs">Effet : ${esc(fxLabel(e))}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}</div>`).join('')}</div>`;}).join('');}
+  if(free.length)h+=`<div class="fsub">Autres dépenses de PP</div>`+free.map(a=>`<div class="fi"><span class="small">${esc(a.label)}</span></div>`).join('');
+  if(!B.length&&!free.length)h+='<div class="muted small" style="margin-top:6px">Aucune acquisition en points de personnage.</div>';
+  const fo=B.filter(a=>a.ppel.fort!=null||a.ppel.fortS!=null);
+  if(fo.length)h+=`<div class="muted small" style="margin-top:8px">Fortune ${lv(c,'fortune')} · indicatif : ${fo.map(a=>esc(a.ppel.nom)+' '+(a.ppel.fort!=null?a.ppel.fort:'+'+a.ppel.fortS)).join(' + ')}. La Fortune enregistrée ne change pas.</div>`;
+  return h+'</div>';}
