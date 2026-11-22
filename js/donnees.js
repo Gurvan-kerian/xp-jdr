@@ -15,11 +15,12 @@ function sigAuto(){if(!modelV1())return [];const out=[],add=(t,id,champ,statut,n
     if(isLegacyRace(r)){add('race',cr.id,'Format','confirmer',"Fiche enregistrée par un appareil resté sur l'ancienne version : ouvre-la et enregistre-la pour la convertir.");continue;}
     pwSlots(r).forEach((id,i)=>{const p=id&&S.pouvoirs[id];if(p&&p.prec&&!((r.pwv||[])[i]))add('race',cr.id,'Pouvoir '+PW_LAB[i].toLowerCase()+' '+(i<4?i+1:i<6?i-3:'')+' › sous-type de '+p.nom,'completer','Sous-type obligatoire absent');});
     for(const e of r.cap||[]){const k=capOf(e.id);if(k&&k.prec&&!e.v)add('race',cr.id,'Capacité '+k.nom+' › sous-type','completer','Sous-type obligatoire absent');}}
-  for(const c of Object.values(S.chars||{})){const n=specToAttach(c);if(n>0)add('perso',c.id,'Spécialités','completer',n+' spécialité'+(n>1?'s':'')+' non rattachée'+(n>1?'s':''));}
+  for(const c of Object.values(S.chars||{})){const n=specToAttach(c);if(n>0)add('perso',c.id,'Spécialités','completer',n+' spécialité'+(n>1?'s':'')+' non rattachée'+(n>1?'s':''));
+    if(raceIncoh(c))add('perso',c.id,'Visibilité de la race','valider',(c.court||c.id)+' est visible de toute la table, mais la fiche '+c.race+' a encore des éléments fermés (hors pouvoirs) : les ouvrir, ou masquer le personnage.');}
   return out;}
 const sigStored=()=>((S.signalDoc&&S.signalDoc.list)||[]);
 const sigAll=()=>[...sigAuto(),...sigStored()];
-const sigOpenFor=(t,id)=>isGest()?sigAll().filter(s=>!s.ok&&s.obj&&s.obj.t===t&&s.obj.id===id):[];
+const sigOpenFor=(t,id)=>canEdit()?sigAll().filter(s=>!s.ok&&s.obj&&s.obj.t===t&&s.obj.id===id):[];
 /* Picto d'alerte, à côté de l'élément concerné (gestion seulement) */
 function sigPicto(t,id){const L=sigOpenFor(t,id);if(!L.length)return '';
   return `<span class="ui-sig" role="img" title="${esc(L.map(s=>s.champ+' : '+SIG_ST[s.statut]).join(' · '))}" aria-label="${L.length} signalement${L.length>1?'s':''} : ${esc(L.map(s=>s.champ).join(', '))}">${SIG_ICO}</span>`;}
@@ -27,8 +28,8 @@ function sigObjName(o){if(!o)return '';if(o.t==='race'){const cr=(S.creatures||[
   if(o.t==='pouvoir')return (S.pouvoirs&&S.pouvoirs[o.id]&&S.pouvoirs[o.id].nom)||o.id;if(o.t==='capacite')return (capOf(o.id)||{}).nom||o.id;
   if(o.t==='perso')return (S.chars[o.id]&&S.chars[o.id].court)||o.id;return o.id;}
 /* Ouvrir l'élément concerné : fiche de race, pouvoir, personnage ; une capacité ouvre la première race qui l'utilise */
-function sigOpenAttrs(o){if(!o)return '';if(o.t==='race')return `data-act="rfOpen" data-id="${esc(o.id)}"`;if(o.t==='pouvoir')return `data-act="pwEdit" data-id="${esc(o.id)}"`;if(o.t==='perso')return `data-act="sel" data-id="${esc(o.id)}"`;
-  if(o.t==='capacite'){const cr=(S.creatures||[]).find(c=>{const r=S.races&&S.races[c.id];return r&&(r.cap||[]).some(e=>e.id===o.id);});return cr?`data-act="rfOpen" data-id="${esc(cr.id)}"`:'';}return '';}
+/* Lot 4 bis : passe par le mécanisme commun des liens (pile du retour) ; pouvoir et capacité ouvrent leur fiche de consultation */
+function sigOpenAttrs(o){if(!o)return '';const t={race:'race',pouvoir:'pw',capacite:'cap',perso:'perso'}[o.t];if(!t)return '';const L={t,id:o.id};return lnkOk(L)?lnkAttrs(L):'';}
 function saveSignals(list){S.signalDoc={list};persist('meta/signalements',S.signalDoc);}
 
 /* ---------- Écran Paramètres › Données ---------- */
@@ -68,7 +69,7 @@ function sigForm(){const g=S.sigNew;if(!g)return `<div class="actions" style="ma
 function socleAct(a,d){
   if(a==='migRun'){runMigration();return true;}
   if(a==='migSeen'){S.migDone=null;return true;}
-  if(a==='goDonnees'){S.migDone=null;S.view='params';S.ptab='donnees';S.dlg=null;window.scrollTo(0,0);return true;}
+  if(a==='goDonnees'){if(!isGest())return true;S.edit=true;navClear();S.migDone=null;S.view='params';S.ptab='donnees';S.dlg=null;window.scrollTo(0,0);return true;}
   if(!/^sig/.test(a))return false;
   if(!isGest())return true;
   if(a==='sigF'){const f=S.sigF=S.sigF||{st:'',t:'',res:false};if(d.k==='res')f.res=!!d.v;else f[d.k]=d.v;}

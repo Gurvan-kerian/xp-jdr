@@ -126,3 +126,96 @@ const STATUTS={actif:'Actif',mort:'Décédé',retire:'Retiré'};
 
 /* PNJ rattachés à un PJ (pour les transferts d'XP) */
 const pnjOf=c=>Object.values(S.chars).filter(x=>x.type==='PNJ'&&x.pj===c.id&&(!x.statut||x.statut==='actif')).sort((a,b)=>(a.court||'').localeCompare(b.court||''));
+
+/* ---------- Lot 4 bis : liens entre fiches, pile du retour, mode édition ----------
+   Cible d'un lien : {t:'perso'|'race'|'pw'|'cap'|'joueur'|'secret', id, n, k, i}.
+   Un lien n'existe que si la personne voit la cible ; sinon le nom reste en texte simple. */
+S.nav=[];S.edit=false;S.rfEd=false;S.edDirty=false;
+/* Mode édition : droits de gestion + mode actif (bouton crayon) ; désactivé à chaque ouverture */
+const canEdit=()=>isGest()&&!!S.edit&&!S.visit;
+const crById=id=>(S.creatures||[]).find(c=>c.id===id);
+const crBySing=sing=>!!sing&&(S.creatures||[]).find(x=>raceRec(x).sing===sing);
+/* Un pouvoir ou une capacité est connu de la personne s'il apparaît, visible, sur une race ou un personnage qu'elle voit */
+function elSeen(t,id){if(isGest())return true;
+  if(t==='pw'){if(Object.values(S.chars).some(c=>vis(c)&&(c.pw||[]).some(o=>o.id===id)))return true;
+    return raceCres().some(cr=>{const x=raceRec(cr);return raceVisible(cr,x)&&pwSlots(x).some((v,i)=>v===id&&pwVisible(cr,x,i)&&!pwUnk(x,i));});}
+  return elUses('cap',id).some(u=>{const x=raceRec(u.cr);return raceVisible(u.cr,x)&&blockVisible(u.cr,x,'cap');});}
+function lnkOk(o){if(!o)return false;
+  if(o.t==='perso'){const c=S.chars[o.id];return !!c&&vis(c);}
+  if(o.t==='race'){const cr=crById(o.id);return !!cr&&raceVisible(cr,raceRec(cr));}
+  if(o.t==='joueur')return !!S.players[o.id];
+  if(o.t==='pw')return !!(S.pouvoirs&&S.pouvoirs[o.id])&&elSeen('pw',o.id);
+  if(o.t==='cap')return !!(S.capacites&&S.capacites[o.id])&&elSeen('cap',o.id);
+  if(o.t==='secret'){const s=secById(+o.n);if(!s)return false;if(o.k==='titre')return titreVis(s)||(isGest()&&!!s.titre);
+    if(o.k&&o.k!=='bonus'){const x=((s.slots||{})[o.k]||[])[+o.i];return !!x&&(isGest()||!x.hid);}return true;}
+  return false;}
+const lnkAttrs=o=>`data-act="lnk" data-t="${o.t}"${o.id!=null?` data-id="${esc(o.id)}"`:''}${o.n!=null?` data-n="${o.n}"`:''}${o.k?` data-k="${esc(o.k)}"`:''}${o.i!=null?` data-i="${o.i}"`:''}`;
+/* Nom en lien (vert, souligné de pointillés, chevron) ou en texte simple si la cible n'est pas visible */
+const lk=(o,label)=>lnkOk(o)?`<button type="button" class="lk" ${lnkAttrs(o)}>${esc(label)}</button>`:`<span class="nolk">${esc(label)}</span>`;
+const lkRace=(c,label)=>{const cr=crBySing(c&&c.race);return cr?lk({t:'race',id:cr.id},label):esc(label);};
+const lkCap=(nom,label)=>{const id=capIdByName(S.capacites||{},nom);return id?lk({t:'cap',id},label||nom):esc(label||nom);};
+/* Libellé de l'écran courant, pour le chemin de la barre « ‹ Retour » */
+function navLabel(){const g=S.dlg;
+  if(g&&g.kind==='cons'){const e=((g.t==='pw'?S.pouvoirs:S.capacites)||{})[g.id];return e?e.nom:'';}
+  if(g&&g.kind==='pl'){const p=S.players[g.id];return p?p.nom:'Joueur';}
+  if(S.view==='sheet'){const c=S.chars[S.sel];return c?c.court:'Personnage';}
+  if(S.view==='univers'&&S.uni==='creatures'&&S.rf){if(S.rf.hum)return HUMAIN;const cr=crById(S.rf.id);return cr?raceNm(raceRec(cr)):'Races';}
+  if(S.view==='univers'&&S.uni==='creatures')return 'Races';
+  if(S.view==='univers'&&S.sec)return 'Secret '+(ROMAN[S.sec-1]||S.sec);
+  if(S.view==='univers')return 'Secrets';
+  return ({home:'Accueil',gains:'XP',team:'Personnages',planning:'Planning',players:'Joueurs',rules:'Règles',params:'Paramètres'})[S.view]||'';}
+function navSnap(){const g=S.dlg&&(S.dlg.kind==='cons'||S.dlg.kind==='pl')?{kind:S.dlg.kind,t:S.dlg.t,id:S.dlg.id,nav:S.dlg.nav}:null;
+  return {view:S.view,sel:S.sel,shTab:S.shTab,uni:S.uni,sec:S.sec,rf:S.rf,rfTab:S.rfTab,rfEd:S.rfEd,dlg:g,y:window.scrollY||0,lab:navLabel()};}
+/* Suivre un lien : mémorise l'écran de départ puis ouvre la cible */
+function navGo(o){if(!lnkOk(o))return false;
+  S.nav.push(navSnap());try{history.pushState({xpnav:S.nav.length},'');}catch(e){}
+  S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;
+  if(o.t==='perso'){S.dlg=null;S.view='sheet';S.sel=o.id;S.futForm.open=false;}
+  else if(o.t==='race'){S.dlg=null;S.view='univers';S.uni='creatures';S.rf=rfDraft(o.id);S.rfTab='fiche';S.rfEd=false;}
+  else if(o.t==='secret'){S.dlg=null;S.view='univers';S.uni='secrets';S.sec=+o.n;S.secHl=o.k?{k:o.k,i:+o.i||0}:null;}
+  else if(o.t==='joueur'){S.dlg={kind:'pl',id:o.id,nav:true};return true;}
+  else if(o.t==='pw'||o.t==='cap'){S.dlg={kind:'cons',t:o.t,id:o.id,nav:true};return true;}
+  window.scrollTo(0,0);return true;}
+/* Revenir d'un cran : restaure l'écran mémorisé et sa position de défilement */
+function navPop(){const s=S.nav.pop();if(!s)return;
+  S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.rf=s.rf;S.rfTab=s.rfTab;S.rfEd=s.rfEd&&canEdit();S.dlg=s.dlg?{...s.dlg}:null;
+  S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;S._force=true;render();
+  const y=s.y;requestAnimationFrame(()=>window.scrollTo(0,y));}
+/* « ‹ Retour » : passe par l'historique du navigateur quand il porte la pile (même effet que le retour du téléphone) */
+function navBack(){const st=history.state;if(st&&st.xpnav&&st.xpnav===S.nav.length){history.back();return;}navPop();}
+const navClear=()=>{S.nav=[];};
+function navBar(){if(!S.nav.length)return '';const path=S.nav.map(s=>s.lab).filter(Boolean);
+  return `<div class="navbar"><button type="button" class="navback" data-act="navBack"><span aria-hidden="true">‹</span> Retour</button><span class="navpath">${path.length?'depuis '+path.map(esc).join(' › '):''}</span></div>`;}
+/* Retour du téléphone (ou du navigateur) : ferme d'abord une fenêtre ouverte, puis dépile */
+if(window.addEventListener)window.addEventListener('popstate',()=>{if(!S.nav.length)return;
+  if(S.dlg&&!S.dlg.nav){S.dlg=null;S.sheet=null;S.asheet=null;S._force=true;render();try{history.pushState({xpnav:S.nav.length},'');}catch(e){}return;}
+  if(S.sheet||S.asheet){S.sheet=null;S.asheet=null;S._force=true;render();try{history.pushState({xpnav:S.nav.length},'');}catch(e){}return;}
+  navPop();});
+/* Nom principal d'une race : réglage de la fiche (masculin par défaut, sinon féminin) ; l'autre nom suit */
+const raceNm=x=>{if(!x)return '';const f=(x.fem||'').trim();return x.nomP==='f'&&f?f:(x.sing||f);};
+const raceNmOther=x=>{if(!x)return '';const f=(x.fem||'').trim(),p=raceNm(x),o=p===x.sing?f:x.sing;return o&&nrm(o)!==nrm(p)?' · '+o:'';};
+/* Mode édition : quitter avec un éditeur ouvert ne pose la question que s'il reste des changements non enregistrés */
+const EDIT_DLG=new Set(['elEdit','pfEd','ppEl','se','ce']);
+const SAVE_ACTS=new Set(['rfSave','rfHumSave','elSave','pfSave','ppElSave','seSave','creSave','pSave']);
+const editorOpen=()=>!!((S.rfEd&&S.rf)||(S.dlg&&EDIT_DLG.has(S.dlg.kind)));
+function editOff(){S.edit=false;S.rfEd=false;S.edDirty=false;S.edQuit=false;if(S.dlg&&EDIT_DLG.has(S.dlg.kind))S.dlg=null;if(S.view==='params')S.view='home';S._force=true;render();}
+function editToggle(){if(!isGest()||S.visit)return;if(!S.edit){S.edit=true;S.edDirty=false;S._force=true;render();return;}
+  if(editorOpen()&&S.edDirty){S.edQuit=true;S._force=true;render();return;}editOff();}
+function edQuitSheet(){return `<div class="sheet-bg" data-act="edqStay"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Quitter le mode édition"><div class="in"><h2>Quitter le mode édition ?</h2><div class="muted">Des changements ne sont pas encore enregistrés.</div><div class="actions"><button class="btn ghost" data-act="edqStay">Rester</button><button class="btn" data-act="edqDrop">Abandonner</button><button class="btn pri" data-act="edqSave">Enregistrer</button></div></div></div>`;}
+/* Clics propres au lot 4 bis ; renvoie true si le clic est traité */
+function lnkAct(a,d){
+  if(a==='lnk'){if(navGo({t:d.t,id:d.id,n:d.n,k:d.k,i:d.i}))render();return true;}
+  if(a==='navBack'){navBack();return true;}
+  if(a==='editToggle'){editToggle();return true;}
+  if(a==='edqStay'){S.edQuit=false;S._force=true;render();return true;}
+  if(a==='edqDrop'){editOff();return true;}
+  if(a==='edqSave'){S.edQuit=false;S._force=true;render();const b=document.querySelector('#sheetRoot [data-act="'+[...SAVE_ACTS].join('"],#sheetRoot [data-act="')+'"],#app [data-act="'+[...SAVE_ACTS].join('"],#app [data-act="')+'"]');
+    if(b&&!b.disabled)b.click();if(!document.querySelector('#app [role="alert"],#sheetRoot [role="alert"]'))editOff();return true;}
+  if(a==='rfEdOn'){if(!canEdit())return true;S.rfEd=true;S.edDirty=false;S._force=true;render();window.scrollTo(0,0);return true;}
+  if(a==='rfEdOff'){S.rfEd=false;S.edDirty=false;if(S.rf&&S.rf.id)S.rf=rfDraft(S.rf.id);S._force=true;render();return true;}
+  if(a==='consEdit'){if(!canEdit())return true;const g=S.dlg;if(!g||g.kind!=='cons')return true;const back={...g};S.dlg=elDraft(g.t,g.id);S.dlg.back=back;S.edDirty=false;S._force=true;render();return true;}
+  if(a==='secJump'){const el=document.getElementById('seck-'+d.k);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});return true;}
+  if(SAVE_ACTS.has(a))setTimeout(()=>{if(!document.querySelector('#app [role="alert"],#sheetRoot [role="alert"]'))S.edDirty=false;},0);
+  return false;}
+/* PJ visible de toute la table dont la race a encore des éléments fermés (hors pouvoirs) : incohérence signalée à la gestion */
+function raceIncoh(c){if(!c||c.type!=='PJ'||c.cache||!actif(c)||!c.race||!modelV1())return false;const cr=crBySing(c.race);if(!cr)return false;const e=eyeOf(cr,raceRec(cr));return !(e.fiche&&EYE_BLOCKS.every(([k])=>e[k]));}

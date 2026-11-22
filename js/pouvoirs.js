@@ -44,7 +44,7 @@ const capDiffs=id=>elUses('cap',id).filter(u=>u.e&&!u.e.keep&&(u.e.fx||u.e.d!=nu
 function elVarUses(k,id,vid){const L=elRaceNames(elUses(k,id).filter(u=>u.vid===vid));
   if(k==='pw')for(const c of Object.values(S.chars))if((c.pw||[]).some(o=>o.id===id&&o.v===vid))L.push(c.court);return L;}
 /* ---------- Paramètres › Pouvoirs / Capacités : catalogue ---------- */
-function viewElCat(k){if(!isGest())return `<div class="card"><div class="muted">Réservé aux personnes ayant les droits de gestion.</div></div>`;
+function viewElCat(k){if(!canEdit())return `<div class="card"><div class="muted">Réservé aux personnes ayant les droits de gestion.</div></div>`;
   const pw=k==='pw',M=elMap(k),qv=pw?(S.pq||''):(S.cq||''),q=nrm(qv),f=pw?(S.pwf||'all'):'all';
   const L=Object.entries(M).map(([id,el])=>({id,el,u:elUses(k,id)})).filter(r=>(!q||nrm(r.el.nom).includes(q))&&(f==='all'||pwCatK(r.el)===f)).sort((a,b)=>a.el.nom.localeCompare(b.el.nom,'fr'));
   const row=r=>{const el=r.el,nv=(el.var||[]).length,nf=(el.fx||[]).length,miss=elMissing(k,r.id,el),races=elRaceNames(r.u),warn=[];
@@ -140,7 +140,7 @@ function elSave(){const g=S.dlg,k=g.k,pw=k==='pw',nom=(g.nom||'').trim();
       if(ch==='ref'){if(e.fx){const v=e.v&&base.var.find(z=>z.id===e.v);if(v){const com=fxBare(base.fx);v.fx=fxNorm(e.fx.filter(f=>!com.includes(fxBare([f])[0])));}else base.fx=fxNorm(e.fx);}if(e.d!=null)base.desc=e.d;}
       delete e.fx;delete e.d;delete e.keep;}
     M[id]=base;if(R)saveRaces(R);}
-  elSaveMap(k,M);S.dlg=null;rebuildRaces();render();toast('Enregistré');}
+  elSaveMap(k,M);S.dlg=g.back&&g.id?g.back:null;rebuildRaces();render();toast('Enregistré');}
 /* ---------- Fiche de personnage : section dépliée sous Féerie ---------- */
 function pwRows(c){if(isHum(c))return '';const cr=c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);if(!cr)return '';
   const x=raceRec(cr),sl=pwSlots(x),open=!!(S.pwOpen&&S.pwOpen[c.id]),ed=canEditC(c),G=isGest(),tc=pwToChoose(c);
@@ -148,8 +148,8 @@ function pwRows(c){if(isHum(c))return '';const cr=c.race&&S.creatures.find(x=>ra
   for(let i=0;i<8;i++){const own=(c.pw||[]).find(o=>o.i===i),has=!!own,v=has||pwVisible(cr,x,i);
     const p=sl[i]&&sl[i]!=='?'?pwCat(sl[i]):null,vv=p&&varOf(p,(own&&own.v)||raceVarAt(x,i)),fl=p?[...(p.fx||[]),...((vv&&vv.fx)||[])]:[],fx=fl.length?`<small>${fl.map(e=>esc(fxLabel(e))+(fxQ(e.quand)==='d'?' · démasqué':'')).join(' · ')}</small>`:'';
     let name,right='';
-    if(v&&p&&(has||G||!pwUnk(x,i))){name=`${esc(pwFull(x,i))}${pwUnk(x,i)&&G?' <i class="muted">(inconnu pour la table)</i>':''}${fx}`;}else if(v&&pwUnk(x,i)){name='<i>Inconnu</i>';}else name='Pouvoir scellé';
-    if(has)right=`<span class="okk">✓</span>${G&&own?(S.confirm==='pwr:'+c.id+':'+i?`<button class="lnk-bad" data-act="pwRemoveOk" data-id="${esc(c.id)}" data-i="${i}">Retirer ?</button>`:`<button class="xs" data-act="pwRemove" data-id="${esc(c.id)}" data-i="${i}" aria-label="Retirer le pouvoir">✕</button>`):''}`;
+    if(v&&p&&(has||G||!pwUnk(x,i))){name=`${pwLk(x,i,has?own.id:null)}${pwUnk(x,i)&&G?' <i class="muted">(inconnu pour la table)</i>':''}${fx}`;}else if(v&&pwUnk(x,i)){name='<i>Inconnu</i>';}else name='Pouvoir scellé';
+    if(has)right=`<span class="okk">✓</span>${canEdit()&&own?(S.confirm==='pwr:'+c.id+':'+i?`<button class="lnk-bad" data-act="pwRemoveOk" data-id="${esc(c.id)}" data-i="${i}">Retirer ?</button>`:`<button class="xs" data-act="pwRemove" data-id="${esc(c.id)}" data-i="${i}" aria-label="Retirer le pouvoir">✕</button>`):''}`;
     else if(v&&p&&ed&&pwSlotOpen(c,i)&&(G||!pwUnk(x,i)))right=`<button class="chs" data-act="pwPick" data-id="${esc(c.id)}" data-i="${i}">Choisir</button>`;
     else if(i>=6&&!palierOk(c,i-6))right=`<span class="wait">palier ${i===6?'Profond':'Légendaire'}</span>`;
     h+=`<div class="pwi${has?' own':''}${v&&p||has?'':' seal'}"><span class="k">${PW_LAB[i]}</span><span class="n">${name}</span>${right}</div>`;}
@@ -166,3 +166,26 @@ function pwPickOk(){const g=S.dlg,c0=S.chars[g.id];if(!c0||!canEditC(c0)||!pwSlo
   const c=clone(c0);c.pw=[...(c.pw||[]),{id,i:g.i,date:today(),v:raceVarAt(x,g.i)}];S.dlg=null;saveChar(c);}
 
 const elMiss=(g,k)=>(g.errF||[]).includes(k)?' miss':'';
+/* ---------- Lot 4 bis : fiche de consultation d'un pouvoir ou d'une capacité (lecture seule, la même pour tous) ---------- */
+function consSheet(g){const pw=g.t==='pw',el=elFull(elMap(g.t)[g.id]||{});if(!el.nom)return null;
+  const RL={act:'Activation',cib:'Cible',dur:'Durée',por:'Portée',zon:"Zone d'effet",res:'Résistance'},rules=(pw?EL_FIELDS:EL_FIELDS.filter(f=>f!=='act')).filter(f=>(el[f]||'').trim());
+  const tags=[];if(pw){tags.push(CAT_L[pwCatK(el)]);const n=pwNat(g.id);if(n)tags.push(NAT_L[n]);}else tags.push('Capacité naturelle');if(el.type)tags.push(TYPE_L[el.type]||el.type);
+  /* races qui l'utilisent : seulement celles (et les emplacements) que la personne voit */
+  const uses=elUses(g.t,g.id).filter(u=>{const x=raceRec(u.cr);if(!raceVisible(u.cr,x))return false;return pw?pwVisible(u.cr,x,u.i)&&(isGest()||!pwUnk(x,u.i)):blockVisible(u.cr,x,'cap');});
+  const vn=(u)=>{const v=u.vid&&varOf(el,u.vid);return v?v.nom:(u.vnom||'');};
+  const where=u=>pw?(PW_LAB[u.i]||'').toLowerCase()+(u.i<6?' '+(u.i<4?u.i+1:u.i-3):''):u.choix?'choix définitif':'';
+  const seenVar=new Set(uses.map(u=>u.vid).filter(Boolean));
+  const vars=(el.var||[]).filter(v=>isGest()||seenVar.has(v.id));
+  const fxL=L=>(L||[]).length?`<div class="fxl">${L.map(e=>fxChip(e)).join('')}</div>`:'';
+  const nav=S.nav.length&&g.nav;
+  let h=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet cons" role="dialog" aria-modal="true" aria-label="${esc(el.nom)}"><div class="in">
+    ${nav?`<div style="margin-bottom:6px"><button type="button" class="navback" data-act="navBack"><span aria-hidden="true">‹</span> Retour</button></div>`:''}
+    <div class="shd"><h2 class="rhd" style="margin:0">${illThumb(pw?'pw':'cap',g.id,56)}<span>${esc(el.nom)}</span></h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>
+    <div class="tg3">${tags.map(t=>`<span>${esc(t)}</span>`).join('')}</div>
+    ${el.desc?`<div class="small" style="white-space:pre-line">${esc(el.desc)}</div>`:''}
+    ${rules.length?`<div class="rg2">${rules.map(f=>`<div><small>${RL[f]}</small>${esc(el[f])}</div>`).join('')}</div>`:''}
+    ${(el.fx||[]).length?`<div class="lab2">Effets${vars.length?' communs':''}</div>${fxL(el.fx)}`:''}
+    ${vars.length?`<div class="lab2">Sous-types</div>${vars.map(v=>`<div class="fi"><b>${esc(v.nom)}</b>${fxL(v.fx)}</div>`).join('')}`:''}
+    <div class="lab2">Races qui ${pw?'l\'utilisent':'la possèdent'}</div>${uses.length?uses.map(u=>`<div class="lkr"><span>${lk({t:'race',id:u.cr.id},raceNm(raceRec(u.cr)))}${vn(u)?' <span class="muted">('+esc(vn(u))+')</span>':''}</span><span class="muted small">${esc(where(u))}</span></div>`).join(''):'<div class="muted small">Aucune race connue.</div>'}
+    <div class="actions" style="margin-top:12px">${canEdit()?`<button class="btn" data-act="consEdit">${ICON.crayon} Modifier</button>`:''}<button class="btn pri" data-act="closeSheet">Fermer</button></div></div></div>`;
+  return h;}

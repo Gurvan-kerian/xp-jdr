@@ -69,7 +69,8 @@ const futDates=()=>S.dates.filter(x=>dEnd(x)>=today()).sort((a,b)=>(a.date+a.sl)
 const validDates=()=>futDates().filter(x=>x.status==='valid');
 const propDates=()=>futDates().filter(x=>x.status!=='valid');
 const isMJ=p=>p&&p.role==='MJ'&&!p.parti;
-const canPortrait=c=>!!(ME&&S.players[ME]&&(isMJ(S.players[ME])||owners(c).some(p=>p.id===ME)));
+/* Portrait : le joueur du personnage et le MJ (d'ici la version finale, toute la gestion), hors mode édition */
+const canPortrait=c=>!!(ME&&S.players[ME]&&!S.visit&&(isMJ(S.players[ME])||isGest()||owners(c).some(p=>p.id===ME)));
 const mjRefus=x=>Object.values(S.players).some(p=>isMJ(p)&&(p.rep||{})[x.id]==='no');
 const openProps=()=>propDates().filter(x=>!mjRefus(x));
 function saveDates(list){S.dates=list;persist('meta/planning',{dates:list});render();}

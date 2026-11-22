@@ -338,7 +338,9 @@ function applyProfils(){for(const k in CATSPEC0)CATSPEC[k]=JSON.parse(JSON.strin
   for(const p of Object.values(d.byId||{}))for(const [k,l] of Object.entries((p&&p.specs)||{}))if(Array.isArray(l))CATSPEC[k]=JSON.parse(JSON.stringify(l));}
 function prSaveDoc(fn){const d=prDoc()?clone(S.profils):{byId:{},el:clone(ppDef().K)};if(!d.el)d.el=clone(ppDef().K);d.byId=d.byId||{};fn(d);S.profils=d;applyProfils();persist('meta/profils',d);}
 /* Coûts, prérequis, achats */
-function ppCost(e,opt,c){const k=e.cost||{k:'u',a:0};if(k.k==='hf')return opt==='f'?(k.b??k.a):(k.a??k.b);if(k.k==='tm')return c&&natfOf(c)==='mod'?k.b:k.a;return k.a||0;}
+function ppCost(e,opt,c){const k=e.cost||{k:'u',a:0};if(k.k==='hf')return opt==='f'?(k.b??k.a):(k.a??k.b);if(k.k==='tm'){const n=c&&(natfOf(c)||(isExoF(c)?(opt==='t'?'trad':'mod'):''));return n==='mod'?k.b:k.a;}return k.a||0;}
+/* Fée exotique : coût de fée moderne par défaut, traditionnel au cas par cas (choix à l'achat) */
+function isExoF(c){if(!c||isHum(c))return false;const cr=c.race&&(S.creatures||[]).find(x=>raceRec(x).sing===c.race);return !!(cr&&cr.fam==='exo');}
 function ppCostMin(e,c){const k=e.cost||{};return k.k==='hf'?Math.min(...[k.a,k.b].filter(v=>v!=null)):ppCost(e,'',c);}
 function ppCostTxt(e){const k=e.cost||{},f=v=>v==null?'—':ppFmt(v);return k.k==='hf'?(k.a==null?f(k.b)+' (fée)':k.b==null?f(k.a)+' (humain)':f(k.a)+' / '+f(k.b)):k.k==='tm'?f(k.a)+' / '+f(k.b):f(k.a);}
 const PPOPT={p:'principale',s:'secondaire',h:'humain',f:'fée'};
@@ -359,5 +361,5 @@ function natfOf(c){if(isHum(c))return '';const cr=c.race&&(S.creatures||[]).find
 
 /* Correctif : emplacement d'illustration dans les listes (vide et cliquable pour la gestion) */
 function illSlot(t,id,lab,sz){const s=illOf(t,id),st=`width:${sz}px;height:${sz}px`,img=s?`<img class="illt" src="${s}" alt="" style="${st}">`:'';
-  if(!isGest())return `<span class="illslot" style="${st}">${img}</span>`;
+  if(!canEdit())return `<span class="illslot" style="${st}">${img}</span>`;
   return `<label class="illslot ed${s?'':' vide'}" style="${st}" aria-label="${s?'Changer':'Ajouter'} l'illustration : ${esc(lab||'')}">${img||'<span aria-hidden="true">+</span>'}<input type="file" accept="image/*" data-ptrfile="${illId(t,id)}" data-plab="${esc(lab||'')}" hidden></label>`;}

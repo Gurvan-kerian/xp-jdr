@@ -14,15 +14,18 @@ document.addEventListener('click',ev=>{
   if((a==='rfUnkKeep'||a==='rfUnkReveal')&&S.rf&&S.rf.unkAsk){if(a==='rfUnkKeep')for(const i of S.rf.unkAsk)S.rf.pw[i][1]=true;S.rf.unkOk=true;delete S.rf.unkAsk;a='rfSave';}
   else if(a==='rfUnkCancel'&&S.rf){delete S.rf.unkAsk;render();return;}
   if(socleAct(a,d,t)){render();return;}
+  if(lnkAct(a,d))return; /* lot 4 bis : liens, retour, mode édition */
   if(a==='planHelp'){S.planHelp=!S.planHelp;render();return;}
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
-  if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel|rf2Add|rf2Del|rfChAdd|rfChDel|rfPwUnk|rfFxNew|rfFxDel|rfFxT|rfFxQ|rfFxAdd|rfFxCancel|rfPwOpen)$/.test(a)&&!isGest())return; /* Référentiel : modification réservée à la gestion */
+  if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel|rf2Add|rf2Del|rfChAdd|rfChDel|rfPwUnk|rfFxNew|rfFxDel|rfFxT|rfFxQ|rfFxAdd|rfFxCancel|rfPwOpen|rfNomP)$/.test(a)&&!canEdit())return; /* Référentiel : modification réservée à la gestion */
   if(S.visit&&!VISIT_OK.has(a))return; /* visiteur : lecture seule */
   if(a==='tab'&&d.v==='ref'){d.v='univers';S.uni='creatures';}
   if(a==='tab'&&d.v==='players')pinRefresh();
-  if(a==='tab'){ev.preventDefault();if(d.v==='univers')S.sec=null;if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
+  if(a==='tab'){ev.preventDefault();navClear();S.rfEd=false;if(d.v==='univers')S.sec=null;if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
   else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max,sp:{}};}
+  else if(a==='closeSheet'&&S.dlg&&S.dlg.nav){navBack();return;}
+  else if(a==='closeSheet'&&S.dlg&&S.dlg.kind==='elEdit'&&S.dlg.back){S.dlg=S.dlg.back;}
   else if(a==='closeSheet'&&S.dlg&&S.dlg.kind==='ptr'&&S.dlg.back){S.dlg=S.dlg.back;window._ptrImg=null;}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;if(S.id.state==='ok')S.pinF=null;}
   else if(a==='menu'){S.dlg={kind:'menu'};}
@@ -32,13 +35,13 @@ document.addEventListener('click',ev=>{
     if(S.pushSub&&old!==ME){const js=S.pushSub.toJSON(),ep=js.endpoint;for(const pp of Object.values(S.players)){if(pp.id!==ME&&(pp.push||[]).some(x=>x.endpoint===ep)){const n=clone(pp);n.push=n.push.filter(x=>x.endpoint!==ep);savePlayer(n);}}
       const me=S.players[ME];if(me&&!(me.push||[]).some(x=>x.endpoint===ep)){const n=clone(me);n.push=[...(n.push||[]),{endpoint:ep,keys:js.keys}];savePlayer(n);}}}
   else if(a==='pTab'){S.pTab=d.v;}
-  else if(/^fxc/.test(a)){if(!isGest())return;fxcAct(a,d);}
-  else if(EL_ACTS.has(a)){if(!isGest())return;if(elAct(a,d)===false)return;}
+  else if(/^fxc/.test(a)){if(!canEdit())return;fxcAct(a,d);}
+  else if(EL_ACTS.has(a)){if(!canEdit()&&a!=='elFilt')return;if(elAct(a,d)===false)return;}
   else if(a==='pwToggle'){S.pwOpen={...(S.pwOpen||{}),[d.id]:!(S.pwOpen||{})[d.id]};}
   else if(a==='pwPick'){if(!canEditC(S.chars[d.id]))return;S.dlg={kind:'pwPick',id:d.id,i:+d.i};}
   else if(a==='pwPickOk'){pwPickOk();return;}
-  else if(a==='pwRemove'){if(!isGest())return;S.confirm='pwr:'+d.id+':'+d.i;}
-  else if(a==='pwRemoveOk'){if(!isGest())return;const c=clone(S.chars[d.id]);c.pw=(c.pw||[]).filter(o=>o.i!==+d.i);S.confirm=null;saveChar(c);return;}
+  else if(a==='pwRemove'){if(!canEdit())return;S.confirm='pwr:'+d.id+':'+d.i;}
+  else if(a==='pwRemoveOk'){if(!canEdit())return;const c=clone(S.chars[d.id]);c.pw=(c.pw||[]).filter(o=>o.i!==+d.i);S.confirm=null;saveChar(c);return;}
   else if(a==='rfPwOpen'){const i=+d.i;S.rf.pwOpen=S.rf.pwOpen===i?null:i;S.rf.pwx=S.rf.pwx||{};if(S.rf.pwOpen!=null&&!S.rf.pwx[i]){const id=pwIdByName(S.rf.pw[i][0]||'');const p=id?pwCat(id):{};S.rf.pwx[i]={desc:p.desc||'',fx:clone(p.fx||[]),fxEd:null,dirty:false};}}
   else if(a==='plOpen'){S.confirm=null;S.dlg={kind:'pl',id:d.pid};pinRefresh();}
   else if(a==='pcOpen'){S.dlg={kind:'pc',id:d.id};}
@@ -105,9 +108,9 @@ document.addEventListener('click',ev=>{
   else if(a==='creFam'){S.dlg.fam=d.f;}
   else if(a==='creAddOk'){const g=S.dlg,nom=(g.nom||'').trim();if(!nom||S.creatures.some(c=>c.nom.toLowerCase()===nom.toLowerCase()))return;S.dlg=null;saveCreatures([...clone(S.creatures),{id:creSlug(nom),nom,fam:g.fam,done:false}]);render();return;}
   else if(a==='eye'){if(!isGest())return;const sess=(sessList()[0]||{}).id||'';
-    if(d.t==='sec'){const s=secById(+d.n);if(!s)return;const x=d.k==='titre'?null:s.slots[d.k][+d.i];const cur=d.k==='titre'?!s.titreHid:!!(x&&!x.hid);S.dlg={kind:'eye',t:'sec',n:+d.n,k:d.k,i:+d.i||0,open:!cur,sess};}
-    else{const cr=S.creatures.find(c=>c.id===d.id);if(!cr)return;const e=eyeOf(cr,raceRec(cr)),cur=d.k==='pw'?!!(e.pw||[])[+d.i]:!!e[d.k];S.dlg={kind:'eye',t:'race',id:d.id,k:d.k,i:+d.i||0,open:!cur,sess};}}
-  else if(a==='eyeOk'){const g=S.dlg;S.dlg=null;if(!isGest()){render();return;}if(g.t==='sec')secEyeSet(g.n,g.k,g.i,g.open,g.sess);else raceEyeSet(g.id,g.k,g.i,g.open,g.sess);return;}
+    if(d.t==='sec'){const s=secById(+d.n);if(!s)return;const x=d.k==='titre'?null:s.slots[d.k][+d.i];const cur=d.k==='titre'?!s.titreHid:!!(x&&!x.hid);if(cur&&!canEdit())return;S.dlg={kind:'eye',t:'sec',n:+d.n,k:d.k,i:+d.i||0,open:!cur,sess};}
+    else{const cr=S.creatures.find(c=>c.id===d.id);if(!cr)return;const e=eyeOf(cr,raceRec(cr)),cur=d.k==='pw'?!!(e.pw||[])[+d.i]:!!e[d.k];if(cur&&!canEdit())return;S.dlg={kind:'eye',t:'race',id:d.id,k:d.k,i:+d.i||0,open:!cur,sess};}}
+  else if(a==='eyeOk'){const g=S.dlg;S.dlg=null;if(!isGest()||(!g.open&&!canEdit())){render();return;}if(g.t==='sec')secEyeSet(g.n,g.k,g.i,g.open,g.sess);else raceEyeSet(g.id,g.k,g.i,g.open,g.sess);return;}
   else if(a==='creToggle'){if(!isGest())return;S.dlg={kind:'ct',id:d.id,sess:(sessList()[0]||{}).id||''};}
   else if(a==='creToggleOk'){if(!isGest())return;const g=S.dlg;S.dlg=null;creToggle(g.id,g.sess);return;}
   else if(a==='creEdit'){const c=S.creatures.find(x=>x.id===d.id);if(!c)return;const ev=creEv(c.id);S.dlg={kind:'ce',id:c.id,nom:c.nom,fam:c.fam,confirm:false,sess:ev?(ev.sessionId||''):''};}
@@ -133,13 +136,13 @@ document.addEventListener('click',ev=>{
   else if(a==='rvPick'){if(S.dlg&&S.dlg.kind==='rv')S.dlg.pick=d.v;}
   else if(a==='rvChg'){if(S.dlg&&S.dlg.kind==='rv')S.dlg.chg=true;}
   else if(a==='rvOk'){propReveal();return;}
-  else if(a==='secEntry'){const s=secById(S.sec);if(!s)return;const x=d.k==='titre'?s.titre:(s.slots[d.k][+d.i]||{}).txt;const ev0=secEv(s.n,d.k,+d.i);S.dlg={kind:'se',n:s.n,k:d.k,i:+d.i,txt:x||'',confirm:false,sess:ev0?(ev0.sessionId||''):''};}
-  else if(a==='seSave'){const g=S.dlg,txt=(g.txt||'').trim();S.dlg=null;if(!txt){render();return;}
+  else if(a==='secEntry'){if(!canEdit())return;const s=secById(S.sec);if(!s)return;const x=d.k==='titre'?s.titre:(s.slots[d.k][+d.i]||{}).txt;const ev0=secEv(s.n,d.k,+d.i);S.dlg={kind:'se',n:s.n,k:d.k,i:+d.i,txt:x||'',confirm:false,sess:ev0?(ev0.sessionId||''):''};}
+  else if(a==='seSave'){if(!canEdit())return;const g=S.dlg,txt=(g.txt||'').trim();S.dlg=null;if(!txt){render();return;}
     const ev0=secEv(g.n,g.k,g.i);if(ev0&&(ev0.sessionId||'')!==(g.sess||'')){const sid=g.sess&&sessById(g.sess)?g.sess:undefined;
       saveEvents(S.events.map(e=>{const mv=e===ev0||(e.secret&&e.secret.n===g.n&&e.secret.k==='bonus'&&e.trigger&&e.trigger.k===g.k&&e.trigger.i===g.i);if(!mv)return e;const x={...e};if(sid)x.sessionId=sid;else delete x.sessionId;return x;}));}
     secEdit(g.n,g.k,g.i,txt);return;}
-  else if(a==='seDel'){S.dlg.confirm=true;}
-  else if(a==='seDelOk'){const g=S.dlg;S.dlg=null;secRemove(g.n,g.k,g.i);return;}
+  else if(a==='seDel'){if(!canEdit())return;S.dlg.confirm=true;}
+  else if(a==='seDelOk'){if(!canEdit())return;const g=S.dlg;S.dlg=null;secRemove(g.n,g.k,g.i);return;}
   else if(a==='autrePlus'){S.dlg={kind:'a',id:S.sel,nom:d.nom,pts:''};}
   else if(a==='openAutre'){S.dlg={kind:'u',id:S.sel,nom:d.nom};}
   else if(a==='nameOpen'){S.nameForm={kind:d.kind,nom:''};}
@@ -157,10 +160,10 @@ document.addEventListener('click',ev=>{
     let c;if(specAnon(c0)>0){c=clone(c0);c.specs=[...specsOf(c),{nom,cible:key}];}
     else{const k=specCost(key,nom);if(k>summary(c0,S.events).dispo)return;c=buySpec(c0,key,nom,k,today());}
     if(a==='spBuyO'&&S.spOther)delete S.spOther[c0.id+'|'+key];saveChar(c);return;}
-  else if(a==='rfOpen'){S.dlg=null;S.view='univers';S.uni='creatures';S.rf=rfDraft(d.id);window.scrollTo(0,0);}
-  else if(a==='rfNew'){S.rf=rfDraft(null);window.scrollTo(0,0);}
+  else if(a==='rfOpen'){S.dlg=null;S.view='univers';S.uni='creatures';S.rf=rfDraft(d.id);S.rfEd=false;window.scrollTo(0,0);}
+  else if(a==='rfNew'){if(!canEdit())return;S.rf=rfDraft(null);S.rfEd=true;S.edDirty=false;window.scrollTo(0,0);}
   else if(a==='raceFull'){if(!isGest())return;const cr=S.creatures.find(c=>c.id===d.id);if(!cr||eyeFull(eyeOf(cr,raceRec(cr))))return;S.dlg={kind:'eye',t:'race',id:d.id,k:'all',i:0,open:true,sess:(sessList()[0]||{}).id||''};}
-  else if(a==='rfBack'){S.rf=null;}
+  else if(a==='rfBack'){S.rf=null;S.rfEd=false;}
   else if(a==='rfFlt'){S.rff=d.v;}
   else if(a==='rfFam'){S.rffam=S.rffam===d.v?'':d.v;}
   else if(a==='rfUni'){ev.preventDefault();S.view='univers';S.uni='creatures';S.rf=null;}
@@ -203,6 +206,7 @@ document.addEventListener('click',ev=>{
   else if(a==='rfDel'){const g=S.rf,cr=S.creatures.find(c=>c.id===g.id);if(cr&&cr.done){g.err='Cette fiche de race est complète : elle ne peut pas être supprimée.';}else if(playedBy(raceRec(cr||{}).sing||'').length){g.err='Cette race est jouée par un personnage : elle ne peut pas être supprimée.';}else{g.err='';g.confirm=true;}}
   else if(a==='rfDelOk'){const id=S.rf.id;S.rf=null;saveCreatures(S.creatures.filter(c=>c.id!==id));const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}
   else if(a==='rfSave'&&S.rf&&!S.rf.hum&&rfPwCheck(S.rf)){S.rf.err='Enregistrement impossible. '+rfPwCheck(S.rf);refuse();}
+  else if(a==='rfNomP'&&S.rf){S.rf.nomP=d.v;S.edDirty=true;}
   else if(a==='rfPwN'&&S.rf){const o=(S.rf.pwn=S.rf.pwn||{})[d.i]=(S.rf.pwn||{})[d.i]||{};o[d.f]=o[d.f]===d.v?'':d.v;S.rf.err='';}
   else if(a==='rfSave'&&S.rf&&!S.rf.unkOk&&rfUnkAsk(S.rf).length){S.rf.unkAsk=rfUnkAsk(S.rf);}
   else if(a==='rfSave'){const g=S.rf;delete g.unkOk;const rec=rfRec(g),sing=rec.sing,plur=((g.id&&S.creatures.find(c=>c.id===g.id))||{}).nom||sing;if(!sing)return;rec.pw=pwToIds(rec.pw,g.pwn);if(g.pwx){const ids=pwSlots(rec);let ch=false;const P={...S.pouvoirs};for(const k in g.pwx){const x=g.pwx[k],id=ids[+k];if(x&&x.dirty&&id&&id!=='?'&&P[id]){P[id]={...P[id],desc:(x.desc||'').trim(),fx:clone(x.fx||[])};ch=true;}}if(ch)savePouvoirs(P);}
@@ -321,6 +325,7 @@ document.addEventListener('click',ev=>{
 const q0=s=>document.querySelector(s);
 document.addEventListener('keydown',ev=>{const t=ev.target;if(S.pinF&&(/^[0-9]$/.test(ev.key)||ev.key==='Backspace')&&!(t&&/INPUT|TEXTAREA|SELECT/.test(t.tagName))){ev.preventDefault();pinKey(ev.key==='Backspace'?'del':ev.key);return;}if((ev.key==='Enter'||ev.key===' ')&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset.act){ev.preventDefault();t.click();}});
 document.addEventListener('input',ev=>{
+  if(editorOpen())S.edDirty=true;
   if(socleInput(ev.target,'input'))return;
   const t=ev.target;
   if(t.dataset.f){S.form[t.dataset.f]=t.value;}
@@ -380,6 +385,7 @@ document.addEventListener('input',ev=>{
   if(t.dataset.nc){const b=q('[data-act="addC"]');if(b)b.disabled=!S.newC.court.trim();}
 });
 document.addEventListener('change',ev=>{
+  if(editorOpen())S.edDirty=true;
   const t=ev.target;S._force=true;
   {const sr=socleInput(t,'change');if(sr){if(sr==='r')render();return;}}
   if(t.dataset.cursess){S.curSess=t.value;render();}
@@ -401,8 +407,8 @@ document.addEventListener('change',ev=>{
     rd.onload=()=>{const im=new Image();im.onload=()=>{window._ptrImg=im;const w=im.naturalWidth,h=im.naturalHeight,base=Math.max(220/w,220/h);S.dlg={kind:'ptr',cid,lab,back,src:rd.result,w,h,base,z:1,x:130-w*base/2,y:130-h*base/2};S._force=true;render();};im.src=rd.result;};rd.readAsDataURL(f);}
   else if(t.dataset.cf&&!canEditC(S.chars[t.dataset.id])){render();}
   else if(pfInput(t,'change')||riInput(t,'change')){}
-  else if(t.dataset.cf==='race'){if(S.chars[t.dataset.id].race&&!isGest())return;let c=clone(S.chars[t.dataset.id]);c.race=t.value||null;if(c.race&&c.creation&&!c.spPred)c=grantPredSp(c);saveChar(c);}
-  else if(t.dataset.cf==='kanka'){if(!isGest())return;const c=clone(S.chars[t.dataset.id]);const v=t.value.trim();if(v&&!/^https?:\/\//.test(v)){render();return;}c.kanka=v;saveChar(c);}
+  else if(t.dataset.cf==='race'){if(S.chars[t.dataset.id].race&&!canEdit())return;let c=clone(S.chars[t.dataset.id]);c.race=t.value||null;if(c.race&&c.creation&&!c.spPred)c=grantPredSp(c);saveChar(c);}
+  else if(t.dataset.cf==='kanka'){if(!canEdit())return;const c=clone(S.chars[t.dataset.id]);const v=t.value.trim();if(v&&!/^https?:\/\//.test(v)){render();return;}c.kanka=v;saveChar(c);}
   else if(t.dataset.cf==='pj'){const c=clone(S.chars[t.dataset.id]);const v=t.value||null;if(v!==(c.pj||null)){c.pj=v;c.pjDate=v?today():null;}saveChar(c);}
   else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'||k==='genre'?t.value:(t.value.trim()||c[k]);saveChar(c);}
   else if(t.dataset.np==='role'||t.dataset.nc==='type'||t.dataset.nc==='owner'){render();}

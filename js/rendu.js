@@ -69,10 +69,11 @@ function renderSheet0(){
   {const ae0=document.activeElement;if(S.dlg&&(S.dlg.kind==='b'||S.dlg.kind==='a'||S.dlg.kind==='sx'||S.dlg.kind==='se'||S.dlg.kind==='ca'||S.dlg.kind==='ce'||S.dlg.kind==='sn'||S.dlg.kind==='sm'||S.dlg.kind==='pd'||S.dlg.kind==='pp2'||S.dlg.kind==='rv')&&ae0&&(ae0.id==='dn'||ae0.id==='dp'||ae0.id==='sxt'||ae0.id==='rvt'||ae0.id==='crn'||ae0.id==='sdi'||ae0.id==='pdn'||ae0.id==='pdd')&&root.contains(ae0))return;}
   if(S.dlg){
     const g=S.dlg;let titre='',txt='';
-    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.groupe}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.de}Règles</button><button data-act="tab" data-v="params"${S.view==='params'?' aria-current="page"':''}>${ICON.baguette}Paramètres</button></div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.groupe}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.de}Règles</button>${canEdit()?`<button data-act="tab" data-v="params"${S.view==='params'?' aria-current="page"':''}>${ICON.baguette}Paramètres</button>`:''}</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
     if(PF_KINDS.has(g.kind)){const html=pfSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='me'){root.innerHTML=idSheet();return;}
+    if(g.kind==='cons'){const html=consSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='elEdit'||g.kind==='pwPick'){const html=g.kind==='elEdit'?elEditSheet(g):pwPickSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='pl'||g.kind==='pc'||g.kind==='newp'||g.kind==='newc'){const html=g.kind==='pl'?plSheet(g):g.kind==='pc'?pcSheet(g):g.kind==='newp'?newPSheet():newCSheet();if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='ne'){const e=sessById(g.id);if(!e){S.dlg=null;root.innerHTML='';return;}
@@ -120,7 +121,7 @@ function renderSheet0(){
       <div class="field"><label for="sdi">Intitulé</label><input id="sdi" type="text" data-sd="titre" autocomplete="off" placeholder="ex. S14. Titre du scénario" value="${esc(g.titre)}"></div>
       <div class="field"><label for="sdd">Date</label><input id="sdd" type="date" data-sd="date" value="${esc(g.date)}"></div>
       <div class="field"><label>PJ présents</label><div class="chips" style="flex-wrap:wrap;overflow:visible">${orderPJ([...new Set([...pjIds().filter(i=>actif(S.chars[i])),...(g.pj||[])])]).map(i=>`<button class="chip" data-act="sdPj" data-id="${i}" aria-pressed="${(g.pj||[]).includes(i)}">${esc(S.chars[i].court)}</button>`).join('')}</div><div class="muted small" style="margin-top:4px">L'XP de Scénario va aux PJ présents ; l'Individuel se choisit parmi eux.</div></div>
-      ${g.kind==='sn'?'<div class="muted small">La nouvelle session devient la session proposée par défaut pour l\'XP, les secrets et les créatures.</div>':kids?`<div class="muted small">Suppression impossible : ${kids} découverte${kids>1?'s sont rattachées':' est rattachée'} à cette session. Change d'abord leur session ou retire-les.</div>`:g.confirm?'<div class="muted small">La session et l\'XP saisie dedans seront supprimées pour tous les personnages.</div>':''}
+      ${g.kind==='sn'?'<div class="muted small">La nouvelle session devient la session proposée par défaut pour l\'XP, les secrets et les races.</div>':kids?`<div class="muted small">Suppression impossible : ${kids} découverte${kids>1?'s sont rattachées':' est rattachée'} à cette session. Change d'abord leur session ou retire-les.</div>`:g.confirm?'<div class="muted small">La session et l\'XP saisie dedans seront supprimées pour tous les personnages.</div>':''}
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button>${g.kind==='sm'?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="sessDelOk">Confirmer la suppression</button>`:`<button class="btn" data-act="sessDel"${kids?' disabled':''}>Supprimer</button>`):''}<button class="btn pri" data-act="${g.kind==='sn'?'sessCreate':'sessSave'}"${g.titre.trim()?'':' disabled'}>${g.kind==='sn'?'Créer la session':'Enregistrer'}</button></div></div></div>`;return;}
     if(g.kind==='ca'||g.kind==='ct'||g.kind==='ce'){const html=creSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='eye'){const html=g.t==='sec'?eyeSecSheet(g):eyeRaceSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
@@ -181,7 +182,9 @@ function renderSheet0(){
 function render(){
   if(S.gate)return; /* écran du code : rien ne doit le remplacer */
   const cur=k=>S.view===k||(k==='team'&&S.view==='sheet');
-  const tabs=[['gains','XP'],['team','Personnages'],['univers','Univers'],['planning','Planning'],['players','Joueurs'],['rules','Règles'],['params','Paramètres']];
+  if(S.edit&&(!isGest()||S.visit)){S.edit=false;S.rfEd=false;S.edQuit=false;}
+  if(S.view==='params'&&!canEdit())S.view='home'; /* lot 4 bis : Paramètres seulement en mode édition */
+  const tabs=[['gains','XP'],['team','Personnages'],['univers','Univers'],['planning','Planning'],['players','Joueurs'],['rules','Règles'],['params','Paramètres']].filter(t=>t[0]!=='params'||canEdit());
   const nb=unseenProps(),ns=propBadge(),bdg=k=>k==='planning'&&nb?`<span class="bdg" aria-label="${nb} date${nb>1?'s':''} proposée${nb>1?'s':''} sans réponse">${nb}</span>`:k==='univers'&&ns?`<span class="bdg" aria-label="${ns} proposition${ns>1?'s':''} de découverte en attente">${ns}</span>`:'';
   document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${l}${bdg(k)}</button>`).join('');
   const bn=[['gains','XP','medaille'],['team','Personnages','masque'],['univers','Univers','livre'],['planning','Planning','calp']];
@@ -189,13 +192,18 @@ function render(){
   document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}" style="position:relative">${ICON[ic]}<span>${l}</span>${bdg(k)}</button>`).join('')+
     `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles, Paramètres" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
   document.body.classList.toggle('home',S.view==='home');
+  {const mb=document.getElementById('meBtn');if(mb&&mb.parentNode){let eb=document.getElementById('edBtn');const show=isGest()&&!S.visit;
+    if(!eb&&show){eb=document.createElement('button');eb.type='button';eb.id='edBtn';eb.className='edbtn';eb.dataset.act='editToggle';mb.parentNode.insertBefore(eb,mb);}
+    if(eb){eb.hidden=!show;const on=!!S.edit;eb.classList.toggle('on',on);eb.setAttribute('aria-pressed',String(on));const lab=on?'Quitter le mode édition':'Passer en mode édition';eb.setAttribute('aria-label',lab);eb.title=lab;if(!eb.innerHTML)eb.innerHTML=ICON.crayon;}}}
   {const mb=document.getElementById('meBtn');if(mb){const me=ME&&S.players[ME];const lab=me?esc(me.nom):'Qui es-tu ?';const html=`${ICON.perso}<span>${lab}</span>`;if(mb.innerHTML!==html)mb.innerHTML=html;mb.setAttribute('aria-label',me?'Connecté en tant que '+me.nom+', changer de joueur':'Choisir qui tu es');}}
   const ae=document.activeElement;
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;navSave();
   const v=S.view,app=document.getElementById('app');
-  app.innerHTML=idBanners()+socleBanner()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():viewRules());
+  app.innerHTML=idBanners()+socleBanner()+(canEdit()?`<div class="edband" role="status">${ICON.crayon}<span>Mode édition actif : les modifications sont enregistrées pour toute la table</span></div>`:'')+navBar()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():viewRules());
   renderSheet();
+  {let q=document.getElementById('edqRoot');if(!q){q=document.createElement('div');q.id='edqRoot';document.body.appendChild(q);}const qh=S.edQuit?edQuitSheet():'';if(q.innerHTML!==qh)q.innerHTML=qh;}
+  if(S.secHl){const k=S.secHl.k,el=document.getElementById(k==='titre'||k==='bonus'?'seck-titre':'secel-'+k+'-'+S.secHl.i)||document.getElementById('seck-'+k);if(el){el.classList.add('hl');requestAnimationFrame(()=>el.scrollIntoView({block:'center'}));}}
   const w=whoGate();let wr=document.getElementById('whoRoot');if(!wr){wr=document.createElement('div');wr.id='whoRoot';document.body.appendChild(wr);}if(wr.innerHTML!==w)wr.innerHTML=w;
 }
 

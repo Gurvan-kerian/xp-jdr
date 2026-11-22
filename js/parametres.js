@@ -117,13 +117,14 @@ function ppConfirmSheet(g,c,pr){const have=ppHave(pr);
     <div class="calc"><span>PP disponibles</span><b>${esc(ppFmt(have))}</b></div>
     <div class="muted small">L'achat est inscrit dans l'historique et peut y être annulé.</div><div class="actions"><button class="btn" data-act="ppBack">Retour</button><button class="btn pri" data-act="ppBuyOk"${ok?'':' disabled'}>Acheter</button></div>`);}
   const e=ppSelEl(g,c);if(!e){g.sel=null;return ppBuySheet(g);}
-  const k=e.cost||{},miss=ppPreMiss(e,c),G=isGest(),prin=ppBought(c).find(a=>a.ppel.opt==='p'&&a.ppel.rub==='A');
+  const k=e.cost||{},miss=ppPreMiss(e,c),G=canEdit(),prin=ppBought(c).find(a=>a.ppel.opt==='p'&&a.ppel.rub==='A');
   let opt='';if(e.rub==='A')opt=`<div class="field"><label>Activité</label>${pfSeg('ppOpt',g.opt,[['p','Principale'],['s','Secondaire']])}${prin?`<div class="muted small">${esc(c.court)} a déjà une activité principale (${esc(prin.ppel.nom)}).</div>`:''}</div>`;
   else if(k.k==='hf'&&k.a!=null&&k.b!=null)opt=`<div class="field"><label>Le contact est</label>${pfSeg('ppOpt',g.opt,[['h','Humain'],['f','Fée']])}</div>`;
+  else if(k.k==='tm'&&isExoF(c))opt=`<div class="field"><label>Coût appliqué <span class="muted small">(race exotique)</span></label>${pfSeg('ppOpt',g.opt==='t'?'t':'m',[['m','Fée moderne'],['t','Fée traditionnelle']])}</div>`;
   const cost=ppCost(e,g.opt,c),eff=e.rub==='A'?(g.opt==='p'?(e.fortP!=null?'Fortune '+e.fortP:'')+(e.spec?(e.fortP!=null?' · ':'')+'spécialité '+e.spec+' offerte':''):(e.fortS!=null?'Fortune +'+e.fortS:'')):'';
   const nat=k.k==='tm'?natfOf(c):'',blocked=miss.length&&!(G&&g.ov),ok=cost<=have&&!blocked;
   return sheetW('Confirmer un achat',`<div class="shd"><h2>${esc(e.nom)}</h2></div><div class="muted small">${esc(profLab(g.prof,c))} · ${esc((PP_RUB.find(r=>r[0]===e.rub)||[])[1]||'')}</div>${opt}
-  ${k.k==='tm'?`<div class="muted small">Coût selon la nature de la race : ${nat?esc(NATF[nat]):'non définie (coût de fée traditionnelle)'}.</div>`:''}
+  ${k.k==='tm'?`<div class="muted small">Coût selon la nature de la race : ${nat?esc(NATF[nat]):isExoF(c)?'exotique (coût de fée moderne par défaut, traditionnel au cas par cas)':'non définie (coût de fée traditionnelle)'}.</div>`:''}
   <div class="calc"><span>Coût</span><b>${esc(ppFmt(cost))} PP</b>${eff?`<span>Effet</span><b>${esc(eff)}</b>`:''}<span>Reste après l'achat</span><b>${esc(ppFmt(have-cost))} PP ${esc(profLab(g.prof,c))}</b></div>
   ${e.prec&&!e.titre?`<div class="muted small">${esc(e.prec)}</div>`:''}
   ${miss.length?`<div class="bad small">Prérequis manquant : ${miss.map(ppPreTxt).map(esc).join(', ')}.</div>${G?`<div class="tgrow"><span>Passer outre <small class="muted">(gestion)</small></span><button class="tgb" data-act="ppOv" role="switch" aria-checked="${!!g.ov}" aria-label="Passer outre"><span class="tg${g.ov?' on':''}"></span></button></div>`:''}`:''}
@@ -135,8 +136,8 @@ function ppBuyOk(g){const c0=S.chars[g.cid];if(!c0)return;const c=clone(c0),pr=(
   const aid='a'+Date.now().toString(36)+Math.floor(Math.random()*1e3);c.achats=c.achats||[];
   if(g.sel==='other'){const n=+String(g.ocost||'').replace(',','.')||0,lab=(g.olab||'').trim();if(n<=0||!lab)return;pr.note=have-n;
     c.achats.push({id:aid,date:today(),label:`PP ${g.prof} - ${ppFmt(n)} - ${lab}`,cout:0,key:'pp:'+g.prof,pp:n});S.dlg=null;saveChar(c);toast('Achat enregistré');return;}
-  const e=ppSelEl(g,c0);if(!e)return;const cost=ppCost(e,g.opt,c0);if(cost>have)return;if(ppPreMiss(e,c0).length&&!(isGest()&&g.ov))return;
-  const opt=e.rub==='A'||(e.cost&&e.cost.k==='hf')?g.opt:'',prec=(g.prec||'').trim();pr.note=have-cost;
+  const e=ppSelEl(g,c0);if(!e)return;const cost=ppCost(e,g.opt,c0);if(cost>have)return;if(ppPreMiss(e,c0).length&&!(canEdit()&&g.ov))return;
+  const opt=e.rub==='A'||(e.cost&&e.cost.k==='hf')?g.opt:(e.cost&&e.cost.k==='tm'&&isExoF(c0)?(g.opt==='t'?'t':'m'):''),prec=(g.prec||'').trim();pr.note=have-cost;
   const x={id:g.sel==='titre'?'titre:'+g.prof:g.sel,prof:g.prof,rub:e.rub,nom:e.nom,opt};if(e.titre)x.titre=true;if(prec)x.prec=prec;
   if(e.rub==='A'){if(opt==='p'&&e.fortP!=null)x.fort=e.fortP;if(opt==='s'&&e.fortS!=null)x.fortS=e.fortS;if(opt==='p'&&e.spec)x.spec=e.spec;}
   c.achats.push({id:aid,date:today(),label:`PP ${g.prof} - ${ppFmt(cost)} - ${e.nom}${opt?' ('+PPOPT[opt]+')':''}${prec?' : '+prec:''}`,cout:0,key:'pp:'+g.prof,pp:cost,ppel:x});
