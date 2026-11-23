@@ -6,18 +6,32 @@ function sbDb(code){
   const rpc=async(fn,args)=>{const r=await fetch(SB.url+'/rest/v1/rpc/'+fn,{method:'POST',headers:H,body:JSON.stringify(Object.assign({p_code:code},args))});
     if(!r.ok){const e=new Error(await r.text());e.status=r.status;throw e;}const t=await r.text();return t?JSON.parse(t):null;};
   let rows=[],sig='',inflight=0,loaded=false,subs=[],timer=null;
+  /* Lot 0 (23/11/2026) : après le chargement complet, on ne recharge que les changements (xp_since).
+     Repli automatique sur le rechargement complet si xp_since n'est pas installée ; resynchronisation complète toutes les 10 min. */
+  let delta=true,since=null,nPoll=0;
   const sigOf=r=>stable(r.map(x=>[x.coll,x.id,x.data]).sort((a,b)=>(a[0]+a[1]).localeCompare(b[0]+b[1])));
+  const maxAt=r=>r.reduce((m,x)=>x.updated_at&&x.updated_at>m?x.updated_at:m,'')||null;
   const fire=err=>subs.forEach(f=>f(err));
+  async function full(){const r=await rpc('xp_list',{});if(inflight)return;const g=sigOf(r);const was=loaded;loaded=true;
+    if(S.sync==='err')setSync('ok');since=maxAt(r)||since;
+    if(g!==sig||!was){sig=g;rows=r;fire();}}
+  async function step(){const r=await rpc('xp_since',{p_depuis:since});if(inflight||!r)return;
+    if(S.sync==='err')setSync('ok');let ch=false;
+    for(const x of r.rows||[]){const i=rows.findIndex(y=>y.coll===x.coll&&y.id===x.id);
+      if(i<0){rows=[...rows,x];ch=true;}else if(stable(rows[i].data)!==stable(x.data)){rows=rows.map((y,j)=>j===i?x:y);ch=true;}}
+    for(const x of r.del||[]){if(rows.some(y=>y.coll===x.coll&&y.id===x.id)){rows=rows.filter(y=>!(y.coll===x.coll&&y.id===x.id));ch=true;}}
+    if(r.now)since=r.now;if(ch)fire();}
   async function poll(){
     if(inflight||document.hidden)return;
-    try{const r=await rpc('xp_list',{});if(inflight)return;const g=sigOf(r);const was=loaded;loaded=true;
-      if(S.sync==='err')setSync('ok');
-      if(g!==sig||!was){sig=g;rows=r;fire();}}
+    try{nPoll++;
+      if(delta&&since&&nPoll%120!==0){
+        try{await step();}catch(e){if(e&&(e.status===404||e.status===400)){delta=false;sig=sigOf(rows);await full();}else throw e;}}
+      else{if(delta)sig=sigOf(rows);await full();}}
     catch(e){if(loaded)setSync('err','Connexion perdue');}
   }
-  async function check(){const r=await rpc('xp_list',{});rows=r;sig=sigOf(r);loaded=true;
+  async function check(){const r=await rpc('xp_list',{});rows=r;sig=sigOf(r);since=maxAt(r);loaded=true;
     timer=setInterval(poll,5000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});window.addEventListener('online',poll);}
-  async function write(fn,args,local){inflight++;try{await rpc(fn,args);local();sig=sigOf(rows);}finally{inflight--;}setTimeout(poll,400);}
+  async function write(fn,args,local){inflight++;try{await rpc(fn,args);local();if(!delta)sig=sigOf(rows);}finally{inflight--;}setTimeout(poll,400);}
   const listen=(get,ok,err)=>{const f=e=>{if(e){err&&err(e);return;}ok(get());};subs.push(f);if(loaded)setTimeout(()=>f(),0);};
   const meta={hasPendingWrites:false,fromCache:false};
   return {check,rpc,
