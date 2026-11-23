@@ -7,6 +7,7 @@ function viewParams(){if(!S.paramsReady)return `<h2 style="margin-top:4px">Param
   if(tab==='pouvoirs')return h+viewElCat('pw');
   if(tab==='capacites')return h+viewElCat('cap');
   if(tab==='profils')return h+viewProfils();
+  if(tab==='rel')return h+viewRelParams();
   const conf='<span class="tagc">à confirmer</span>';
   const row=([k,l,,c])=>`<div class="pr2"><label for="p-${k}">${esc(l)} ${c?conf:''}</label><span class="pv">${k==='ppBareme'?`<select id="p-${k}" data-pv="${k}">${['1, 3, 6, 10, 15','1, 4, 10, 20, 35'].map(o=>`<option${g.v[k]===o?' selected':''}>${o}</option>`).join('')}</select>`:`<input id="p-${k}" type="number" min="0" data-pv="${k}" value="${esc(g.v[k])}">`}</span></div>`;
   const T={couts:'Ratios',paliers:'Rang PJ : conditions Profond et Légendaire',creation:'Règles de création',pnj:'Rangs de PNJ',table:'XP Groupe'};
@@ -200,3 +201,14 @@ function pfInput(t,ev){const g=S.dlg;if(!g)return false;const D=t.dataset;
     else if((D.ppb==='olab'||D.ppb==='ocost')){const b=q0('#sheetRoot [data-act="ppBuyOk"]');if(b)b.disabled=!((+String(g.ocost||'').replace(',','.')||0)>0&&(g.olab||'').trim());}
     return true;}
   return false;}
+/* ---------- Paramètres › Relations : jauges (taille et difficulté par rang du PNJ et par objectif) ---------- */
+function viewRelParams(){const d=S.relpD||(S.relpD=clone(S.relp||{})),R=pnjRangs(),O=Object.keys(REL_OBJ),E=canEdit();
+  const cell=(t,r,o)=>{const v=((d[t]||{})[r]||{})[o];return `<td><input type="number" min="0" inputmode="numeric" data-rpk="${t}|${esc(r)}|${o}" value="${v==null?'':esc(v)}" aria-label="${t==='taille'?'Taille':'Difficulté'} ${esc(r)} ${REL_OBJ[o][2]}"${E?'':' disabled'}></td>`;};
+  const tab=(t,l)=>`<h3 class="rs">${l}</h3><div class="tscroll"><table class="rpt"><thead><tr><th>Rang du PNJ</th>${O.map(o=>`<th>${REL_OBJ[o][2]}</th>`).join('')}</tr></thead><tbody>${R.map(r=>`<tr><th>${esc(r)}</th>${O.map(o=>cell(t,r,o)).join('')}</tr>`).join('')}</tbody></table></div>`;
+  return `<div class="card"><div class="muted small">Jauges de relation : la taille (en cases) et la difficulté dépendent du rang du PNJ et de l'objectif de la jauge. Une case vide = valeur pas encore connue (la taille se saisit alors à l'ouverture de la jauge).</div>${tab('taille','Taille de la jauge (cases)')}${tab('diff','Difficulté')}
+    <div class="field" style="max-width:260px;margin-top:10px"><label for="rp-bo">Bonus « même organisation » (diminue la difficulté)</label><input id="rp-bo" type="number" min="0" data-rpk="bonusOrg" value="${d.bonusOrg==null?1:esc(d.bonusOrg)}"${E?'':' disabled'}></div>
+    ${E?`<div class="actions" style="margin-top:10px"><button class="btn pri" data-act="relpSave"${S.relpDirty?'':' disabled'}>Enregistrer</button></div>`:''}</div>`;}
+function relpInput(t){const k=t.dataset.rpk;if(k===undefined)return false;const d=S.relpD||(S.relpD=clone(S.relp||{}));const v=t.value===''?null:+t.value;
+  if(k==='bonusOrg')d.bonusOrg=v;else{const [a,r,o]=k.split('|');d[a]={...(d[a]||{})};d[a][r]={...(d[a][r]||{})};if(v==null)delete d[a][r][o];else d[a][r][o]=v;}
+  S.relpDirty=true;const b=document.querySelector('[data-act="relpSave"]');if(b)b.disabled=false;return true;}
+function relpAct(a){if(a!=='relpSave')return false;if(!canEdit())return true;S.relp=clone(S.relpD||{});S.relpDirty=false;persist('meta/relations',S.relp);render();toast('Enregistré');return true;}

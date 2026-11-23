@@ -374,7 +374,7 @@ function fxSync(c0){if(!c0||!c0.fx)return c0;const want={};for(const e of fxOf(c
 
 /* ---------- Paramètres (écran Paramètres, droits de gestion) ----------
    meta/params = {versions:[{date, v:{...}}]} ; la version active est la plus récente dont la date d'effet est passée. */
-const PARAM_TABS=[['couts','Ratios'],['paliers','Rang PJ'],['creation','Création'],['pnj','Rangs de PNJ'],['table','XP Groupe'],['pouvoirs','Pouvoirs'],['capacites','Capacités'],['profils','Profils'],['donnees','Données']];
+const PARAM_TABS=[['couts','Ratios'],['paliers','Rang PJ'],['creation','Création'],['pnj','Rangs de PNJ'],['rel','Relations'],['table','XP Groupe'],['pouvoirs','Pouvoirs'],['capacites','Capacités'],['profils','Profils'],['donnees','Données']];
 const PARAM_DEF={
  couts:[['feerie','Féerie : (niveau suivant) ×',5],['masque','Masque : (niveau suivant) ×',4],['carac','Caractéristique : (niveau suivant) ×',4],['carac12','Caractéristique : passage de 1 à 2',12],['comp','Compétence : (niveau suivant) ×',3],['fut','Compétence futile : (niveau suivant) ×',1],['fortune','Fortune : (niveau suivant) ×',2],['atout','Atout féerique',8],['spec','Spécialité',8],['specFut','Spécialité futile',2],['mauvaiseMain','Mauvaise main',12],['prof','Profil de PNJ : (niveau suivant) ×',12]],
  paliers:[['p1feerie','Profond : Féerie',7],['p1carac','Profond : une caractéristique à',6],['p1comp','Profond : une compétence à',6],['p1atout','Profond : atouts féeriques',4],['p2feerie','Légendaire : Féerie',8],['p2carac','Légendaire : une caractéristique à',7],['p2comp','Légendaire : une compétence à',7],['p2atout','Légendaire : atouts féeriques',5],['palierMax','Compétences prises en compte : niveau max d\'au moins',7]],

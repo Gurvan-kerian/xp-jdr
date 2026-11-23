@@ -62,9 +62,9 @@ function viewSheet(){
   h+=`<div style="margin-bottom:10px"><div class="shname"><span>${esc(c.nom)}</span>${kankaBtn(c.kanka,c.nom||c.court,'Fiche Kanka de '+(c.court||c.nom))}</div><div class="shrace">${c.race?`<span class="rc">${raceLk(c)}</span> · `:''}<span class="rg">${esc(rangOf(c))}</span>${natfOf(c)?` · <span class="rg">${esc(NATF[natfOf(c)])}</span>`:''}</div><div class="muted small">${whoLineL(c)}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div>${fealLine(c)}</div>`;
   /* Bandeau XP qui reste visible */
   h+=`<div class="xpbar"><div class="xpd"><b class="num">${s.dispo}</b><span>XP dispo</span></div><div class="xpo"><span><b class="num">${s.prevu}</b> prévu</span><span class="${s.manque?'bad':''}"><b class="num">${s.manque}</b> manque</span></div><div class="xpm">${s.gains} gagnés · ${s.spent} dépensés</div></div>`;
-  const tab=S.shTab||'prog';
-  h+=`<div class="tabs2" role="group" aria-label="Vue de la fiche"><button data-act="shTab" data-v="prog" aria-pressed="${tab==='prog'}">Progression</button><button data-act="shTab" data-v="full" aria-pressed="${tab==='full'}">Fiche complète</button></div>`;
-  if(tab==='full')return h+viewSheetFull(c);
+  const tab=shTabOf(c);
+  h+=shTabsBar(c,tab);
+  if(tab!=='prog')return h+viewSheetTab(c,tab);
   if(c.type==='PNJ'){
     const f=S.pnjForm;
     h+=`<h2>Ajouter des XP</h2><div class="card"><div class="frow"><div class="field"><label for="px">Intitulé</label><input id="px" type="text" data-pnj="titre" placeholder="ex. S12. Titre du scénario" value="${esc(f.titre)}"></div><div class="field"><label for="pm">XP</label><input id="pm" type="number" inputmode="numeric" min="0" data-pnj="montant" value="${esc(f.montant)}"></div></div><button class="btn pri" data-act="pnjXp"${f.titre.trim()&&+f.montant>0?'':' disabled'}>Ajouter à ${esc(c.court)}</button></div>`;
@@ -390,3 +390,178 @@ function jTitle(e){if(e.secret&&e.secret.n!=null)return lk({t:'secret',n:e.secre
   if(e.creature&&e.creature.id)return lk({t:'race',id:e.creature.id},e.titre||'');return esc(e.titre||'');}
 /* Libellé du type : « Créature de l'univers » s'affiche « Race de l'univers » (donnée enregistrée inchangée) */
 const evTypeL=e=>{const t=evType(e);return t===CRE_TYPE?"Race de l'univers":t;};
+/* ==========================================================================
+   Fiche de personnage en onglets (23/11/2026) : Progrès · Fiche · Féerie · Relations · Situation · Journaux
+   Progrès = l'ancien onglet Progression, inchangé. Les ajouts en jeu (Relations, Situation, Journaux)
+   sont des actions de jeu : joueur du personnage et gestion (canEditC), hors mode édition.
+   ========================================================================== */
+const SH_ICO={prog:'<path d="M4 18l5-5 4 3 7-8"/><path d="M15 8h5v5"/>',fiche:'<rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>',feer:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',rel:'<circle cx="8.5" cy="9" r="3"/><circle cx="16" cy="10" r="2.5"/><path d="M3.5 19c.8-3 3-4.5 5-4.5s4.2 1.5 5 4.5M14 15.2c2.6-.4 4.6.9 5.5 3.8"/>',situ:'<path d="M4 20V10l8-5 8 5v10"/><path d="M9.5 20v-5h5v5"/>',jour:'<path d="M6 3.5h10a2 2 0 0 1 2 2v15H8a2 2 0 0 1-2-2z"/><path d="M6 17.5a2 2 0 0 1 2-2h10"/>'};
+const SH_TABS=[['prog','Progrès'],['fiche','Fiche'],['feer','Féerie'],['rel','Relations'],['situ','Situation'],['jour','Journaux']];
+const shHasFee=c=>c.type==='PJ'&&!isHum(c);
+const shTabsOf=c=>SH_TABS.filter(([k])=>k!=='feer'||shHasFee(c));
+function shTabOf(c){let t=S.shTab||'prog';if(t==='full')t='fiche';return shTabsOf(c).some(x=>x[0]===t)?t:'prog';}
+const shTabsBar=(c,tab)=>`<div class="tabs6" role="group" aria-label="Parties de la fiche" style="grid-template-columns:repeat(${shTabsOf(c).length},minmax(0,1fr))">${shTabsOf(c).map(([k,l])=>`<button type="button" data-act="shTab" data-v="${k}" aria-pressed="${tab===k}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SH_ICO[k]}</svg>${l}</button>`).join('')}</div>`;
+const SHFOLD0={fut:true,lang:true,notab:true};
+const shFolded=k=>{const f=(S.shFold||{})[k];return f==null?!!SHFOLD0[k]:f;};
+function cBlk(k,title,sum,body,add){const fold=shFolded(k),id='cb-'+k;
+  return `<section class="rblk"><div class="rbh"><button type="button" class="rbt" data-act="shFold" data-k="${k}" aria-expanded="${!fold}" aria-controls="${id}"><span class="tt"><span class="t">${title}</span>${sum!==''&&sum!=null?`<span class="n">${sum}</span>`:''}</span><span class="chev" aria-hidden="true">${fold?'›':'⌄'}</span></button></div>${fold?'':`<div class="rbb" id="${id}">${body}${add||''}</div>`}</section>`;}
+const shNone='<div class="muted small">—</div>';
+const srcChip=s=>s==='pp'?'<span class="srcb">PP</span>':s==='session'?'<span class="srcb j">session</span>':s==='feal'?'<span class="srcb">féal</span>':'<span class="srcb j">en jeu</span>';
+const ppBits=x=>[PPOPT[x.opt]||'',x.fort!=null?'Fortune '+x.fort:'',x.fortS!=null?'Fortune +'+x.fortS:'',x.spec?'spécialité '+x.spec:'',x.prec||''].filter(Boolean).join(' · ');
+const ppLinesOf=(c,r)=>ppBought(c).filter(a=>a.ppel.rub===r).map(a=>`<div class="srow"><span><b>${esc(a.ppel.nom)}</b>${ppBits(a.ppel)?`<span class="d">${esc(ppBits(a.ppel))}</span>`:''}</span>${srcChip('pp')}</div>`);
+/* ---------- onglets Fiche et Féerie : reprise de l'ancienne « Fiche complète », en blocs ---------- */
+function viewSheetTab(c,tab){
+  if(tab==='rel')return viewRelations(c);
+  if(tab==='situ')return viewSituation(c);
+  if(tab==='jour')return viewJournaux(c);
+  const fm=S.forme||'m',fxl=fxOf(c),x=raceRecOf(c),fee=shHasFee(c);let h='';
+  const val=n=>`<b class="num">${n}</b>`,row=(a,b)=>`<div class="fr"><span>${a}</span>${val(b)}</div>`;
+  const fxLines=(k,nom)=>fxl.filter(e=>e.kind===k&&nrmA(e.src)===nrmA(nom)).map(e=>`<div class="fxs${fxOn(e,fm)?'':' off'}">Effet : ${esc(fxLabel(e))}${fxQ(e.quand)==='d'?' · démasqué seulement':''}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}</div>`).join('');
+  const item=(nom,desc,fx)=>`<div class="fi"><b>${esc(nom)}</b>${desc?`<div class="s">${esc(desc)}</div>`:''}${fx||''}</div>`;
+  const spl=key=>{const L=specsOf(c).filter(y=>y.cible===key);return L.length?`<div class="fsp">${L.map(y=>{const i=specInfo(y.nom);return esc(y.nom)+(i&&i[2]?'*':'');}).join(', ')}</div>`:'';};
+  if(!isHum(c))h+=`<div class="formesw"><span class="muted small">Forme</span><div class="seg sm" role="group" aria-label="Forme du personnage">${[['m','Masquée'],['d','Démasquée']].map(([v,l])=>`<button data-act="forme" data-v="${v}" aria-pressed="${fm===v}">${l}</button>`).join('')}</div></div>`;
+  if(tab==='fiche'){
+    const T=traitsOf(c);
+    h+=cBlk('trt','Traits de caractère',T.length?String(T.length):'',T.length?`<div class="fxl">${T.map(([n,s])=>`<span class="rchip">${esc(n)} <small class="muted">· ${esc(s)}</small></span>`).join('')}</div>`:shNone);
+    h+=cBlk('der','Caractéristiques dérivées','',`<div class="dg">`+derived(c,fm).map(([n,v,b,src])=>{const tip=derFormula(c,fm,n);
+      const ab=(src||[]).map(y=>{const m=y.match(/^([+−-]?\d+)\s+(.*)$/);return m?m[1]+' '+m[2].slice(0,4)+'.':y;}).join(' ');
+      return `<button class="dt" data-act="derTip" data-n="${esc(n)}" title="${esc(tip)}" aria-label="${esc(tip)} : ${v}">${derIco(n)}<b class="num">${v}</b>${ab?`<small>${esc(ab)}</small>`:''}${S.derTip===n?`<span class="dtip" role="tooltip">${esc(tip)}</span>`:''}</button>`;}).join('')+`</div>`);
+    h+=cBlk('car','Caractéristiques',fm==='d'?'forme démasquée':'forme masquée',`<div class="fgrid">${CARACS.map(n=>row(esc(n),lv(c,'carac:'+n)+(c.accru===n&&fm==='d'?1:0))).join('')}</div>`);
+    h+=cBlk('prof',c.type==='PJ'?'Profils et compétences':'Profils',String((c.profils||[]).length),(c.profils||[]).map(pr=>{let b=`<div class="fr"><b>${esc(profLab(pr.nom,c))}</b><span class="muted">rang ${rankOf(c,pr)}</span></div>`;
+      if(c.type==='PJ')b+=(pr.comps||[]).map(y=>row(esc(y.nom),lv(c,'comp:'+y.nom))+spl('comp:'+y.nom)).join('');
+      else{b+=spl('prof:'+pr.nom);if(pr.subs&&pr.subs.length)b+=`<div class="fsp">${pr.subs.map(esc).join(', ')}</div>`;}
+      return `<div class="pblk">${b}</div>`;}).join('')||shNone);
+    if(c.type==='PJ'&&(c.futiles||[]).length)h+=cBlk('fut','Compétences futiles',String(c.futiles.length),c.futiles.map(f=>row(esc(f.nom),lv(c,'fut:'+f.nom))+spl('fut:'+f.nom)).join(''));
+    const L=ppLinesOf(c,'L');if(L.length)h+=cBlk('lang','Langues',String(L.length),L.join(''));
+    return h;}
+  /* Féerie */
+  if(!fee)return h+shNone;
+  const own=c.pw||[],pal=own.some(o=>o.i===7)?'Légendaire':own.some(o=>o.i===6)?'Profond':'';
+  h+=cBlk('fm','Féerie et Masque',pal?'palier '+pal:'',row('Féerie',lv(c,'feerie'))+row('Masque',lv(c,'masque')));
+  let pw='';if(x&&own.length)pw=[...own].sort((a,z)=>a.i-z.i).map(o=>{const p=pwCat(o.id),v=varOf(p,o.v||raceVarAt(x,o.i)),meta=[PW_LAB[o.i]?PW_LAB[o.i].toLowerCase():'',p.type?TYPE_L[p.type]||p.type:''].filter(Boolean).join(' · ');
+      const fl=(L,t)=>(L||[]).map(e=>`<div class="fxs${fxOn(e,fm)?'':' off'}">Effet : ${esc(fxLabel(e))}${fxQ(e.quand)==='d'?' · démasqué seulement':''}${v?` <span class="muted">· ${t}</span>`:''}</div>`).join('');
+      return `<div class="fi fil">${illThumb('pw',o.id,48)}<div><b>${pwLk(x,o.i,o.id)}</b>${meta?` <span class="muted small">${esc(meta)}</span>`:''}${p.desc?`<div class="s">${esc(p.desc)}</div>`:''}${fl(p.fx,'commun')}${v?fl(v.fx,'sous-type'):''}</div></div>`;}).join('');
+  h+=cBlk('pw','Pouvoirs',`${own.length} sur 8`,pw||'<div class="muted small">Aucun pouvoir choisi.</div>');
+  if(x){const av=(x.av||[]).filter(e=>e&&e[0]),dv=(x.dv||[]).filter(e=>e&&e[0]);
+    h+=cBlk('avdv','Avantages et désavantages',`${av.length} + ${dv.length}`,(av.length?`<div class="fsub">Avantages</div>`+av.map(e=>item(e[0],e[1],fxLines('av',e[0]))).join(''):'')+(dv.length?`<div class="fsub">Désavantages</div>`+dv.map(e=>item(e[0],e[1],fxLines('dv',e[0]))).join(''):'')||shNone);
+    const capL=(x.cap||[]).filter(e=>e&&e[0]);
+    const cap=capL.map(e=>{const cid=capIdByName(S.capacites||{},e[0]),th=cid?illThumb('cap',cid,48):'',nm=capLk(e);return th?`<div class="fi fil">${th}<div><b>${nm}</b>${e[1]?`<div class="s">${esc(e[1])}</div>`:''}${fxLines('cap',e[0])}</div></div>`:`<div class="fi"><b>${nm}</b>${e[1]?`<div class="s">${esc(e[1])}</div>`:''}${fxLines('cap',e[0])}</div>`;}).join('')+(c.accru?`<div class="fi"><b>${esc(c.accru)} ${accW(c.accru)}</b><div class="fxs${fm==='d'?'':' off'}">Effet : ${esc(c.accru)} +1 · démasqué seulement</div></div>`:'');
+    h+=cBlk('cap','Capacités naturelles',String(capL.length+(c.accru?1:0)),cap||shNone);
+    const at=atoutsOf(c).filter(a=>a&&a.nom);
+    h+=cBlk('at','Atouts féeriques',String(at.length),at.map(a=>{const d=(x.at||[]).find(e=>e&&nrmA(e[0])===nrmA(a.nom));return item(a.nom,d&&d[1],fxLines('at',a.nom));}).join('')||shNone);}
+  return h;}
+/* ---------- Situation ---------- */
+const SITU=[['titres','Titres','Titre obtenu en jeu'],['fiefs','Fiefs','Fief'],['familles','Familles','Famille'],['orgs','Organisations','Organisation'],['poss','Possessions courantes','Possession'],['possN','Possessions notables','Possession notable']];
+const situOf=c=>c.situ||{};
+function situRows(c,k){const E=canEditC(c);return (situOf(c)[k]||[]).map(e=>`<div class="srow"><span><b>${esc(e.nom)}</b>${k==='orgs'&&e.role?` <span class="muted">· ${esc(e.role)}</span>`:''}${e.note?`<span class="d">${esc(e.note)}</span>`:''}</span>${srcChip('jeu')}${E?`<button type="button" class="ibtn" data-act="situEd" data-k="${k}" data-i="${esc(e.id)}" aria-label="Modifier ${esc(e.nom)}">✎</button>`:''}</div>`);}
+function viewSituation(c){let h='';const E=canEditC(c),add=(k,l)=>E?`<button type="button" class="addl" data-act="situEd" data-k="${k}">+ ${l}</button>`:'';
+  const A=ppLinesOf(c,'A');h+=cBlk('act','Activités',A.length?String(A.length):'',A.join('')||shNone);
+  if(c.type==='PJ'){const f=lv(c,'fortune'),F=FORTUNE[f];h+=`<div class="fortl"><span>Fortune${F?` · <b>${esc(F[0])}</b> <span class="muted small">(${esc(F[1])})</span>`:''}</span><b class="num">${f}</b></div>`;}
+  for(const [k,l,al] of SITU){let rows=situRows(c,k);
+    if(k==='titres')rows=ppLinesOf(c,'T').concat(rows);
+    if(k==='poss')rows=ppLinesOf(c,'E').concat(rows);
+    const later=['fiefs','familles','orgs'].includes(k)&&rows.length?'':'';
+    h+=cBlk(k,l,rows.length?String(rows.length):'',(rows.join('')||shNone)+later,add(k,al));}
+  return h;}
+/* ---------- Relations et jauges ---------- */
+const REL_NIV={ennemi:'Ennemi',neutre:'Neutre',contact:'Contact',allie:'Allié'};
+const REL_OBJ={contact:['neutre','contact','Neutre → contact'],allie:['contact','allie','Contact → allié'],neutre:['ennemi','neutre','Ennemi → neutre']};
+const relObjFor=niv=>Object.keys(REL_OBJ).filter(o=>REL_OBJ[o][0]===niv);
+const relP=()=>S.relp||{};
+const relTaille=(rang,obj)=>{const v=((relP().taille||{})[rang]||{})[obj];return v>0?+v:null;};
+const relDiff=(rang,obj)=>{const v=((relP().diff||{})[rang]||{})[obj];return v===''||v==null?null:+v;};
+/* Relations affichées : saisies (c.rel) + contacts achetés en PP + féaux, sans doublon */
+function relsOf(c){const R=(c.rel||[]).map(r=>({...r}));
+  for(const a of ppBought(c).filter(a=>a.ppel.rub==='C'))if(!R.some(r=>r.pp===a.id))R.push({id:'pp:'+a.id,pp:a.id,virt:true,nom:a.ppel.nom+(a.ppel.prec?' ('+a.ppel.prec+')':''),niv:'contact',src:'pp',note:ppBits(a.ppel)});
+  for(const f of Object.values(S.chars).filter(f=>f.pj===c.id&&vis(f)))if(!R.some(r=>r.pnj===f.id))R.push({id:'feal:'+f.id,pnj:f.id,virt:true,nom:f.court||f.nom,rang:rangOf(f),niv:'allie',src:'feal'});
+  return R;}
+function relOrgBonus(c,r){const p=r.pnj&&S.chars[r.pnj];if(!p)return 0;const a=(situOf(c).orgs||[]).map(o=>nrm(o.nom)),b=(situOf(p).orgs||[]).map(o=>nrm(o.nom));return a.some(n=>n&&b.includes(n))?(relP().bonusOrg!=null&&relP().bonusOrg!==''?+relP().bonusOrg:1):0;}
+const gauge=(n,f)=>`<span class="gj" role="img" aria-label="${f} cases sur ${n}">${Array.from({length:n},(_,i)=>`<i class="${i<f?'f':''}"></i>`).join('')}</span>`;
+function relRow(c,r){const E=canEditC(c),p=r.pnj&&S.chars[r.pnj];
+  const nm=p&&vis(p)?lk({t:'perso',id:p.id},r.nom||p.court):`<b>${esc(r.nom||'?')}</b>`;
+  const J=(r.jauges||[]).map(j=>{const d=relDiff(r.rang,j.obj),bo=relOrgBonus(c,r);return `<div class="jrow"><div class="jh"><span class="small"><b>${REL_OBJ[j.obj][2]}</b> · ${j.cases||0} / ${j.taille}${d!=null?` · difficulté ${d-bo}${bo?` (dont même organisation −${bo})`:''}`:''}</span>${E?`<span class="jact"><button type="button" class="btn sm" data-act="relCases" data-id="${esc(r.id)}" data-j="${esc(j.id)}">+ cases</button><button type="button" class="ibtn" data-act="relJDel" data-id="${esc(r.id)}" data-j="${esc(j.id)}" aria-label="Fermer la jauge">✕</button></span>`:''}</div>${gauge(j.taille,j.cases||0)}</div>`;}).join('');
+  const obj=relObjFor(r.niv);
+  return `<div class="relr"><div class="relh"><span>${nm}${r.rang?` <span class="muted small">· ${esc(r.rang)}</span>`:''}</span><span class="lvl ${r.niv}">${REL_NIV[r.niv]||''}</span></div><div class="muted small">${srcChip(r.src)}${r.date?' '+fmtDate(r.date):''}${r.note?' · '+esc(r.note):''}</div>${J}${E?`<div class="relbtns">${obj.length?`<button type="button" class="btn sm" data-act="relJOpen" data-id="${esc(r.id)}">Ouvrir une jauge</button>`:''}${r.src!=='feal'?`<button type="button" class="btn ghost sm" data-act="relEd" data-id="${esc(r.id)}">Modifier</button>`:''}</div>`:''}</div>`;}
+function viewRelations(c){const R=relsOf(c),E=canEditC(c);let h='';
+  const G=[['contact','Contacts','Contact'],['allie','Alliés','Allié'],['ennemi','Ennemis','Ennemi'],['neutre','Neutres (jauge en cours)','']];
+  for(const [n,l,al] of G){const L=R.filter(r=>r.niv===n);if(n==='neutre'&&!L.length)continue;
+    h+=cBlk('rel-'+n,l,L.length?String(L.length):'',L.map(r=>relRow(c,r)).join('')||shNone,E&&al?`<button type="button" class="addl" data-act="relEd" data-niv="${n}">+ ${al}</button>`:'');}
+  h+=`<div class="muted small" style="margin-top:4px">Jauges : ouvertes à la demande du joueur ; après chaque jet fait à la table, on note les cases gagnées. Jauge pleine : le PNJ passe au niveau visé. Aucun coût en XP ni en PP.</div>`;
+  return h;}
+/* ---------- Journaux (document journaux/<personnage>) ---------- */
+const jourOf=c=>((S.jour||{})[c.id]||{}).list||[];
+const jourCanRead=(c,j)=>j.pub||canEditC(c);
+function viewJournaux(c){const E=canEditC(c),L=jourOf(c).filter(j=>jourCanRead(c,j));
+  const open=S.jOpen&&L.find(j=>j.id===S.jOpen);
+  if(open){const ent=[...(open.ent||[])].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.t||0)-(a.t||0));
+    return `<div style="margin-bottom:8px"><button type="button" class="btn ghost" data-act="jBack">‹ Journaux</button></div>`+cBlk('j-'+open.id,esc(open.titre),open.pub?'toute la table':'joueur + MJ',
+      ent.map(e=>`<div class="ent"><div class="eh"><span class="k">${esc(e.type||'Entrée')}</span><span class="muted small">${e.date?fmtDate(e.date):''}${e.by?' · '+esc(plNom(e.by)):''}</span></div><div class="small" style="white-space:pre-line">${esc(e.txt||'')}</div>${E&&(e.by===ME||isGest())?`<div><button type="button" class="ibtn" data-act="entEd" data-j="${esc(open.id)}" data-e="${esc(e.id)}" aria-label="Modifier l'entrée">✎</button></div>`:''}</div>`).join('')||'<div class="muted small">Aucune entrée.</div>',
+      E?`<div class="relbtns"><button type="button" class="addl" data-act="entEd" data-j="${esc(open.id)}">+ Entrée</button><button type="button" class="btn ghost sm" data-act="jEd" data-j="${esc(open.id)}">Titre et lecture</button></div>`:'');}
+  return cBlk('jlist','Journaux de '+esc(c.court||c.nom),L.length?String(L.length):'',L.map(j=>{const n=(j.ent||[]).length,last=(j.ent||[]).map(e=>e.date||'').sort().pop();return `<button type="button" class="jr" data-act="jOpen" data-j="${esc(j.id)}"><span class="jic" aria-hidden="true">${esc((j.titre||'?').slice(0,1).toUpperCase())}</span><span style="flex:1;min-width:0"><b>${esc(j.titre)}</b><span class="d">${n} entrée${n>1?'s':''}${last?' · dernière le '+fmtDate(last):''}</span></span><span class="priv${j.pub?' t':''}">${j.pub?'toute la table':'joueur + MJ'}</span></button>`;}).join('')||'<div class="muted small">Aucun journal.</div>',E?`<button type="button" class="addl" data-act="jEd">+ Nouveau journal</button>`:'');}
+function jourSave(c,list){S.jour={...(S.jour||{}),[c.id]:{list}};render();persist('journaux/'+c.id,{list});}
+/* ---------- Fenêtres et actions des onglets Relations, Situation, Journaux ---------- */
+const SH_DLG=new Set(['situEd','relEd','relJ','relC','jEd','entEd']);
+const dlgHead=(t,sub)=>`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(t)}"><div class="in"><div class="shd"><h2 style="margin:0">${esc(t)}</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>${sub?`<div class="muted small" style="margin-bottom:8px">${sub}</div>`:''}`;
+const fld=(k,l,v,ta)=>`<div class="field"><label for="dk-${k}">${l}</label>${ta?`<textarea id="dk-${k}" rows="${ta}" data-dk="${k}">${esc(v||'')}</textarea>`:`<input id="dk-${k}" type="${k==='taille'||k==='n'?'number':'text'}"${k==='taille'||k==='n'?' min="0" inputmode="numeric"':''} data-dk="${k}" value="${esc(v==null?'':v)}">`}</div>`;
+const segF=(k,v,opts,l)=>`<div class="field"><label>${l}</label><div class="seg" role="group" aria-label="${esc(l)}">${opts.map(([o,t])=>`<button type="button" data-act="dlgSet" data-k="${k}" data-v="${o}" aria-pressed="${v===o}">${t}</button>`).join('')}</div></div>`;
+const dlgFoot=(del,ok)=>`${S.dlg&&S.dlg.err?`<div class="bad small" role="alert">${esc(S.dlg.err)}</div>`:''}<div class="actions" style="margin-top:12px">${del?`<button class="btn ghost" data-act="${del}" style="margin-right:auto">${S.dlg&&S.dlg.conf?'Confirmer le retrait':'Retirer'}</button>`:''}<button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="${ok}">Enregistrer</button></div></div></div>`;
+function shDlgSheet(g){const c=S.chars[g.cid];if(!c)return null;const f=g.f;
+  if(g.kind==='situEd'){const L=SITU.find(s=>s[0]===g.k);return dlgHead((g.i?'Modifier : ':'Ajouter : ')+L[2].toLowerCase(),esc(c.court))+fld('nom','Nom',f.nom)+(g.k==='orgs'?fld('role','Rôle dans l\'organisation',f.role):'')+fld('note','Note',f.note,2)+(['fiefs','familles','orgs'].includes(g.k)?'<div class="muted small">Le lien vers la fiche viendra quand ces fiches existeront.</div>':'')+dlgFoot(g.i?'situDel':'','situSave');}
+  if(g.kind==='relEd'){const pn=Object.values(S.chars).filter(p=>p.type==='PNJ'&&vis(p)&&p.id!==c.id).sort((a,z)=>(a.court||'').localeCompare(z.court||''));
+    return dlgHead(g.id?'Modifier la relation':'Nouvelle relation',esc(c.court))+`<div class="field"><label for="dk-pnj">PNJ de l'appli</label><select id="dk-pnj" data-dk="pnj"><option value="">— autre (nom libre) —</option>${pn.map(p=>`<option value="${esc(p.id)}"${f.pnj===p.id?' selected':''}>${esc(p.court||p.nom)}</option>`).join('')}</select></div>`+(f.pnj?'':fld('nom','Nom',f.nom))+`<div class="field"><label for="dk-rang">Rang du PNJ</label><select id="dk-rang" data-dk="rang">${pnjRangs().map(r=>`<option${f.rang===r?' selected':''}>${esc(r)}</option>`).join('')}</select></div>`
+      +segF('niv',f.niv,Object.entries(REL_NIV),'Niveau')+segF('src',f.src==='session'?'session':'jeu',[['jeu','En jeu'],['session','Gain de session']],'Origine')+fld('note','Note',f.note,2)+dlgFoot(g.id&&!g.virt?'relDel':'','relSave');}
+  if(g.kind==='relJ'){const r=relsOf(c).find(x=>x.id===g.id);if(!r)return null;const O=relObjFor(r.niv);
+    return dlgHead('Ouvrir une jauge',esc(r.nom)+(r.rang?' · '+esc(r.rang):''))+segF('obj',f.obj,O.map(o=>[o,REL_OBJ[o][2]]),'Objectif')+fld('taille','Taille de la jauge (cases)',f.taille)+`<div class="muted small">${relTaille(r.rang,f.obj)?'Taille reprise des Paramètres (rang et objectif).':'Taille pas encore réglée dans Paramètres › Relations : saisis-la.'}</div>`+dlgFoot('','relJSave');}
+  if(g.kind==='relC'){const r=relsOf(c).find(x=>x.id===g.id),j=r&&(r.jauges||[]).find(x=>x.id===g.j);if(!j)return null;
+    return dlgHead('Cases gagnées',esc(r.nom)+' · '+REL_OBJ[j.obj][2]+' · '+(j.cases||0)+' / '+j.taille)+fld('n','Cases gagnées sur ce jet (selon la marge)',f.n)+dlgFoot('','relCSave');}
+  if(g.kind==='jEd')return dlgHead(g.j?'Journal':'Nouveau journal',esc(c.court))+fld('titre','Titre',f.titre)+segF('pub',f.pub?'1':'0',[['0','Joueur + MJ'],['1','Toute la table']],'Lecture')+dlgFoot(g.j?'jDel':'','jSave');
+  if(g.kind==='entEd')return dlgHead(g.e?'Modifier l\'entrée':'Nouvelle entrée',esc(c.court))+fld('type','Type (potin, correspondance…)',f.type)+fld('txt','Texte',f.txt,5)+dlgFoot(g.e?'entDel':'','entSave');
+  return null;}
+function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
+  if(a==='shFold'){S.shFold={...(S.shFold||{}),[d.k]:!shFolded(d.k)};render();return true;}
+  if(a==='jOpen'){S.jOpen=d.j;render();return true;}
+  if(a==='jBack'){S.jOpen=null;render();return true;}
+  if(a==='dlgSet'&&S.dlg&&S.dlg.f){S.dlg.f[d.k]=d.k==='pub'?d.v==='1':d.v;if(S.dlg.kind==='relJ'&&d.k==='obj'){const r=relsOf(S.chars[S.dlg.cid]).find(x=>x.id===S.dlg.id);const t=r&&relTaille(r.rang,d.v);if(t)S.dlg.f.taille=t;}render();return true;}
+  const OPEN=['situEd','relEd','relJOpen','relCases','relJDel','jEd','entEd'],SAVE=['situSave','situDel','relSave','relDel','relJSave','relCSave','jSave','jDel','entSave','entDel'];
+  if(!OPEN.includes(a)&&!SAVE.includes(a))return false;
+  const cc=OPEN.includes(a)?c:S.chars[S.dlg&&S.dlg.cid];if(!cc||!canEditC(cc))return true;
+  const now=today(),g=S.dlg;
+  const setC=fn=>{const n=clone(cc);fn(n);saveChar(n);};
+  if(a==='situEd'){const e=d.i&&(situOf(cc)[d.k]||[]).find(x=>x.id===d.i);S.dlg={kind:'situEd',cid:cc.id,k:d.k,i:d.i||null,f:e?{nom:e.nom,role:e.role||'',note:e.note||''}:{nom:'',role:'',note:''}};}
+  else if(a==='situSave'){const nom=(g.f.nom||'').trim();if(!nom){g.err='Le nom est obligatoire.';render();return true;}
+    setC(n=>{const s=n.situ={...(n.situ||{})},L=(s[g.k]||[]).slice(),v={nom,...((g.f.role||'').trim()&&g.k==='orgs'?{role:g.f.role.trim()}:{}),...((g.f.note||'').trim()?{note:g.f.note.trim()}:{})};
+      const i=L.findIndex(x=>x.id===g.i);if(i>=0)L[i]={...L[i],...v,role:v.role,note:v.note};else L.push({id:uid('s'),date:now,...v});s[g.k]=L;});S.dlg=null;toast('Enregistré');}
+  else if(a==='situDel'){if(!g.conf){g.conf=true;render();return true;}setC(n=>{const s=n.situ={...(n.situ||{})};s[g.k]=(s[g.k]||[]).filter(x=>x.id!==g.i);});S.dlg=null;}
+  else if(a==='relEd'){const r=d.id&&relsOf(cc).find(x=>x.id===d.id);S.dlg={kind:'relEd',cid:cc.id,id:r?r.id:null,virt:!!(r&&r.virt),f:r?{pnj:r.pnj||'',nom:r.nom||'',rang:r.rang||pnjRangs()[0]||'',niv:r.niv,src:r.src,note:r.note||''}:{pnj:'',nom:'',rang:pnjRangs()[0]||'',niv:d.niv||'contact',src:'jeu',note:''}};}
+  else if(a==='relSave'){const f=g.f,p=f.pnj&&S.chars[f.pnj],nom=p?(p.court||p.nom):(f.nom||'').trim();if(!nom){g.err='Choisis un PNJ ou saisis un nom.';render();return true;}
+    setC(n=>{const R=(n.rel||[]).slice(),cur=relsOf(cc).find(x=>x.id===g.id),i=R.findIndex(x=>x.id===g.id);
+      const v={nom,rang:f.rang,niv:f.niv,note:(f.note||'').trim(),...(p?{pnj:p.id}:{pnj:undefined})};
+      if(i>=0)R[i]={...R[i],...v,src:R[i].src==='pp'?'pp':f.src};
+      else R.push({id:uid('r'),date:now,src:cur&&cur.src==='pp'?'pp':f.src,...(cur&&cur.pp?{pp:cur.pp}:{}),jauges:[],...v});
+      n.rel=R.map(r=>{const o={...r};if(!o.pnj)delete o.pnj;if(!o.note)delete o.note;return o;});});S.dlg=null;toast('Enregistré');}
+  else if(a==='relDel'){if(!g.conf){g.conf=true;render();return true;}setC(n=>{n.rel=(n.rel||[]).filter(x=>x.id!==g.id);});S.dlg=null;}
+  else if(a==='relJOpen'){const r=relsOf(cc).find(x=>x.id===d.id);if(!r)return true;const o=relObjFor(r.niv)[0];S.dlg={kind:'relJ',cid:cc.id,id:r.id,f:{obj:o,taille:relTaille(r.rang,o)||''}};}
+  else if(a==='relJSave'){const t=parseInt(g.f.taille,10);if(!(t>0)){g.err='Indique la taille de la jauge (nombre de cases).';render();return true;}
+    setC(n=>{const R=(n.rel||[]).slice();let i=R.findIndex(x=>x.id===g.id);
+      if(i<0){const v=relsOf(cc).find(x=>x.id===g.id);const o={id:uid('r'),date:now,nom:v.nom,niv:v.niv,src:v.src,jauges:[]};if(v.pp)o.pp=v.pp;if(v.pnj)o.pnj=v.pnj;if(v.rang)o.rang=v.rang;if(v.note)o.note=v.note;R.push(o);i=R.length-1;}
+      R[i]={...R[i],jauges:[...(R[i].jauges||[]),{id:uid('j'),obj:g.f.obj,taille:t,ouv:now,cases:0,hist:[]}]};n.rel=R;});S.dlg=null;toast('Jauge ouverte');}
+  else if(a==='relCases'){S.dlg={kind:'relC',cid:cc.id,id:d.id,j:d.j,f:{n:''}};}
+  else if(a==='relCSave'){const k=parseInt(g.f.n,10);if(!(k>=0)){g.err='Indique un nombre de cases (0 ou plus).';render();return true;}let msg='Enregistré';
+    setC(n=>{n.rel=(n.rel||[]).map(r=>{if(r.id!==g.id)return r;let niv=r.niv;const J=[];
+      for(const j of r.jauges||[]){if(j.id!==g.j){J.push(j);continue;}const cs=Math.min(j.taille,(j.cases||0)+k);
+        if(cs>=j.taille){niv=REL_OBJ[j.obj][1];msg=(r.nom||'Le PNJ')+' devient '+REL_NIV[niv].toLowerCase();}else J.push({...j,cases:cs,hist:[...(j.hist||[]),{d:now,n:k}]});}
+      return {...r,niv,jauges:J};});});S.dlg=null;toast(msg);}
+  else if(a==='relJDel'){if(!confirm('Fermer cette jauge sans changer le niveau ?'))return true;setC(n=>{n.rel=(n.rel||[]).map(r=>r.id!==d.id?r:{...r,jauges:(r.jauges||[]).filter(j=>j.id!==d.j)});});}
+  else if(a==='jEd'){const j=d.j&&jourOf(cc).find(x=>x.id===d.j);S.dlg={kind:'jEd',cid:cc.id,j:j?j.id:null,f:j?{titre:j.titre,pub:!!j.pub}:{titre:'',pub:false}};}
+  else if(a==='jSave'){const t=(g.f.titre||'').trim();if(!t){g.err='Le titre est obligatoire.';render();return true;}
+    const L=jourOf(cc).slice(),i=L.findIndex(x=>x.id===g.j);if(i>=0)L[i]={...L[i],titre:t,pub:!!g.f.pub};else{const id=uid('jr');L.push({id,titre:t,pub:!!g.f.pub,ent:[]});S.jOpen=id;}
+    S.dlg=null;jourSave(cc,L);toast('Enregistré');return true;}
+  else if(a==='jDel'){if(!g.conf){g.conf=true;render();return true;}S.dlg=null;S.jOpen=null;jourSave(cc,jourOf(cc).filter(x=>x.id!==g.j));return true;}
+  else if(a==='entEd'){const j=jourOf(cc).find(x=>x.id===d.j),e=j&&d.e&&(j.ent||[]).find(x=>x.id===d.e);if(e&&!(e.by===ME||isGest()))return true;S.dlg={kind:'entEd',cid:cc.id,j:d.j,e:e?e.id:null,f:e?{type:e.type||'',txt:e.txt||''}:{type:'',txt:''}};}
+  else if(a==='entSave'){const txt=(g.f.txt||'').trim();if(!txt){g.err='Le texte est vide.';render();return true;}
+    const L=jourOf(cc).map(j=>{if(j.id!==g.j)return j;const E=(j.ent||[]).slice(),i=E.findIndex(x=>x.id===g.e);const v={type:(g.f.type||'').trim(),txt};
+      if(i>=0)E[i]={...E[i],...v};else E.push({id:uid('e'),date:now,t:Date.now(),by:ME||'',...v});return {...j,ent:E};});
+    S.dlg=null;jourSave(cc,L);toast('Enregistré');return true;}
+  else if(a==='entDel'){if(!g.conf){g.conf=true;render();return true;}const L=jourOf(cc).map(j=>j.id!==g.j?j:{...j,ent:(j.ent||[]).filter(x=>x.id!==g.e)});S.dlg=null;jourSave(cc,L);return true;}
+  render();return true;}
+function shInput(t){if(relpInput(t))return true;if(t.dataset.dk!==undefined&&S.dlg&&S.dlg.f&&SH_DLG.has(S.dlg.kind)){S.dlg.f[t.dataset.dk]=t.value;if(t.tagName==='SELECT'&&t.dataset.dk==='pnj'){const p=S.chars[t.value];if(p)S.dlg.f.rang=rangOf(p);render();}return true;}return false;}

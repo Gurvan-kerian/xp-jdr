@@ -73,6 +73,7 @@ function renderSheet0(){
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
     if(PF_KINDS.has(g.kind)){const html=pfSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='me'){root.innerHTML=idSheet();return;}
+    if(SH_DLG.has(g.kind)){const html=shDlgSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='cons'){const html=consSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='elEdit'||g.kind==='pwPick'){const html=g.kind==='elEdit'?elEditSheet(g):pwPickSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='pl'||g.kind==='pc'||g.kind==='newp'||g.kind==='newc'){const html=g.kind==='pl'?plSheet(g):g.kind==='pc'?pcSheet(g):g.kind==='newp'?newPSheet():newCSheet();if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}

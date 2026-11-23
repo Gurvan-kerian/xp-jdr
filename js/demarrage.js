@@ -35,6 +35,8 @@ function start(){
       const x=snap.data(),v=x&&x.v||0;if(S.ptrV===v&&S.ptr)return;S.ptrV=v;
       db.portraits().then(rows=>{const m={};for(const r of rows||[])if(r&&r.data&&r.data.img)m[r.id]=r.data.img;S.ptr=m;render();}).catch(()=>{});
     },()=>{});
+    db.collection('journaux').onSnapshot(snap=>{if(snap.metadata.hasPendingWrites)return;const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=x;});S.jour=m;render();},()=>{});
+    on('meta/relations',x=>{S.relp=x||{};});
     on('gains/all',x=>{S.events=(x&&x.events)||[];S.eventsReady=true;});
   }).catch(()=>{setSync('local');S.ready=true;render();});
 }
