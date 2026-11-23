@@ -145,6 +145,7 @@ function lnkOk(o){if(!o)return false;
   if(o.t==='race'){const cr=crById(o.id);return !!cr&&raceVisible(cr,raceRec(cr));}
   if(o.t==='joueur')return !!S.players[o.id];
   if(o.t==='fiche')return typeof fiSee==='function'&&fiSee(S.fiches&&S.fiches[o.id]);
+  if(o.t==='jour'){const j=S.jour&&S.jour[o.id];return typeof jrCanRead==='function'&&jrCanRead(j)&&!!jrHost(j);} /* lot 2 : journal ou quête */
   if(o.t==='pw')return !!(S.pouvoirs&&S.pouvoirs[o.id])&&elSeen('pw',o.id);
   if(o.t==='cap')return !!(S.capacites&&S.capacites[o.id])&&elSeen('cap',o.id);
   if(o.t==='secret'){const s=secById(+o.n);if(!s)return false;if(o.k==='titre')return titreVis(s)||(isGest()&&!!s.titre);
@@ -169,13 +170,14 @@ function navLabel(){const g=S.dlg;
   if(S.view==='univers')return 'Univers';
   return ({home:'Accueil',gains:'XP',team:'Personnages',planning:'Planning',players:'Joueurs',rules:'Règles',params:'Paramètres'})[S.view]||'';}
 function navSnap(){const g=S.dlg&&(S.dlg.kind==='cons'||S.dlg.kind==='pl')?{kind:S.dlg.kind,t:S.dlg.t,id:S.dlg.id,nav:S.dlg.nav}:null;
-  return {view:S.view,sel:S.sel,shTab:S.shTab,uni:S.uni,sec:S.sec,fi:S.fi,rf:S.rf,rfTab:S.rfTab,rfEd:S.rfEd,dlg:g,y:window.scrollY||0,lab:navLabel()};}
+  return {view:S.view,sel:S.sel,shTab:S.shTab,uni:S.uni,sec:S.sec,fi:S.fi,rf:S.rf,rfTab:S.rfTab,rfEd:S.rfEd,jrOpen:S.jrOpen,jrSel:S.jrSel,dlg:g,y:window.scrollY||0,lab:navLabel()};}
 /* Suivre un lien : mémorise l'écran de départ puis ouvre la cible */
 function navGo(o){if(!lnkOk(o))return false;
   S.nav.push(navSnap());try{history.pushState({xpnav:S.nav.length},'');}catch(e){}
   S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;
   if(o.t==='perso'){S.dlg=null;S.view='sheet';S.sel=o.id;S.futForm.open=false;}
   else if(o.t==='fiche'){S.dlg=null;S.view='univers';S.uni=S.fiches[o.id].genre;S.fi=o.id;S.sec=null;S.rf=null;}
+  else if(o.t==='jour'){const j=S.jour[o.id];S.dlg=null;S.view='sheet';S.sel=jrHost(j).id;S.shTab='jour';S.jrSel=j.genre==='quete'?'q':'j';S.jrOpen=j.id;S.jrHl=o.i||null;S.futForm.open=false;}
   else if(o.t==='race'){S.dlg=null;S.view='univers';S.uni='creatures';S.fi=null;S.rf=rfDraft(o.id);S.rfTab='por';S.rfEd=false;}
   else if(o.t==='secret'){S.dlg=null;S.view='univers';S.uni='secrets';S.fi=null;S.sec=+o.n;S.secHl=o.k?{k:o.k,i:+o.i||0}:null;}
   else if(o.t==='joueur'){S.dlg={kind:'pl',id:o.id,nav:true};return true;}
@@ -183,7 +185,7 @@ function navGo(o){if(!lnkOk(o))return false;
   window.scrollTo(0,0);return true;}
 /* Revenir d'un cran : restaure l'écran mémorisé et sa position de défilement */
 function navPop(){const s=S.nav.pop();if(!s)return;
-  S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.fi=s.fi||null;S.rf=s.rf;S.rfTab=s.rfTab;S.rfEd=s.rfEd&&canEdit();S.dlg=s.dlg?{...s.dlg}:null;
+  S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.fi=s.fi||null;S.rf=s.rf;S.rfTab=s.rfTab;S.rfEd=s.rfEd&&canEdit();S.jrOpen=s.jrOpen||null;S.jrSel=s.jrSel||null;S.dlg=s.dlg?{...s.dlg}:null;
   S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;S._force=true;render();
   const y=s.y;requestAnimationFrame(()=>window.scrollTo(0,y));}
 /* « ‹ Retour » : passe par l'historique du navigateur quand il porte la pile (même effet que le retour du téléphone) */

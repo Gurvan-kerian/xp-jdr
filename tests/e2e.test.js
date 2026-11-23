@@ -38,12 +38,12 @@ async function open(browser,base,db,me){const ctx=await browser.newContext();con
       ok(!errs.length,'aucune erreur dans la console'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
     console.log('2. Gestion : lancer la mise à jour');
     const db=fakeDb(JSON.parse(JSON.stringify(docs)));const {page,errs,ctx}=await open(browser,base,db,'lorenzo');
-    let t=await page.textContent('#app');ok(/Mise à jour des données disponible \(version 0 → 1\)/.test(t),'carte « Mise à jour des données disponible (version 0 → 1) »');
+    let t=await page.textContent('#app');ok(/Mise à jour des données disponible \(version 0 → 2\)/.test(t),'carte « Mise à jour des données disponible (version 0 → 2) »');
     ok(/As-tu fait ta sauvegarde/.test(t),'rappel de la sauvegarde');
     const n0=db.writes.length;ok(n0===0,'aucune écriture avant le lancement');
     await page.click('[data-act="migRun"]');await page.waitForFunction(()=>S.migDone||S.migErr,null,{timeout:15000});
     ok(await page.evaluate(()=>!S.migErr),'mise à jour terminée sans erreur');
-    ok(db.get('meta/schema')&&db.get('meta/schema').v===1,'version 1 enregistrée dans Supabase');
+    ok(db.get('meta/schema')&&db.get('meta/schema').v===2,'version 2 enregistrée dans Supabase');
     ok(db.writes[db.writes.length-1]==='meta/schema','meta/schema écrit en dernier');
     ok(!!db.get('meta/capacites'),'catalogue des capacités enregistré');
     t=await page.textContent('#app');ok(/Mise à jour des données terminée/.test(t),'carte de fin de mise à jour');
@@ -51,7 +51,7 @@ async function open(browser,base,db,me){const ctx=await browser.newContext();con
     ok(await page.evaluate(()=>!writesLocked()&&modelV1()),'écritures de nouveau autorisées, modèle 1 actif');
     const pdv=await page.evaluate(()=>[derived(S.chars.massetoc,'m')[0][1],derived(S.chars.massetoc,'d')[0][1]]);ok(pdv[0]===27&&pdv[1]===27,'Masse Toc : 27 PdV sous les deux formes ('+pdv+')');
     await page.click('[data-act="goDonnees"]');t=await page.textContent('#app');
-    ok(/Version des données\s*1/.test(t),'Paramètres › Données : version 1');ok(/Journal de gestion/.test(t),'journal des signalements affiché');
+    ok(/Version des données\s*2/.test(t),'Paramètres › Données : version 2');ok(/Journal de gestion/.test(t),'journal des signalements affiché');
     ok(await page.$$eval('.ui-sigr',l=>l.length)>0,'signalements listés');
     const tabs=await page.$$eval('[data-act="ptab"]',l=>l.map(b=>b.textContent));ok(!tabs.includes('Bonus')&&tabs.includes('Données'),'onglet Bonus retiré, onglet Données présent');
     /* ajout d'un signalement manuel */

@@ -53,9 +53,11 @@ function fiRemove(id){const f=S.fiches[id];if(!f)return;
   fiBigDel(ill);}
 
 /* ---------- Types (listes de valeurs calculées à partir des fiches) ---------- */
-function fiTypes(g,all){const m={};for(const f of fiAll())if(f.genre===g&&(all||fiSee(f))){const t=(f.type||'').trim();if(t)m[t]=(m[t]||0)+1;}
+function fiTypes(g,all){if(g==='jour')return jrTypes();const m={};for(const f of fiAll())if(f.genre===g&&(all||fiSee(f))){const t=(f.type||'').trim();if(t)m[t]=(m[t]||0)+1;}
   return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0],'fr',{sensitivity:'base'}));}
-function fiTypApply(g,from,to){to=(to||'').trim();if(!to||to===from)return;for(const f of fiAll())if(f.genre===g&&(f.type||'').trim()===from){const n=clone(f);n.type=to;fiSave(n,true);}render();}
+function fiTypApply(g,from,to){to=(to||'').trim();if(!to||to===from)return;
+  if(g==='jour'){for(const j of jrAll())if(j.genre==='journal'&&(j.type||'').trim()===from){const n=clone(j);n.type=to;jrSave(n,true);}render();return;}
+  for(const f of fiAll())if(f.genre===g&&(f.type||'').trim()===from){const n=clone(f);n.type=to;fiSave(n,true);}render();}
 
 /* ---------- Textes : jetons « @ », lecture et éditeur ---------- */
 const FI_TOK=/@\[(perso|race|secret|fiche):([^|\]]+)\|([^\]]*)\]/g;
@@ -109,6 +111,10 @@ function fiMentions(t,id){const out=[];
     if(isGest()&&fiHas(F.notes,t,id))hits.push('Notes MJ');
     if(t==='fiche'&&F.parent===id)hits.push(FI_G[F.genre].sub||'fiche contenue');
     if(hits.length)out.push({grp:'Fiches',o:{t:'fiche',id:F.id},nom:F.nom,prec:hits.join(', '),d:F.dj||F.modif||F.cree||''});}
+  /* lot 2 : descriptions et entrées des journaux et quêtes que la personne peut lire */
+  for(const J of jrAll()){if(!jrCanRead(J))continue;const h=jrHost(J),nm=(h?(h.court||h.nom)+' › ':'')+J.nom;
+    if(fiHas(J.desc,t,id))out.push({grp:'Journaux et quêtes',o:{t:'jour',id:J.id},nom:nm,prec:'description',d:J.cree||''});
+    for(const e of J.ent||[])if(fiHas(e.txt,t,id))out.push({grp:'Journaux et quêtes',o:{t:'jour',id:J.id,i:e.id},nom:nm,prec:'« '+(e.nom||'Entrée')+' »',d:jrDjIso(e.dj)||e.cree||''});}
   return out.sort((a,b)=>String(a.d).localeCompare(String(b.d)));}
 function fiMentionsHtml(L){if(!L.length)return '<div class="muted small">Aucune mention pour l\'instant.</div>';
   return FI_MGRP.filter(g=>L.some(m=>m.grp===g)).map(g=>`<div class="fimg">${g}</div>`+L.filter(m=>m.grp===g).map(m=>`<div class="fiml">${lk(m.o,m.nom)}<span class="muted small"> · ${esc(m.prec)}</span></div>`).join('')).join('');}
@@ -190,7 +196,8 @@ function fiUniView(){const f=S.fi&&S.fiches[S.fi];
   return fiListView(S.uni);}
 
 /* ---------- Fenêtres ---------- */
-const FI_DLG=new Set(['fiNew','fiHead','fiTxt','fiTyp']);
+const FI_DLG=new Set(['fiNew','fiHead','fiTxt','fiTyp','jrHead','jrEnt','jrJg']);
+const FI_ED=new Set(['fiTxt','jrHead','jrEnt']); /* fenêtres avec l'éditeur « @ » (lot 2 : journaux et quêtes) */
 let FI_K=0;
 function fiOpenDlg(g){g._k='fd'+(++FI_K);S.dlg=g;S._fiRedraw=true;}
 /* Les fenêtres de fiche ne sont pas redessinées pendant la saisie (synchronisation toutes les 5 s) */
@@ -199,6 +206,7 @@ function fiSheetHook(g,root){if(!FI_DLG.has(g.kind))return false;
   if(!S._fiRedraw&&typing&&root.querySelector(`[data-fidlg="${g._k}"]`))return true;
   S._fiRedraw=false;const html=fiSheet(g);if(!html){S.dlg=null;root.innerHTML='';return true;}root.innerHTML=html;
   if(g.kind==='fiTxt'){const ed=document.getElementById('fiEd');if(ed&&!g._foc){g._foc=true;ed.focus();const r=document.createRange();r.selectNodeContents(ed);r.collapse(false);const s=window.getSelection();s.removeAllRanges();s.addRange(r);}}
+  else if(/^jr/.test(g.kind)&&!g._foc){g._foc=true;const n=document.getElementById('jrNm');if(n&&!n.value)n.focus();}
   return true;}
 const fiShell=(g,lab,body)=>`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(lab)}" data-fidlg="${g._k}"><div class="in">${body}</div></div>`;
 function fiParOpts(g,cur,self){const L=fiSort(fiAll().filter(x=>x.genre===g&&fiSee(x)&&x.id!==self&&!(self&&fiPath(x).some(p=>p.id===self))));
@@ -206,6 +214,7 @@ function fiParOpts(g,cur,self){const L=fiSort(fiAll().filter(x=>x.genre===g&&fiS
 function fiTypeField(g,val){const T=fiTypes(g,isGest()),v=(val||'').trim(),known=!v||T.some(t=>t[0]===v);
   return `<div class="field"><label for="fiTy">Type</label><input id="fiTy" type="text" list="fiTyL" data-fin="type" value="${esc(val||'')}" autocomplete="off"><datalist id="fiTyL">${T.map(t=>`<option value="${esc(t[0])}">`).join('')}</datalist><div class="muted small" id="fiTyN"${known?' hidden':''}>Nouveau type : il s'ajoutera à la liste de valeurs.</div></div>`;}
 function fiSheet(g){
+  if(/^jr/.test(g.kind))return jrSheet(g); /* lot 2 */
   if(g.kind==='fiNew'){const Gm=FI_G[g.genre];if(!Gm||!fiCanNew())return null;
     return fiShell(g,Gm.nv,`<h2>${Gm.nv}</h2>
       <div class="field"><label for="fiNm">Nom</label><input id="fiNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
@@ -233,19 +242,20 @@ function fiSheet(g){
       <div class="actions">${canDel?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="fiItDelOk">Confirmer le retrait</button>`:`<button class="btn ghost" data-act="fiItDel">Retirer l'élément</button>`):''}<button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="fiTxtSave">Enregistrer</button></div>`);}
   if(g.kind==='fiTyp'){if(!canEdit())return null;const T=fiTypes(g.genre,true),n=(T.find(t=>t[0]===g.type)||[,0])[1];
     const others=T.filter(t=>t[0]!==g.type),v=(g.nom||'').trim(),dup=others.some(t=>t[0]===v);
-    return fiShell(g,'Type '+g.type,`<div><h2>${esc(g.type)}</h2><div class="muted small">${esc(FI_G[g.genre].tl)} · ${n} fiche${n>1?'s':''}</div></div>
+    return fiShell(g,'Type '+g.type,`<div><h2>${esc(g.type)}</h2><div class="muted small">${esc(fiGm(g.genre).tl)} · ${n} ${g.genre==='jour'?'journa'+(n>1?'ux':'l'):'fiche'+(n>1?'s':'')}</div></div>
       <div class="field"><label for="fiTn">Renommer</label><input id="fiTn" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"><div class="muted small" id="fiTyD"${dup?'':' hidden'}>Ce nom existe déjà : les deux types seront fusionnés.</div></div>
       ${others.length?`<div class="field"><label for="fiTi">Ou fusionner dans…</label><select id="fiTi" data-fin="into"><option value="">— choisir un type —</option>${others.map(t=>`<option value="${esc(t[0])}"${g.into===t[0]?' selected':''}>${esc(t[0])} (${t[1]})</option>`).join('')}</select></div>`:''}
-      <div class="muted small">Met à jour toutes les fiches concernées.</div>
+      <div class="muted small">Met à jour ${g.genre==='jour'?'tous les journaux concernés':'toutes les fiches concernées'}.</div>
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="fiTypSave">Appliquer</button></div>`);}
   return null;}
 
 /* ---------- Paramètres › Référentiel › Listes de valeurs ---------- */
-function fiListes(){const g=FI_G[S.fiLv]?S.fiLv:'lieu',T=fiTypes(g,true),E=canEdit(),R=FI_RES[g]||[];
-  let h=`<div class="seg fiseg" role="group" aria-label="Liste de valeurs">${Object.entries(FI_G).map(([k,x])=>`<button type="button" data-act="fiLv" data-v="${k}" aria-pressed="${g===k}">${x.pl}</button>`).join('')}</div>`;
-  h+=`<div class="card"><h3 class="rs" style="margin-top:0">${esc(FI_G[g].tl)} <span class="muted small">${T.length}</span></h3>`;
-  h+=T.length?`<div class="filv">${T.map(([t,n])=>`<div class="filvr"><span><b>${esc(t)}</b><small>${n} ${n>1?FI_G[g].pl.toLowerCase():FI_G[g].un}${R.includes(t)?' · type spécial':''}</small></span>${E&&!R.includes(t)?`<button type="button" class="edl" data-act="fiTyp" data-g="${g}" data-v="${esc(t)}">${ICON.crayon} Renommer ou fusionner</button>`:''}</div>`).join('')}</div>`:'<div class="muted small">Aucun type pour l\'instant : les types se créent avec les fiches.</div>';
-  return h+`</div><div class="muted small" style="margin-top:10px">Renommer ou fusionner met à jour toutes les fiches concernées. Un type sans fiche disparaît de la liste.${g==='lieu'?' « Fief » est réservé : il servira au bloc Fief (lot 7).':''}</div>`;}
+const fiGm=g=>g==='jour'?JR_G:FI_G[g];
+function fiListes(){const g=FI_G[S.fiLv]||S.fiLv==='jour'?S.fiLv:'lieu',T=fiTypes(g,true),E=canEdit(),R=FI_RES[g]||[],Gm=fiGm(g);
+  let h=`<div class="seg fiseg" role="group" aria-label="Liste de valeurs">${[...Object.entries(FI_G),['jour',JR_G]].map(([k,x])=>`<button type="button" data-act="fiLv" data-v="${k}" aria-pressed="${g===k}">${x.pl}</button>`).join('')}</div>`;
+  h+=`<div class="card"><h3 class="rs" style="margin-top:0">${esc(Gm.tl)} <span class="muted small">${T.length}</span></h3>`;
+  h+=T.length?`<div class="filv">${T.map(([t,n])=>`<div class="filvr"><span><b>${esc(t)}</b><small>${n} ${n>1?Gm.pl.toLowerCase():Gm.un}${R.includes(t)?' · type spécial':''}</small></span>${E&&!R.includes(t)?`<button type="button" class="edl" data-act="fiTyp" data-g="${g}" data-v="${esc(t)}">${ICON.crayon} Renommer ou fusionner</button>`:''}</div>`).join('')}</div>`:(g==='jour'?'<div class="muted small">Aucun type pour l\'instant : les types se créent avec les journaux.</div>':'<div class="muted small">Aucun type pour l\'instant : les types se créent avec les fiches.</div>');
+  return h+`</div><div class="muted small" style="margin-top:10px">Renommer ou fusionner met à jour ${g==='jour'?'tous les journaux concernés. Un type sans journal disparaît de la liste (les types de départ restent proposés à la saisie).':'toutes les fiches concernées. Un type sans fiche disparaît de la liste.'}${g==='lieu'?' « Fief » est réservé : il servira au bloc Fief (lot 7).':''}</div>`;}
 
 /* ---------- Visionneur d'image plein écran (vignettes de fiche et portraits) ---------- */
 const FI_BIG={};
@@ -295,7 +305,7 @@ function fiAtPick(i){const x=FI_AT&&FI_AT.items[i],ed=document.getElementById('f
   const rg=document.createRange();rg.setStart(n,Math.max(0,FI_AT.start));rg.setEnd(n,Math.max(FI_AT.start,end));rg.deleteContents();
   const box=document.createElement('span');box.innerHTML=fiTagHtml(x.t,x.id,x.nom,fiTokStore(x.t,x.id,x.nom));const tag=box.firstChild,sp=document.createTextNode(' ');
   rg.insertNode(sp);rg.insertNode(tag);const r2=document.createRange();r2.setStartAfter(sp);r2.collapse(true);
-  ed.focus();const s2=window.getSelection();s2.removeAllRanges();s2.addRange(r2);FI_AT=null;fiAtPaint();if(S.dlg&&S.dlg.kind==='fiTxt')S.dlg.txt=fiSer(ed);}
+  ed.focus();const s2=window.getSelection();s2.removeAllRanges();s2.addRange(r2);FI_AT=null;fiAtPaint();if(S.dlg&&FI_ED.has(S.dlg.kind))S.dlg.txt=fiSer(ed);}
 
 /* ---------- Événements du clavier et des saisies ---------- */
 document.addEventListener('mousedown',ev=>{if(ev.target.closest&&ev.target.closest('.fisugi'))ev.preventDefault();});
@@ -307,15 +317,15 @@ document.addEventListener('keydown',ev=>{
   if(FI_AT&&ev.key==='Escape'){ev.preventDefault();ev.stopPropagation();fiAtClose();return;}
   if(ev.key==='Backspace'){const s=window.getSelection();if(!s||!s.rangeCount||!s.isCollapsed)return;const r=s.getRangeAt(0);let n=r.startContainer,o=r.startOffset,prev=null;
     if(n.nodeType===3&&o===0)prev=n.previousSibling;else if(n.nodeType===1&&o>0)prev=n.childNodes[o-1];
-    if(prev&&prev.nodeType===1&&prev.dataset&&prev.dataset.tok){ev.preventDefault();prev.remove();if(S.dlg&&S.dlg.kind==='fiTxt')S.dlg.txt=fiSer(t);fiAtClose();}}
+    if(prev&&prev.nodeType===1&&prev.dataset&&prev.dataset.tok){ev.preventDefault();prev.remove();if(S.dlg&&FI_ED.has(S.dlg.kind))S.dlg.txt=fiSer(t);fiAtClose();}}
 },true);
 document.addEventListener('paste',ev=>{const t=ev.target&&ev.target.closest&&ev.target.closest('#fiEd');if(!t)return;ev.preventDefault();const s=(ev.clipboardData&&ev.clipboardData.getData('text/plain'))||'';if(s)document.execCommand('insertText',false,s);});
 document.addEventListener('input',ev=>{const t=ev.target;if(!t)return;
-  if(t.id==='fiEd'){if(S.dlg&&S.dlg.kind==='fiTxt')S.dlg.txt=fiSer(t);fiAtCheck();return;}
+  if(t.id==='fiEd'){if(S.dlg&&FI_ED.has(S.dlg.kind))S.dlg.txt=fiSer(t);fiAtCheck();return;}
   if(t.dataset&&t.dataset.fiq!==undefined){S.fiQ=t.value;const r=document.getElementById('fiRes');if(r&&FI_G[S.uni])r.innerHTML=fiListBody(S.uni);return;}
-  if(t.dataset&&t.dataset.fin!==undefined&&S.dlg&&FI_DLG.has(S.dlg.kind)){const g=S.dlg,k=t.dataset.fin;g[k]=t.value;
+  if(t.dataset&&t.dataset.fin!==undefined&&S.dlg&&FI_DLG.has(S.dlg.kind)){const g=S.dlg,k=t.dataset.fin;g[k]=t.type==='checkbox'?t.checked:t.value;
     const q=s=>document.querySelector('#sheetRoot '+s);
-    if(k==='nom'){const b=q('[data-act="fiCreate"],[data-act="fiHeadSave"]');if(b)b.disabled=!t.value.trim();
+    if(k==='nom'){const b=q('[data-act="fiCreate"],[data-act="fiHeadSave"],[data-act="jrHeadSave"],[data-act="jrEntSave"]');if(b)b.disabled=!t.value.trim();
       if(g.kind==='fiTyp'){const e=q('#fiTyD');if(e)e.hidden=!fiTypes(g.genre,true).some(x=>x[0]!==g.type&&x[0]===t.value.trim());}}
     if(k==='type'){const e=q('#fiTyN'),gen=g.kind==='fiNew'?g.genre:(S.fiches[g.id]||{}).genre,v=t.value.trim();if(e)e.hidden=!v||fiTypes(gen,isGest()).some(x=>x[0]===v);}}
 });
@@ -323,6 +333,7 @@ document.addEventListener('focusout',ev=>{if(ev.target&&ev.target.id==='fiEd')se
 
 /* ---------- Clics ---------- */
 function fiAct(a,d){
+  if(/^jr[A-Z]/.test(a))return jrAct(a,d); /* lot 2 : journaux et quêtes */
   if(a==='uni'){S.uni=d.v||'home';S.sec=null;S.rf=null;S.fi=null;S.fiQ='';S.fiTy='';window.scrollTo(0,0);render();return true;}
   if(a==='fiOpen'){const f=S.fiches[d.id];if(!fiSee(f))return true;S.fi=f.id;S.uni=f.genre;window.scrollTo(0,0);render();return true;}
   if(a==='fiBack'){if(S.nav.length){navBack();return true;}S.fi=null;window.scrollTo(0,0);render();return true;}
@@ -375,4 +386,184 @@ function fiAct(a,d){
     if(to&&to!==g.type){fiTypApply(g.genre,g.type,to);setTimeout(()=>toast('Type mis à jour'),0);}else render();return true;}
   return false;}
 /* Listes déroulantes des fenêtres de fiche */
-document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.fin===undefined||!S.dlg||!FI_DLG.has(S.dlg.kind))return;S.dlg[t.dataset.fin]=t.value;});
+document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.fin===undefined||!S.dlg||!FI_DLG.has(S.dlg.kind))return;S.dlg[t.dataset.fin]=t.type==='checkbox'?t.checked:t.value;});
+
+/* ---------- Lot 2 (23/11/2026) : journaux v2 et quêtes — onglet « Chronique » de la fiche de personnage ----------
+   Collection « journaux », une ligne par journal ou quête :
+   {id:'j-…', genre:'journal'|'quete', perso, parts:[personnages], nom, type (journal : liste de valeurs ; quête : 'perso'|'groupe'),
+    statut (quête : 'cours'|'fin'|'aband'), desc, pub, ent:[{id, nom, txt, dj:{a,m,j?}, auteur, by, pc, cree, ecrit}],
+    jauge (quête : {id, nom, taille, diff, cases, hist, ouv}), jaugesFinies:[…], par, cree, modif}
+   Privé = joueurs des participants + gestion ; Public = toute la table. Les anciennes lignes journaux/<personnage> ({list})
+   sont gardées et ignorées (reprises par la version des données 2). */
+if(S.jrOpen===undefined)S.jrOpen=null;if(S.jrSel===undefined)S.jrSel=null;S.jrHl=null;
+const JR_TY0=['Correspondance','Interactions','Opinion','Rumeurs','Notes de travail','Recherches et entretiens','Archives familiales'];
+const JR_ST=[['cours','En cours'],['fin','Terminée'],['aband','Abandonnée']];
+const JR_STG={cours:'En cours',fin:'Terminées',aband:'Abandonnées'};
+const JR_MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const JR_JS=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+const JR_G={pl:'Journaux',un:'journal',tl:'Types de journal'};
+const jrAll=()=>Object.values(S.jour||{}).filter(j=>j&&(j.genre==='journal'||j.genre==='quete'));
+const jrParts=j=>(j&&j.parts&&j.parts.length?j.parts:[j&&j.perso]).filter(Boolean);
+const jrMine=j=>!!ME&&jrParts(j).some(id=>{const c=S.chars[id];return !!c&&owners(c).some(p=>p.id===ME);});
+const jrCanEd=j=>!!j&&!S.visit&&(isGest()||jrMine(j));
+const jrCanRead=j=>!!j&&(!!j.pub||jrCanEd(j));
+const jrEntEd=(j,e)=>jrCanEd(j)&&!!e&&(isGest()||(!!ME&&e.by===ME));
+const jrOf=c=>jrAll().filter(j=>jrParts(j).includes(c.id)&&jrCanRead(j));
+const jrHost=j=>{if(!j)return null;const L=[j.perso,...jrParts(j)].map(id=>S.chars[id]).filter(c=>c&&vis(c));return L[0]||null;};
+const jrByNom=(a,b)=>(a.nom||'').localeCompare(b.nom||'','fr',{sensitivity:'base'});
+function jrTypes(){const m={};for(const j of jrAll())if(j.genre==='journal'){const t=(j.type||'').trim();if(t)m[t]=(m[t]||0)+1;}
+  return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0],'fr',{sensitivity:'base'}));}
+/* Dates du jeu : vrai calendrier ; jour facultatif (« novembre 1899 ») */
+const jrDjKey=dj=>dj&&dj.a&&dj.m?dj.a*10000+dj.m*100+(dj.j||0):null;
+function jrDjTxt(dj){if(!dj||!dj.a||!dj.m)return '';const mo=JR_MOIS[dj.m-1]||'';if(!dj.j)return mo+' '+dj.a;
+  const w=new Date(Date.UTC(dj.a,dj.m-1,dj.j)).getUTCDay();return JR_JS[w]+' '+(dj.j===1?'1er':dj.j)+' '+mo+' '+dj.a;}
+const jrDjIso=dj=>dj&&dj.a&&dj.m?`${dj.a}-${String(dj.m).padStart(2,'0')}-${String(dj.j||1).padStart(2,'0')}`:'';
+/* Entrées : par date du jeu (la plus ancienne en haut), puis celles sans date dans l'ordre d'ajout */
+function jrEntSorted(j){return (j.ent||[]).map((e,i)=>({e,i,k:jrDjKey(e.dj)})).sort((a,b)=>a.k!=null&&b.k!=null?a.k-b.k||a.i-b.i:a.k!=null?-1:b.k!=null?1:a.i-b.i).map(x=>x.e);}
+function jrSave(j,quiet){j=clone(j);j.modif=new Date().toISOString();S.jour={...(S.jour||{}),[j.id]:j};persist('journaux/'+j.id,j);if(!quiet)render();return j;}
+/* Modification à partir de la ligne la plus récente reçue (quête de groupe : plusieurs auteurs) */
+function jrUpd(id,fn){const x=S.jour&&S.jour[id];if(!x)return null;const n=clone(x);if(fn(n)===false)return null;return jrSave(n);}
+
+/* ---------- Vues ---------- */
+const jrSw=(j,E)=>E?`<button type="button" class="jrsw${j.pub?' pub':''}" role="switch" aria-checked="${!!j.pub}" data-act="jrPub" data-j="${esc(j.id)}" aria-label="${esc(j.nom)} : ${j.pub?'public, lisible par toute la table':'privé'}"><i aria-hidden="true"></i>${j.pub?'Public':'Privé'}</button>`
+  :`<span class="jrsw ro${j.pub?' pub':''}">${j.pub?'Public':'Privé'}</span>`;
+const jrQType=j=>j.type==='groupe'?'De groupe':'Personnelle';
+function jrCard(c,j){const n=(j.ent||[]).length,q=j.genre==='quete';
+  const oth=jrParts(j).filter(id=>id!==c.id).map(id=>S.chars[id]).filter(x=>x&&vis(x)).map(x=>x.court||x.nom);
+  const bits=[];if(q)bits.push(jrQType(j)+(j.type==='groupe'&&oth.length?' · avec '+oth.join(', '):''));
+  bits.push(n+' entrée'+(n>1?'s':''));if(q&&j.jauge)bits.push('jauge '+(j.jauge.cases||0)+' / '+j.jauge.taille);
+  return `<div class="jrc"><button type="button" class="jro" data-act="jrOpen" data-j="${esc(j.id)}"><span class="jic" aria-hidden="true">${esc((j.nom||'?').slice(0,1).toUpperCase())}</span><span class="jrt"><b>${esc(j.nom)}</b><span class="d">${!q&&j.type?`<span class="jrty">${esc(j.type)}</span> · `:''}${esc(bits.join(' · '))}</span></span></button>${jrSw(j,jrCanEd(j))}</div>`;}
+function jrView(c){const L=jrOf(c),E=canEditC(c),open=S.jrOpen&&L.find(j=>j.id===S.jrOpen);
+  if(open)return jrOpenView(c,open);
+  const Q=L.filter(j=>j.genre==='quete'),J=L.filter(j=>j.genre==='journal').sort(jrByNom),sel=S.jrSel||(Q.length?'q':'j'),who=esc(c.court||c.nom);
+  let h=`<div class="seg jrsel" role="group" aria-label="Quêtes ou journaux">${[['q','Quêtes'],['j','Journaux']].map(([k,l])=>`<button type="button" data-act="jrSel" data-v="${k}" aria-pressed="${sel===k}">${l}</button>`).join('')}</div>`;
+  if(sel==='q')h+=cBlk('jr-q','Quêtes de '+who,Q.length?String(Q.length):'',Q.length?['cours','fin','aband'].map(s=>{const G=Q.filter(j=>(j.statut||'cours')===s).sort(jrByNom);return `<div class="jrgh">${JR_STG[s]}</div>`+(G.map(j=>jrCard(c,j)).join('')||shNone);}).join(''):'<div class="muted small">Aucune quête.</div>',
+    E?`<button type="button" class="addl" data-act="jrNew" data-g="quete">+ Nouvelle quête</button>`:'');
+  else h+=cBlk('jr-j','Journaux de '+who,J.length?String(J.length):'',J.map(j=>jrCard(c,j)).join('')||'<div class="muted small">Aucun journal.</div>',
+    E?`<button type="button" class="addl" data-act="jrNew" data-g="journal">+ Nouveau journal</button>`:'');
+  if(E)h+=`<div class="muted small" style="margin-top:4px"><b>Privé</b> : le joueur du personnage (pour une quête de groupe, ceux des participants) et le MJ. <b>Public</b> : toute la table.</div>`;
+  return h;}
+function jrEntHtml(c,j,e,hl){const meta=[jrDjTxt(e.dj)],au=(e.auteur||'').trim(),pc=e.pc&&S.chars[e.pc];
+  if(au)meta.push('auteur : '+au);else if(j.type==='groupe'&&pc)meta.push('par '+(pc.court||pc.nom));
+  if(e.ecrit)meta.push('écrite le '+fmtDate(e.ecrit));const m=meta.filter(Boolean).join(' · ');
+  return `<div class="jrent${hl?' hl':''}" id="jre-${esc(e.id)}"><div class="eh"><span class="en">${esc(e.nom||'Entrée')}</span>${jrEntEd(j,e)?`<button type="button" class="ibtn" data-act="jrEnt" data-j="${esc(j.id)}" data-e="${esc(e.id)}" aria-label="Modifier l'entrée ${esc(e.nom||'')}">✎</button>`:''}</div>${m?`<div class="em">${esc(m)}</div>`:''}${e.txt?fiRich(e.txt):''}</div>`;}
+function jrOpenView(c,j){const q=j.genre==='quete',E=jrCanEd(j),k='jr-'+j.id,st=j.statut||'cours';
+  const P=q&&j.type==='groupe'?`<div class="jrparts">${jrParts(j).map(id=>S.chars[id]).filter(Boolean).map(x=>`<span class="jrpc${x.id===c.id?' me':''}">${lk({t:'perso',id:x.id},x.court||x.nom)}</span>`).join('')}</div>`:'';
+  let h=`<div style="margin-bottom:8px"><button type="button" class="btn ghost" data-act="jrBack">‹ ${q?'Quêtes':'Journaux'}</button></div>`;
+  h+=`<div class="jrhd"><div class="jrnm">${esc(j.nom)}</div><div class="jrmt"><span class="jrty">${q?jrQType(j):esc(j.type||'Sans type')}</span>${jrSw(j,E)}${E?`<button type="button" class="edl jred" data-act="jrEd" data-j="${esc(j.id)}">${ICON.crayon} Modifier</button>`:''}</div>${P}`
+    +(q?(E?`<div class="seg sm jrst" role="group" aria-label="Statut de la quête">${JR_ST.map(([v,l])=>`<button type="button" data-act="jrStat" data-j="${esc(j.id)}" data-v="${v}" aria-pressed="${st===v}">${l}</button>`).join('')}</div>`
+      :`<div class="jrmt"><span class="jrstx ${st}">${(JR_ST.find(x=>x[0]===st)||JR_ST[0])[1]}</span></div>`):'')+`</div>`;
+  if(j.desc||E)h+=cBlk(k+'-d','Description','',j.desc?fiRich(j.desc):shNone);
+  if(q){const J=j.jauge,F=j.jaugesFinies||[];
+    const box=J?jaugeBox(c,E,{...J,diffShow:J.diff!=null&&J.diff!==''?+J.diff:null},`<div class="relh"><span><b>${esc(J.nom)}</b></span></div>`,{id:j.id,add:'jrJgAdd',del:'jrJgDel',val:'jrJgVal'}):'';
+    const fin=F.map(x=>jaugeBox(c,false,{...x,done:true},`<div class="relh"><span><b>${esc(x.nom)}</b></span><span class="muted small">validée${x.fin?' le '+fmtDate(x.fin):''}</span></div>`,{})).join('');
+    if(J||F.length||E)h+=cBlk(k+'-g','Jauge de recherche',J?(J.cases||0)+' / '+J.taille:'',box+fin+(J?`<div class="muted small">Aussi dans Relations › Autres jauges${j.type==='groupe'?' de chaque participant':''}.</div>`:F.length?'':'<div class="muted small">Aucune jauge ouverte.</div>'),
+      E&&!J?`<div class="relbtns"><button type="button" class="addl" data-act="jrJgNew" data-j="${esc(j.id)}">+ Jauge de recherche</button></div>`:'');}
+  const ents=jrEntSorted(j),hl=S.jrHl;
+  h+=cBlk(k+'-e','Entrées',ents.length?String(ents.length):'',ents.map(e=>jrEntHtml(c,j,e,hl===e.id)).join('')||'<div class="muted small">Aucune entrée.</div>',
+    E?`<button type="button" class="addl" data-act="jrEnt" data-j="${esc(j.id)}">+ Entrée</button>`:'');
+  if(hl){S.jrHl=null;setTimeout(()=>{const el=document.getElementById('jre-'+hl);if(el&&el.scrollIntoView)el.scrollIntoView({block:'center'});},60);}
+  return h;}
+/* Relations › Autres jauges : jauges ouvertes des quêtes du personnage (succès et validation ; fermeture depuis la quête) */
+function jrRelJauges(c){return jrOf(c).filter(j=>j.genre==='quete'&&j.jauge).sort(jrByNom).map(j=>{const J=j.jauge;
+  return jaugeBox(c,jrCanEd(j),{...J,diffShow:J.diff!=null&&J.diff!==''?+J.diff:null},`<div class="relh"><span><b>${esc(J.nom)}</b></span></div><div class="small">Quête : <button type="button" class="lk" data-act="jrGo" data-j="${esc(j.id)}">${esc(j.nom)}</button></div>`,{id:j.id,add:'jrJgAdd',del:'',val:'jrJgVal'});});}
+
+/* ---------- Fenêtres (même mécanique que les fenêtres de fiche : pas de redessin pendant la saisie) ---------- */
+const jrDjOf=g=>{const a=parseInt(g.dj_a,10),m=parseInt(g.dj_m,10),d=parseInt(g.dj_j,10);if(!(a>0)||!(m>=1&&m<=12))return null;const o={a,m};if(d>0)o.j=d;return o;};
+function jrSheet(g){const c=S.chars[g.cid];if(!c)return null;
+  const err=g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:'';
+  const ed=lab=>`<div class="field"><span class="flab">${lab}</span><div class="fiedw"><div id="fiEd" class="fied jrfied" contenteditable="true" role="textbox" aria-multiline="true" aria-label="${esc(lab.replace(/<[^>]+>/g,''))}" spellcheck="true">${fiEdHtml(g.txt)}</div><div id="fiSug" class="fisug" role="listbox" hidden></div></div><div class="muted small">Tape <b>@</b> pour lier une fiche ; une ligne qui commence par « - » devient une liste.</div></div>`;
+  const seg=(k,v,opts,l)=>`<div class="field"><span class="flab">${l}</span><div class="seg" role="group" aria-label="${esc(l)}">${opts.map(([o,t])=>`<button type="button" data-act="jrSet" data-k="${k}" data-v="${o}" aria-pressed="${String(v)===o}">${t}</button>`).join('')}</div></div>`;
+  if(g.kind==='jrHead'){const j=g.id&&S.jour[g.id];if(g.id?!jrCanEd(j):!canEditC(c))return null;const q=g.genre==='quete',grp=q&&g.qt==='groupe';
+    const tt=j?(q?'Quête':'Journal'):(q?'Nouvelle quête':'Nouveau journal'),T=jrTypes(),sug=[...new Set([...T.map(t=>t[0]),...JR_TY0])].sort((a,b)=>a.localeCompare(b,'fr'));
+    const pjs=Object.values(S.chars).filter(x=>x.type==='PJ'&&((actif(x)&&vis(x))||g.parts.includes(x.id))).sort((a,b)=>(a.court||a.nom||'').localeCompare(b.court||b.nom||'','fr'));
+    return fiShell(g,tt,`<div><h2>${tt}</h2><div class="muted small">${esc(c.court||c.nom)}</div></div>
+      <div class="field"><label for="jrNm">Nom</label><input id="jrNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
+      ${q?seg('qt',g.qt,[['perso','Personnelle'],['groupe','De groupe']],'Type')
+        :`<div class="field"><label for="jrTy">Type</label><input id="jrTy" type="text" list="jrTyL" data-fin="type" value="${esc(g.type)}" autocomplete="off"><datalist id="jrTyL">${sug.map(t=>`<option value="${esc(t)}">`).join('')}</datalist></div>`}
+      ${grp?`<div class="field"><span class="flab">Participants</span><div class="jrparts">${pjs.map(x=>{const on=g.parts.includes(x.id),me=x.id===c.id;return `<button type="button" class="jrpc${on?' on':''}${me?' me':''}" data-act="jrPart" data-v="${esc(x.id)}" aria-pressed="${on}"${me?' disabled':''}>${esc(x.court||x.nom)}</button>`;}).join('')}</div><div class="muted small">${esc(c.court||c.nom)} en fait toujours partie. La quête s'affiche sur la fiche de chaque participant.</div></div>`:''}
+      ${ed('Description <span class="muted">— facultative</span>')}
+      ${seg('pub',g.pub?'1':'0',[['0','Privé'],['1','Public']],'Lecture')}
+      <div class="muted small" style="margin-top:-4px">Privé : ${grp?'les participants':'le joueur du personnage'} et le MJ. Public : toute la table.</div>
+      ${q&&!j?`<label class="jrck"><input type="checkbox" data-fin="jg"${g.jg?' checked':''}> Ouvrir une jauge de recherche</label>`:''}
+      ${err}
+      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="jrHeadSave"${(g.nom||'').trim()?'':' disabled'}>${j?'Enregistrer':'Créer'}</button></div>
+      ${j?`<div class="fidel">${g.confirm?`<div class="muted small">Supprimer définitivement « ${esc(j.nom)} » et ses ${(j.ent||[]).length} entrée(s)${jrParts(j).length>1?', pour tous les participants':''} ?</div><div class="actions"><button class="btn ghost" data-act="jrDelNo">Garder</button><button class="btn" style="color:var(--bad)" data-act="jrDelOk">Supprimer</button></div>`:`<button class="btn ghost" style="color:var(--bad)" data-act="jrDel">Supprimer ${q?'la quête':'le journal'}</button>`}</div>`:''}`);}
+  if(g.kind==='jrEnt'){const j=S.jour[g.j];if(!jrCanEd(j))return null;const e=g.e&&(j.ent||[]).find(x=>x.id===g.e);if(g.e&&!jrEntEd(j,e))return null;
+    return fiShell(g,e?'Modifier l\'entrée':'Nouvelle entrée',`<div><h2>${e?'Modifier l\'entrée':'Nouvelle entrée'}</h2><div class="muted small">${esc(j.nom)}</div></div>
+      <div class="field"><label for="jrNm">Nom</label><input id="jrNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
+      <div class="field"><span class="flab">Date du jeu <span class="muted">— facultative ; le jour peut rester vide</span></span><div class="jrdt"><input type="number" min="1" max="31" inputmode="numeric" data-fin="dj_j" value="${esc(g.dj_j)}" aria-label="Jour" placeholder="jour"><select data-fin="dj_m" aria-label="Mois"><option value="">— mois —</option>${JR_MOIS.map((m,i)=>`<option value="${i+1}"${String(g.dj_m)===String(i+1)?' selected':''}>${m}</option>`).join('')}</select><input type="number" min="1" inputmode="numeric" data-fin="dj_a" value="${esc(g.dj_a)}" aria-label="Année" placeholder="année"></div><div class="muted small" id="jrDjP">${esc(jrDjTxt(jrDjOf(g)))}</div></div>
+      <div class="field"><label for="jrAu">Auteur <span class="muted">— facultatif (ex. une lettre reçue)</span></label><input id="jrAu" type="text" data-fin="auteur" value="${esc(g.auteur)}" autocomplete="off"></div>
+      ${ed('Texte')}
+      ${err}
+      <div class="actions">${e?(g.confirm?`<button class="btn" style="color:var(--bad);margin-right:auto" data-act="jrEntDelOk">Confirmer la suppression</button>`:`<button class="btn ghost" style="margin-right:auto" data-act="jrEntDel">Supprimer</button>`):''}<button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="jrEntSave"${(g.nom||'').trim()?'':' disabled'}>Enregistrer</button></div>`);}
+  if(g.kind==='jrJg'){const j=S.jour[g.j];if(!jrCanEd(j))return null;
+    return fiShell(g,'Jauge de recherche',`<div><h2>Jauge de recherche</h2><div class="muted small">Quête : ${esc(j.nom)}</div></div>
+      <div class="field"><label for="jrNm">Nom</label><input id="jrNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
+      <div style="display:flex;gap:8px"><div class="field" style="flex:1"><label for="jrTa">Jauge (cases)</label><input id="jrTa" type="number" min="1" inputmode="numeric" data-fin="taille" value="${esc(g.taille)}"></div><div class="field" style="flex:1"><label for="jrDf">Difficulté <span class="muted">— facultative</span></label><input id="jrDf" type="number" min="0" inputmode="numeric" data-fin="diff" value="${esc(g.diff)}"></div></div>
+      <div class="muted small">Une seule jauge ouverte à la fois par quête${j.type==='groupe'?', partagée par les participants':''}. Elle s'affiche aussi dans Relations › Autres jauges.</div>
+      ${err}
+      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="jrJgSave">Ouvrir</button></div>`);}
+  return null;}
+
+/* ---------- Clics ---------- */
+function jrAct(a,d){
+  if(a==='jrSel'){S.jrSel=d.v==='q'?'q':'j';S.jrOpen=null;render();return true;}
+  if(a==='jrOpen'){S.jrOpen=d.j;window.scrollTo(0,0);render();return true;}
+  if(a==='jrBack'){S.jrOpen=null;render();return true;}
+  if(a==='jrGo'){const j=S.jour&&S.jour[d.j];if(!jrCanRead(j))return true;S.shTab='jour';S.jrSel='q';S.jrOpen=j.id;window.scrollTo(0,0);render();return true;}
+  if(S.visit)return true;
+  const c=S.chars[S.sel],g=S.dlg,now=new Date().toISOString(),redraw=()=>{S._fiRedraw=true;render();};
+  if(a==='jrPub'){const j=S.jour[d.j];if(!jrCanEd(j))return true;const n=jrUpd(j.id,x=>{x.pub=!x.pub;});if(n)toast(n.pub?'Public : visible par toute la table':'Privé');return true;}
+  if(a==='jrStat'){const j=S.jour[d.j];if(!jrCanEd(j)||!JR_ST.some(x=>x[0]===d.v))return true;jrUpd(j.id,x=>{x.statut=d.v;});return true;}
+  if(a==='jrNew'){if(!c||!canEditC(c))return true;fiOpenDlg({kind:'jrHead',cid:c.id,id:'',genre:d.g==='quete'?'quete':'journal',nom:'',type:'',qt:'perso',parts:[c.id],txt:'',pub:false,jg:false});render();return true;}
+  if(a==='jrEd'){const j=S.jour[d.j];if(!c||!jrCanEd(j))return true;fiOpenDlg({kind:'jrHead',cid:c.id,id:j.id,genre:j.genre,nom:j.nom||'',type:j.genre==='journal'?(j.type||''):'',qt:j.type==='groupe'?'groupe':'perso',parts:jrParts(j).slice(),txt:j.desc||'',pub:!!j.pub});render();return true;}
+  if(a==='jrSet'){if(g&&(g.kind==='jrHead')){g[d.k]=d.k==='pub'?d.v==='1':d.v;if(d.k==='qt'&&d.v==='groupe'&&!g.parts.includes(g.cid))g.parts=[g.cid,...g.parts];redraw();}return true;}
+  if(a==='jrPart'){if(g&&g.kind==='jrHead'&&d.v!==g.cid){g.parts=g.parts.includes(d.v)?g.parts.filter(x=>x!==d.v):[...g.parts,d.v];redraw();}return true;}
+  if(a==='jrHeadSave'){if(!g||g.kind!=='jrHead')return true;const cc=S.chars[g.cid],nom=(g.nom||'').trim();if(!cc||!nom)return true;
+    const ed=document.getElementById('fiEd'),txt=ed?fiSer(ed):(g.txt||''),q=g.genre==='quete',grp=q&&g.qt==='groupe';
+    const parts=grp?[...new Set([cc.id,...g.parts])].filter(id=>S.chars[id]):[cc.id];
+    if(g.id){const j=S.jour[g.id];if(!jrCanEd(j))return true;S.dlg=null;FI_AT=null;
+      jrUpd(j.id,x=>{x.nom=nom;x.desc=txt;x.pub=!!g.pub;if(q){x.type=grp?'groupe':'perso';x.parts=parts;if(!grp)x.perso=cc.id;}else x.type=(g.type||'').trim();});
+      setTimeout(()=>toast('Enregistré'),0);return true;}
+    if(!canEditC(cc))return true;
+    const nj={id:fiRid('j-'),genre:q?'quete':'journal',perso:cc.id,parts,nom,type:q?(grp?'groupe':'perso'):(g.type||'').trim(),desc:txt,pub:!!g.pub,ent:[],par:ME||'',cree:now};
+    if(q){nj.statut='cours';nj.jauge=null;nj.jaugesFinies=[];}
+    S.jrOpen=nj.id;S.jrSel=q?'q':'j';FI_AT=null;
+    if(q&&g.jg)fiOpenDlg({kind:'jrJg',cid:cc.id,j:nj.id,nom,taille:'',diff:''});else S.dlg=null;
+    jrSave(nj);window.scrollTo(0,0);setTimeout(()=>toast(q?'Quête créée':'Journal créé'),0);return true;}
+  if(a==='jrDel'){if(g&&g.kind==='jrHead'){g.confirm=true;redraw();}return true;}
+  if(a==='jrDelNo'){if(g){g.confirm=false;redraw();}return true;}
+  if(a==='jrDelOk'){const j=g&&g.kind==='jrHead'&&S.jour[g.id];if(!jrCanEd(j))return true;const m={...S.jour};delete m[j.id];S.jour=m;persistDel('journaux/'+j.id);
+    S.dlg=null;S.jrOpen=null;render();setTimeout(()=>toast(j.genre==='quete'?'Quête supprimée':'Journal supprimé'),0);return true;}
+  if(a==='jrEnt'){const j=S.jour[d.j];if(!c||!jrCanEd(j))return true;const e=d.e&&(j.ent||[]).find(x=>x.id===d.e);if(d.e&&!jrEntEd(j,e))return true;
+    fiOpenDlg({kind:'jrEnt',cid:c.id,j:j.id,e:e?e.id:'',nom:e?e.nom||'':'',dj_j:e&&e.dj&&e.dj.j?String(e.dj.j):'',dj_m:e&&e.dj?String(e.dj.m||''):'',dj_a:e&&e.dj?String(e.dj.a||''):'',auteur:e?e.auteur||'':'',txt:e?e.txt||'':''});render();return true;}
+  if(a==='jrEntSave'){if(!g||g.kind!=='jrEnt')return true;const j=S.jour[g.j];if(!jrCanEd(j))return true;const nom=(g.nom||'').trim();if(!nom)return true;
+    const any=[g.dj_j,g.dj_m,g.dj_a].some(v=>String(v||'').trim()),dj=jrDjOf(g);
+    if(any&&!dj){g.err='Date du jeu : indique au moins le mois et l\'année (le jour est facultatif).';redraw();return true;}
+    if(dj&&dj.j){const max=new Date(Date.UTC(dj.a,dj.m,0)).getUTCDate();if(dj.j>max){g.err='Ce jour n\'existe pas dans ce mois.';redraw();return true;}}
+    const ed=document.getElementById('fiEd'),txt=ed?fiSer(ed):(g.txt||''),au=(g.auteur||'').trim();
+    if(g.e){const e=(j.ent||[]).find(x=>x.id===g.e);if(!jrEntEd(j,e))return true;}
+    S.dlg=null;FI_AT=null;
+    jrUpd(j.id,x=>{x.ent=x.ent||[];if(g.e){const e=x.ent.find(y=>y.id===g.e);if(!e)return false;e.nom=nom;e.txt=txt;e.auteur=au;if(dj)e.dj=dj;else delete e.dj;}
+      else{const e={id:fiRid('e-'),nom,txt,auteur:au,by:ME||'',pc:g.cid,cree:now};if(dj)e.dj=dj;x.ent.push(e);}});
+    setTimeout(()=>toast('Enregistré'),0);return true;}
+  if(a==='jrEntDel'){if(g&&g.kind==='jrEnt'){g.confirm=true;redraw();}return true;}
+  if(a==='jrEntDelOk'){if(!g||g.kind!=='jrEnt')return true;const j=S.jour[g.j],e=j&&(j.ent||[]).find(x=>x.id===g.e);if(!jrEntEd(j,e))return true;
+    S.dlg=null;FI_AT=null;jrUpd(j.id,x=>{x.ent=(x.ent||[]).filter(y=>y.id!==g.e);});return true;}
+  if(a==='jrJgNew'){const j=S.jour[d.j];if(!c||!jrCanEd(j)||j.jauge)return true;fiOpenDlg({kind:'jrJg',cid:c.id,j:j.id,nom:j.nom||'',taille:'',diff:''});render();return true;}
+  if(a==='jrJgSave'){if(!g||g.kind!=='jrJg')return true;const j=S.jour[g.j];if(!jrCanEd(j))return true;const nom=(g.nom||'').trim(),t=parseInt(g.taille,10);
+    if(!nom||!(t>0)){g.err='Nom et taille de la jauge obligatoires.';redraw();return true;}
+    S.dlg=null;jrUpd(j.id,x=>{if(x.jauge)return false;const J={id:fiRid('jg-'),nom,taille:t,ouv:today(),cases:0,hist:[]};if(String(g.diff||'').trim()!=='')J.diff=+g.diff;x.jauge=J;});
+    setTimeout(()=>toast('Jauge ouverte'),0);return true;}
+  if(a==='jrJgAdd'){const j=S.jour[d.id];if(!jrCanEd(j))return true;const inp=document.querySelector(`[data-rs="${CSS.escape(d.j)}"]`),k=parseInt(inp&&inp.value,10);if(!(k>0)){if(inp)inp.focus();return true;}
+    const n=jrUpd(j.id,x=>{if(!x.jauge||x.jauge.id!==d.j)return false;x.jauge.cases=Math.min(x.jauge.taille,(x.jauge.cases||0)+k);x.jauge.hist=[...(x.jauge.hist||[]),{d:today(),n:k,by:ME||''}];});
+    if(n)toast('+'+k+' succès');return true;}
+  if(a==='jrJgVal'){const j=S.jour[d.id];if(!jrCanEd(j))return true;
+    const n=jrUpd(j.id,x=>{const J=x.jauge;if(!J||J.id!==d.j||(J.cases||0)<J.taille)return false;x.jaugesFinies=[...(x.jaugesFinies||[]),{...J,done:true,fin:today()}];x.jauge=null;});
+    if(n)toast('Jauge validée');return true;}
+  if(a==='jrJgDel'){const j=S.jour[d.id];if(!jrCanEd(j))return true;if(!confirm('Fermer cette jauge sans la valider ?'))return true;jrUpd(j.id,x=>{if(!x.jauge||x.jauge.id!==d.j)return false;x.jauge=null;});return true;}
+  return true;}
+/* Aperçu de la date du jeu pendant la saisie */
+document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset||!/^dj_/.test(t.dataset.fin||'')||!S.dlg||S.dlg.kind!=='jrEnt')return;const p=document.getElementById('jrDjP');if(p)p.textContent=jrDjTxt(jrDjOf(S.dlg));});
+document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||!/^dj_/.test(t.dataset.fin||'')||!S.dlg||S.dlg.kind!=='jrEnt')return;const p=document.getElementById('jrDjP');if(p)p.textContent=jrDjTxt(jrDjOf(S.dlg));});

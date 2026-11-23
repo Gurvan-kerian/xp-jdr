@@ -14,7 +14,7 @@ console.log('1. Mise à jour pure (rien n\'est écrit)');
 const A=loadApp(ROOT);setDocs(A,docs0);A.ctx.__in=docs0;
 ok(A.run('S.schemaV')===0,'données reconnues en version 0');
 const res=A.run('migrateAll(__in,0,"lorenzo")');
-const out=res.out;ok(out['meta/schema']&&out['meta/schema'].v===1,'meta/schema passe en version 1');
+const out=res.out;ok(out['meta/schema']&&out['meta/schema'].v===A.run('SCHEMA_V'),'meta/schema passe en version '+A.run('SCHEMA_V'));
 ok(Object.keys(out).pop()==='meta/schema'||true,'meta/schema produit');
 const docs1={...docs0,...out};
 console.log('   '+res.rep.join('\n   '));
@@ -37,7 +37,7 @@ ok(docs1['meta/races'].byId.humain.kk&&docs1['meta/secrets'].fix1,"anciens marqu
 
 console.log('3. L\'appli sur les données mises à jour');
 const B=loadApp(ROOT);setDocs(B,docs1);
-ok(B.run('S.schemaV')===1&&B.run('modelV1()'),'version 1 reconnue, modèle 1 actif');
+ok(B.run('S.schemaV')===B.run('SCHEMA_V')&&B.run('modelV1()'),'dernière version reconnue, modèle 1 actif');
 ok(B.run('(schemaCheck(),S.migPending)')===false,'plus de mise à jour en attente');
 const unstable=B.run('Object.values(S.chars).filter(c=>fxSync(c)!==c).map(c=>c.id)');
 ok(unstable.length===0,'aucune valeur recalculée au chargement (bonus intégrés stables)'+(unstable.length?' : '+unstable:''));

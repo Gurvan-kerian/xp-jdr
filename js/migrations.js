@@ -2,7 +2,7 @@
    meta/schema = {v, date, by, hist:[{v, date, by}]} ; absent = version 0.
    Chaque étape est une fonction pure : (docs) → docs modifiés + signalements ; rien n'est écrit si elle échoue.
    Les écritures se font ensuite document par document, meta/schema en dernier : relancer reprend proprement. */
-const SCHEMA_V=1;
+const SCHEMA_V=2;
 class MigErr extends Error{constructor(msg,el){super(msg);this.el=el||'';}}
 
 /* ---------- Étape 1 : version 0 → 1 (Socle) ---------- */
@@ -68,7 +68,22 @@ function migrateV1(D){
   put('meta/pouvoirs',{byId:P});put('meta/capacites',{byId:C});put('meta/races',{byId:R});
   rep.push(Object.keys(P).length+' pouvoirs, '+Object.keys(C).length+' capacités naturelles, '+Object.keys(R).filter(k=>R[k]&&!R[k].hum).length+' races converties.');
   return {out,sig,rep};}
-const MIGRATIONS={1:migrateV1};
+/* ---------- Étape 2 : version 1 → 2 (lot 2, 23/11/2026 : journaux v2 et quêtes) ----------
+   journaux/<personnage> = {list:[{id, titre, pub, ent:[{id, type, txt, by, date, t}]}]} → une ligne journaux/j-<personnage>-<id> par journal :
+   type du journal = type de sa 1re entrée ; nom de l'entrée = son ancien type (« Entrée » s'il est vide) ; date réelle gardée (ecrit) ;
+   Privé / Public inchangé. Les anciennes lignes sont gardées telles quelles. Identifiants fixes : relancer ne crée pas de doublon. */
+function migrateV2(D){const out={},rep=[];let nj=0,ne=0;
+  for(const k of Object.keys(D).filter(k=>k.startsWith('journaux/')).sort()){const x=D[k];if(!x||!Array.isArray(x.list))continue;const cid=k.slice(9);
+    x.list.forEach((o,ix)=>{if(!o)return;const id='j-'+cid+'-'+String(o.id||ix).replace(/[^\w-]/g,''),E=(Array.isArray(o.ent)?o.ent:[]).filter(Boolean);
+      const ent=E.map((e,i)=>{const r={id:String(e.id||'e-'+i),nom:String(e.type||'').trim()||'Entrée',txt:String(e.txt||''),auteur:'',by:e.by||'',pc:cid,cree:e.t?new Date(e.t).toISOString():(e.date||''),ecrit:e.date||''};return r;});
+      const doc={id,genre:'journal',perso:cid,parts:[cid],nom:String(o.titre||'').trim()||'Journal',type:E.length?String(E[0].type||'').trim():'',desc:'',pub:!!o.pub,ent,par:'',cree:(ent[0]&&ent[0].cree)||'',repris:k};
+      D['journaux/'+id]=doc;out['journaux/'+id]=doc;nj++;ne+=ent.length;});}
+  rep.push(nj?nj+' journa'+(nj>1?'ux repris':'l repris')+' ('+ne+' entrée'+(ne>1?'s':'')+') dans le nouveau modèle ; anciens documents gardés.':'Journaux : aucun journal à reprendre.');
+  return {out,sig:[],rep};}
+const MIGRATIONS={1:migrateV1,2:migrateV2};
+/* Ce que change chaque version (carte de la mise à jour) */
+const MIG_TXT={1:"Les données sont rangées dans le nouveau modèle : référentiel des pouvoirs et des capacités, identifiants fixes, effets suivis par identifiant. L'aspect de l'appli ne change pas.",
+  2:"Journaux et quêtes : chaque journal devient une ligne à part (nom, type, description, Privé / Public) ; le type d'une entrée devient son nom. Les anciens documents sont gardés."};
 
 /* ---------- Toutes les étapes manquantes, dans l'ordre (pur : rien n'est écrit) ---------- */
 function migrateAll(docs,from,by){const D=clone(docs),out={},sig=[],rep=[];
@@ -88,9 +103,10 @@ function snapshotDocs(){const D={};
   for(const id in S.chars)D['chars/'+id]=S.chars[id];for(const id in S.players)D['players/'+id]=S.players[id];
   D['meta/races']={byId:S.races||{}};D['meta/pouvoirs']={byId:S.pouvoirs||{}};if(S.capacites)D['meta/capacites']={byId:S.capacites};
   if(S.secretsDoc)D['meta/secrets']=S.secretsDoc;if(S.params&&(S.params.versions||[]).length)D['meta/params']=S.params;
+  for(const id in S.jour||{})D['journaux/'+id]=S.jour[id];
   D['gains/all']={events:S.events||[]};if(S.schema)D['meta/schema']=S.schema;if(S.signalDoc)D['meta/signalements']=S.signalDoc;return D;}
 /* Toutes les données nécessaires sont-elles chargées ? Calcule l'état de la version. */
-function schemaCheck(){const ok=S.ready&&S.racesReady&&S.pouvoirsReady&&S.creaturesReady&&S.secretsReady&&S.paramsReady&&S.schemaReady&&S.capReady&&S.eventsReady&&S.playersReady;
+function schemaCheck(){const ok=S.ready&&S.racesReady&&S.pouvoirsReady&&S.creaturesReady&&S.secretsReady&&S.paramsReady&&S.schemaReady&&S.capReady&&S.eventsReady&&S.playersReady&&S.jourReady;
   if(!ok)return;S.schemaV=(S.schema&&S.schema.v)||0;S.migPending=S.schemaV<SCHEMA_V;S.migAhead=S.schemaV>SCHEMA_V;}
 const canMigrate=()=>isGest()||(S.playersReady&&gestCount()===0);
 async function runMigration(){if(!S.migPending||S.migRunning||!DB||!canMigrate())return;
@@ -105,7 +121,7 @@ async function runMigration(){if(!S.migPending||S.migRunning||!DB||!canMigrate()
   /* état local = données mises à jour */
   for(const k of keys){const v=res.out[k],[c,id]=k.split('/');
     if(c==='chars')S.chars[id]=v;else if(c==='players')S.players[id]=v;else if(k==='meta/races')S.races=v.byId;else if(k==='meta/pouvoirs')S.pouvoirs=v.byId;else if(k==='meta/capacites')S.capacites=v.byId;
-    else if(k==='meta/secrets'){S.secretsDoc=v;S.secrets=v.list||[];S.secretProps=v.props||[];}else if(k==='meta/params'){S.params=v;applyParams();}else if(k==='meta/schema')S.schema=v;else if(k==='meta/signalements')S.signalDoc=v;}
+    else if(k==='meta/secrets'){S.secretsDoc=v;S.secrets=v.list||[];S.secretProps=v.props||[];}else if(k==='meta/params'){S.params=v;applyParams();}else if(c==='journaux')S.jour={...(S.jour||{}),[id]:v};else if(k==='meta/schema')S.schema=v;else if(k==='meta/signalements')S.signalDoc=v;}
   S.migRunning=false;S.migDone={rep:res.rep,n:res.sig.length};schemaCheck();rebuildRaces();render();}
 
 /* Carte (gestion) ou bandeau (autres) tant que la mise à jour n'est pas faite */
@@ -116,7 +132,7 @@ function socleBanner(){
   if(!canMigrate())return `<div class="ui-band" role="status"><b>Mise à jour en attente.</b> La gestion doit lancer la mise à jour des données ; d'ici là, l'appli est en lecture seule.</div>`;
   const e=S.migErr;
   return `<div class="ui-card ui-mig" role="region" aria-label="Mise à jour des données"><b>Mise à jour des données disponible (version ${S.schemaV||0} → ${SCHEMA_V})</b>
-    <div class="ui-small">Les données sont rangées dans le nouveau modèle : référentiel des pouvoirs et des capacités, identifiants fixes, effets suivis par identifiant. L'aspect de l'appli ne change pas.</div>
+    ${Object.keys(MIG_TXT).map(Number).filter(v=>v>(S.schemaV||0)&&v<=SCHEMA_V).map(v=>`<div class="ui-small">${esc(MIG_TXT[v])}</div>`).join('')}
     <div class="ui-small"><b>As-tu fait ta sauvegarde ?</b> Si ce n'est pas le cas, fais-la avant de lancer. D'ici là, l'appli est en lecture seule pour tout le monde.</div>
     ${e?`<div class="ui-err" role="alert"><b>La mise à jour s'est arrêtée sans rien enregistrer${e.el?' (élément en cause : '+esc(e.el)+')':''}.</b><div>${esc(e.msg)}</div></div>`:''}
     <div class="ui-act"><button class="btn pri" data-act="migRun"${S.migRunning?' disabled':''}>${S.migRunning?'Mise à jour en cours…':e?'Relancer la mise à jour':'Lancer la mise à jour'}</button></div></div>`;}

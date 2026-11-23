@@ -396,7 +396,7 @@ const evTypeL=e=>{const t=evType(e);return t===CRE_TYPE?"Race de l'univers":t;};
    sont des actions de jeu : joueur du personnage et gestion (canEditC), hors mode édition.
    ========================================================================== */
 const SH_ICO={prog:'<path d="M4 18l5-5 4 3 7-8"/><path d="M15 8h5v5"/>',fiche:'<rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>',feer:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',rel:'<circle cx="8.5" cy="9" r="3"/><circle cx="16" cy="10" r="2.5"/><path d="M3.5 19c.8-3 3-4.5 5-4.5s4.2 1.5 5 4.5M14 15.2c2.6-.4 4.6.9 5.5 3.8"/>',situ:'<path d="M4 20V10l8-5 8 5v10"/><path d="M9.5 20v-5h5v5"/>',jour:'<path d="M6 3.5h10a2 2 0 0 1 2 2v15H8a2 2 0 0 1-2-2z"/><path d="M6 17.5a2 2 0 0 1 2-2h10"/>'};
-const SH_TABS=[['prog','Progrès'],['fiche','Fiche'],['feer','Féerie'],['rel','Relations'],['situ','Situation'],['jour','Journaux']];
+const SH_TABS=[['prog','Progrès'],['fiche','Fiche'],['feer','Féerie'],['rel','Relations'],['situ','Situation'],['jour','Chronique']]; /* lot 2 : l'onglet Journaux devient « Chronique » (Quêtes / Journaux ; Feuilleton au lot 3) */
 const shHasFee=c=>c.type==='PJ'&&!isHum(c);
 const shTabsOf=c=>SH_TABS.filter(([k])=>k!=='feer'||shHasFee(c));
 function shTabOf(c){let t=S.shTab||'prog';if(t==='full')t='fiche';return shTabsOf(c).some(x=>x[0]===t)?t:'prog';}
@@ -413,7 +413,7 @@ const ppLinesOf=(c,r)=>ppBought(c).filter(a=>a.ppel.rub===r).map(a=>`<div class=
 function viewSheetTab(c,tab){
   if(tab==='rel')return viewRelations(c);
   if(tab==='situ')return viewSituation(c);
-  if(tab==='jour')return viewJournaux(c);
+  if(tab==='jour')return jrView(c); /* lot 2 (fiches.js) */
   const fm=S.forme||'m',fxl=fxOf(c),x=raceRecOf(c),fee=shHasFee(c);let h='';
   const val=n=>`<b class="num">${n}</b>`,row=(a,b)=>`<div class="fr"><span>${a}</span>${val(b)}</div>`;
   const fxLines=(k,nom)=>fxl.filter(e=>e.kind===k&&nrmA(e.src)===nrmA(nom)).map(e=>`<div class="fxs${fxOn(e,fm)?'':' off'}">Effet : ${esc(fxLabel(e))}${fxQ(e.quand)==='d'?' · démasqué seulement':''}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}</div>`).join('');
@@ -483,8 +483,8 @@ const pbar=(f,n)=>`<span class="pbar" role="img" aria-label="${f} succès sur ${
 function jaugeBox(c,E,j,head,acts){const full=(j.cases||0)>=j.taille;
   return `<div class="pend${j.done?' done':''}">${head}<div class="pbw">${pbar(j.cases||0,j.taille)}<small>${j.cases||0} / ${j.taille}${j.diffShow!=null?` · difficulté ${j.diffShow}`:''}</small></div>${j.done?'<div class="muted small">Jauge terminée.</div>':''}
     ${E&&!j.done?(full?`<div class="relbtns"><button type="button" class="btn pri sm" data-act="${acts.val}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Valider${acts.valLab?' : '+acts.valLab:''}</button></div>`
-      :`<div class="relbtns sx"><label class="small" for="rs-${esc(j.id)}">Succès</label><input id="rs-${esc(j.id)}" class="sxi" type="number" min="0" inputmode="numeric" data-rs="${esc(j.id)}" placeholder="0"><button type="button" class="btn pri sm" data-act="${acts.add}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Ajouter</button><button type="button" class="btn ghost sm jclose" data-act="${acts.del}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Fermer la jauge</button></div>`)
-      :E&&j.done?`<div class="relbtns"><button type="button" class="btn ghost sm" data-act="${acts.del}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Retirer</button></div>`:''}</div>`;}
+      :`<div class="relbtns sx"><label class="small" for="rs-${esc(j.id)}">Succès</label><input id="rs-${esc(j.id)}" class="sxi" type="number" min="0" inputmode="numeric" data-rs="${esc(j.id)}" placeholder="0"><button type="button" class="btn pri sm" data-act="${acts.add}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Ajouter</button>${acts.del?`<button type="button" class="btn ghost sm jclose" data-act="${acts.del}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Fermer la jauge</button>`:''}</div>`)
+      :E&&j.done&&acts.del?`<div class="relbtns"><button type="button" class="btn ghost sm" data-act="${acts.del}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Retirer</button></div>`:''}</div>`;}
 function relRow(c,r,E){const rk=relRang(r);
   const sub=r.grp?`<span class="srcb j">contact de groupe</span>${r.orig?' · '+esc(r.orig):''}`:r.src==='pp'?srcChip('pp'):r.src==='feal'?srcChip('feal'):'';
   return `<div class="relr"><div class="relh"><span>${relName(r)}${rk?` <span class="muted small">· ${esc(rk)}</span>`:''}</span><span class="rr"><span class="lvl ${r.niv}">${REL_NIV[r.niv]||''}</span>${E&&!r.virt?`<button type="button" class="ibtn" data-act="${r.grp?'relGrp':'relEd'}" data-id="${esc(r.id)}" aria-label="Modifier">✎</button>`:''}</span></div>${sub||r.note?`<div class="muted small">${sub}${sub&&r.note?' · ':''}${r.note?esc(r.note):''}</div>`:''}</div>`;}
@@ -496,23 +496,13 @@ function viewRelations(c){const R=relsOf(c),E=canEditC(c);let h='';
   h+=sec('contact','Contacts','contact','contact','<button type="button" class="addl" data-act="relNew" data-niv="contact">+ Contact</button><button type="button" class="addl" data-act="relGrp">+ Contact de groupe</button>');
   h+=sec('allie','Alliés','allie','allie','<button type="button" class="addl" data-act="relNew" data-niv="allie">+ Allié</button>');
   h+=sec('ennemi','Ennemis','ennemi',null,'<button type="button" class="addl" data-act="relNew" data-niv="ennemi">+ Ennemi</button>');
-  const O=c.jauges||[];
-  h+=cBlk('rel-autres','Autres jauges',O.length?String(O.length):'',O.map(j=>jaugeBox(c,E,{...j,diffShow:j.diff!==''&&j.diff!=null?+j.diff:null},`<div class="relh"><span><b>${esc(j.nom)}</b></span></div>`,{add:'relOAdd',del:'relODel',val:'relOVal'})).join('')||shNone,E?`<div class="relbtns"><button type="button" class="addl" data-act="relOJ">+ Autre jauge</button></div>`:'');
+  const O=c.jauges||[],QJ=jrRelJauges(c),nO=O.length+QJ.length; /* lot 2 : jauges de recherche des quêtes */
+  h+=cBlk('rel-autres','Autres jauges',nO?String(nO):'',QJ.join('')+O.map(j=>jaugeBox(c,E,{...j,diffShow:j.diff!==''&&j.diff!=null?+j.diff:null},`<div class="relh"><span><b>${esc(j.nom)}</b></span></div>`,{add:'relOAdd',del:'relODel',val:'relOVal'})).join('')||(QJ.length?'':shNone),E?`<div class="relbtns"><button type="button" class="addl" data-act="relOJ">+ Autre jauge</button></div>`:'');
   h+=`<div class="muted small" style="margin-top:4px">Jauges : ouvertes à la demande du joueur ; après un jet fait à la table, on ajoute les succès (plusieurs d'un coup). Jauge pleine : « Valider ». Aucun coût en XP ni en PP.</div>`;
   return h;}
-/* ---------- Journaux (document journaux/<personnage>) ---------- */
-const jourOf=c=>((S.jour||{})[c.id]||{}).list||[];
-const jourCanRead=(c,j)=>j.pub||canEditC(c);
-function viewJournaux(c){const E=canEditC(c),L=jourOf(c).filter(j=>jourCanRead(c,j));
-  const open=S.jOpen&&L.find(j=>j.id===S.jOpen);
-  if(open){const ent=[...(open.ent||[])].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.t||0)-(a.t||0));
-    return `<div style="margin-bottom:8px"><button type="button" class="btn ghost" data-act="jBack">‹ Journaux</button></div>`+cBlk('j-'+open.id,esc(open.titre),open.pub?'toute la table':'joueur + MJ',
-      ent.map(e=>`<div class="ent"><div class="eh"><span class="k">${esc(e.type||'Entrée')}</span><span class="muted small">${e.date?fmtDate(e.date):''}${e.by?' · '+esc(plNom(e.by)):''}</span></div><div class="small" style="white-space:pre-line">${esc(e.txt||'')}</div>${E&&(e.by===ME||isGest())?`<div><button type="button" class="ibtn" data-act="entEd" data-j="${esc(open.id)}" data-e="${esc(e.id)}" aria-label="Modifier l'entrée">✎</button></div>`:''}</div>`).join('')||'<div class="muted small">Aucune entrée.</div>',
-      E?`<div class="relbtns"><button type="button" class="addl" data-act="entEd" data-j="${esc(open.id)}">+ Entrée</button><button type="button" class="btn ghost sm" data-act="jEd" data-j="${esc(open.id)}">Titre et lecture</button></div>`:'');}
-  return cBlk('jlist','Journaux de '+esc(c.court||c.nom),L.length?String(L.length):'',L.map(j=>{const n=(j.ent||[]).length,last=(j.ent||[]).map(e=>e.date||'').sort().pop();return `<button type="button" class="jr" data-act="jOpen" data-j="${esc(j.id)}"><span class="jic" aria-hidden="true">${esc((j.titre||'?').slice(0,1).toUpperCase())}</span><span style="flex:1;min-width:0"><b>${esc(j.titre)}</b><span class="d">${n} entrée${n>1?'s':''}${last?' · dernière le '+fmtDate(last):''}</span></span><span class="priv${j.pub?' t':''}">${j.pub?'toute la table':'joueur + MJ'}</span></button>`;}).join('')||'<div class="muted small">Aucun journal.</div>',E?`<button type="button" class="addl" data-act="jEd">+ Nouveau journal</button>`:'');}
-function jourSave(c,list){S.jour={...(S.jour||{}),[c.id]:{list}};render();persist('journaux/'+c.id,{list});}
-/* ---------- Fenêtres et actions des onglets Relations, Situation, Journaux ---------- */
-const SH_DLG=new Set(['situEd','relEd','relNew','relGrp','relOJ','jEd','entEd']);
+/* ---------- Journaux : remplacés au lot 2 par l'onglet Chronique (fiches.js, jrView) ---------- */
+/* ---------- Fenêtres et actions des onglets Relations et Situation ---------- */
+const SH_DLG=new Set(['situEd','relEd','relNew','relGrp','relOJ']);
 const dlgHead=(t,sub)=>`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(t)}"><div class="in"><div class="shd"><h2 style="margin:0">${esc(t)}</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>${sub?`<div class="muted small" style="margin-bottom:8px">${sub}</div>`:''}`;
 const fld=(k,l,v,ta)=>`<div class="field"><label for="dk-${k}">${l}</label>${ta?`<textarea id="dk-${k}" rows="${ta}" data-dk="${k}">${esc(v||'')}</textarea>`:`<input id="dk-${k}" type="${['taille','n','diff'].includes(k)?'number':'text'}"${['taille','n','diff'].includes(k)?' min="0" inputmode="numeric"':''} data-dk="${k}" value="${esc(v==null?'':v)}">`}</div>`;
 const segF=(k,v,opts,l)=>`<div class="field"><label>${l}</label><div class="seg" role="group" aria-label="${esc(l)}">${opts.map(([o,t])=>`<button type="button" data-act="dlgSet" data-k="${k}" data-v="${o}" aria-pressed="${v===o}">${t}</button>`).join('')}</div></div>`;
@@ -528,15 +518,11 @@ function shDlgSheet(g){const c=S.chars[g.cid];if(!c)return null;const f=g.f;
   if(g.kind==='relEd'){const r=(c.rel||[]).find(x=>x.id===g.id);if(!r)return null;return dlgHead(REL_NIV[r.niv]||'Relation',esc(r.pnj&&S.chars[r.pnj]?S.chars[r.pnj].court:r.nom||''))+fld('note','Note',f.note,2)+dlgFoot('relDel','relEdSave');}
   if(g.kind==='relGrp')return dlgHead(g.id?'Contact de groupe':'Nouveau contact de groupe',esc(c.court))+fld('nom','Intitulé (ex. Les druides)',f.nom)+fld('orig','Origine (ex. atout Ami des druides)',f.orig)+fld('note','Note',f.note,2)+dlgFoot(g.id?'relDel':'','relGrpSave');
   if(g.kind==='relOJ')return dlgHead('Autre jauge',esc(c.court))+fld('nom','Intitulé',f.nom)+`<div style="display:flex;gap:8px"><div style="flex:1">${fld('taille','Jauge (cases)',f.taille)}</div><div style="flex:1">${fld('diff','Difficulté',f.diff)}</div></div>`+dlgFoot('','relOSave');
-  if(g.kind==='jEd')return dlgHead(g.j?'Journal':'Nouveau journal',esc(c.court))+fld('titre','Titre',f.titre)+segF('pub',f.pub?'1':'0',[['0','Joueur + MJ'],['1','Toute la table']],'Lecture')+dlgFoot(g.j?'jDel':'','jSave');
-  if(g.kind==='entEd')return dlgHead(g.e?'Modifier l\'entrée':'Nouvelle entrée',esc(c.court))+fld('type','Type (potin, correspondance…)',f.type)+fld('txt','Texte',f.txt,5)+dlgFoot(g.e?'entDel':'','entSave');
   return null;}
 function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
   if(a==='shFold'){S.shFold={...(S.shFold||{}),[d.k]:!shFolded(d.k)};render();return true;}
-  if(a==='jOpen'){S.jOpen=d.j;render();return true;}
-  if(a==='jBack'){S.jOpen=null;render();return true;}
   if(a==='dlgSet'&&S.dlg&&S.dlg.f){S.dlg.f[d.k]=d.k==='pub'?d.v==='1':d.v;render();return true;}
-  const OPEN=['situEd','relNew','relEd','relGrp','relOJ','relAddS','relOAdd','relVal','relJDel','relOVal','relODel','jEd','entEd'],SAVE=['situSave','situDel','relNewSave','relNewJ','relEdSave','relDel','relGrpSave','relOSave','jSave','jDel','entSave','entDel'];
+  const OPEN=['situEd','relNew','relEd','relGrp','relOJ','relAddS','relOAdd','relVal','relJDel','relOVal','relODel'],SAVE=['situSave','situDel','relNewSave','relNewJ','relEdSave','relDel','relGrpSave','relOSave'];
   if(!OPEN.includes(a)&&!SAVE.includes(a))return false;
   const cc=OPEN.includes(a)?c:S.chars[S.dlg&&S.dlg.cid];if(!cc||!canEditC(cc))return true;
   const now=today(),g=S.dlg;
@@ -572,16 +558,5 @@ function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
     setC(n=>{const J={id:uid('j'),nom,taille:t,ouv:now,cases:0,hist:[]};if(g.f.diff!=='')J.diff=+g.f.diff;n.jauges=[...(n.jauges||[]),J];});S.dlg=null;toast('Jauge ouverte');}
   else if(a==='relOVal'){setC(n=>{n.jauges=(n.jauges||[]).map(j=>j.id===d.j&&(j.cases||0)>=j.taille?{...j,done:true,fin:now}:j);});toast('Jauge validée');}
   else if(a==='relODel'){if(!confirm('Retirer cette jauge ?'))return true;setC(n=>{n.jauges=(n.jauges||[]).filter(j=>j.id!==d.j);});}
-  else if(a==='jEd'){const j=d.j&&jourOf(cc).find(x=>x.id===d.j);S.dlg={kind:'jEd',cid:cc.id,j:j?j.id:null,f:j?{titre:j.titre,pub:!!j.pub}:{titre:'',pub:false}};}
-  else if(a==='jSave'){const t=(g.f.titre||'').trim();if(!t){g.err='Le titre est obligatoire.';render();return true;}
-    const L=jourOf(cc).slice(),i=L.findIndex(x=>x.id===g.j);if(i>=0)L[i]={...L[i],titre:t,pub:!!g.f.pub};else{const id=uid('jr');L.push({id,titre:t,pub:!!g.f.pub,ent:[]});S.jOpen=id;}
-    S.dlg=null;jourSave(cc,L);toast('Enregistré');return true;}
-  else if(a==='jDel'){if(!g.conf){g.conf=true;render();return true;}S.dlg=null;S.jOpen=null;jourSave(cc,jourOf(cc).filter(x=>x.id!==g.j));return true;}
-  else if(a==='entEd'){const j=jourOf(cc).find(x=>x.id===d.j),e=j&&d.e&&(j.ent||[]).find(x=>x.id===d.e);if(e&&!(e.by===ME||isGest()))return true;S.dlg={kind:'entEd',cid:cc.id,j:d.j,e:e?e.id:null,f:e?{type:e.type||'',txt:e.txt||''}:{type:'',txt:''}};}
-  else if(a==='entSave'){const txt=(g.f.txt||'').trim();if(!txt){g.err='Le texte est vide.';render();return true;}
-    const L=jourOf(cc).map(j=>{if(j.id!==g.j)return j;const E=(j.ent||[]).slice(),i=E.findIndex(x=>x.id===g.e);const v={type:(g.f.type||'').trim(),txt};
-      if(i>=0)E[i]={...E[i],...v};else E.push({id:uid('e'),date:now,t:Date.now(),by:ME||'',...v});return {...j,ent:E};});
-    S.dlg=null;jourSave(cc,L);toast('Enregistré');return true;}
-  else if(a==='entDel'){if(!g.conf){g.conf=true;render();return true;}const L=jourOf(cc).map(j=>j.id!==g.j?j:{...j,ent:(j.ent||[]).filter(x=>x.id!==g.e)});S.dlg=null;jourSave(cc,L);return true;}
   render();return true;}
 function shInput(t){if(relpInput(t))return true;if(t.dataset.dk!==undefined&&S.dlg&&S.dlg.f&&SH_DLG.has(S.dlg.kind)){S.dlg.f[t.dataset.dk]=t.value;if(t.tagName==='SELECT'&&t.dataset.dk==='pnj'){S.dlg.err='';render();}return true;}return false;}
