@@ -37,6 +37,7 @@ function start(){
     },()=>{});
     db.collection('journaux').onSnapshot(snap=>{if(snap.metadata.hasPendingWrites)return;const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=x;});S.jour=m;render();},()=>{});
     on('meta/relations',x=>{S.relp=x||{};});
+    db.collection('fiches').onSnapshot(snap=>{if(snap.metadata.hasPendingWrites)return;const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=x;});S.fiches=m;S.fichesReady=true;render();},()=>{}); /* lot 1 */
     on('gains/all',x=>{S.events=(x&&x.events)||[];S.eventsReady=true;});
   }).catch(()=>{setSync('local');S.ready=true;render();});
 }

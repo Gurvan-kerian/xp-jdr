@@ -6,12 +6,12 @@ if(location.hash==='#dates'){try{history.replaceState(null,'',location.pathname+
 let ME=null;try{ME=localStorage.getItem('xp.me')||null;}catch(e){}
 const S={chars:{},players:{},events:[],ready:false,view:window.__openDates?'planning':'home',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
   futForm:{open:false,nom:'',max:'6'},pnjForm:{titre:'',montant:''},newP:{nom:'',role:'Joueur'},newC:{court:'',nom:'',type:'PJ',owner:''},
-  secrets:[],secretsReady:false,dates:[],datesReady:false,plan:{view:window.__openDates?'com':'mes',y:new Date().getFullYear(),m:new Date().getMonth(),open:null},curSess:null,creatures:[],creaturesReady:false,uni:'secrets',sec:null,secFilter:'all',
+  secrets:[],secretsReady:false,dates:[],datesReady:false,plan:{view:window.__openDates?'com':'mes',y:new Date().getFullYear(),m:new Date().getMonth(),open:null},curSess:null,creatures:[],creaturesReady:false,uni:'home',sec:null,secFilter:'all',
   form:{titre:'',type:'Scénario',date:'',lines:[{nature:'Scénario',montant:'',persos:null}]},hist:{},dirty:false,sync:'loading'};
 /* Lot 2 : au rechargement, l'appli rouvre la même page et le même onglet (mémoire de l'onglet du navigateur) */
 const KANKA_URL='https://app.kanka.io/w/350361';
 const kankaHref=(lien,nom)=>(lien&&/^https?:\/\//.test(lien))?lien:KANKA_URL+'/search?q='+encodeURIComponent(nom||'');
-const NAV_KEYS=['view','sel','shTab','uni','sec','ptab','forme'];
+const NAV_KEYS=['view','sel','shTab','uni','sec','ptab','forme','fi'];
 function navSave(){try{const o={};for(const k of NAV_KEYS)o[k]=S[k];o.pv=S.plan&&S.plan.view;sessionStorage.setItem('xp.nav',JSON.stringify(o));}catch(e){}}
 if(window.__openSec){S.view='univers';S.uni='secrets';S.sec=window.__openSec;}
 (function navLoad(){if(window.__openDates||window.__openSec)return;try{const o=JSON.parse(sessionStorage.getItem('xp.nav')||'null');if(!o)return;for(const k of NAV_KEYS)if(o[k]!==undefined&&o[k]!==null)S[k]=o[k];if(o.pv)S.plan.view=o.pv;}catch(e){}})();
@@ -144,6 +144,7 @@ function lnkOk(o){if(!o)return false;
   if(o.t==='perso'){const c=S.chars[o.id];return !!c&&vis(c);}
   if(o.t==='race'){const cr=crById(o.id);return !!cr&&raceVisible(cr,raceRec(cr));}
   if(o.t==='joueur')return !!S.players[o.id];
+  if(o.t==='fiche')return typeof fiSee==='function'&&fiSee(S.fiches&&S.fiches[o.id]);
   if(o.t==='pw')return !!(S.pouvoirs&&S.pouvoirs[o.id])&&elSeen('pw',o.id);
   if(o.t==='cap')return !!(S.capacites&&S.capacites[o.id])&&elSeen('cap',o.id);
   if(o.t==='secret'){const s=secById(+o.n);if(!s)return false;if(o.k==='titre')return titreVis(s)||(isGest()&&!!s.titre);
@@ -161,24 +162,28 @@ function navLabel(){const g=S.dlg;
   if(S.view==='sheet'){const c=S.chars[S.sel];return c?c.court:'Personnage';}
   if(S.view==='univers'&&S.uni==='creatures'&&S.rf){if(S.rf.hum)return HUMAIN;const cr=crById(S.rf.id);return cr?raceNm(raceRec(cr)):'Races';}
   if(S.view==='univers'&&S.uni==='creatures')return 'Races';
+  if(S.view==='univers'&&S.fi&&S.fiches&&S.fiches[S.fi])return S.fiches[S.fi].nom;
+  if(S.view==='univers'&&typeof FI_G!=='undefined'&&FI_G[S.uni])return FI_G[S.uni].pl;
   if(S.view==='univers'&&S.sec)return 'Secret '+(ROMAN[S.sec-1]||S.sec);
-  if(S.view==='univers')return 'Secrets';
+  if(S.view==='univers'&&S.uni==='secrets')return 'Secrets';
+  if(S.view==='univers')return 'Univers';
   return ({home:'Accueil',gains:'XP',team:'Personnages',planning:'Planning',players:'Joueurs',rules:'Règles',params:'Paramètres'})[S.view]||'';}
 function navSnap(){const g=S.dlg&&(S.dlg.kind==='cons'||S.dlg.kind==='pl')?{kind:S.dlg.kind,t:S.dlg.t,id:S.dlg.id,nav:S.dlg.nav}:null;
-  return {view:S.view,sel:S.sel,shTab:S.shTab,uni:S.uni,sec:S.sec,rf:S.rf,rfTab:S.rfTab,rfEd:S.rfEd,dlg:g,y:window.scrollY||0,lab:navLabel()};}
+  return {view:S.view,sel:S.sel,shTab:S.shTab,uni:S.uni,sec:S.sec,fi:S.fi,rf:S.rf,rfTab:S.rfTab,rfEd:S.rfEd,dlg:g,y:window.scrollY||0,lab:navLabel()};}
 /* Suivre un lien : mémorise l'écran de départ puis ouvre la cible */
 function navGo(o){if(!lnkOk(o))return false;
   S.nav.push(navSnap());try{history.pushState({xpnav:S.nav.length},'');}catch(e){}
   S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;
   if(o.t==='perso'){S.dlg=null;S.view='sheet';S.sel=o.id;S.futForm.open=false;}
-  else if(o.t==='race'){S.dlg=null;S.view='univers';S.uni='creatures';S.rf=rfDraft(o.id);S.rfTab='por';S.rfEd=false;}
-  else if(o.t==='secret'){S.dlg=null;S.view='univers';S.uni='secrets';S.sec=+o.n;S.secHl=o.k?{k:o.k,i:+o.i||0}:null;}
+  else if(o.t==='fiche'){S.dlg=null;S.view='univers';S.uni=S.fiches[o.id].genre;S.fi=o.id;S.sec=null;S.rf=null;}
+  else if(o.t==='race'){S.dlg=null;S.view='univers';S.uni='creatures';S.fi=null;S.rf=rfDraft(o.id);S.rfTab='por';S.rfEd=false;}
+  else if(o.t==='secret'){S.dlg=null;S.view='univers';S.uni='secrets';S.fi=null;S.sec=+o.n;S.secHl=o.k?{k:o.k,i:+o.i||0}:null;}
   else if(o.t==='joueur'){S.dlg={kind:'pl',id:o.id,nav:true};return true;}
   else if(o.t==='pw'||o.t==='cap'){S.dlg={kind:'cons',t:o.t,id:o.id,nav:true};return true;}
   window.scrollTo(0,0);return true;}
 /* Revenir d'un cran : restaure l'écran mémorisé et sa position de défilement */
 function navPop(){const s=S.nav.pop();if(!s)return;
-  S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.rf=s.rf;S.rfTab=s.rfTab;S.rfEd=s.rfEd&&canEdit();S.dlg=s.dlg?{...s.dlg}:null;
+  S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.fi=s.fi||null;S.rf=s.rf;S.rfTab=s.rfTab;S.rfEd=s.rfEd&&canEdit();S.dlg=s.dlg?{...s.dlg}:null;
   S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;S._force=true;render();
   const y=s.y;requestAnimationFrame(()=>window.scrollTo(0,y));}
 /* « ‹ Retour » : passe par l'historique du navigateur quand il porte la pile (même effet que le retour du téléphone) */

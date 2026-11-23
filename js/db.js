@@ -41,6 +41,8 @@ function sbDb(code){
       set:d=>write('xp_set',{p_coll:c,p_id:i,p_data:d},()=>{rows=rows.filter(x=>!(x.coll===c&&x.id===i));rows.push({coll:c,id:i,data:JSON.parse(JSON.stringify(d))});}),
       delete:()=>write('xp_delete',{p_coll:c,p_id:i},()=>{rows=rows.filter(x=>!(x.coll===c&&x.id===i));})};},
     /* portraits : fonction dédiée (hors synchronisation), repli sur la liste complète tant que la requête SQL n'est pas installée */
+    /* lot 1 : grandes images des fiches, hors synchronisation (table images), chargées à la demande */
+    img:{get:id=>rpc('xp_img_get',{p_id:id}),set:(id,data)=>rpc('xp_img_set',{p_id:id,p_data:data}),del:id=>rpc('xp_img_del',{p_id:id})},
     portraits:async()=>{try{return await rpc('xp_portraits',{});}catch(e){return rows.filter(r=>r.coll==='portraits');}}};
 }
 function askCode(msg){

@@ -39,11 +39,13 @@ function secPts(s){let p=titreVis(s)?(s.titrePts||1):0;for(const k of ['vm','vmi
 function secPips(s,k){const [f,t]=secCount(s,k),K=SKIND[k];return t?K.g.repeat(f)+K.o.repeat(t-f):'—';}
 const secById=n=>S.secrets.find(s=>s.n===n);
 function viewUnivers(){
-  let h=`<div class="subtabs" role="group" aria-label="Sections de l'univers"><button data-act="uni" data-v="secrets" aria-pressed="${S.uni!=='creatures'}">Secrets${propBadge()?`<span class="bdg" aria-label="${propBadge()} proposition${propBadge()>1?'s':''} en attente">${propBadge()}</span>`:''}</button><button data-act="uni" data-v="creatures" aria-pressed="${S.uni==='creatures'}">Races</button></div>`;
-  if(S.uni==='creatures')return h+viewRaces();
-  if(!S.secretsReady)return h+`<div class="card empty">Chargement des secrets…</div>`;
+  /* Lot 1 (23/11/2026) : accueil de l'Univers en liste groupée ; les genres de fiche ont leur liste et leur fiche */
+  if(!S.uni||S.uni==='home')return fiUniHome();
+  if(FI_G[S.uni])return fiUniView();
+  if(S.uni==='creatures')return (S.rf?'':fiUniBack()+`<h2 style="margin-top:2px">Races</h2>`)+viewRaces();
+  if(!S.secretsReady)return fiUniBack()+`<div class="card empty">Chargement des secrets…</div>`;
   const s=S.sec!=null&&secById(S.sec);
-  return h+(s?viewSecret(s):viewSecretList());
+  return s?viewSecret(s):fiUniBack()+`<h2 style="margin-top:2px">Secrets</h2>`+viewSecretList();
 }
 function viewSecretList(){
   const L=S.secrets,tot=L.reduce((a,s)=>a+secPts(s),0),nt=L.filter(titreVis).length,nb=L.filter(s=>s.bonus).length,f=S.secFilter||'all';
