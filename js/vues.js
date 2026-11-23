@@ -463,30 +463,42 @@ function viewSituation(c){let h='';const E=canEditC(c),add=(k,l)=>E?`<button typ
     const later=['fiefs','familles','orgs'].includes(k)&&rows.length?'':'';
     h+=cBlk(k,l,rows.length?String(rows.length):'',(rows.join('')||shNone)+later,add(k,al));}
   return h;}
-/* ---------- Relations et jauges ---------- */
+/* ---------- Relations v2 (23/11/2026) : Contacts · Alliés · Ennemis · Autres jauges ----------
+   Contacts / Alliés / Ennemis = PNJ de la liste (rang repris de sa fiche) ; contacts achetés en PP et contacts de groupe en texte ;
+   jauge en cours affichée dans la section visée ; jauge pleine → « Valider ». Aucun coût ni gain d'XP / PP. */
 const REL_NIV={ennemi:'Ennemi',neutre:'Neutre',contact:'Contact',allie:'Allié'};
-const REL_OBJ={contact:['neutre','contact','Neutre → contact'],allie:['contact','allie','Contact → allié'],neutre:['ennemi','neutre','Ennemi → neutre']};
-const relObjFor=niv=>Object.keys(REL_OBJ).filter(o=>REL_OBJ[o][0]===niv);
+const REL_OBJ={contact:['neutre','contact','vers contact','Contact'],allie:['contact','allie','vers allié','Allié']};
 const relP=()=>S.relp||{};
 const relTaille=(rang,obj)=>{const v=((relP().taille||{})[rang]||{})[obj];return v>0?+v:null;};
 const relDiff=(rang,obj)=>{const v=((relP().diff||{})[rang]||{})[obj];return v===''||v==null?null:+v;};
-/* Relations affichées : saisies (c.rel) + contacts achetés en PP + féaux, sans doublon */
-function relsOf(c){const R=(c.rel||[]).map(r=>({...r}));
-  for(const a of ppBought(c).filter(a=>a.ppel.rub==='C'))if(!R.some(r=>r.pp===a.id))R.push({id:'pp:'+a.id,pp:a.id,virt:true,nom:a.ppel.nom+(a.ppel.prec?' ('+a.ppel.prec+')':''),niv:'contact',src:'pp',note:ppBits(a.ppel)});
-  for(const f of Object.values(S.chars).filter(f=>f.pj===c.id&&vis(f)))if(!R.some(r=>r.pnj===f.id))R.push({id:'feal:'+f.id,pnj:f.id,virt:true,nom:f.court||f.nom,rang:rangOf(f),niv:'allie',src:'feal'});
+const relRang=r=>{const p=r.pnj&&S.chars[r.pnj];return p?rangOf(p):(r.rang||'');};
+const relPnjs=c=>Object.values(S.chars).filter(p=>p.type==='PNJ'&&vis(p)&&p.id!==c.id).sort((a,z)=>(a.court||'').localeCompare(z.court||''));
+function relsOf(c){const R=(c.rel||[]).filter(r=>r.pnj||r.grp).map(r=>({...r}));
+  for(const a of ppBought(c).filter(a=>a.ppel.rub==='C'))R.push({id:'pp:'+a.id,virt:true,nom:a.ppel.nom+(a.ppel.prec?' ('+a.ppel.prec+')':''),niv:'contact',src:'pp',note:ppBits(a.ppel)});
+  for(const f of Object.values(S.chars).filter(f=>f.pj===c.id&&vis(f)))if(!R.some(r=>r.pnj===f.id&&r.niv==='allie'))R.push({id:'feal:'+f.id,pnj:f.id,virt:true,niv:'allie',src:'feal'});
   return R;}
 function relOrgBonus(c,r){const p=r.pnj&&S.chars[r.pnj];if(!p)return 0;const a=(situOf(c).orgs||[]).map(o=>nrm(o.nom)),b=(situOf(p).orgs||[]).map(o=>nrm(o.nom));return a.some(n=>n&&b.includes(n))?(relP().bonusOrg!=null&&relP().bonusOrg!==''?+relP().bonusOrg:1):0;}
-const gauge=(n,f)=>`<span class="gj" role="img" aria-label="${f} cases sur ${n}">${Array.from({length:n},(_,i)=>`<i class="${i<f?'f':''}"></i>`).join('')}</span>`;
-function relRow(c,r){const E=canEditC(c),p=r.pnj&&S.chars[r.pnj];
-  const nm=p&&vis(p)?lk({t:'perso',id:p.id},r.nom||p.court):`<b>${esc(r.nom||'?')}</b>`;
-  const J=(r.jauges||[]).map(j=>{const d=relDiff(r.rang,j.obj),bo=relOrgBonus(c,r);return `<div class="jrow"><div class="jh"><span class="small"><b>${REL_OBJ[j.obj][2]}</b> · ${j.cases||0} / ${j.taille}${d!=null?` · difficulté ${d-bo}${bo?` (dont même organisation −${bo})`:''}`:''}</span>${E?`<span class="jact"><button type="button" class="btn sm" data-act="relCases" data-id="${esc(r.id)}" data-j="${esc(j.id)}">+ cases</button><button type="button" class="ibtn" data-act="relJDel" data-id="${esc(r.id)}" data-j="${esc(j.id)}" aria-label="Fermer la jauge">✕</button></span>`:''}</div>${gauge(j.taille,j.cases||0)}</div>`;}).join('');
-  const obj=relObjFor(r.niv);
-  return `<div class="relr"><div class="relh"><span>${nm}${r.rang?` <span class="muted small">· ${esc(r.rang)}</span>`:''}</span><span class="lvl ${r.niv}">${REL_NIV[r.niv]||''}</span></div><div class="muted small">${srcChip(r.src)}${r.date?' '+fmtDate(r.date):''}${r.note?' · '+esc(r.note):''}</div>${J}${E?`<div class="relbtns">${obj.length?`<button type="button" class="btn sm" data-act="relJOpen" data-id="${esc(r.id)}">Ouvrir une jauge</button>`:''}${r.src!=='feal'?`<button type="button" class="btn ghost sm" data-act="relEd" data-id="${esc(r.id)}">Modifier</button>`:''}</div>`:''}</div>`;}
+const relName=r=>{const p=r.pnj&&S.chars[r.pnj];return p&&vis(p)?lk({t:'perso',id:p.id},p.court||p.nom):`<b>${esc(r.nom||(p&&(p.court||p.nom))||'?')}</b>`;};
+const pbar=(f,n)=>`<span class="pbar" role="img" aria-label="${f} succès sur ${n}"><i style="width:${n?Math.min(100,Math.round(100*f/n)):0}%"></i></span>`;
+function jaugeBox(c,E,j,head,acts){const full=(j.cases||0)>=j.taille;
+  return `<div class="pend${j.done?' done':''}">${head}<div class="pbw">${pbar(j.cases||0,j.taille)}<small>${j.cases||0} / ${j.taille}${j.diffShow!=null?` · difficulté ${j.diffShow}`:''}</small></div>${j.done?'<div class="muted small">Jauge terminée.</div>':''}
+    ${E&&!j.done?(full?`<div class="relbtns"><button type="button" class="btn pri sm" data-act="${acts.val}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Valider${acts.valLab?' : '+acts.valLab:''}</button></div>`
+      :`<div class="relbtns sx"><label class="small" for="rs-${esc(j.id)}">Succès</label><input id="rs-${esc(j.id)}" class="sxi" type="number" min="0" inputmode="numeric" data-rs="${esc(j.id)}" placeholder="0"><button type="button" class="btn pri sm" data-act="${acts.add}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Ajouter</button><button type="button" class="btn ghost sm jclose" data-act="${acts.del}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Fermer la jauge</button></div>`)
+      :E&&j.done?`<div class="relbtns"><button type="button" class="btn ghost sm" data-act="${acts.del}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Retirer</button></div>`:''}</div>`;}
+function relRow(c,r,E){const rk=relRang(r);
+  const sub=r.grp?`<span class="srcb j">contact de groupe</span>${r.orig?' · '+esc(r.orig):''}`:r.src==='pp'?srcChip('pp'):r.src==='feal'?srcChip('feal'):'';
+  return `<div class="relr"><div class="relh"><span>${relName(r)}${rk?` <span class="muted small">· ${esc(rk)}</span>`:''}</span><span class="rr"><span class="lvl ${r.niv}">${REL_NIV[r.niv]||''}</span>${E&&!r.virt?`<button type="button" class="ibtn" data-act="${r.grp?'relGrp':'relEd'}" data-id="${esc(r.id)}" aria-label="Modifier">✎</button>`:''}</span></div>${sub||r.note?`<div class="muted small">${sub}${sub&&r.note?' · ':''}${r.note?esc(r.note):''}</div>`:''}</div>`;}
 function viewRelations(c){const R=relsOf(c),E=canEditC(c);let h='';
-  const G=[['contact','Contacts','Contact'],['allie','Alliés','Allié'],['ennemi','Ennemis','Ennemi'],['neutre','Neutres (jauge en cours)','']];
-  for(const [n,l,al] of G){const L=R.filter(r=>r.niv===n);if(n==='neutre'&&!L.length)continue;
-    h+=cBlk('rel-'+n,l,L.length?String(L.length):'',L.map(r=>relRow(c,r)).join('')||shNone,E&&al?`<button type="button" class="addl" data-act="relEd" data-niv="${n}">+ ${al}</button>`:'');}
-  h+=`<div class="muted small" style="margin-top:4px">Jauges : ouvertes à la demande du joueur ; après chaque jet fait à la table, on note les cases gagnées. Jauge pleine : le PNJ passe au niveau visé. Aucun coût en XP ni en PP.</div>`;
+  const pend=obj=>R.flatMap(r=>(r.jauges||[]).filter(j=>j.obj===obj).map(j=>{const bo=relOrgBonus(c,r),d=j.diff!=null&&j.diff!==''?+j.diff:relDiff(relRang(r),obj);
+    return jaugeBox(c,E,{...j,diffShow:d!=null?d-bo:null},`<div class="relh"><span>${relName(r)} <span class="muted small">· ${esc(relRang(r))}</span></span><span class="tagp">en cours ${REL_OBJ[obj][2]}</span></div>${bo?`<div class="muted small">dont même organisation −${bo}</div>`:''}`,{id:r.id,add:'relAddS',del:'relJDel',val:'relVal',valLab:'devient '+REL_OBJ[obj][3].toLowerCase()});})).join('');
+  const sec=(k,t,niv,obj,btns)=>{const L=R.filter(r=>r.niv===niv),P=obj?pend(obj):'',n=L.length;
+    return cBlk('rel-'+k,t,(n?String(n):'')+(P?(n?' + ':'')+'jauge en cours':''),(L.map(r=>relRow(c,r,E)).join('')||(P?'':shNone))+P,E?`<div class="relbtns">${btns}</div>`:'');};
+  h+=sec('contact','Contacts','contact','contact','<button type="button" class="addl" data-act="relNew" data-niv="contact">+ Contact</button><button type="button" class="addl" data-act="relGrp">+ Contact de groupe</button>');
+  h+=sec('allie','Alliés','allie','allie','<button type="button" class="addl" data-act="relNew" data-niv="allie">+ Allié</button>');
+  h+=sec('ennemi','Ennemis','ennemi',null,'<button type="button" class="addl" data-act="relNew" data-niv="ennemi">+ Ennemi</button>');
+  const O=c.jauges||[];
+  h+=cBlk('rel-autres','Autres jauges',O.length?String(O.length):'',O.map(j=>jaugeBox(c,E,{...j,diffShow:j.diff!==''&&j.diff!=null?+j.diff:null},`<div class="relh"><span><b>${esc(j.nom)}</b></span></div>`,{add:'relOAdd',del:'relODel',val:'relOVal'})).join('')||shNone,E?`<div class="relbtns"><button type="button" class="addl" data-act="relOJ">+ Autre jauge</button></div>`:'');
+  h+=`<div class="muted small" style="margin-top:4px">Jauges : ouvertes à la demande du joueur ; après un jet fait à la table, on ajoute les succès (plusieurs d'un coup). Jauge pleine : « Valider ». Aucun coût en XP ni en PP.</div>`;
   return h;}
 /* ---------- Journaux (document journaux/<personnage>) ---------- */
 const jourOf=c=>((S.jour||{})[c.id]||{}).list||[];
@@ -500,20 +512,22 @@ function viewJournaux(c){const E=canEditC(c),L=jourOf(c).filter(j=>jourCanRead(c
   return cBlk('jlist','Journaux de '+esc(c.court||c.nom),L.length?String(L.length):'',L.map(j=>{const n=(j.ent||[]).length,last=(j.ent||[]).map(e=>e.date||'').sort().pop();return `<button type="button" class="jr" data-act="jOpen" data-j="${esc(j.id)}"><span class="jic" aria-hidden="true">${esc((j.titre||'?').slice(0,1).toUpperCase())}</span><span style="flex:1;min-width:0"><b>${esc(j.titre)}</b><span class="d">${n} entrée${n>1?'s':''}${last?' · dernière le '+fmtDate(last):''}</span></span><span class="priv${j.pub?' t':''}">${j.pub?'toute la table':'joueur + MJ'}</span></button>`;}).join('')||'<div class="muted small">Aucun journal.</div>',E?`<button type="button" class="addl" data-act="jEd">+ Nouveau journal</button>`:'');}
 function jourSave(c,list){S.jour={...(S.jour||{}),[c.id]:{list}};render();persist('journaux/'+c.id,{list});}
 /* ---------- Fenêtres et actions des onglets Relations, Situation, Journaux ---------- */
-const SH_DLG=new Set(['situEd','relEd','relJ','relC','jEd','entEd']);
+const SH_DLG=new Set(['situEd','relEd','relNew','relGrp','relOJ','jEd','entEd']);
 const dlgHead=(t,sub)=>`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(t)}"><div class="in"><div class="shd"><h2 style="margin:0">${esc(t)}</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>${sub?`<div class="muted small" style="margin-bottom:8px">${sub}</div>`:''}`;
-const fld=(k,l,v,ta)=>`<div class="field"><label for="dk-${k}">${l}</label>${ta?`<textarea id="dk-${k}" rows="${ta}" data-dk="${k}">${esc(v||'')}</textarea>`:`<input id="dk-${k}" type="${k==='taille'||k==='n'?'number':'text'}"${k==='taille'||k==='n'?' min="0" inputmode="numeric"':''} data-dk="${k}" value="${esc(v==null?'':v)}">`}</div>`;
+const fld=(k,l,v,ta)=>`<div class="field"><label for="dk-${k}">${l}</label>${ta?`<textarea id="dk-${k}" rows="${ta}" data-dk="${k}">${esc(v||'')}</textarea>`:`<input id="dk-${k}" type="${['taille','n','diff'].includes(k)?'number':'text'}"${['taille','n','diff'].includes(k)?' min="0" inputmode="numeric"':''} data-dk="${k}" value="${esc(v==null?'':v)}">`}</div>`;
 const segF=(k,v,opts,l)=>`<div class="field"><label>${l}</label><div class="seg" role="group" aria-label="${esc(l)}">${opts.map(([o,t])=>`<button type="button" data-act="dlgSet" data-k="${k}" data-v="${o}" aria-pressed="${v===o}">${t}</button>`).join('')}</div></div>`;
 const dlgFoot=(del,ok)=>`${S.dlg&&S.dlg.err?`<div class="bad small" role="alert">${esc(S.dlg.err)}</div>`:''}<div class="actions" style="margin-top:12px">${del?`<button class="btn ghost" data-act="${del}" style="margin-right:auto">${S.dlg&&S.dlg.conf?'Confirmer le retrait':'Retirer'}</button>`:''}<button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="${ok}">Enregistrer</button></div></div></div>`;
 function shDlgSheet(g){const c=S.chars[g.cid];if(!c)return null;const f=g.f;
   if(g.kind==='situEd'){const L=SITU.find(s=>s[0]===g.k);return dlgHead((g.i?'Modifier : ':'Ajouter : ')+L[2].toLowerCase(),esc(c.court))+fld('nom','Nom',f.nom)+(g.k==='orgs'?fld('role','Rôle dans l\'organisation',f.role):'')+fld('note','Note',f.note,2)+(['fiefs','familles','orgs'].includes(g.k)?'<div class="muted small">Le lien vers la fiche viendra quand ces fiches existeront.</div>':'')+dlgFoot(g.i?'situDel':'','situSave');}
-  if(g.kind==='relEd'){const pn=Object.values(S.chars).filter(p=>p.type==='PNJ'&&vis(p)&&p.id!==c.id).sort((a,z)=>(a.court||'').localeCompare(z.court||''));
-    return dlgHead(g.id?'Modifier la relation':'Nouvelle relation',esc(c.court))+`<div class="field"><label for="dk-pnj">PNJ de l'appli</label><select id="dk-pnj" data-dk="pnj"><option value="">— autre (nom libre) —</option>${pn.map(p=>`<option value="${esc(p.id)}"${f.pnj===p.id?' selected':''}>${esc(p.court||p.nom)}</option>`).join('')}</select></div>`+(f.pnj?'':fld('nom','Nom',f.nom))+`<div class="field"><label for="dk-rang">Rang du PNJ</label><select id="dk-rang" data-dk="rang">${pnjRangs().map(r=>`<option${f.rang===r?' selected':''}>${esc(r)}</option>`).join('')}</select></div>`
-      +segF('niv',f.niv,Object.entries(REL_NIV),'Niveau')+segF('src',f.src==='session'?'session':'jeu',[['jeu','En jeu'],['session','Gain de session']],'Origine')+fld('note','Note',f.note,2)+dlgFoot(g.id&&!g.virt?'relDel':'','relSave');}
-  if(g.kind==='relJ'){const r=relsOf(c).find(x=>x.id===g.id);if(!r)return null;const O=relObjFor(r.niv);
-    return dlgHead('Ouvrir une jauge',esc(r.nom)+(r.rang?' · '+esc(r.rang):''))+segF('obj',f.obj,O.map(o=>[o,REL_OBJ[o][2]]),'Objectif')+fld('taille','Taille de la jauge (cases)',f.taille)+`<div class="muted small">${relTaille(r.rang,f.obj)?'Taille reprise des Paramètres (rang et objectif).':'Taille pas encore réglée dans Paramètres › Relations : saisis-la.'}</div>`+dlgFoot('','relJSave');}
-  if(g.kind==='relC'){const r=relsOf(c).find(x=>x.id===g.id),j=r&&(r.jauges||[]).find(x=>x.id===g.j);if(!j)return null;
-    return dlgHead('Cases gagnées',esc(r.nom)+' · '+REL_OBJ[j.obj][2]+' · '+(j.cases||0)+' / '+j.taille)+fld('n','Cases gagnées sur ce jet (selon la marge)',f.n)+dlgFoot('','relCSave');}
+  if(g.kind==='relNew'){const pn=relPnjs(c).filter(p=>!(c.rel||[]).some(r=>r.pnj===p.id&&r.niv===g.niv)),p=f.pnj&&S.chars[f.pnj],rk=p?rangOf(p):'',obj=REL_OBJ[g.niv]?g.niv:null;
+    const miss=obj&&p&&(relTaille(rk,obj)==null||relDiff(rk,obj)==null);
+    return dlgHead('Ajouter : '+REL_NIV[g.niv].toLowerCase(),esc(c.court))+`<div class="field"><label for="dk-pnj">PNJ (liste de l'appli)</label><select id="dk-pnj" data-dk="pnj"><option value="">— choisir —</option>${pn.map(x=>`<option value="${esc(x.id)}"${f.pnj===x.id?' selected':''}>${esc(x.court||x.nom)}</option>`).join('')}</select></div>`
+      +(p?`<div class="field"><label>Rang (repris de sa fiche)</label><div class="inp ro">${esc(rk||'—')}</div></div>`:'')+fld('note','Note',f.note,2)
+      +(obj&&p?(miss?`<div class="muted small">Jauge ${REL_OBJ[obj][3].toLowerCase()} pour le rang ${esc(rk)} pas encore réglée dans les Paramètres : saisis-la pour ouvrir une jauge.</div><div style="display:flex;gap:8px"><div style="flex:1">${fld('taille','Jauge (cases)',f.taille)}</div><div style="flex:1">${fld('diff','Difficulté',f.diff)}</div></div>`:`<div class="muted small">Ouvrir une jauge : ${relTaille(rk,obj)} cases, difficulté ${relDiff(rk,obj)} (Paramètres, ${esc(rk)} · ${REL_OBJ[obj][3]}).</div>`):'')
+      +`${g.err?`<div class="bad small" role="alert">${esc(g.err)}</div>`:''}<div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="closeSheet">Annuler</button>${obj?`<button class="btn" data-act="relNewJ">Ouvrir une jauge</button>`:''}<button class="btn pri" data-act="relNewSave">Enregistrer</button></div></div></div>`;}
+  if(g.kind==='relEd'){const r=(c.rel||[]).find(x=>x.id===g.id);if(!r)return null;return dlgHead(REL_NIV[r.niv]||'Relation',esc(r.pnj&&S.chars[r.pnj]?S.chars[r.pnj].court:r.nom||''))+fld('note','Note',f.note,2)+dlgFoot('relDel','relEdSave');}
+  if(g.kind==='relGrp')return dlgHead(g.id?'Contact de groupe':'Nouveau contact de groupe',esc(c.court))+fld('nom','Intitulé (ex. Les druides)',f.nom)+fld('orig','Origine (ex. atout Ami des druides)',f.orig)+fld('note','Note',f.note,2)+dlgFoot(g.id?'relDel':'','relGrpSave');
+  if(g.kind==='relOJ')return dlgHead('Autre jauge',esc(c.court))+fld('nom','Intitulé',f.nom)+`<div style="display:flex;gap:8px"><div style="flex:1">${fld('taille','Jauge (cases)',f.taille)}</div><div style="flex:1">${fld('diff','Difficulté',f.diff)}</div></div>`+dlgFoot('','relOSave');
   if(g.kind==='jEd')return dlgHead(g.j?'Journal':'Nouveau journal',esc(c.court))+fld('titre','Titre',f.titre)+segF('pub',f.pub?'1':'0',[['0','Joueur + MJ'],['1','Toute la table']],'Lecture')+dlgFoot(g.j?'jDel':'','jSave');
   if(g.kind==='entEd')return dlgHead(g.e?'Modifier l\'entrée':'Nouvelle entrée',esc(c.court))+fld('type','Type (potin, correspondance…)',f.type)+fld('txt','Texte',f.txt,5)+dlgFoot(g.e?'entDel':'','entSave');
   return null;}
@@ -521,8 +535,8 @@ function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
   if(a==='shFold'){S.shFold={...(S.shFold||{}),[d.k]:!shFolded(d.k)};render();return true;}
   if(a==='jOpen'){S.jOpen=d.j;render();return true;}
   if(a==='jBack'){S.jOpen=null;render();return true;}
-  if(a==='dlgSet'&&S.dlg&&S.dlg.f){S.dlg.f[d.k]=d.k==='pub'?d.v==='1':d.v;if(S.dlg.kind==='relJ'&&d.k==='obj'){const r=relsOf(S.chars[S.dlg.cid]).find(x=>x.id===S.dlg.id);const t=r&&relTaille(r.rang,d.v);if(t)S.dlg.f.taille=t;}render();return true;}
-  const OPEN=['situEd','relEd','relJOpen','relCases','relJDel','jEd','entEd'],SAVE=['situSave','situDel','relSave','relDel','relJSave','relCSave','jSave','jDel','entSave','entDel'];
+  if(a==='dlgSet'&&S.dlg&&S.dlg.f){S.dlg.f[d.k]=d.k==='pub'?d.v==='1':d.v;render();return true;}
+  const OPEN=['situEd','relNew','relEd','relGrp','relOJ','relAddS','relOAdd','relVal','relJDel','relOVal','relODel','jEd','entEd'],SAVE=['situSave','situDel','relNewSave','relNewJ','relEdSave','relDel','relGrpSave','relOSave','jSave','jDel','entSave','entDel'];
   if(!OPEN.includes(a)&&!SAVE.includes(a))return false;
   const cc=OPEN.includes(a)?c:S.chars[S.dlg&&S.dlg.cid];if(!cc||!canEditC(cc))return true;
   const now=today(),g=S.dlg;
@@ -532,26 +546,32 @@ function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
     setC(n=>{const s=n.situ={...(n.situ||{})},L=(s[g.k]||[]).slice(),v={nom,...((g.f.role||'').trim()&&g.k==='orgs'?{role:g.f.role.trim()}:{}),...((g.f.note||'').trim()?{note:g.f.note.trim()}:{})};
       const i=L.findIndex(x=>x.id===g.i);if(i>=0)L[i]={...L[i],...v,role:v.role,note:v.note};else L.push({id:uid('s'),date:now,...v});s[g.k]=L;});S.dlg=null;toast('Enregistré');}
   else if(a==='situDel'){if(!g.conf){g.conf=true;render();return true;}setC(n=>{const s=n.situ={...(n.situ||{})};s[g.k]=(s[g.k]||[]).filter(x=>x.id!==g.i);});S.dlg=null;}
-  else if(a==='relEd'){const r=d.id&&relsOf(cc).find(x=>x.id===d.id);S.dlg={kind:'relEd',cid:cc.id,id:r?r.id:null,virt:!!(r&&r.virt),f:r?{pnj:r.pnj||'',nom:r.nom||'',rang:r.rang||pnjRangs()[0]||'',niv:r.niv,src:r.src,note:r.note||''}:{pnj:'',nom:'',rang:pnjRangs()[0]||'',niv:d.niv||'contact',src:'jeu',note:''}};}
-  else if(a==='relSave'){const f=g.f,p=f.pnj&&S.chars[f.pnj],nom=p?(p.court||p.nom):(f.nom||'').trim();if(!nom){g.err='Choisis un PNJ ou saisis un nom.';render();return true;}
-    setC(n=>{const R=(n.rel||[]).slice(),cur=relsOf(cc).find(x=>x.id===g.id),i=R.findIndex(x=>x.id===g.id);
-      const v={nom,rang:f.rang,niv:f.niv,note:(f.note||'').trim(),...(p?{pnj:p.id}:{pnj:undefined})};
-      if(i>=0)R[i]={...R[i],...v,src:R[i].src==='pp'?'pp':f.src};
-      else R.push({id:uid('r'),date:now,src:cur&&cur.src==='pp'?'pp':f.src,...(cur&&cur.pp?{pp:cur.pp}:{}),jauges:[],...v});
-      n.rel=R.map(r=>{const o={...r};if(!o.pnj)delete o.pnj;if(!o.note)delete o.note;return o;});});S.dlg=null;toast('Enregistré');}
+  else if(a==='relNew'){S.dlg={kind:'relNew',cid:cc.id,niv:d.niv,f:{pnj:'',note:'',taille:'',diff:''}};}
+  else if(a==='relNewSave'||a==='relNewJ'){const f=g.f,p=f.pnj&&S.chars[f.pnj];if(!p){g.err='Choisis un PNJ dans la liste.';render();return true;}
+    const R=(cc.rel||[]).slice(),i=R.findIndex(r=>r.pnj===p.id&&r.niv!=='ennemi'||r.pnj===p.id&&g.niv==='ennemi');const note=(f.note||'').trim();
+    if(a==='relNewSave'){setC(n=>{const L=(n.rel||[]).slice(),k=L.findIndex(r=>r.pnj===p.id);if(k>=0)L[k]={...L[k],niv:g.niv,...(note?{note}:{})};else L.push({id:uid('r'),pnj:p.id,niv:g.niv,date:now,...(note?{note}:{})});n.rel=L;});S.dlg=null;toast('Enregistré');}
+    else{const obj=g.niv,rk=rangOf(p),cur=R.find(r=>r.pnj===p.id);
+      if(obj==='allie'&&!(cur&&cur.niv==='contact')){g.err=(p.court||p.nom)+' n\'est pas encore un contact : ouvre d\'abord une jauge vers contact, ou enregistre-le directement comme allié.';render();return true;}
+      const t=relTaille(rk,obj)||parseInt(f.taille,10),df=relDiff(rk,obj)!=null?relDiff(rk,obj):(f.diff===''?null:+f.diff);
+      if(!(t>0)){g.err='Indique la taille de la jauge (nombre de cases).';render();return true;}
+      setC(n=>{const L=(n.rel||[]).slice();let k=L.findIndex(r=>r.pnj===p.id);if(k<0){L.push({id:uid('r'),pnj:p.id,niv:'neutre',date:now,jauges:[]});k=L.length-1;}
+        const J={id:uid('j'),obj,taille:t,ouv:now,cases:0,hist:[]};if(df!=null&&!isNaN(df))J.diff=df;L[k]={...L[k],...(note?{note}:{}),jauges:[...(L[k].jauges||[]),J]};n.rel=L;});S.dlg=null;toast('Jauge ouverte');}}
+  else if(a==='relEd'){const r=(cc.rel||[]).find(x=>x.id===d.id);if(!r)return true;S.dlg={kind:'relEd',cid:cc.id,id:r.id,f:{note:r.note||''}};}
+  else if(a==='relEdSave'){setC(n=>{n.rel=(n.rel||[]).map(r=>r.id!==g.id?r:{...r,note:(g.f.note||'').trim()});});S.dlg=null;toast('Enregistré');}
   else if(a==='relDel'){if(!g.conf){g.conf=true;render();return true;}setC(n=>{n.rel=(n.rel||[]).filter(x=>x.id!==g.id);});S.dlg=null;}
-  else if(a==='relJOpen'){const r=relsOf(cc).find(x=>x.id===d.id);if(!r)return true;const o=relObjFor(r.niv)[0];S.dlg={kind:'relJ',cid:cc.id,id:r.id,f:{obj:o,taille:relTaille(r.rang,o)||''}};}
-  else if(a==='relJSave'){const t=parseInt(g.f.taille,10);if(!(t>0)){g.err='Indique la taille de la jauge (nombre de cases).';render();return true;}
-    setC(n=>{const R=(n.rel||[]).slice();let i=R.findIndex(x=>x.id===g.id);
-      if(i<0){const v=relsOf(cc).find(x=>x.id===g.id);const o={id:uid('r'),date:now,nom:v.nom,niv:v.niv,src:v.src,jauges:[]};if(v.pp)o.pp=v.pp;if(v.pnj)o.pnj=v.pnj;if(v.rang)o.rang=v.rang;if(v.note)o.note=v.note;R.push(o);i=R.length-1;}
-      R[i]={...R[i],jauges:[...(R[i].jauges||[]),{id:uid('j'),obj:g.f.obj,taille:t,ouv:now,cases:0,hist:[]}]};n.rel=R;});S.dlg=null;toast('Jauge ouverte');}
-  else if(a==='relCases'){S.dlg={kind:'relC',cid:cc.id,id:d.id,j:d.j,f:{n:''}};}
-  else if(a==='relCSave'){const k=parseInt(g.f.n,10);if(!(k>=0)){g.err='Indique un nombre de cases (0 ou plus).';render();return true;}let msg='Enregistré';
-    setC(n=>{n.rel=(n.rel||[]).map(r=>{if(r.id!==g.id)return r;let niv=r.niv;const J=[];
-      for(const j of r.jauges||[]){if(j.id!==g.j){J.push(j);continue;}const cs=Math.min(j.taille,(j.cases||0)+k);
-        if(cs>=j.taille){niv=REL_OBJ[j.obj][1];msg=(r.nom||'Le PNJ')+' devient '+REL_NIV[niv].toLowerCase();}else J.push({...j,cases:cs,hist:[...(j.hist||[]),{d:now,n:k}]});}
-      return {...r,niv,jauges:J};});});S.dlg=null;toast(msg);}
-  else if(a==='relJDel'){if(!confirm('Fermer cette jauge sans changer le niveau ?'))return true;setC(n=>{n.rel=(n.rel||[]).map(r=>r.id!==d.id?r:{...r,jauges:(r.jauges||[]).filter(j=>j.id!==d.j)});});}
+  else if(a==='relGrp'){const r=d.id&&(cc.rel||[]).find(x=>x.id===d.id);S.dlg={kind:'relGrp',cid:cc.id,id:r?r.id:null,f:r?{nom:r.nom||'',orig:r.orig||'',note:r.note||''}:{nom:'',orig:'',note:''}};}
+  else if(a==='relGrpSave'){const nom=(g.f.nom||'').trim();if(!nom){g.err='L\'intitulé est obligatoire.';render();return true;}
+    setC(n=>{const L=(n.rel||[]).slice(),v={nom,orig:(g.f.orig||'').trim(),note:(g.f.note||'').trim()},k=L.findIndex(r=>r.id===g.id);if(k>=0)L[k]={...L[k],...v};else L.push({id:uid('r'),grp:true,niv:'contact',date:now,...v});n.rel=L;});S.dlg=null;toast('Enregistré');}
+  else if(a==='relAddS'||a==='relOAdd'){const inp=document.querySelector(`[data-rs="${CSS.escape(d.j)}"]`),k=parseInt(inp&&inp.value,10);if(!(k>0)){if(inp)inp.focus();return true;}
+    const up=j=>j.id!==d.j?j:{...j,cases:Math.min(j.taille,(j.cases||0)+k),hist:[...(j.hist||[]),{d:now,n:k}]};
+    setC(n=>{if(a==='relOAdd')n.jauges=(n.jauges||[]).map(up);else n.rel=(n.rel||[]).map(r=>r.id!==d.id?r:{...r,jauges:(r.jauges||[]).map(up)});});toast('+'+k+' succès');}
+  else if(a==='relVal'){let msg='';setC(n=>{n.rel=(n.rel||[]).map(r=>{if(r.id!==d.id)return r;const j=(r.jauges||[]).find(x=>x.id===d.j);if(!j||(j.cases||0)<j.taille)return r;const p=r.pnj&&S.chars[r.pnj];msg=((p&&p.court)||r.nom||'Le PNJ')+' devient '+REL_NIV[REL_OBJ[j.obj][1]].toLowerCase();return {...r,niv:REL_OBJ[j.obj][1],jauges:(r.jauges||[]).filter(x=>x.id!==d.j)};});});if(msg)toast(msg);}
+  else if(a==='relJDel'){if(!confirm('Fermer cette jauge sans changer la relation ?'))return true;setC(n=>{n.rel=(n.rel||[]).map(r=>r.id!==d.id?r:{...r,jauges:(r.jauges||[]).filter(j=>j.id!==d.j)}).filter(r=>!(r.niv==='neutre'&&!(r.jauges||[]).length));});}
+  else if(a==='relOJ'){S.dlg={kind:'relOJ',cid:cc.id,f:{nom:'',taille:'',diff:''}};}
+  else if(a==='relOSave'){const nom=(g.f.nom||'').trim(),t=parseInt(g.f.taille,10);if(!nom||!(t>0)){g.err='Intitulé et taille de la jauge obligatoires.';render();return true;}
+    setC(n=>{const J={id:uid('j'),nom,taille:t,ouv:now,cases:0,hist:[]};if(g.f.diff!=='')J.diff=+g.f.diff;n.jauges=[...(n.jauges||[]),J];});S.dlg=null;toast('Jauge ouverte');}
+  else if(a==='relOVal'){setC(n=>{n.jauges=(n.jauges||[]).map(j=>j.id===d.j&&(j.cases||0)>=j.taille?{...j,done:true,fin:now}:j);});toast('Jauge validée');}
+  else if(a==='relODel'){if(!confirm('Retirer cette jauge ?'))return true;setC(n=>{n.jauges=(n.jauges||[]).filter(j=>j.id!==d.j);});}
   else if(a==='jEd'){const j=d.j&&jourOf(cc).find(x=>x.id===d.j);S.dlg={kind:'jEd',cid:cc.id,j:j?j.id:null,f:j?{titre:j.titre,pub:!!j.pub}:{titre:'',pub:false}};}
   else if(a==='jSave'){const t=(g.f.titre||'').trim();if(!t){g.err='Le titre est obligatoire.';render();return true;}
     const L=jourOf(cc).slice(),i=L.findIndex(x=>x.id===g.j);if(i>=0)L[i]={...L[i],titre:t,pub:!!g.f.pub};else{const id=uid('jr');L.push({id,titre:t,pub:!!g.f.pub,ent:[]});S.jOpen=id;}
@@ -564,4 +584,4 @@ function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
     S.dlg=null;jourSave(cc,L);toast('Enregistré');return true;}
   else if(a==='entDel'){if(!g.conf){g.conf=true;render();return true;}const L=jourOf(cc).map(j=>j.id!==g.j?j:{...j,ent:(j.ent||[]).filter(x=>x.id!==g.e)});S.dlg=null;jourSave(cc,L);return true;}
   render();return true;}
-function shInput(t){if(relpInput(t))return true;if(t.dataset.dk!==undefined&&S.dlg&&S.dlg.f&&SH_DLG.has(S.dlg.kind)){S.dlg.f[t.dataset.dk]=t.value;if(t.tagName==='SELECT'&&t.dataset.dk==='pnj'){const p=S.chars[t.value];if(p)S.dlg.f.rang=rangOf(p);render();}return true;}return false;}
+function shInput(t){if(relpInput(t))return true;if(t.dataset.dk!==undefined&&S.dlg&&S.dlg.f&&SH_DLG.has(S.dlg.kind)){S.dlg.f[t.dataset.dk]=t.value;if(t.tagName==='SELECT'&&t.dataset.dk==='pnj'){S.dlg.err='';render();}return true;}return false;}

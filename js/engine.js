@@ -284,7 +284,7 @@ function newChar(id,court,nom,type){
   const base={id,court,nom:nom||court,type,statut:'actif',carac:caracs,spec:{cur:0},plan:{},achats:[]};
   base.fx=true; /* moteur de bonus actif pour les personnages créés à partir de l'étape 5 */
   if(type==='PNJ'){base.profils=PROFILS.map(n=>({nom:n,max:6,cur:0,subs:[]}));return base;}
-  base.feerie={max:8,cur:PRM.fmStart};base.masque={max:9,cur:PRM.fmStart};base.creation=true;base.fortune={max:15,cur:0};base.atout={max:8,cur:0};
+  base.feerie={max:8,cur:+(PRM.feStart??PRM.fmStart??3)};base.masque={max:9,cur:+(PRM.maStart??PRM.fmStart??4)};base.creation=true;base.fortune={max:15,cur:0};base.atout={max:8,cur:0};
   base.profils=PROFILS.map(n=>({nom:n,max:6,note:null,comps:PROFCOMPS[n].map(x=>({nom:x,max:6,cur:0}))}));base.futiles=[];
   return base;
 }
@@ -374,11 +374,14 @@ function fxSync(c0){if(!c0||!c0.fx)return c0;const want={};for(const e of fxOf(c
 
 /* ---------- Paramètres (écran Paramètres, droits de gestion) ----------
    meta/params = {versions:[{date, v:{...}}]} ; la version active est la plus récente dont la date d'effet est passée. */
-const PARAM_TABS=[['couts','Ratios'],['paliers','Rang PJ'],['creation','Création'],['pnj','Rangs de PNJ'],['rel','Relations'],['table','XP Groupe'],['pouvoirs','Pouvoirs'],['capacites','Capacités'],['profils','Profils'],['donnees','Données']];
+/* Paramètres (23/11/2026) : accueil en liste groupée, 7 entrées */
+const PARAM_HOME=[['Règles',[['creation','Création'],['progression','Progression des PJ'],['pnj','PNJ et relations'],['table','XP de groupe']]],['Référentiel',[['profils','Profils'],['catalogues','Pouvoirs et capacités']]],['Administration',[['donnees','Données']]]];
+const PARAM_TABS=PARAM_HOME.flatMap(g=>g[1]);
 const PARAM_DEF={
  couts:[['feerie','Féerie : (niveau suivant) ×',5],['masque','Masque : (niveau suivant) ×',4],['carac','Caractéristique : (niveau suivant) ×',4],['carac12','Caractéristique : passage de 1 à 2',12],['comp','Compétence : (niveau suivant) ×',3],['fut','Compétence futile : (niveau suivant) ×',1],['fortune','Fortune : (niveau suivant) ×',2],['atout','Atout féerique',8],['spec','Spécialité',8],['specFut','Spécialité futile',2],['mauvaiseMain','Mauvaise main',12],['prof','Profil de PNJ : (niveau suivant) ×',12]],
  paliers:[['p1feerie','Profond : Féerie',7],['p1carac','Profond : une caractéristique à',6],['p1comp','Profond : une compétence à',6],['p1atout','Profond : atouts féeriques',4],['p2feerie','Légendaire : Féerie',8],['p2carac','Légendaire : une caractéristique à',7],['p2comp','Légendaire : une compétence à',7],['p2atout','Légendaire : atouts féeriques',5],['palierMax','Compétences prises en compte : niveau max d\'au moins',7]],
- creation:[['carTot','Total de caractéristiques (PJ, minima compris)',26],['carMax','Plafond des caractéristiques à la création',5],['compMax','Plafond des compétences à la création (profils et prédilection compris)',5],['atStart','Atouts féeriques de départ',2],['fmStart','Féerie et Masque de départ',3],['profMaj','Rang du profil majeur',2],['profMin','Rang du profil mineur',1],['predBonus','Bonus de prédilection (rangs)',2],['ptsUtil','Points de compétence libres',18,1],['ptsFut','Points de compétences futiles libres',12,1],['ptsSpec','Coût d\'une spécialité (points de création)',1,1],['ptsMM','Coût de Mauvaise main (points de création)',2,1],['langCult','Langues offertes par rang de Culture',1],['ppBareme','Barème des PP de création','1, 3, 6, 10, 15',1]],
+ creation:[['carLib','Points libres au-dessus des minima',10],['carMax','Plafond des caractéristiques à la création',5],['feStart','Féerie de départ',3],['maStart','Masque de départ',4],['atStart','Atouts féeriques de départ',2],['profMaj','Rang du profil majeur',2],['profMin','Rang du profil mineur',1],['predBonus','Bonus de prédilection',2],['ptsUtil','Points de compétences utiles',15],['ptsFut','Points de compétences futiles',10],['compMaxN','Plafond des compétences',4],['compMaxP','Plafond des compétences de prédilection',5],['ptsSpec','Spécialité',1],['ptsMM','Mauvaise main',2],['espSeuil','Esprit au-dessus de',3],['ctcSeuil','Prestance et Entregent au-dessus de',3],['langCult','Langues offertes par rang de Culture',1],['ppMaj','Bonus de PP du profil majeur',8],['ppMin','Bonus de PP du profil mineur',4],['trPJ','Traits d\'un PJ',4],['trFeal','Traits d\'un féal',2],['xpStart','XP de départ',0]],
+ feal:[['fealC3','Caractéristiques à 3',4],['fealC2','Caractéristiques à 2',4],['fealProf','Points de profils',5],['fealProfMax','Maximum par profil à la création',3]],
  table:[['creXP','XP de groupe par fiche de race complète',1],['secTitre','Secret : titre',1],['secVM','Secret : vérité majeure',3],['secVmin','Secret : vérité mineure',2],['secH','Secret : indice',1],['secBonus','Secret : bonus du secret complété',4]]};
 const PNJ_DEF=[{nom:'Larbin',car:20,prof:5}];
 function paramDefaults(){const v={};for(const t in PARAM_DEF)for(const [k,,d] of PARAM_DEF[t])v[k]=d;v.pnj=clone(PNJ_DEF);return v;}
