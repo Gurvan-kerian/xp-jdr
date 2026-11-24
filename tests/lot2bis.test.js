@@ -79,13 +79,17 @@ const expected=k=>{const M=(k==='pw'?S.pouvoirs:S.capacites)||{};let n=0;for(con
       const pid=await page.evaluate(()=>Object.keys(S.pouvoirs)[0]);await page.evaluate(([pid,G])=>{S.ptr={...S.ptr,['ill-pw-'+pid]:G};S.dlg={kind:'cons',t:'pw',id:pid};render();},[pid,GIF]);
       ok(!!(await page.$('.sheet.cons .fibig img')),'fiche de pouvoir : image entière');
       await page.evaluate(()=>{S.dlg=null;S.view='sheet';S.sel='kerian';S.shTab='fiche';S.forme='d';render();});await page.waitForTimeout(200);
-      ok(!!(await page.$('.shill .fibig img')),'PJ démasqué : portrait affiché en entier');
+      ok(!!(await page.$('.shill label.fibig.vide input[data-ptrfile="ill-demasque-kerian"]')),'PJ démasqué sans illustration : cadre vide (le portrait reste à part)');
+      ok(!!(await page.$('.shhd label.shmed.ed input[data-ptrfile="kerian"]')),'en-tête : médaillon du portrait avec ✎');
+      await page.evaluate(G=>{S.ptr={...S.ptr,'ill-demasque-kerian':G};render();},GIF);
+      ok(!!(await page.$('.shill .fibig img[data-big="ill-demasque-kerian"]')),'PJ démasqué : illustration démasquée en entier');
       await page.evaluate(()=>{S.forme='m';render();});
       ok(!!(await page.$('.shill label.fibig.vide input[data-ptrfile="ill-masque-kerian"]')),'PJ masqué sans illustration : cadre vide avec « Ajouter »');
       await page.evaluate(G=>{S.ptr={...S.ptr,'ill-masque-kerian':G};render();},GIF);
       ok(!!(await page.$('.shill .fibig img[data-big="ill-masque-kerian"]')),'PJ masqué : illustration masquée');
       await page.evaluate(()=>{S.sel='ismael';S.shTab='fiche';render();});
       ok(!(await page.$('.formesw'))&&!!(await page.$('.shill')),'PNJ humain : une seule illustration, sans sélecteur de forme');
+      await page.evaluate(()=>{const p=ME;ME='peter';render();window.__m=!!document.querySelector('.shhd label.shmed');ME=p;render();});ok(!(await page.evaluate(()=>window.__m)),'autre joueur : médaillon sans ✎');
       await page.evaluate(()=>{S.view='team';S.sel=null;render();});ok(!(await page.$('#app .fibig')),'cartes des personnages : pas d\'agrandissement');
       /* enregistrement : la grande image est gardée pour un portrait de personnage */
       await page.evaluate(async()=>{const cv=document.createElement('canvas');cv.width=40;cv.height=60;cv.getContext('2d').fillRect(0,0,40,60);const G=cv.toDataURL('image/png');const im=new Image();await new Promise(r=>{im.onload=r;im.onerror=r;im.src=G;setTimeout(r,2000);});window._ptrImg=im;S.dlg={kind:'ptr',cid:'ill-masque-kerian',lab:'',back:null,src:G,w:1,h:1,base:220,z:1,x:20,y:20};const b=document.createElement('button');b.dataset.act='ptrSave';document.body.appendChild(b);b.click();b.remove();});

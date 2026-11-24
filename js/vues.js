@@ -59,7 +59,10 @@ function viewSheet(){
   const id=S.sel&&S.chars[S.sel]&&vis(S.chars[S.sel])?S.sel:ids()[0];S.sel=id;const c=S.chars[id],s=summary(c,S.events);
   const chips=ids().map(i=>{const c=S.chars[i],img=portrait(c);return `<button class="pchip" data-act="sel" data-id="${i}" aria-pressed="${i===id}" aria-label="${esc(c.court)}"><span class="ph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span class="pn">${esc(c.court)}</span></button>`;}).join('');
   let h=`<button class="back" data-act="tab" data-v="team"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Tous les personnages</button><div class="pchips">${chips}</div>`;
-  h+=`<div style="margin-bottom:10px"><div class="shname"><span>${esc(c.nom)}</span>${kankaBtn(c.kanka,c.nom||c.court,'Fiche Kanka de '+(c.court||c.nom))}</div><div class="shrace">${c.race?`<span class="rc">${raceLk(c)}</span> · `:''}<span class="rg">${esc(rangOf(c))}</span>${natfOf(c)?` · <span class="rg">${esc(NATF[natfOf(c)])}</span>`:''}</div><div class="muted small">${whoLineL(c)}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div>${fealLine(c)}</div>`;
+  /* Lot 2 bis : médaillon du portrait dans l'en-tête (✎ pour le joueur du personnage et la gestion) */
+  {const im=portrait(c),inner=im?`<img src="${im}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`;
+   h+=`<div class="shhd">${canPortrait(c)?`<label class="shmed ed" aria-label="Changer le portrait de ${esc(c.court)}">${inner}<span class="pen" aria-hidden="true">✎</span><input type="file" accept="image/*" data-ptrfile="${esc(c.id)}" hidden></label>`:`<span class="shmed">${inner}</span>`}`;}
+  h+=`<div style="margin-bottom:10px;flex:1;min-width:0"><div class="shname"><span>${esc(c.nom)}</span>${kankaBtn(c.kanka,c.nom||c.court,'Fiche Kanka de '+(c.court||c.nom))}</div><div class="shrace">${c.race?`<span class="rc">${raceLk(c)}</span> · `:''}<span class="rg">${esc(rangOf(c))}</span>${natfOf(c)?` · <span class="rg">${esc(NATF[natfOf(c)])}</span>`:''}</div><div class="muted small">${whoLineL(c)}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div>${fealLine(c)}</div></div>`;
   /* Bandeau XP qui reste visible */
   h+=`<div class="xpbar"><div class="xpd"><b class="num">${s.dispo}</b><span>XP dispo</span></div><div class="xpo"><span><b class="num">${s.prevu}</b> prévu</span><span class="${s.manque?'bad':''}"><b class="num">${s.manque}</b> manque</span></div><div class="xpm">${s.gains} gagnés · ${s.spent} dépensés</div></div>`;
   const tab=shTabOf(c);
@@ -410,10 +413,10 @@ const srcChip=s=>s==='pp'?'<span class="srcb">PP</span>':s==='session'?'<span cl
 const ppBits=x=>[PPOPT[x.opt]||'',x.fort!=null?'Fortune '+x.fort:'',x.fortS!=null?'Fortune +'+x.fortS:'',x.spec?'spécialité '+x.spec:'',x.prec||''].filter(Boolean).join(' · ');
 const ppLinesOf=(c,r)=>ppBought(c).filter(a=>a.ppel.rub===r).map(a=>`<div class="srow"><span><b>${esc(a.ppel.nom)}</b>${ppBits(a.ppel)?`<span class="d">${esc(ppBits(a.ppel))}</span>`:''}</span>${srcChip('pp')}</div>`);
 /* ---------- Lot 2 bis (24/11/2026) : illustration de l'onglet Fiche ----------
-   PJ fée : une illustration par forme, selon le sélecteur (démasquée = portrait) ; autres personnages : le portrait seul.
+   PJ fée : une illustration par forme, selon le sélecteur, distinctes du portrait (cartes, médaillons) ; autres personnages : le portrait seul.
    Illustration manquante : cadre vide (avec « Ajouter » pour le joueur du personnage et la gestion). */
-const illMasqId=c=>'ill-masque-'+c.id;
-function shIllu(c,fm){const two=c.type==='PJ'&&!isHum(c),mq=two&&fm!=='d',id=mq?illMasqId(c):c.id,src=mq?((S.ptr&&S.ptr[id])||null):portrait(c);
+const illMasqId=c=>'ill-masque-'+c.id,illDemId=c=>'ill-demasque-'+c.id;
+function shIllu(c,fm){const two=c.type==='PJ'&&!isHum(c),mq=two&&fm!=='d',id=two?(mq?illMasqId(c):illDemId(c)):c.id,src=two?((S.ptr&&S.ptr[id])||null):portrait(c);
   const lab=two?(mq?'forme masquée':'forme démasquée'):'',full=c.court+(lab?' · '+lab:''),can=canPortrait(c);
   const inp=`<input type="file" accept="image/*" data-ptrfile="${esc(id)}" data-plab="${esc(full)}" hidden>`;
   if(src)return `<div class="fibigw shill">${bigImg(id,src,full)}${can?`<div style="margin-top:6px"><label class="edl" style="cursor:pointer">${ICON.crayon} Changer l'illustration${lab?' ('+esc(lab)+')':''}${inp}</label></div>`:''}</div>`;
