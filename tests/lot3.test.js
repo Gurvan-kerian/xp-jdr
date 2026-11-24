@@ -138,6 +138,12 @@ const sheet=page=>page.evaluate(()=>(document.getElementById('sheetRoot')||{}).i
       const s=db.get('gains/all').events.find(e=>/^\[Int\. 024\]/.test(e.titre));ok(s&&s.evt===evId,'session rattachée (gains/all)');
       await page.evaluate(id=>{S.uni='evenement';S.fi=id;render();},evId);ok(/Séances et XP[\s\S]*\[Int\. 024\]/i.test(await txt(page)),'fiche : bloc Séances et XP');
       await page.evaluate(()=>{S.view='gains';render();});ok(await page.$('.chsl .lk'),'journal d\'XP : lien vers l\'événement');
+      {const sid=await page.evaluate(()=>{const e=S.events.find(x=>x.session&&/^S01\. /.test(x.titre)&&!x.evt);S.jOpen={[e.id]:true};render();return e.id;});
+        await click(page,`[data-act="chRat"][data-id="${sid}"]`);await click(page,'[data-act="chEvFromS"][data-stay="1"]');
+        const g=await page.evaluate(()=>({...S.dlg}));ok(g.kind==='chEv'&&g.num==='01.'&&g.nom==='A la vie à la mort'&&g.type==='Scénario'&&g.pj.length>0,'Rattacher › Créer : numéro, titre, type et PJ préremplis');
+        await click(page,'[data-act="chEvSave"]');await page.waitForTimeout(150);
+        const s1=db.get('gains/all').events.find(e=>e.id===sid),f=s1&&db.get('fiches/'+s1.evt);
+        ok(f&&f.num==='01.'&&await page.evaluate(()=>S.view)==='gains','événement créé, session rattachée, on reste sur le journal d\'XP');}
       ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
     console.log('6. Historique : retour du téléphone / page précédente');
     {const {page,errs,ctx}=await open(browser,base,db,'anne');

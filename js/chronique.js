@@ -227,7 +227,7 @@ function chRattView(){const R=chRattProps();if(!S.chRat)S.chRat={sel:{},chk:{}};
   const opts=sel=>`<option value="">— aucun —</option>`+E.map(f=>`<option value="${esc(f.id)}"${f.id===sel?' selected':''}>${esc(chEvLab(f))}</option>`).join('');
   h+=`<div class="card chrat">`+R.map(r=>{const id=r.e.id,sel=id in st.sel?st.sel[id]:(r.ev?r.ev.id:''),chk=id in st.chk?st.chk[id]:!!r.ev;
     return `<div class="chratr"><label class="chratc"><input type="checkbox" data-chrk="${esc(id)}"${chk&&sel?' checked':''}${sel?'':' disabled'} aria-label="Rattacher ${esc(r.e.titre)}"></label><div class="chratt"><b>${esc(r.e.titre)}</b><div class="muted small">${[r.e.date?fmtDate(r.e.date):'',esc(evType(r.e))].filter(Boolean).join(' · ')}</div>
-      <select data-chrs="${esc(id)}" aria-label="Événement pour ${esc(r.e.titre)}">${opts(sel)}</select>${r.sn&&!r.ev?`<button type="button" class="addl" data-act="chEvFromS" data-id="${esc(id)}">Créer l'événement</button>`:''}</div></div>`;}).join('')+`</div>`;
+      <select data-chrs="${esc(id)}" aria-label="Événement pour ${esc(r.e.titre)}">${opts(sel)}</select>${!r.ev?`<button type="button" class="addl" data-act="chEvFromS" data-id="${esc(id)}">Créer l'événement</button>`:''}</div></div>`;}).join('')+`</div>`;
   const n=R.filter(r=>{const id=r.e.id,sel=id in st.sel?st.sel[id]:(r.ev?r.ev.id:''),chk=id in st.chk?st.chk[id]:!!r.ev;return chk&&sel;}).length;
   h+=`<div class="actions"><button class="btn" data-act="chPage" data-v="">Plus tard</button><button class="btn pri" data-act="chRatOk"${n?'':' disabled'}>Valider les ${n} coché${n>1?'s':''}</button></div>`;
   return h;}
@@ -327,6 +327,7 @@ function chSheet(g){
     return fiShell(g,'Rattacher la session',`<h2>Rattacher la session</h2><div class="muted small">${esc(e.titre)}</div>
       <div class="field"><label for="chRe">Événement</label><select id="chRe" data-fin="evt"><option value="">— aucun —</option>${E.map(f=>`<option value="${esc(f.id)}"${f.id===g.evt?' selected':''}>${esc(chEvLab(f))}</option>`).join('')}</select></div>
       <div class="muted small">Plusieurs sessions peuvent être rattachées au même événement (épilogue, Part.1 / Part.2).</div>
+      <div><button type="button" class="addl" style="margin-top:0" data-act="chEvFromS" data-id="${esc(e.id)}" data-stay="1">+ Créer un nouvel événement</button><div class="muted small" style="margin-top:4px">Prérempli avec le titre, le numéro, le type et les PJ présents ; la session y sera rattachée.</div></div>
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="chRatSave">Enregistrer</button></div>`);}
   return null;}
 function chFinTxt(g){const d=chDateOf(g,'d'),n=parseInt(g.duree,10)||1;if(!d||!d.j)return n>1?n+' jours':'';if(n<=1)return 'un jour';return 'jusqu\'au '+chDateTxt(chEnd(d,n));}
@@ -356,7 +357,7 @@ function chAct(a,d){
   if(a==='chEvFromS'){if(!canEdit())return true;const e=S.events.find(x=>x.id===d.id);if(!e)return true;const sn=chSessNum(e),p=n=>String(n).padStart(3,'0');
     const num=sn?(sn.type==='Scénario'?String(sn.n).padStart(2,'0')+'.':sn.type==='Interscénario'?'['+p(sn.n)+']':'('+p(sn.n)+')'):'';
     const nom=String(e.titre||'').replace(CH_RE_I,'').replace(CH_RE_S,'').replace(CH_RE_F,'').replace(/^\s*\.\s*/,'').replace(/\s*[—–-]\s*[ée]pilogue.*$/i,'').replace(/\s*part\.?\s*\d+\s*$/i,'').trim();
-    fiOpenDlg({kind:'chEv',id:'',num,nom,type:sn?sn.type:evType(e),dj:'',dm:'',da:'',duree:'1',pj:orderPJ(presents(e)),txt:'',sess:e.id});render();return true;}
+    const ty=sn?sn.type:evType(e);fiOpenDlg({kind:'chEv',id:'',num,nom,type:CH_TYPES.includes(ty)?ty:'Interscénario',dj:'',dm:'',da:'',duree:'1',pj:orderPJ(presents(e)),txt:'',sess:e.id,stay:d.stay==='1'});render();return true;}
   if(a==='chEvEd'){const f=S.fiches[S.fi];if(!f||!chCanEv())return true;const b=f.debut||{};fiOpenDlg({kind:'chEv',id:f.id,num:f.num||'',nom:f.nom||'',type:f.type||'Interscénario',dj:b.j?String(b.j):'',dm:b.m?String(b.m):'',da:b.a?String(b.a):'',duree:String(f.duree||1),pj:(f.pj||[]).slice(),txt:f.lieux||''});render();return true;}
   if(a==='chPjT'){if(g&&g.kind==='chEv'){g.pj=g.pj.includes(d.v)?g.pj.filter(x=>x!==d.v):[...g.pj,d.v];redraw();}return true;}
   if(a==='chEvSave'){if(!g||g.kind!=='chEv'||!chCanEv())return true;const nom=(g.nom||'').trim();if(!nom){g.err='Le titre est obligatoire.';redraw();return true;}
@@ -369,7 +370,7 @@ function chAct(a,d){
     f.nom=nom;f.num=(g.num||'').trim();f.type=type;f.duree=du;f.pj=pj;f.lieux=lieux;if(db)f.debut=db;else delete f.debut;
     S.dlg=null;FI_AT=null;S.fiches={...S.fiches,[f.id]:f};fiSave(f,true);
     if(g.sess&&canEdit()){saveEvents(S.events.map(e=>e.id===g.sess?{...e,evt:f.id}:e));}
-    if(!g.id){S.fi=f.id;S.uni='evenement';S.view='univers';window.scrollTo(0,0);}
+    if(!g.id&&!g.stay){S.fi=f.id;S.uni='evenement';S.view='univers';window.scrollTo(0,0);} /* créé depuis le journal d'XP : on y reste */
     render();setTimeout(()=>toast(g.id?'Événement enregistré':'Événement créé'),0);return true;}
   if(a==='chEvDelOk'){if(!g||g.kind!=='chEv'||!chCanEv())return true;const x=S.fiches[g.id];S.dlg=null;if(x){S.fi=null;S.uni='chron';fiRemove(x.id);}render();setTimeout(()=>toast('Événement supprimé'),0);return true;}
   if(a==='chTxt'){const f=S.fiches[S.fi];if(!f||!chCanEv()||(d.b==='notes'&&!isGest()))return true;fiOpenDlg({kind:'chTxt',fid:f.id,b:d.b==='notes'?'notes':'desc',txt:d.b==='notes'?(f.notes||''):(f.desc||'')});render();return true;}
