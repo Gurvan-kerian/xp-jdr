@@ -211,6 +211,7 @@ function render(){
   const v=S.view,app=document.getElementById('app');
   app.innerHTML=idBanners()+socleBanner()+(canEdit()?`<div class="edband" role="status">${ICON.crayon}<span>Mode édition actif : les modifications sont enregistrées pour toute la table</span></div>`:'')+navBar()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():viewRules());
   renderSheet();
+  hxTrack(); /* historique : une étape par écran (core.js) */
   {let q=document.getElementById('edqRoot');if(!q){q=document.createElement('div');q.id='edqRoot';document.body.appendChild(q);}const qh=S.edQuit?edQuitSheet():'';if(q.innerHTML!==qh)q.innerHTML=qh;}
   if(S.secHl){const k=S.secHl.k,el=document.getElementById(k==='titre'||k==='bonus'?'seck-titre':'secel-'+k+'-'+S.secHl.i)||document.getElementById('seck-'+k);if(el){el.classList.add('hlx');requestAnimationFrame(()=>el.scrollIntoView({block:'center'}));}}
   const w=whoGate();let wr=document.getElementById('whoRoot');if(!wr){wr=document.createElement('div');wr.id='whoRoot';document.body.appendChild(wr);}if(wr.innerHTML!==w)wr.innerHTML=w;

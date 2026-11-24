@@ -173,9 +173,9 @@ function navLabel(){const g=S.dlg;
   return ({home:'Accueil',gains:'XP',team:'Personnages',planning:'Planning',players:'Joueurs',rules:'Règles',params:'Paramètres'})[S.view]||'';}
 function navSnap(){const g=S.dlg&&(S.dlg.kind==='cons'||S.dlg.kind==='pl')?{kind:S.dlg.kind,t:S.dlg.t,id:S.dlg.id,nav:S.dlg.nav}:null;
   return {view:S.view,sel:S.sel,shTab:S.shTab,uni:S.uni,sec:S.sec,fi:S.fi,rf:S.rf,rfTab:S.rfTab,rfEd:S.rfEd,jrOpen:S.jrOpen,jrSel:S.jrSel,dlg:g,y:window.scrollY||0,lab:navLabel()};}
-/* Suivre un lien : mémorise l'écran de départ puis ouvre la cible */
+/* Suivre un lien : mémorise l'écran de départ (pour la barre « ‹ Retour ») puis ouvre la cible ; l'étape d'historique est ajoutée par hxTrack */
 function navGo(o){if(!lnkOk(o))return false;
-  S.nav.push(navSnap());try{history.pushState({xpnav:S.nav.length},'');}catch(e){}
+  S.nav.push(navSnap());
   S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;
   if(o.t==='perso'){S.dlg=null;S.view='sheet';S.sel=o.id;S.futForm.open=false;}
   else if(o.t==='fiche'){S.dlg=null;S.view='univers';S.uni=S.fiches[o.id].genre;S.fi=o.id;S.sec=null;S.rf=null;}
@@ -185,21 +185,47 @@ function navGo(o){if(!lnkOk(o))return false;
   else if(o.t==='joueur'){S.dlg={kind:'pl',id:o.id,nav:true};return true;}
   else if(o.t==='pw'||o.t==='cap'){S.dlg={kind:'cons',t:o.t,id:o.id,nav:true};return true;}
   window.scrollTo(0,0);return true;}
-/* Revenir d'un cran : restaure l'écran mémorisé et sa position de défilement */
+/* Revenir d'un cran sans historique (secours) : restaure l'écran mémorisé et sa position de défilement */
 function navPop(){const s=S.nav.pop();if(!s)return;
   S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.fi=s.fi||null;S.rf=s.rf;S.rfTab=s.rfTab;S.rfEd=s.rfEd&&canEdit();S.jrOpen=s.jrOpen||null;S.jrSel=s.jrSel||null;S.dlg=s.dlg?{...s.dlg}:null;
   S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;S._force=true;render();
   const y=s.y;requestAnimationFrame(()=>window.scrollTo(0,y));}
-/* « ‹ Retour » : passe par l'historique du navigateur quand il porte la pile (même effet que le retour du téléphone) */
-function navBack(){const st=history.state;if(st&&st.xpnav&&st.xpnav===S.nav.length){history.back();return;}navPop();}
+/* « ‹ Retour » : même effet que le retour du téléphone */
+function navBack(){if(HX.cur>0){try{history.back();return;}catch(e){}}navPop();}
 const navClear=()=>{S.nav=[];};
 function navBar(){if(!S.nav.length)return '';const path=S.nav.map(s=>s.lab).filter(Boolean);
   return `<div class="navbar"><button type="button" class="navback" data-act="navBack"><span aria-hidden="true">‹</span> Retour</button><span class="navpath">${path.length?'depuis '+path.map(esc).join(' › '):''}</span></div>`;}
-/* Retour du téléphone (ou du navigateur) : ferme d'abord une fenêtre ouverte, puis dépile */
-if(window.addEventListener)window.addEventListener('popstate',()=>{if(!S.nav.length)return;
-  if(S.dlg&&!S.dlg.nav){S.dlg=null;S.sheet=null;S.asheet=null;S._force=true;render();try{history.pushState({xpnav:S.nav.length},'');}catch(e){}return;}
-  if(S.sheet||S.asheet){S.sheet=null;S.asheet=null;S._force=true;render();try{history.pushState({xpnav:S.nav.length},'');}catch(e){}return;}
-  navPop();});
+/* ---------- Historique du navigateur (24/11/2026) ----------
+   Chaque changement d'écran ajoute une étape : retour du téléphone, « page précédente » et « ‹ Retour » ramènent à l'écran
+   précédent, position de défilement comprise. Une fenêtre ouverte se ferme d'abord. Pas d'étape pour les onglets d'une fiche,
+   Liste / Mois, les filtres, le changement de mois. Depuis le premier écran, retour quitte l'appli.
+   Les étapes sont gardées pendant la session de l'onglet (sessionStorage xp.hx) pour survivre à un rechargement. */
+const HX={L:[],cur:0,key:'',rest:false};
+function hxKey(){const v=S.view,u=v==='univers'||v==='ref',g=S.dlg&&S.dlg.nav?S.dlg.kind+':'+(S.dlg.t||'')+':'+S.dlg.id:'';
+  return [v,v==='sheet'?S.sel:'',v==='sheet'?S.jrOpen||'':'',u?S.uni||'':'',u?S.fi||'':'',u?S.sec||'':'',u&&S.rf?(S.rf.id||(S.rf.hum?'hum':'nv')):'',u?S.chPage||'':'',v==='params'?S.ptab||'':'',v==='players'?S.pTab||'':'',g].join('|');}
+function hxSnap(y){const s=navSnap();s.y=y||0;s.nav=S.nav.slice();s.chPage=S.chPage||null;s.ptab=S.ptab||'';s.pTab=S.pTab||'';s.forme=S.forme;s.chV=S.chV;s.pv=S.plan&&S.plan.view;return s;}
+function hxSave(){try{sessionStorage.setItem('xp.hx',JSON.stringify(HX.L.slice(0,HX.cur+1)));}catch(e){}}
+function hxApply(s){S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.fi=s.fi||null;S.rf=s.rf||null;S.rfTab=s.rfTab;S.rfEd=!!s.rfEd&&canEdit();S.rfBlk=null;S.rfPor=null;
+  S.jrOpen=s.jrOpen||null;S.jrSel=s.jrSel||null;S.dlg=s.dlg?{...s.dlg}:null;S.nav=(s.nav||[]).slice();S.chPage=s.chPage||null;S.ptab=s.ptab||'';S.pTab=s.pTab||'';
+  if(s.forme)S.forme=s.forme;if(s.chV)S.chV=s.chV;if(s.pv&&S.plan)S.plan.view=s.pv;S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;}
+/* Appelé à la fin de chaque rendu : nouvel écran → nouvelle étape ; même écran → l'étape courante est mise à jour */
+function hxTrack(){if(typeof history==='undefined'||!history.pushState)return;const k=hxKey();
+  if(HX.rest||!HX.key){HX.rest=false;HX.key=k;HX.L[HX.cur]=hxSnap((HX.L[HX.cur]||{}).y);hxSave();return;}
+  if(k===HX.key){HX.L[HX.cur]=hxSnap((HX.L[HX.cur]||{}).y);hxSave();return;}
+  HX.cur++;HX.L.length=HX.cur;HX.L[HX.cur]=hxSnap(0);HX.key=k;try{history.pushState({xph:HX.cur},'');}catch(e){}hxSave();}
+(function hxInit(){try{const st=history.state,L=JSON.parse(sessionStorage.getItem('xp.hx')||'null');
+  if(st&&st.xph!=null&&Array.isArray(L)&&L[st.xph]){HX.L=L;HX.cur=st.xph;}else{HX.L=[];HX.cur=0;history.replaceState({xph:0},'');}}catch(e){}})();
+if(window.addEventListener){
+  window.addEventListener('scroll',()=>{const s=HX.L[HX.cur];if(s)s.y=window.scrollY||0;},{passive:true});
+  window.addEventListener('popstate',ev=>{const st=ev.state;if(!st||st.xph==null)return;const idx=st.xph,keep=()=>{try{history.pushState({xph:HX.cur},'');}catch(e){}};
+    if(S.gate){keep();return;}
+    /* changements non enregistrés dans l'éditeur de race : même question que pour « ‹ Retour » */
+    if(idx<HX.cur&&(S.rfEd||S.rfPor)&&S.rf&&S.edDirty){keep();S.edQuit={a:'navBack',d:{}};S._force=true;render();return;}
+    /* une fenêtre ouverte (hors fiche de consultation ouverte par un lien) : on la ferme et on reste sur l'écran */
+    if(idx<HX.cur&&((S.dlg&&!S.dlg.nav)||S.sheet||S.asheet||S.edQuit)){keep();S.dlg=null;S.sheet=null;S.asheet=null;S.edQuit=false;S.confirm=null;if(typeof FI_AT!=='undefined')FI_AT=null;S._force=true;render();return;}
+    const s=HX.L[idx];HX.cur=idx;HX.rest=true;
+    if(s)hxApply(s);else{hxApply({view:'home'});}
+    S._force=true;render();const y=s&&s.y||0;requestAnimationFrame(()=>window.scrollTo(0,y));});}
 /* Nom principal d'une race : réglage de la fiche (masculin par défaut, sinon féminin) ; l'autre nom suit */
 const raceNm=x=>{if(!x)return '';const f=(x.fem||'').trim();return x.nomP==='f'&&f?f:(x.sing||f);};
 const raceNmOther=x=>{if(!x||x.mVide)return '';const f=(x.fem||'').trim(),p=raceNm(x),o=p===x.sing?f:x.sing;return o&&nrm(o)!==nrm(p)?' · '+o:'';};

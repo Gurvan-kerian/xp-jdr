@@ -139,6 +139,26 @@ const sheet=page=>page.evaluate(()=>(document.getElementById('sheetRoot')||{}).i
       await page.evaluate(id=>{S.uni='evenement';S.fi=id;render();},evId);ok(/Séances et XP[\s\S]*\[Int\. 024\]/i.test(await txt(page)),'fiche : bloc Séances et XP');
       await page.evaluate(()=>{S.view='gains';render();});ok(await page.$('.chsl .lk'),'journal d\'XP : lien vers l\'événement');
       ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
+    console.log('6. Historique : retour du téléphone / page précédente');
+    {const {page,errs,ctx}=await open(browser,base,db,'anne');
+      const st=()=>page.evaluate(()=>[S.view,S.uni||'',S.fi||'',S.sel||'',S.dlg?S.dlg.kind:''].join('|'));
+      const back=async()=>{await page.evaluate(()=>history.back());await page.waitForTimeout(250);};
+      await page.evaluate(()=>{S.view='home';render();});
+      await click(page,'.htile2[data-v="univers"]');await click(page,'[data-act="uni"][data-v="chron"]');await click(page,'.chrow:not(.ag)[data-act="chOpen"]');
+      const ev=await st();ok(/^univers\|evenement\|f-/.test(ev),'accueil → Univers → Chronique → événement');
+      await click(page,'[data-act="chTxt"][data-b="desc"]');ok(/chTxt$/.test(await st()),'fenêtre ouverte');
+      await back();ok(await st()===ev,'retour : la fenêtre se ferme, on reste sur l\'événement');
+      await back();ok(/^univers\|chron\|\|/.test(await st()),'retour : Chronique');
+      await back();ok(/^univers\|home\|/.test(await st()),'retour : Univers');
+      await back();ok(/^home\|/.test(await st()),'retour : accueil');
+      await page.evaluate(()=>history.forward());await page.waitForTimeout(250);ok(/^univers\|home\|/.test(await st()),'page suivante : Univers');
+      await click(page,'[data-act="tab"][data-v="team"]');await page.evaluate(()=>{const b=document.querySelector('[data-act="sel"]');b&&b.click();});
+      await page.evaluate(()=>{S.shTab='fiche';render();});await page.evaluate(()=>{S.shTab='rel';render();});
+      await back();ok(/^team\|/.test(await st()),'les onglets d\'une fiche ne comptent pas comme une étape');
+      await page.evaluate(()=>{S.view='univers';S.uni='chron';S.fi=null;S.chPage=null;render();});await page.evaluate(()=>window.scrollTo(0,0));
+      await page.reload();await page.waitForFunction(()=>typeof S!=='undefined'&&S.playersReady);await page.waitForTimeout(400);await page.evaluate(()=>{S.id&&(S.id.state='ok');});
+      await back();ok(/^team\|/.test(await st()),'après rechargement, retour : écran précédent');
+      ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
   }catch(e){fails++;console.log('  ✗ exception : '+e.message);}
   await browser.close();srv.close();
   console.log(fails?`\n${fails} échec(s)`:'\nTout est vert');process.exit(fails?1:0);
