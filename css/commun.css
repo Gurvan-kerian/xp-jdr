@@ -380,7 +380,7 @@ label.fibig.vide{cursor:pointer;border-color:var(--accent);color:var(--accent)}
 .chav img{width:100%;height:100%;object-fit:cover}
 .chnowl{display:flex;align-items:center;gap:8px;padding:4px 12px;color:var(--bad);font-size:12px;font-weight:700;background:var(--surface)}
 .chnowl::before,.chnowl::after{content:"";flex:1;height:2px;background:var(--bad)}
-.chact{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.chact{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px}
 .chfl{margin-left:auto;font-size:15px}
 .chmhd{display:flex;justify-content:space-between;align-items:center;margin:6px 0}
 .chmhd b{font-family:var(--font-display);font-style:italic;font-size:24px}

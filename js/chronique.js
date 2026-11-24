@@ -123,21 +123,22 @@ function chView(){
   let h=fiUniBack()+`<h2 style="margin-top:2px">Chronique</h2>`;
   if(!S.fichesReady)return h+`<div class="card empty">Chargement…</div>`;
   h+=chNowLine();
+  /* Actions en haut de page (retour du 24/11) : pas besoin de descendre sous une liste qui s'allonge */
+  const nw=[];if(chCanEv())nw.push(`<button class="btn pri" data-act="chEvNew">+ Événement</button>`,`<button class="btn" data-act="chAgNew">+ Agenda</button>`);
+  h+=`<div class="chact">${nw.join('')}<button type="button" class="lk chfl" data-act="chPage" data-v="fetes">Fêtes</button></div>`;
   if(canEdit()){const n=chRattProps().filter(r=>r.ev).length;if(n)h+=`<button type="button" class="chratt" data-act="chPage" data-v="ratt">Rattachements à vérifier <span class="bdg">${n}</span></button>`;}
   h+=`<div class="seg chsw" role="group" aria-label="Affichage">${[['liste','Liste'],['mois','Mois']].map(([v,l])=>`<button type="button" data-act="chV" data-v="${v}" aria-pressed="${S.chV===v}">${l}</button>`).join('')}</div>`;
   const flt=`<div class="chips chchips">${[['tout','Tout'],['sc','Scénarios'],['in','Interscénarios'],['fi','Vie du fief'],['ag','Agenda']].map(([v,l])=>`<button class="chip" data-act="chTy" data-v="${v}" aria-pressed="${(S.chTy||'tout')===v}">${l}</button>`).join('')}</div>`
     +`<div class="chpcs" role="group" aria-label="Filtrer par PJ">${chPJs().map(c=>chMed(c,(S.chPj||[]).includes(c.id),'chPj')).join('')}</div>`;
   if(S.chV==='mois')h+=chMonth()+`<details class="chfltd"${(S.chTy!=='tout'||(S.chPj||[]).length)?' open':''}><summary>Filtres</summary>${flt}</details>`;
   else h+=flt+chList();
-  const nw=[];if(chCanEv())nw.push(`<button class="btn pri" data-act="chEvNew">+ Événement</button>`);if(chCanEv())nw.push(`<button class="btn" data-act="chAgNew">+ Agenda</button>`);
-  h+=`<div class="chact">${nw.join('')}<button type="button" class="lk chfl" data-act="chPage" data-v="fetes">Fêtes</button></div>`;
   return h;}
 function chList(){const now=chNow(),ty=S.chTy||'tout',pjf=(S.chPj||[]).length;
   let from=null,to=null;if(now){from={a:now.a,m:now.m,j:1};const nx=chAddM(from,1);to={a:nx.a,m:nx.m,j:chDim(nx.a,nx.m)};}
   const all=chItems({nodate:true}).filter(it=>it.k==='ev'||it.k==='ag');
   const extra=from&&!pjf&&ty==='tout'?chItems({from,to}).filter(it=>it.k==='fe'||it.k==='an'):[];
   const L=[...all,...extra],nd=L.filter(it=>!it.d),D=L.filter(it=>it.d).sort(chSortDesc);
-  if(!L.length)return `<div class="card empty">${ty!=='tout'||pjf?'Rien ne correspond à ces filtres.':'Aucun événement pour l\'instant.'+(chCanEv()?' Ajoute le premier avec le bouton ci-dessous.':'')}</div>`;
+  if(!L.length)return `<div class="card empty">${ty!=='tout'||pjf?'Rien ne correspond à ces filtres.':'Aucun événement pour l\'instant.'+(chCanEv()?' Ajoute le premier avec « + Événement ».':'')}</div>`;
   const G=[];for(const it of D){const k=it.d.a*100+it.d.m;let g=G.find(x=>x.k===k);if(!g){g={k,a:it.d.a,m:it.d.m,L:[]};G.push(g);}g.L.push(it);}
   const nk=now?now.a*100+now.m:null;if(now&&!G.some(g=>g.k===nk)){G.push({k:nk,a:now.a,m:now.m,L:[]});G.sort((x,y)=>y.k-x.k);}
   const nowKey=now?chKey(now):null,line=`<div class="chnowl" role="separator"><span>aujourd'hui · ${esc(CH_JSC[chDow(now||{a:2000,m:1,j:1})]+' '+(now?now.j:''))}</span></div>`;
