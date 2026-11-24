@@ -226,8 +226,8 @@ document.addEventListener('click',ev=>{
   else if(a==='ptrSave'){const g=S.dlg,im=window._ptrImg;if(!g||!im)return;const s2=g.base*g.z,cv=document.createElement('canvas');cv.width=cv.height=256;
     const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,256,256);cx.drawImage(im,(20-g.x)/s2,(20-g.y)/s2,220/s2,220/s2,0,0,256,256);
     let q=.82,data=cv.toDataURL('image/jpeg',q);while(data.length>60000&&q>.4){q-=.1;data=cv.toDataURL('image/jpeg',q);}
-    if(/^ill-fiche-/.test(g.cid))fiBigSave(g.cid,im);S.ptr={...(S.ptr||{}),[g.cid]:data};S.dlg=g.back||null;window._ptrImg=null;persist('portraits/'+g.cid,{img:data,t:Date.now()});S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});render();return;}
-  else if(a==='ptrDel'){if(!S.ptr||!S.ptr[d.id])return;if(/^ill-fiche-/.test(d.id))fiBigDel(d.id);const m={...S.ptr};delete m[d.id];S.ptr=m;persistDel('portraits/'+d.id);S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});}
+    fiBigSave(g.cid,im);S.ptr={...(S.ptr||{}),[g.cid]:data};S.dlg=g.back||null;window._ptrImg=null;persist('portraits/'+g.cid,{img:data,t:Date.now()});S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});render();return;}
+  else if(a==='ptrDel'){if(!S.ptr||!S.ptr[d.id])return;fiBigDel(d.id);const m={...S.ptr};delete m[d.id];S.ptr=m;persistDel('portraits/'+d.id);S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});}
   else if(a==='atBuy'||a==='atBuyO'){const c0=S.chars[S.sel];if(!c0)return;let nom=a==='atBuy'?d.nom:((S.spOther||{})[c0.id+'|atout']||'').trim();if(!nom)return;if(isTyp(nom))nom=TYP;
     if(atoutsOf(c0).some(x=>nrmA(x.nom)===nrmA(nom)))return;let c;
     if(atoutAnon(c0)>0){c=clone(c0);const e={nom};if(nom===TYP)grantTyp(c,e);c.atouts=[...atoutsOf(c),e];}

@@ -409,6 +409,15 @@ const shNone='<div class="muted small">—</div>';
 const srcChip=s=>s==='pp'?'<span class="srcb">PP</span>':s==='session'?'<span class="srcb j">session</span>':s==='feal'?'<span class="srcb">féal</span>':'<span class="srcb j">en jeu</span>';
 const ppBits=x=>[PPOPT[x.opt]||'',x.fort!=null?'Fortune '+x.fort:'',x.fortS!=null?'Fortune +'+x.fortS:'',x.spec?'spécialité '+x.spec:'',x.prec||''].filter(Boolean).join(' · ');
 const ppLinesOf=(c,r)=>ppBought(c).filter(a=>a.ppel.rub===r).map(a=>`<div class="srow"><span><b>${esc(a.ppel.nom)}</b>${ppBits(a.ppel)?`<span class="d">${esc(ppBits(a.ppel))}</span>`:''}</span>${srcChip('pp')}</div>`);
+/* ---------- Lot 2 bis (24/11/2026) : illustration de l'onglet Fiche ----------
+   PJ fée : une illustration par forme, selon le sélecteur (démasquée = portrait) ; autres personnages : le portrait seul.
+   Illustration manquante : cadre vide (avec « Ajouter » pour le joueur du personnage et la gestion). */
+const illMasqId=c=>'ill-masque-'+c.id;
+function shIllu(c,fm){const two=c.type==='PJ'&&!isHum(c),mq=two&&fm!=='d',id=mq?illMasqId(c):c.id,src=mq?((S.ptr&&S.ptr[id])||null):portrait(c);
+  const lab=two?(mq?'forme masquée':'forme démasquée'):'',full=c.court+(lab?' · '+lab:''),can=canPortrait(c);
+  const inp=`<input type="file" accept="image/*" data-ptrfile="${esc(id)}" data-plab="${esc(full)}" hidden>`;
+  if(src)return `<div class="fibigw shill">${bigImg(id,src,full)}${can?`<div style="margin-top:6px"><label class="edl" style="cursor:pointer">${ICON.crayon} Changer l'illustration${lab?' ('+esc(lab)+')':''}${inp}</label></div>`:''}</div>`;
+  return `<div class="fibigw shill">${can?`<label class="fibig vide" aria-label="Ajouter l'illustration${lab?' ('+esc(lab)+')':''}"><span aria-hidden="true">+</span>Ajouter l'illustration${lab?'<br>('+esc(lab)+')':''}${inp}</label>`:`<span class="fibig vide" role="img" aria-label="Pas d'illustration"></span>`}</div>`;}
 /* ---------- onglets Fiche et Féerie : reprise de l'ancienne « Fiche complète », en blocs ---------- */
 function viewSheetTab(c,tab){
   if(tab==='rel')return viewRelations(c);
@@ -420,6 +429,7 @@ function viewSheetTab(c,tab){
   const item=(nom,desc,fx)=>`<div class="fi"><b>${esc(nom)}</b>${desc?`<div class="s">${esc(desc)}</div>`:''}${fx||''}</div>`;
   const spl=key=>{const L=specsOf(c).filter(y=>y.cible===key);return L.length?`<div class="fsp">${L.map(y=>{const i=specInfo(y.nom);return esc(y.nom)+(i&&i[2]?'*':'');}).join(', ')}</div>`:'';};
   if(!isHum(c))h+=`<div class="formesw"><span class="muted small">Forme</span><div class="seg sm" role="group" aria-label="Forme du personnage">${[['m','Masquée'],['d','Démasquée']].map(([v,l])=>`<button data-act="forme" data-v="${v}" aria-pressed="${fm===v}">${l}</button>`).join('')}</div></div>`;
+  if(tab==='fiche')h+=shIllu(c,fm); /* lot 2 bis */
   if(tab==='fiche'){
     const T=traitsOf(c);
     h+=cBlk('trt','Traits de caractère',T.length?String(T.length):'',T.length?`<div class="fxl">${T.map(([n,s])=>`<span class="rchip">${esc(n)} <small class="muted">· ${esc(s)}</small></span>`).join('')}</div>`:shNone);

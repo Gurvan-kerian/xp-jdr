@@ -17,6 +17,7 @@ const FI_IC={
   org:'<path d="M5 21V4"/><path d="M5 4h12l-2.5 4 2.5 4H5"/>',
   lieu:'<path d="M3.5 11L12 4.5l8.5 6.5"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/>',
   objet:'<path d="M9 3h6"/><path d="M10 3v3.2C7 7.7 5.5 10 5.5 13a6.5 6.5 0 0 0 13 0c0-3-1.5-5.3-4.5-6.8V3"/>',
+  pouvoirs:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M5 18.5h14"/>',
   perso:'<circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/>'
 };
 /* Genres de fiche */
@@ -132,7 +133,7 @@ function fiUniHome(){const G=isGest(),pl=(n,s,p)=>n+' '+(n>1?p:s);
   const grp=(t,rows)=>`<div class="pgrp">${t}</div><div class="plst">${rows.join('')}</div>`;
   return `<h2 style="margin-top:4px">Univers</h2>`
     +grp('Récit',[row('uni','secrets','secrets','Secrets',sec,np)])
-    +grp('Peuples',[row('uni','creatures','races','Races',rac),row('tab','team','pnj','PNJ',pl(npnj,'PNJ','PNJ')+' · page Personnages'),row('uni','famille','famille','Familles',cnt('famille')),row('uni','org','org','Organisations',cnt('org'))])
+    +grp('Peuples',[row('uni','creatures','races','Races',rac),row('uni','pouvoirs','pouvoirs','Pouvoirs et capacités',uniPwSum()),row('tab','team','pnj','PNJ',pl(npnj,'PNJ','PNJ')+' · page Personnages'),row('uni','famille','famille','Familles',cnt('famille')),row('uni','org','org','Organisations',cnt('org'))])
     +grp('Lieux et choses',[row('uni','lieu','lieu','Lieux',cnt('lieu')),row('uni','objet','objet','Objets',cnt('objet'))]);}
 const fiUniBack=()=>`<button class="back" data-act="uni" data-v="home">${FI_BACK}Univers</button>`;
 
@@ -287,6 +288,14 @@ function fiViewer(src,big,title){fiViewerClose();if(!src)return;
   el.querySelector('.fivwx').focus();
   if(big){if(FI_BIG[big])img.src=FI_BIG[big];else if(DB&&DB.img)DB.img.get(big).then(d=>{if(d&&typeof d==='string'){FI_BIG[big]=d;if(FI_VW&&FI_VW.img===img)img.src=d;}}).catch(()=>{});}}
 function fiViewerClose(){if(!FI_VW)return;const p=FI_VW.prev;FI_VW.el.remove();FI_VW=null;if(p&&p.focus)try{p.focus();}catch(e){}}
+/* Lot 2 bis (24/11/2026) : image entière sur les fiches Personnage, Race, Pouvoir, Capacité.
+   La grande image (table images) est chargée à la demande ; en attendant, ou si elle n'existe pas (image d'avant le lot), la vignette. */
+const FI_ASK=new Set();
+function bigSrc(id,vign){if(FI_BIG[id])return FI_BIG[id];
+  if(id&&!FI_ASK.has(id)&&typeof DB!=='undefined'&&DB&&DB.img){FI_ASK.add(id);DB.img.get(id).then(d=>{if(d&&typeof d==='string'){FI_BIG[id]=d;document.querySelectorAll('img[data-big]').forEach(im=>{if(im.dataset.big===id)im.src=d;});}}).catch(()=>{});}
+  return vign;}
+function bigImg(id,vign,lab){if(!vign)return '';
+  return `<button type="button" class="fibig" data-act="fiBig" data-id="${esc(id)}" data-src="${esc(vign)}" data-lab="${esc(lab||'')}" aria-label="Agrandir l'image${lab?' : '+esc(lab):''}"><img src="${bigSrc(id,vign)}" data-big="${esc(id)}" alt=""></button>`;}
 
 /* ---------- Saisie « @ » dans l'éditeur ---------- */
 let FI_AT=null;
@@ -341,8 +350,9 @@ function fiAct(a,d){
   if(a==='fiTree'){S.fiTree={...S.fiTree,[d.id]:!S.fiTree[d.id]};render();return true;}
   if(a==='fiTy'){S.fiTy=d.v||'';render();return true;}
   if(a==='fiLv'){S.fiLv=d.v;render();return true;}
-  if(a==='fiImg'){if(d.cid){const c=S.chars[d.cid];fiViewer(c&&portrait(c),null,c&&c.court);return true;}
+  if(a==='fiImg'){if(d.cid){const c=S.chars[d.cid];fiViewer(c&&portrait(c),d.cid,c&&c.court);return true;}
     const src=S.ptr&&S.ptr[d.id];const f=S.fiches[String(d.id).replace(/^ill-fiche-/,'')];fiViewer(src,d.id,f?f.nom:'');return true;}
+  if(a==='fiBig'){fiViewer(FI_BIG[d.id]||d.src,d.id,d.lab);return true;}
   if(a==='fiSug'){fiAtPick(+d.i);return true;}
   if(a==='closeSheet'&&S.dlg&&FI_DLG.has(S.dlg.kind)){FI_AT=null;return false;}
   if(!/^fi[A-Z]/.test(a))return false;

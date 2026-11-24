@@ -90,7 +90,7 @@ function renderSheet0(){
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${ill?'Illustration':'Portrait'}"><div class="in"><div><h2>${ill?'Illustration'+(g.lab?' : '+esc(g.lab):''):'Portrait de '+esc(c.court)}</h2><div class="muted small">Fais glisser l'image pour la cadrer dans le ${ill?'carré':'cercle'}, et zoome avec le curseur.</div></div>
       <div id="ptrStage"><img id="ptrImg" src="${g.src}" alt="" style="left:${g.x}px;top:${g.y}px;width:${g.w*s2}px;height:${g.h*s2}px"><div class="ring${ill?' sq':''}"></div></div>
       <div class="field"><label for="ptrz">Zoom</label><input id="ptrz" type="range" min="1" max="4" step="0.01" data-ptrz="1" value="${g.z}" style="width:100%"></div>
-      <div class="muted small">L'image est recadrée et réduite (environ 30 Ko) avant l'envoi.</div>
+      <div class="muted small">Le cadrage ne vaut que pour la vignette (listes, médaillons) : l'image entière est aussi conservée pour les fiches.</div>
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="ptrSave">Enregistrer</button></div></div></div>`;return;}
     if(g.kind==='atc'){const c=S.chars[g.cid],e=c&&atoutsOf(c)[g.i];if(!e){S.dlg=null;root.innerHTML='';return;}const ach=e.achat&&(c.achats||[]).find(x=>x.id===e.achat);
       const txt=(ach?`Annuler l'achat rend ${ach.cout} XP.`:'L\'atout redevient « à rattacher » : il reste compté et pourra recevoir un autre nom sans XP.')+((e.typ&&e.typ.length)||e.typAnon?' Les spécialités offertes par cet atout sont retirées.':'');

@@ -42,6 +42,7 @@ function viewUnivers(){
   /* Lot 1 (23/11/2026) : accueil de l'Univers en liste groupée ; les genres de fiche ont leur liste et leur fiche */
   if(!S.uni||S.uni==='home')return fiUniHome();
   if(FI_G[S.uni])return fiUniView();
+  if(S.uni==='pouvoirs')return fiUniBack()+`<h2 style="margin-top:2px">Pouvoirs et capacités</h2>`+viewUniPw(); /* lot 2 bis */
   if(S.uni==='creatures')return (S.rf?'':fiUniBack()+`<h2 style="margin-top:2px">Races</h2>`)+viewRaces();
   if(!S.secretsReady)return fiUniBack()+`<div class="card empty">Chargement des secrets…</div>`;
   const s=S.sec!=null&&secById(S.sec);

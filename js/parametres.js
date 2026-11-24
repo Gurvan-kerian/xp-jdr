@@ -17,7 +17,6 @@ function viewParams(){if(!S.paramsReady)return `<h2 style="margin-top:4px">Param
   let h=`<div style="margin:4px 0 6px"><button class="btn ghost" data-act="ptab" data-v="">‹ Paramètres</button></div><h2 style="margin-top:4px">${(PARAM_TABS.find(t=>t[0]===tab)||[,''])[1]}</h2>`;
   if(tab==='donnees')return h+viewDonnees();
   if(tab==='listes')return h+fiListes();
-  if(tab==='catalogues'){const k=S.pcat==='cap'?'cap':'pw';return h+`<div class="seg" role="group" aria-label="Catalogue" style="margin-bottom:10px">${[['pw','Pouvoirs'],['cap','Capacités']].map(([v,l])=>`<button type="button" data-act="pcat" data-v="${v}" aria-pressed="${k===v}">${l}</button>`).join('')}</div>`+viewElCat(k);}
   if(tab==='profils')return h+viewProfils();
   const v=g.v;let body='';
   if(tab==='creation')body=creResume(v)+CRE_BL.map(([t,f,K],i)=>cBlk('pc'+i,t,f(v),K.map(k=>pRow(g,k)).join('')+(i===6?'<div class="muted small" style="margin-top:6px">Validation des nouvelles fiches : par le MJ seul.</div>':i===4?'<div class="muted small" style="margin-top:6px">PP de création non dépensés : perdus. Points de Contact : uniquement pour acheter un contact.</div>':''))).join('');
@@ -41,7 +40,7 @@ function viewProfils(){const G=isGest(),E=ppEls(),n={};for(const e of Object.val
   <div class="muted small" style="margin-top:10px">Les 6 profils et leurs compétences sont fixes. Noms, traits, spécialités, titre et tableau de points de personnage se modifient ici.</div>`;}
 const PF_KINDS=new Set(['pfEd','ppEl','ppBuy','traits','riEye']);
 const PF_ACTS=new Set(['pfOpen','pfTab','pfRub','pfTrDel','pfTrAdd','pfSpEd','pfSpAdd','pfSpDel','pfSpOk','pfSpCancel','pfSave','ppElOpen','ppElNew','ppElBack','ppElSeg','ppElTg','ppPreNew','ppPreT','ppPreOk','ppPreDel','ppPreCancel','ppElSave','ppElDel','ppElDelOk',
-  'ppRub','ppPick','ppTitre','ppOther','ppBack','ppOpt','ppOv','ppBuyOk','trOpen','trSave']);
+  'ppRub','ppAch','ppPick','ppTitre','ppOther','ppBack','ppOpt','ppOv','ppBuyOk','trOpen','trSave']);
 function pfDraft(p){const x=prOf(p),sp={};for(const k of PROFCOMPS[p])sp[k]=clone(CATSPEC[k]||[]);
   return {kind:'pfEd',p,tab:'prof',rub:'A',m:x.m||'',f:x.f||'',traits:x.traits.slice(),tnew:'',specs:sp,spEd:null,tnom:x.titre.nom,tdesc:x.titre.desc||'',fx:clone(x.titre.fx||[]),fxEd:null,err:''};}
 const sheetW=(lab,inner)=>`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(lab)}"><div class="in">${inner}</div></div>`;
@@ -110,15 +109,20 @@ function ppBuySheet(g){const c=S.chars[g.cid],pr=c&&(c.profils||[]).find(x=>x.no
   <div class="muted small">${esc(c.court)} dépense ses PP ${esc(profLab(g.prof,c))} dans ce tableau uniquement.</div>`;
   if(rk>=4){const got=bought[tid],ok=!got&&sum>=PPT_PTS&&have>=PPT_COST;h+=`<div class="card ptc"><div class="prof-head"><b>${ICON.medaille||''} ${esc(P.titre.nom)}</b>${got?'<span class="pill acc">acquis</span>':`<button class="btn${ok?' pri':''}" data-act="ppTitre"${ok?'':' disabled'}>${PPT_COST} PP</button>`}</div><div class="muted small">${sum} / ${PPT_PTS} points de compétences · ${esc(ppFmt(have))} / ${PPT_COST} PP${P.titre.desc?' · '+esc(P.titre.desc):''}</div></div>`;}
   h+=`<div class="field"><input type="search" data-ppb="q" value="${esc(g.q||'')}" placeholder="Rechercher dans le tableau…" aria-label="Rechercher dans le tableau"></div>${pfSeg('ppRub',g.rub,[['all','Tout'],...PP_RUB.map(r=>[r[0],r[2]])])}`;
-  const rows=ppRows(c,g.prof).filter(([,e])=>(g.rub==='all'||e.rub===g.rub)&&(!q||nrm(e.nom).includes(q)));
+  /* Lot 2 bis : achetable = assez de PP, prérequis remplis, pas déjà possédé (les langues se cumulent) ; filtre « Achetables » gardé pendant la session */
+  const ppOk=(id,e)=>!(bought[id]&&e.rub!=='L')&&!ppPreMiss(e,c).length&&ppCostMin(e,c)<=have;
+  const all=ppRows(c,g.prof).filter(([,e])=>(g.rub==='all'||e.rub===g.rub)&&(!q||nrm(e.nom).includes(q))),nOk=all.filter(([id,e])=>ppOk(id,e)).length,fa=!!S.ppAch;
+  h+=`<div style="display:flex;justify-content:flex-end;margin:4px 0 2px"><button type="button" class="chip" data-act="ppAch" aria-pressed="${fa}">Achetables · ${nOk}</button></div>`;
+  const rows=fa?all.filter(([id,e])=>ppOk(id,e)):all;
   for(const r of PP_RUB){const L=rows.filter(([,e])=>e.rub===r[0]);if(!L.length)continue;
-    h+=`<h3 class="rs">${esc(r[1])}</h3><div class="ppl">${L.map(([id,e])=>{const got=bought[id],miss=ppPreMiss(e,c),cost=ppCostMin(e,c),off=cost>have;
+    h+=`<h3 class="rs">${esc(r[1])}</h3><div class="ppl">${L.map(([id,e])=>{const got=bought[id],miss=ppPreMiss(e,c),cost=ppCostMin(e,c),off=cost>have,ok=ppOk(id,e);
       const sub=[e.rub==='A'&&e.fortP!=null?'Fortune '+e.fortP:'',e.nocrea?'pas à la création':''].filter(Boolean).join(' · ');
-      if(got&&e.rub!=='L')return `<div class="ppi got"><span>${esc(e.nom+ppStar(e))} <small>· ✓ ${got.map(x=>esc(PPOPT[x.opt]||'acquis')).join(', ')}</small></span><b class="small">acquis</b></div>`;
-      return `<button class="ppi${off?' off':''}" data-act="ppPick" data-id="${esc(id)}"${off?' disabled':''}><span>${esc(e.nom+ppStar(e))}${sub?` <small>· ${esc(sub)}</small>`:''}${miss.length?` <small class="bad">· ${miss.map(ppPreTxt).map(esc).join(', ')} requis</small>`:''}${got?` <small>· ✓ ×${got.length}</small>`:''}</span><b class="num">${esc(ppCostTxt(e))}</b></button>`;}).join('')}</div>`;}
-  if(!rows.length)h+='<div class="muted small" style="margin:10px 0">Aucun élément.</div>';
+      if(got&&e.rub!=='L')return `<div class="ppi got ppw no"><span>${esc(e.nom+ppStar(e))} <small>· ✓ ${got.map(x=>esc(PPOPT[x.opt]||'acquis')).join(', ')}</small><span class="why">déjà possédé</span></span><b class="small">acquis</b></div>`;
+      const why=[off?'PP insuffisants':'',miss.length?'prérequis : '+miss.map(ppPreTxt).join(', '):''].filter(Boolean).join(' · ');
+      return `<button class="ppi ppw${off?' off':''}${ok?' ok':' no'}" data-act="ppPick" data-id="${esc(id)}"${off?' disabled':''}><span>${esc(e.nom+ppStar(e))}${sub?` <small>· ${esc(sub)}</small>`:''}${got?` <small>· ✓ ×${got.length}</small>`:''}${why?`<span class="why">${esc(why)}</span>`:''}</span><b class="num">${esc(ppCostTxt(e))}</b></button>`;}).join('')}</div>`;}
+  if(!rows.length)h+=`<div class="muted small" style="margin:10px 0">${fa&&all.length?'Aucun élément achetable pour l\'instant.':'Aucun élément.'}</div>`;
   h+=`<button class="ppi oth" data-act="ppOther"><span>+ Autre achat <small>· saisie libre : intitulé et coût</small></span></button>
-  <div class="muted small" style="margin-top:6px">* réservé à ce profil. Grisé : trop cher pour la réserve. Atteindre le rang N de ce profil ajoute N PP automatiquement.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div>`;
+  <div class="muted small" style="margin-top:6px">* réservé à ce profil. Grisé : pas achetable pour l'instant (raison en petit). Atteindre le rang N de ce profil ajoute N PP automatiquement.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div>`;
   return sheetW('Points de personnage',h);}
 function ppSelEl(g,c){if(g.sel==='titre'){const P=prOf(g.prof);return {prof:g.prof,rub:'T',nom:P.titre.nom,cost:{k:'u',a:PPT_COST},pre:[],titre:true,prec:P.titre.desc||''};}return ppEls()[g.sel];}
 function ppConfirmSheet(g,c,pr){const have=ppHave(pr);
@@ -175,7 +179,7 @@ function pfAct(a,d,t){const g=S.dlg,G=isGest();
       const tr={};if(!hum&&g.race)tr.race=g.race;if(g.maj)tr.maj={p:g.majP,n:g.maj};if(!hum&&g.min)tr.min={p:g.minP,n:g.min};if(g.libre.trim())tr.libre=g.libre.trim();c.traits=tr;S.dlg=null;saveChar(c);toast('Traits enregistrés');return false;}
     return;}
   if(g.kind==='ppBuy'){
-    if(a==='ppRub')g.rub=d.v;else if(a==='ppPick'){const e=ppEls()[d.id];if(!e)return;const c=S.chars[g.cid];g.sel=d.id;g.prec='';g.ov=false;g.opt=e.rub==='A'?(ppBought(c).some(x=>x.ppel.opt==='p'&&x.ppel.rub==='A')?'s':'p'):(e.cost&&e.cost.k==='hf'?(e.cost.a==null?'f':'h'):'');}
+    if(a==='ppAch')S.ppAch=!S.ppAch;else if(a==='ppRub')g.rub=d.v;else if(a==='ppPick'){const e=ppEls()[d.id];if(!e)return;const c=S.chars[g.cid];g.sel=d.id;g.prec='';g.ov=false;g.opt=e.rub==='A'?(ppBought(c).some(x=>x.ppel.opt==='p'&&x.ppel.rub==='A')?'s':'p'):(e.cost&&e.cost.k==='hf'?(e.cost.a==null?'f':'h'):'');}
     else if(a==='ppTitre'){g.sel='titre';g.opt='';g.prec='';g.ov=false;}else if(a==='ppOther'){g.sel='other';g.olab='';g.ocost='';}
     else if(a==='ppBack')g.sel=null;else if(a==='ppOpt')g.opt=d.v;else if(a==='ppOv'){if(G)g.ov=!g.ov;}
     else if(a==='ppBuyOk'){if(!canEditC(S.chars[g.cid]))return false;ppBuyOk(g);return false;}

@@ -167,6 +167,7 @@ function navLabel(){const g=S.dlg;
   if(S.view==='univers'&&typeof FI_G!=='undefined'&&FI_G[S.uni])return FI_G[S.uni].pl;
   if(S.view==='univers'&&S.sec)return 'Secret '+(ROMAN[S.sec-1]||S.sec);
   if(S.view==='univers'&&S.uni==='secrets')return 'Secrets';
+  if(S.view==='univers'&&S.uni==='pouvoirs')return 'Pouvoirs et capacités';
   if(S.view==='univers')return 'Univers';
   return ({home:'Accueil',gains:'XP',team:'Personnages',planning:'Planning',players:'Joueurs',rules:'Règles',params:'Paramètres'})[S.view]||'';}
 function navSnap(){const g=S.dlg&&(S.dlg.kind==='cons'||S.dlg.kind==='pl')?{kind:S.dlg.kind,t:S.dlg.t,id:S.dlg.id,nav:S.dlg.nav}:null;
@@ -227,6 +228,7 @@ function lnkAct(a,d){
     if(b&&!b.disabled)b.click();if(!document.querySelector('#app [role="alert"],#sheetRoot [role="alert"]'))editOff();return true;}
   if(a==='rfEdOn'){if(!canEdit())return true;S.rfBlk=null;S.rfPor=null;S.rfEd=true;S.edDirty=false;S._force=true;render();window.scrollTo(0,0);return true;}
   if(a==='rfEdOff'){rfDiscard();S._force=true;render();return true;}
+  if(a==='consOpen'){const M=d.k==='cap'?S.capacites:S.pouvoirs;if(!M||!M[d.id])return true;S.dlg={kind:'cons',t:d.k==='cap'?'cap':'pw',id:d.id};S._force=true;render();return true;} /* lot 2 bis */
   if(a==='consEdit'){if(!canEdit())return true;const g=S.dlg;if(!g||g.kind!=='cons')return true;const back={...g};S.dlg=elDraft(g.t,g.id);S.dlg.back=back;S.edDirty=false;S._force=true;render();return true;}
   if(a==='secJump'){const el=document.getElementById('seck-'+d.k);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});return true;}
   if(SAVE_ACTS.has(a))setTimeout(()=>{if(!document.querySelector('#app [role="alert"],#sheetRoot [role="alert"]'))S.edDirty=false;},0);

@@ -1,4 +1,4 @@
-/* La belle appli — Pouvoirs et capacités naturelles : catalogues (Paramètres › Pouvoirs, Capacités), sous-types, illustrations, choix des pouvoirs sur la fiche */
+/* La belle appli — Pouvoirs et capacités naturelles : catalogues (Univers › Pouvoirs et capacités depuis le lot 2 bis), sous-types, illustrations, choix des pouvoirs sur la fiche */
 /* ---------- Éditeur d'effets générique (catalogue, emplacement de pouvoir d'une fiche de race) ---------- */
 function fxCtx(k){if(k==='dlg')return S.dlg;if(k==='var')return S.dlg&&S.dlg.vEd;if(k&&k.startsWith('pw:')&&S.rf&&S.rf.pwx)return S.rf.pwx[+k.slice(3)];return null;}
 const fxOkEd=e=>e.t==='rap'?(e.txt||'').trim():e.t==='perm'?e.cible&&+e.val:+e.val;
@@ -43,19 +43,43 @@ const elMissing=(k,id,el)=>el&&el.prec?elRaceNames(elUses(k,id).filter(u=>!u.cho
 const capDiffs=id=>elUses('cap',id).filter(u=>u.e&&!u.e.keep&&(u.e.fx||u.e.d!=null));
 function elVarUses(k,id,vid){const L=elRaceNames(elUses(k,id).filter(u=>u.vid===vid));
   if(k==='pw')for(const c of Object.values(S.chars))if((c.pw||[]).some(o=>o.id===id&&o.v===vid))L.push(c.court);return L;}
-/* ---------- Paramètres › Pouvoirs / Capacités : catalogue ---------- */
+/* ---------- Lot 2 bis (24/11/2026) : catalogue dans Univers › Pouvoirs et capacités ----------
+   Un élément est visible dès qu'il est révélé pour au moins une race ; seules ces races (et leurs sous-types) sont montrées.
+   La gestion hors mode édition voit comme un joueur ; en mode édition, tout le catalogue (non révélé grisé). */
+function elUseSeen(k,u){const x=raceRec(u.cr);if(!x)return false;const e=eyeOf(u.cr,x),mine=myRace(x.sing);if(!(e.fiche||mine))return false;
+  return k==='pw'?!!(e.pw||[])[u.i]&&!pwUnk(x,u.i):(mine||!!e.cap);}
+const elSeenUses=(k,id)=>elUses(k,id).filter(u=>elUseSeen(k,u));
+function uniPwSum(){if(!S.pouvoirsReady&&!S.pouvoirs)return 'chargement…';const n=k=>Object.keys(elMap(k)).filter(id=>canEdit()||elSeenUses(k,id).length).length;
+  return canEdit()?`${n('pw')} pouvoirs · ${n('cap')} capacités`:`${n('pw')} pouvoirs · ${n('cap')} capacités connus`;}
+function viewUniPw(){const k=S.pcat==='cap'?'cap':'pw',pw=k==='pw',E=canEdit();
+  let h=`<div class="seg" role="group" aria-label="Catalogue" style="margin-bottom:10px">${[['pw','Pouvoirs'],['cap','Capacités naturelles']].map(([v,l])=>`<button type="button" data-act="pcat" data-v="${v}" aria-pressed="${k===v}">${l}</button>`).join('')}</div>`;
+  if(E)return h+viewElCat(k);
+  const M=elMap(k),qv=pw?(S.pq||''):(S.cq||''),q=nrm(qv),f=pw?(S.pwf||'all'):'all';
+  const L=Object.entries(M).map(([id,el])=>({id,el,u:elSeenUses(k,id)})).filter(r=>r.u.length)
+    .filter(r=>(!q||nrm(r.el.nom).includes(q)||r.u.some(u=>nrm(raceNm(raceRec(u.cr))).includes(q)))&&(f==='all'||pwCatK(r.el)===f)).sort((a,b)=>a.el.nom.localeCompare(b.el.nom,'fr'));
+  const row=r=>{const el=r.el,meta=[];if(pw){meta.push(CAT_L[pwCatK(el)]);const n=pwNat(r.id);if(n)meta.push(NAT_L[n]);}else if(el.type)meta.push(TYPE_L[el.type]||el.type);
+    const races=[...new Set(r.u.map(u=>raceNm(raceRec(u.cr))))];
+    return `<div class="lrw">${illOf(k,r.id)?illThumb(k,r.id,36):`<span class="illslot" style="width:36px;height:36px"></span>`}<button class="lrow" data-act="consOpen" data-k="${k}" data-id="${esc(r.id)}"><span class="lm"><span class="lt">${esc(el.nom)}</span><span class="ls">${meta.filter(Boolean).map(esc).join(' · ')}${races.length?' · '+races.map(esc).join(' · '):''}</span></span><span class="chev">›</span></button></div>`;};
+  return h+`<div class="card"><h3 class="rs" style="margin-top:0">${pw?'Pouvoirs connus':'Capacités naturelles connues'} <span class="muted small" style="text-transform:none;letter-spacing:0">${Object.keys(M).filter(id=>elSeenUses(k,id).length).length}</span></h3>
+    ${pw?`<div class="seg" style="margin-bottom:8px" role="group" aria-label="Catégorie">${[['all','Tous'],['ordinaire','Ordinaires'],['profond','Profonds'],['legendaire','Légendaires']].map(([v,l])=>`<button data-act="elFilt" data-v="${v}" aria-pressed="${f===v}">${l}</button>`).join('')}</div>`:''}
+    <input type="search" data-pq="${k}" value="${esc(qv)}" placeholder="${pw?'Rechercher un pouvoir, une race…':'Rechercher une capacité, une race…'}" aria-label="${pw?'Rechercher un pouvoir':'Rechercher une capacité'}" style="width:100%;margin-bottom:6px">
+    ${L.map(row).join('')||`<div class="muted small">${q||f!=='all'?'Aucun résultat.':pw?'Aucun pouvoir connu pour l\'instant.':'Aucune capacité connue pour l\'instant.'}</div>`}</div>
+    <div class="muted small" style="margin-top:8px">Seuls les ${pw?'pouvoirs':'capacités'} révélé${pw?'s':'es'} pour au moins une race apparaissent, avec ces races seulement.</div>`;}
+/* ---------- Catalogue complet (gestion en mode édition, Univers › Pouvoirs et capacités) ---------- */
 function viewElCat(k){if(!canEdit())return `<div class="card"><div class="muted">Réservé aux personnes ayant les droits de gestion.</div></div>`;
   const pw=k==='pw',M=elMap(k),qv=pw?(S.pq||''):(S.cq||''),q=nrm(qv),f=pw?(S.pwf||'all'):'all';
-  const L=Object.entries(M).map(([id,el])=>({id,el,u:elUses(k,id)})).filter(r=>(!q||nrm(r.el.nom).includes(q))&&(f==='all'||pwCatK(r.el)===f)).sort((a,b)=>a.el.nom.localeCompare(b.el.nom,'fr'));
+  const vf=S.elVis||'all',L=Object.entries(M).map(([id,el])=>({id,el,u:elUses(k,id)})).filter(r=>(!q||nrm(r.el.nom).includes(q))&&(f==='all'||pwCatK(r.el)===f)&&(vf==='all'||(vf==='rev')===!!elSeenUses(k,r.id).length)).sort((a,b)=>a.el.nom.localeCompare(b.el.nom,'fr'));
   const row=r=>{const el=r.el,nv=(el.var||[]).length,nf=(el.fx||[]).length,miss=elMissing(k,r.id,el),races=elRaceNames(r.u),warn=[];
     const meta=[];if(pw){meta.push(CAT_L[pwCatK(el)]);const n=pwNat(r.id);if(n)meta.push(NAT_L[n]);}if(el.type)meta.push(TYPE_L[el.type]||el.type);
     if(nv)meta.push(nv+' sous-type'+(nv>1?'s':''));else if(nf)meta.push(nf+' effet'+(nf>1?'s':''));
     const todo=[];if(pw&&!pwNat(r.id))todo.push('nature');if(!el.type)todo.push('type');if(todo.length)warn.push(todo.join(' et ')+' à compléter');
     if(miss.length)warn.push('sous-type manquant ('+miss.join(', ')+')');
     if(!pw){const dd=capDiffs(r.id);if(dd.length)warn.push('effets différents selon les races ('+elRaceNames(dd).join(', ')+')');}
-    return `<div class="lrw">${illSlot(k,r.id,el.nom,36)}<button class="lrow" data-act="elEdit" data-k="${k}" data-id="${esc(r.id)}"><span class="lm"><span class="lt">${esc(el.nom)}${sigPicto(pw?'pouvoir':'capacite',r.id)}</span><span class="ls">${meta.map(esc).join(' · ')}${races.length?' · '+races.map(esc).join(' · '):' · <span class="muted">aucune race</span>'}</span>${warn.length?`<span class="ls" style="color:var(--bad)">${warn.map(esc).join(' · ')}</span>`:''}</span><span class="chev">›</span></button></div>`;};
+    const sn=new Set(elSeenUses(k,r.id).map(u=>u.nom)),hid=!sn.size,rl=races.map(n=>sn.has(n)?esc(n):`<s>${esc(n)}</s>`);
+    return `<div class="lrw${hid?' prep':''}">${illSlot(k,r.id,el.nom,36)}<button class="lrow" data-act="elEdit" data-k="${k}" data-id="${esc(r.id)}"><span class="lm"><span class="lt">${esc(el.nom)}${sigPicto(pw?'pouvoir':'capacite',r.id)}${hid?' <span class="prepb">non révélé</span>':''}</span><span class="ls">${meta.map(esc).join(' · ')}${races.length?' · '+rl.join(' · '):' · <span class="muted">aucune race</span>'}</span>${warn.length?`<span class="ls" style="color:var(--bad)">${warn.map(esc).join(' · ')}</span>`:''}</span><span class="chev">›</span></button></div>`;};
   return `<div class="card"><h3 class="rs" style="margin-top:0">${pw?'Catalogue des pouvoirs':'Capacités naturelles'} <span class="muted small" style="text-transform:none;letter-spacing:0">${Object.keys(M).length}</span></h3>
     ${pw?`<div class="seg" style="margin-bottom:8px" role="group" aria-label="Catégorie">${[['all','Tous'],['ordinaire','Ordinaires'],['profond','Profonds'],['legendaire','Légendaires']].map(([v,l])=>`<button data-act="elFilt" data-v="${v}" aria-pressed="${f===v}">${l}</button>`).join('')}</div>`:''}
+    <div class="seg sm" style="margin-bottom:8px" role="group" aria-label="Visibilité">${[['all','Tous'],['rev','Révélés'],['prep','Non révélés']].map(([v,l])=>`<button data-act="elVis" data-v="${v}" aria-pressed="${vf===v}">${l}</button>`).join('')}</div>
     <input type="search" data-pq="${k}" value="${esc(qv)}" placeholder="${pw?'Rechercher un pouvoir…':'Rechercher une capacité…'}" aria-label="${pw?'Rechercher un pouvoir':'Rechercher une capacité'}" style="width:100%;margin-bottom:6px">
     ${L.map(row).join('')||`<div class="muted small">${pw?'Aucun pouvoir.':'Aucune capacité.'}</div>`}
     <div class="actions" style="margin-top:10px"><button class="btn" data-act="elEdit" data-k="${k}" data-id="">${pw?'+ Nouveau pouvoir':'+ Nouvelle capacité'}</button></div></div>
@@ -105,9 +129,10 @@ function elVarEditor(g){const v=g.vEd,us=v.i>=0&&g.id?elVarUses(g.k,g.id,g.var[v
     ${v.i>=0?`<div class="muted small">Utilisé par : ${us.length?us.map(esc).join(', '):'aucune race'}</div>`:''}
     ${v.err?`<div class="pinerr">${esc(v.err)}</div>`:''}
     <div class="actions" style="margin-top:8px">${v.i>=0?(us.length?`<span class="muted small" style="margin-right:auto">Supprimer : impossible tant qu'il est utilisé</span>`:`<button class="lnk-bad" style="margin-right:auto" data-act="elVDel">Supprimer</button>`):''}<button class="btn ghost" data-act="elVCancel">Annuler</button><button class="btn pri" data-act="elVOk">Valider</button></div></div>`;}
-const EL_ACTS=new Set(['elEdit','elSeg','elPrec','elVNew','elVEdit','elVCancel','elVOk','elVDel','elHz','elSave','elDel','elDelOk','elFilt']);
+const EL_ACTS=new Set(['elVis','elEdit','elSeg','elPrec','elVNew','elVEdit','elVCancel','elVOk','elVDel','elHz','elSave','elDel','elDelOk','elFilt']);
 function elAct(a,d){const g=S.dlg;
   if(a==='elFilt'){S.pwf=d.v;return;}
+  if(a==='elVis'){S.elVis=d.v;return;}
   if(a==='elEdit'){S.confirm=null;S.dlg=elDraft(d.k,d.id||null);return;}
   if(!g||g.kind!=='elEdit')return false;
   if(a==='elSeg'){g[d.f]=g[d.f]===d.v&&d.f!=='cat'?'':d.v;g.err='';}
@@ -171,21 +196,22 @@ function consSheet(g){const pw=g.t==='pw',el=elFull(elMap(g.t)[g.id]||{});if(!el
   const RL={act:'Activation',cib:'Cible',dur:'Durée',por:'Portée',zon:"Zone d'effet",res:'Résistance'},rules=(pw?EL_FIELDS:EL_FIELDS.filter(f=>f!=='act')).filter(f=>(el[f]||'').trim());
   const tags=[];if(pw){tags.push(CAT_L[pwCatK(el)]);const n=pwNat(g.id);if(n)tags.push(NAT_L[n]);}else tags.push('Capacité naturelle');if(el.type)tags.push(TYPE_L[el.type]||el.type);
   /* races qui l'utilisent : seulement celles (et les emplacements) que la personne voit */
-  const uses=elUses(g.t,g.id).filter(u=>{const x=raceRec(u.cr);if(!raceVisible(u.cr,x))return false;return pw?pwVisible(u.cr,x,u.i)&&(isGest()||!pwUnk(x,u.i)):blockVisible(u.cr,x,'cap');});
+  const E=canEdit(),uses=elUses(g.t,g.id).map(u=>({...u,seen:elUseSeen(g.t,u)})).filter(u=>E||u.seen);
   const vn=(u)=>{const v=u.vid&&varOf(el,u.vid);return v?v.nom:(u.vnom||'');};
   const where=u=>pw?(PW_LAB[u.i]||'').toLowerCase()+(u.i<6?' '+(u.i<4?u.i+1:u.i-3):''):u.choix?'choix définitif':'';
   const seenVar=new Set(uses.map(u=>u.vid).filter(Boolean));
-  const vars=(el.var||[]).filter(v=>isGest()||seenVar.has(v.id));
+  const vars=(el.var||[]).filter(v=>E||seenVar.has(v.id)),seenV=new Set(uses.filter(u=>u.seen).map(u=>u.vid).filter(Boolean));
   const fxL=L=>(L||[]).length?`<div class="fxl">${L.map(e=>fxChip(e)).join('')}</div>`:'';
   const nav=S.nav.length&&g.nav;
   let h=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet cons" role="dialog" aria-modal="true" aria-label="${esc(el.nom)}"><div class="in">
     ${nav?`<div style="margin-bottom:6px"><button type="button" class="navback" data-act="navBack"><span aria-hidden="true">‹</span> Retour</button></div>`:''}
-    <div class="shd"><h2 class="rhd" style="margin:0">${illThumb(pw?'pw':'cap',g.id,56)}<span>${esc(el.nom)}</span></h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>
+    <div class="shd"><h2 class="rhd" style="margin:0"><span>${esc(el.nom)}</span></h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>
+    ${illOf(pw?'pw':'cap',g.id)?`<div class="fibigw">${bigImg(illId(pw?'pw':'cap',g.id),illOf(pw?'pw':'cap',g.id),el.nom)}</div>`:''}
     <div class="tg3">${tags.map(t=>`<span>${esc(t)}</span>`).join('')}</div>
     ${el.desc?`<div class="small" style="white-space:pre-line">${esc(el.desc)}</div>`:''}
     ${rules.length?`<div class="rg2">${rules.map(f=>`<div><small>${RL[f]}</small>${esc(el[f])}</div>`).join('')}</div>`:''}
     ${(el.fx||[]).length?`<div class="lab2">Effets${vars.length?' communs':''}</div>${fxL(el.fx)}`:''}
-    ${vars.length?`<div class="lab2">Sous-types</div>${vars.map(v=>`<div class="fi"><b>${esc(v.nom)}</b>${fxL(v.fx)}</div>`).join('')}`:''}
-    <div class="lab2">Races qui ${pw?'l\'utilisent':'la possèdent'}</div>${uses.length?uses.map(u=>`<div class="lkr"><span>${lk({t:'race',id:u.cr.id},raceNm(raceRec(u.cr)))}${vn(u)?' <span class="muted">('+esc(vn(u))+')</span>':''}</span><span class="muted small">${esc(where(u))}</span></div>`).join(''):'<div class="muted small">Aucune race connue.</div>'}
+    ${vars.length?`<div class="lab2">Sous-types</div>${vars.map(v=>`<div class="fi${E&&!seenV.has(v.id)?' prep':''}"><b>${esc(v.nom)}</b>${E&&!seenV.has(v.id)?' <span class="prepb">non révélé</span>':''}${fxL(v.fx)}</div>`).join('')}`:''}
+    <div class="lab2">Races qui ${pw?'l\'utilisent':'la possèdent'}</div>${uses.length?uses.map(u=>`<div class="lkr${u.seen?'':' prep'}"><span>${lk({t:'race',id:u.cr.id},raceNm(raceRec(u.cr)))}${vn(u)?' <span class="muted">('+esc(vn(u))+')</span>':''}</span><span class="muted small">${u.seen?'':'<span class="prepb">non révélé</span> '}${esc(where(u))}</span></div>`).join(''):'<div class="muted small">Aucune race connue.</div>'}
     <div class="actions" style="margin-top:12px">${canEdit()?`<button class="btn" data-act="consEdit">${ICON.crayon} Modifier</button>`:''}<button class="btn pri" data-act="closeSheet">Fermer</button></div></div></div>`;
   return h;}
