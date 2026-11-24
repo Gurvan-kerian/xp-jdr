@@ -1,12 +1,19 @@
 /* La belle appli — accueil, « Qui es-tu ? », notifications, fenêtres et rendu */
 /* ---------- Accueil ---------- */
 function viewHome(){
-  const V=validDates()[0],np=openProps().length;
-  const tile=(v,ic,l)=>`<button class="htile" data-act="tab" data-v="${v}"><span class="hic">${ICON[ic]}</span><span class="hl">${l}</span></button>`;
-  return `<div class="home-in"><button class="htile hplan" data-act="tab" data-v="planning" data-pv="com"><span class="hic" style="position:relative">${ICON.calp}${unseenProps()?`<span class="bdg">${unseenProps()}</span>`:''}</span><span class="ht"><span class="hl">Planning</span><span class="muted small">${V?'Prochaine partie validée':'Prochaine partie'}</span><b>${V?dLine(V):'Aucune partie validée'}</b>${V?`<span class="muted small">${esc(V.type||'Scénario')}${np?' · '+np+' date'+(np>1?'s':'')+' proposée'+(np>1?'s':'')+' en attente':''}</span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''} en attente</span>`:''}</span></button>
-  <div class="hgrid">${tile('gains','medaille','XP')}${tile('team','masque','Personnages')}${tile('univers','livre','Univers')}</div>
-  <div class="card hmsg">La belle appli est une application pour aider la gestion des éléments ludiques des Héritiers. Elle vient en complément des éléments de lore présents sur le <a href="${KANKA_URL}" target="_blank" rel="noopener">Kanka</a>, qui reste la référence pour le contenu de nos belles aventures.</div>
-  <div class="hlinks"><button class="btn ghost" data-act="tab" data-v="players">Joueurs</button><button class="btn ghost" data-act="tab" data-v="rules">Règles</button><button class="btn ghost" data-act="tab" data-v="params">Paramètres</button></div></div>`;
+  const V=validDates()[0],np=openProps().length,nb=unseenProps();
+  /* Lot 3 (24/11/2026) : variante « Deux horloges » : le temps du jeu et le temps réel, puis Univers, Personnages, XP */
+  const hb=typeof chHomeBits==='function'?chHomeBits():null;
+  const game=hb?`<button class="hban hgame" data-act="chHome"><span class="hic">${ICON.sablier}</span><span class="ht"><span class="hlab">Dans le jeu</span><b>${esc(chDateTxt(hb.now).replace(/^./,x=>x.toUpperCase()))}</b>${hb.B.length?`<span class="muted small">${esc(hb.B.join(' · '))}</span>`:''}</span></button>`:'';
+  const plan=`<button class="hban hplan2" data-act="tab" data-v="planning" data-pv="com"><span class="hic" style="position:relative">${ICON.calp}${nb?`<span class="bdg">${nb}</span>`:''}</span><span class="ht"><span class="hlab">${V?'Prochaine partie validée':'Prochaine partie'}</span><b>${V?dLine(V):'Aucune partie validée'}</b>${V?`<span class="muted small">${esc(V.type||'Scénario')}${np?' · '+np+' date'+(np>1?'s':'')+' proposée'+(np>1?'s':'')+' en attente':''}</span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''} en attente</span>`:''}</span></button>`;
+  const ns=propBadge(),last=typeof chLast==='function'?chLast():null;
+  const vc=ids().map(i=>S.chars[i]).filter(c=>actif(c)),npj=vc.filter(c=>c.type==='PJ').length,npnj=vc.filter(c=>c.type==='PNJ').length;
+  const mine=ME?pjIds().map(i=>S.chars[i]).find(c=>actif(c)&&owners(c).some(p=>p.id===ME)):null,sl=sessList()[0];
+  const tile=(v,ic,l,lines,bdg)=>`<button class="htile2" data-act="tab" data-v="${v}"><span class="hic">${ICON[ic]}</span><span class="ht"><span class="hnm">${l}${bdg?` <span class="bdg">${bdg}</span>`:''}</span>${lines.filter(Boolean).map(x=>`<span class="muted small">${esc(x)}</span>`).join('')}</span></button>`;
+  return `<div class="home-in">
+  <div class="hbans${game?'':' one'}">${game}${plan}</div>
+  <div class="htiles">${tile('univers','livre','Univers',[last?'Dernier : '+chEvLab(last):'Chronique · Secrets · Races · Lieux…'],ns)}${tile('team','masque','Personnages',[npj+' PJ · '+npnj+' PNJ','Fiches, relations, journaux'])}${tile('gains','medaille','XP',[mine?(mine.court||mine.nom)+' : '+summary(mine,S.events).dispo+' XP à dépenser':'Journal d\'XP',sl&&sl.date?'Dernière session : '+fmtDate(sl.date):''])}</div>
+  <div class="hfoot"><p>La belle appli aide à gérer les éléments ludiques des Héritiers, en complément du <a href="${KANKA_URL}" target="_blank" rel="noopener">Kanka</a>, qui reste la référence pour le contenu de nos belles aventures.</p><div class="hlinks2"><button class="lk" data-act="tab" data-v="players">Joueurs</button><button class="lk" data-act="tab" data-v="rules">Règles</button><button class="lk" data-act="tab" data-v="params">Paramètres</button></div></div></div>`;
 }
 /* ---------- Qui es-tu ? ---------- */
 function whoGate(){return idGate();
@@ -186,10 +193,10 @@ function render(){
   const cur=k=>S.view===k||(k==='team'&&S.view==='sheet');
   if(S.edit&&(!isGest()||S.visit)){S.edit=false;S.rfEd=false;S.edQuit=false;}
   if(S.view==='params'&&!canEdit())S.view='home'; /* lot 4 bis : Paramètres seulement en mode édition */
-  const tabs=[['gains','XP'],['team','Personnages'],['univers','Univers'],['planning','Planning'],['players','Joueurs'],['rules','Règles'],['params','Paramètres']].filter(t=>t[0]!=='params'||canEdit());
+  const tabs=[['univers','Univers'],['team','Personnages'],['gains','XP'],['planning','Planning'],['players','Joueurs'],['rules','Règles'],['params','Paramètres']].filter(t=>t[0]!=='params'||canEdit());
   const nb=unseenProps(),ns=propBadge(),bdg=k=>k==='planning'&&nb?`<span class="bdg" aria-label="${nb} date${nb>1?'s':''} proposée${nb>1?'s':''} sans réponse">${nb}</span>`:k==='univers'&&ns?`<span class="bdg" aria-label="${ns} proposition${ns>1?'s':''} de découverte en attente">${ns}</span>`:'';
   document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${l}${bdg(k)}</button>`).join('');
-  const bn=[['gains','XP','medaille'],['team','Personnages','masque'],['univers','Univers','livre'],['planning','Planning','calp']];
+  const bn=[['univers','Univers','livre'],['team','Personnages','masque'],['gains','XP','medaille'],['planning','Planning','calp']]; /* lot 3 : nouvel ordre */
   const inMenu=S.view==='players'||S.view==='rules'||S.view==='params';
   document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}" style="position:relative">${ICON[ic]}<span>${l}</span>${bdg(k)}</button>`).join('')+
     `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles, Paramètres" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
@@ -205,7 +212,7 @@ function render(){
   app.innerHTML=idBanners()+socleBanner()+(canEdit()?`<div class="edband" role="status">${ICON.crayon}<span>Mode édition actif : les modifications sont enregistrées pour toute la table</span></div>`:'')+navBar()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():viewRules());
   renderSheet();
   {let q=document.getElementById('edqRoot');if(!q){q=document.createElement('div');q.id='edqRoot';document.body.appendChild(q);}const qh=S.edQuit?edQuitSheet():'';if(q.innerHTML!==qh)q.innerHTML=qh;}
-  if(S.secHl){const k=S.secHl.k,el=document.getElementById(k==='titre'||k==='bonus'?'seck-titre':'secel-'+k+'-'+S.secHl.i)||document.getElementById('seck-'+k);if(el){el.classList.add('hl');requestAnimationFrame(()=>el.scrollIntoView({block:'center'}));}}
+  if(S.secHl){const k=S.secHl.k,el=document.getElementById(k==='titre'||k==='bonus'?'seck-titre':'secel-'+k+'-'+S.secHl.i)||document.getElementById('seck-'+k);if(el){el.classList.add('hlx');requestAnimationFrame(()=>el.scrollIntoView({block:'center'}));}}
   const w=whoGate();let wr=document.getElementById('whoRoot');if(!wr){wr=document.createElement('div');wr.id='whoRoot';document.body.appendChild(wr);}if(wr.innerHTML!==w)wr.innerHTML=w;
 }
 

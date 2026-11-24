@@ -8,4 +8,7 @@
 - `lot2bis.test.js` (24/11/2026) : sur des données déjà en version 2 (export Supabase converti au format coll/id → data) : Univers › Pouvoirs et capacités (visibilité joueur, gestion hors et en mode édition, fiches, Paramètres sans l'entrée), image entière et visionneur sur les fiches de race et de pouvoir, illustration masquée / démasquée des PJ, PNJ à illustration unique, filtre « Achetables » des PP.
   `node tests/lot2bis.test.js chemin/vers/donnees-v2.json`
 
+- `lot3.test.js` (24/11/2026) : calculs (jours de la semaine, lune, solstices et équinoxes, âges, numéros de session) puis, dans le navigateur, sur des données en version 2 : accueil « Deux horloges » et ordre des onglets, date du jeu, événement créé par un joueur, résumé, liste et vue mois, filtre par PJ, Feuilleton, agenda et droits de son auteur, fêtes, âge et anniversaire, rattachements des sessions.
+  `node tests/lot3.test.js chemin/vers/donnees-v2.json`
+
 Installation : `npm install` puis `npx playwright install chromium`, puis `npm test`.

@@ -9,7 +9,7 @@ S.fiches={};S.fichesReady=false;if(S.fi===undefined)S.fi=null;S.fiQ='';S.fiTy=''
 
 const FI_SVG=(p,sz)=>`<svg width="${sz||18}" height="${sz||18}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
 const FI_IC={
-  chron:'<path d="M7 3h10M7 21h10"/><path d="M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/>',
+  chron:'<path d="M5 3h14M5 21h14"/><path d="M6.5 3c0 4.5 2.2 6.6 4.4 8.3.6.4.6 1 0 1.4C8.7 14.4 6.5 16.5 6.5 21M17.5 3c0 4.5-2.2 6.6-4.4 8.3-.6.4-.6 1 0 1.4 2.2 1.7 4.4 3.8 4.4 8.3"/><path d="M9.2 19.2c.9-1.6 1.9-2.4 2.8-2.4s1.9.8 2.8 2.4z"/>', /* lot 3 : sablier, même trait que les autres pictos */
   secrets:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/>',
   races:'<path d="M12 6.5C9.5 4.8 6.5 4.3 3 4.7V18c3.5-.4 6.5.1 9 1.8 2.5-1.7 5.5-2.2 9-1.8V4.7c-3.5-.4-6.5.1-9 1.8z"/><path d="M12 6.5v13.3"/>',
   pnj:'<path d="M4 5c5 1.6 11 1.6 16 0v6.5c0 5-3.6 8.5-8 8.5s-8-3.5-8-8.5z"/><path d="M7.5 10.5c.8-.8 2-.8 2.8 0M13.7 10.5c.8-.8 2-.8 2.8 0"/><path d="M9 14.5c1.7 1.6 4.3 1.6 6 0"/>',
@@ -100,18 +100,20 @@ function fiSugList(q){const n=nrm(q),out=[],G=isGest();
   for(const c of Object.values(S.chars))if(vis(c))add('perso',c.id,c.court||c.nom,c.type==='PJ'?'PJ':'PNJ');
   for(const cr of raceCres()){const x=raceRec(cr);if(raceVisible(cr,x))add('race',cr.id,raceNm(x),'Race');}
   for(const s of S.secrets||[]){const r=ROMAN[s.n-1]||s.n,tt=titreVis(s)||(G&&s.titre);add('secret',String(s.n),'Secret '+r+(tt?' - '+s.titre:''),'Secret',G&&!!s.titre&&!titreVis(s));}
-  for(const f of fiAll())if(fiSee(f))add('fiche',f.id,f.nom,f.type||FI_G[f.genre].un,f.vis!=='rev');
+  for(const f of fiAll())if(fiSee(f)&&f.genre!=='agenda')add('fiche',f.id,f.genre==='evenement'?((f.num||'').trim()?f.num.trim()+' ':'')+f.nom:f.nom,f.genre==='evenement'?(f.type||'Événement'):(f.type||(FI_G[f.genre]||{}).un||'fiche'),f.vis!=='rev'); /* lot 3 : événements proposés, agenda exclu */
   return out.sort((a,b)=>a.st-b.st||a.nom.localeCompare(b.nom,'fr',{sensitivity:'base'})).slice(0,8);}
 
 /* ---------- Mentions : liens « @ » et rattachements, filtrés selon ce que la personne peut lire ---------- */
 const FI_MGRP=['Événements','Journaux et quêtes','Fiches','Personnages'];
 function fiMentions(t,id){const out=[];
-  for(const F of fiAll()){if(t==='fiche'&&F.id===id)continue;if(!fiSee(F))continue;const hits=[];
-    if(fiHas(F.desc,t,id)&&fiBlkSee(F,'desc'))hits.push('Description');
+  for(const F of fiAll()){if(t==='fiche'&&F.id===id)continue;if(!fiSee(F))continue;const hits=[],ev=F.genre==='evenement'||F.genre==='agenda';
+    if(ev&&t==='perso'&&(F.pj||[]).includes(id))hits.push('PJ impliqué'); /* lot 3 : événements et agenda */
+    if(ev&&fiHas(F.lieux,t,id))hits.push('Lieux');
+    if(fiHas(F.desc,t,id)&&fiBlkSee(F,'desc'))hits.push(F.genre==='evenement'?'Résumé':F.genre==='agenda'?'Note':'Description');
     if((F.sait||[]).some(it=>fiHas(it.txt,t,id)&&fiItSee(F,it)))hits.push("Ce que l'on sait");
     if(isGest()&&fiHas(F.notes,t,id))hits.push('Notes MJ');
-    if(t==='fiche'&&F.parent===id)hits.push(FI_G[F.genre].sub||'fiche contenue');
-    if(hits.length)out.push({grp:'Fiches',o:{t:'fiche',id:F.id},nom:F.nom,prec:hits.join(', '),d:F.dj||F.modif||F.cree||''});}
+    if(t==='fiche'&&F.parent===id)hits.push((FI_G[F.genre]||{}).sub||'fiche contenue');
+    if(hits.length)out.push({grp:ev?'Événements':'Fiches',o:{t:'fiche',id:F.id},nom:F.genre==='evenement'&&(F.num||'').trim()?F.num.trim()+' '+F.nom:F.nom,prec:hits.join(', '),d:ev&&F.debut&&F.debut.a?jrDjIso(F.debut):(F.dj||F.modif||F.cree||'')});}
   /* lot 2 : descriptions et entrées des journaux et quêtes que la personne peut lire */
   for(const J of jrAll()){if(!jrCanRead(J))continue;const h=jrHost(J),nm=(h?(h.court||h.nom)+' › ':'')+J.nom;
     if(fiHas(J.desc,t,id))out.push({grp:'Journaux et quêtes',o:{t:'jour',id:J.id},nom:nm,prec:'description',d:J.cree||''});
@@ -132,9 +134,11 @@ function fiUniHome(){const G=isGest(),pl=(n,s,p)=>n+' '+(n>1?p:s);
   const row=(act,v,ic,l,sum,bdg)=>`<button type="button" class="pli" data-act="${act}" data-v="${v}"><span class="pic">${FI_SVG(FI_IC[ic])}</span><span class="ptx"><b>${l}${bdg?` <span class="bdg" aria-label="${bdg} en attente">${bdg}</span>`:''}</b><small>${esc(sum)}</small></span><span aria-hidden="true" class="pch">›</span></button>`;
   const grp=(t,rows)=>`<div class="pgrp">${t}</div><div class="plst">${rows.join('')}</div>`;
   return `<h2 style="margin-top:4px">Univers</h2>`
-    +grp('Récit',[row('uni','secrets','secrets','Secrets',sec,np)])
+    +grp('Récit',[row('uni','chron','chron','Chronique',chUniSum()),row('uni','secrets','secrets','Secrets',sec,np)]) /* lot 3 */
     +grp('Peuples',[row('uni','creatures','races','Races',rac),row('uni','pouvoirs','pouvoirs','Pouvoirs et capacités',uniPwSum()),row('tab','team','pnj','PNJ',pl(npnj,'PNJ','PNJ')+' · page Personnages'),row('uni','famille','famille','Familles',cnt('famille')),row('uni','org','org','Organisations',cnt('org'))])
     +grp('Lieux et choses',[row('uni','lieu','lieu','Lieux',cnt('lieu')),row('uni','objet','objet','Objets',cnt('objet'))]);}
+/* lot 3 : résumé de l'entrée Chronique */
+function chUniSum(){if(!S.fichesReady)return 'chargement…';const n=chEvs().length,d=chNow();return (n?n+' événement'+(n>1?'s':''):'aucun événement pour l\'instant')+(d?' · '+chDateTxt(d):'');}
 const fiUniBack=()=>`<button class="back" data-act="uni" data-v="home">${FI_BACK}Univers</button>`;
 
 /* ---------- Liste d'un genre : recherche, filtre par type, arborescence ---------- */
@@ -216,6 +220,7 @@ function fiTypeField(g,val){const T=fiTypes(g,isGest()),v=(val||'').trim(),known
   return `<div class="field"><label for="fiTy">Type</label><input id="fiTy" type="text" list="fiTyL" data-fin="type" value="${esc(val||'')}" autocomplete="off"><datalist id="fiTyL">${T.map(t=>`<option value="${esc(t[0])}">`).join('')}</datalist><div class="muted small" id="fiTyN"${known?' hidden':''}>Nouveau type : il s'ajoutera à la liste de valeurs.</div></div>`;}
 function fiSheet(g){
   if(/^jr/.test(g.kind))return jrSheet(g); /* lot 2 */
+  if(/^ch/.test(g.kind))return chSheet(g); /* lot 3 */
   if(g.kind==='fiNew'){const Gm=FI_G[g.genre];if(!Gm||!fiCanNew())return null;
     return fiShell(g,Gm.nv,`<h2>${Gm.nv}</h2>
       <div class="field"><label for="fiNm">Nom</label><input id="fiNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
@@ -343,7 +348,8 @@ document.addEventListener('focusout',ev=>{if(ev.target&&ev.target.id==='fiEd')se
 /* ---------- Clics ---------- */
 function fiAct(a,d){
   if(/^jr[A-Z]/.test(a))return jrAct(a,d); /* lot 2 : journaux et quêtes */
-  if(a==='uni'){S.uni=d.v||'home';S.sec=null;S.rf=null;S.fi=null;S.fiQ='';S.fiTy='';window.scrollTo(0,0);render();return true;}
+  if(/^ch[A-Z]/.test(a))return chAct(a,d); /* lot 3 : chronique et calendrier */
+  if(a==='uni'){S.uni=d.v||'home';S.chPage=null;S.sec=null;S.rf=null;S.fi=null;S.fiQ='';S.fiTy='';window.scrollTo(0,0);render();return true;}
   if(a==='fiOpen'){const f=S.fiches[d.id];if(!fiSee(f))return true;S.fi=f.id;S.uni=f.genre;window.scrollTo(0,0);render();return true;}
   if(a==='fiBack'){if(S.nav.length){navBack();return true;}S.fi=null;window.scrollTo(0,0);render();return true;}
   if(a==='fiFold'){S.fiFold={...S.fiFold,[d.k]:!fiFolded(d.k)};render();return true;}
@@ -446,7 +452,8 @@ function jrCard(c,j){const n=(j.ent||[]).length,q=j.genre==='quete';
 function jrView(c){const L=jrOf(c),E=canEditC(c),open=S.jrOpen&&L.find(j=>j.id===S.jrOpen);
   if(open)return jrOpenView(c,open);
   const Q=L.filter(j=>j.genre==='quete'),J=L.filter(j=>j.genre==='journal').sort(jrByNom),sel=S.jrSel||(Q.length?'q':'j'),who=esc(c.court||c.nom);
-  let h=`<div class="seg jrsel" role="group" aria-label="Quêtes ou journaux">${[['q','Quêtes'],['j','Journaux']].map(([k,l])=>`<button type="button" data-act="jrSel" data-v="${k}" aria-pressed="${sel===k}">${l}</button>`).join('')}</div>`;
+  let h=`<div class="seg jrsel" role="group" aria-label="Quêtes, journaux ou feuilleton">${[['q','Quêtes'],['j','Journaux'],['f','Feuilleton']].map(([k,l])=>`<button type="button" data-act="jrSel" data-v="${k}" aria-pressed="${sel===k}">${l}</button>`).join('')}</div>`;
+  if(sel==='f')return h+chFeuil(c); /* lot 3 : événements vécus par le personnage */
   if(sel==='q')h+=cBlk('jr-q','Quêtes de '+who,Q.length?String(Q.length):'',Q.length?['cours','fin','aband'].map(s=>{const G=Q.filter(j=>(j.statut||'cours')===s).sort(jrByNom);return `<div class="jrgh">${JR_STG[s]}</div>`+(G.map(j=>jrCard(c,j)).join('')||shNone);}).join(''):'<div class="muted small">Aucune quête.</div>',
     E?`<button type="button" class="addl" data-act="jrNew" data-g="quete">+ Nouvelle quête</button>`:'');
   else h+=cBlk('jr-j','Journaux de '+who,J.length?String(J.length):'',J.map(j=>jrCard(c,j)).join('')||'<div class="muted small">Aucun journal.</div>',
@@ -456,7 +463,7 @@ function jrView(c){const L=jrOf(c),E=canEditC(c),open=S.jrOpen&&L.find(j=>j.id==
 function jrEntHtml(c,j,e,hl){const meta=[jrDjTxt(e.dj)],au=(e.auteur||'').trim(),pc=e.pc&&S.chars[e.pc];
   if(au)meta.push('auteur : '+au);else if(j.type==='groupe'&&pc)meta.push('par '+(pc.court||pc.nom));
   if(e.ecrit)meta.push('écrite le '+fmtDate(e.ecrit));const m=meta.filter(Boolean).join(' · ');
-  return `<div class="jrent${hl?' hl':''}" id="jre-${esc(e.id)}"><div class="eh"><span class="en">${esc(e.nom||'Entrée')}</span>${jrEntEd(j,e)?`<button type="button" class="ibtn" data-act="jrEnt" data-j="${esc(j.id)}" data-e="${esc(e.id)}" aria-label="Modifier l'entrée ${esc(e.nom||'')}">✎</button>`:''}</div>${m?`<div class="em">${esc(m)}</div>`:''}${e.txt?fiRich(e.txt):''}</div>`;}
+  return `<div class="jrent${hl?' hlx':''}" id="jre-${esc(e.id)}"><div class="eh"><span class="en">${esc(e.nom||'Entrée')}</span>${jrEntEd(j,e)?`<button type="button" class="ibtn" data-act="jrEnt" data-j="${esc(j.id)}" data-e="${esc(e.id)}" aria-label="Modifier l'entrée ${esc(e.nom||'')}">✎</button>`:''}</div>${m?`<div class="em">${esc(m)}</div>`:''}${e.txt?fiRich(e.txt):''}</div>`;}
 function jrOpenView(c,j){const q=j.genre==='quete',E=jrCanEd(j),k='jr-'+j.id,st=j.statut||'cours';
   const P=q&&j.type==='groupe'?`<div class="jrparts">${jrParts(j).map(id=>S.chars[id]).filter(Boolean).map(x=>`<span class="jrpc${x.id===c.id?' me':''}">${lk({t:'perso',id:x.id},x.court||x.nom)}</span>`).join('')}</div>`:'';
   let h=`<div style="margin-bottom:8px"><button type="button" class="btn ghost" data-act="jrBack">‹ ${q?'Quêtes':'Journaux'}</button></div>`;
@@ -518,7 +525,7 @@ function jrSheet(g){const c=S.chars[g.cid];if(!c)return null;
 
 /* ---------- Clics ---------- */
 function jrAct(a,d){
-  if(a==='jrSel'){S.jrSel=d.v==='q'?'q':'j';S.jrOpen=null;render();return true;}
+  if(a==='jrSel'){S.jrSel=d.v==='q'?'q':d.v==='f'?'f':'j';S.jrOpen=null;render();return true;}
   if(a==='jrOpen'){S.jrOpen=d.j;window.scrollTo(0,0);render();return true;}
   if(a==='jrBack'){S.jrOpen=null;render();return true;}
   if(a==='jrGo'){const j=S.jour&&S.jour[d.j];if(!jrCanRead(j))return true;S.shTab='jour';S.jrSel='q';S.jrOpen=j.id;window.scrollTo(0,0);render();return true;}

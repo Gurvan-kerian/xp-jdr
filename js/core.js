@@ -168,6 +168,7 @@ function navLabel(){const g=S.dlg;
   if(S.view==='univers'&&S.sec)return 'Secret '+(ROMAN[S.sec-1]||S.sec);
   if(S.view==='univers'&&S.uni==='secrets')return 'Secrets';
   if(S.view==='univers'&&S.uni==='pouvoirs')return 'Pouvoirs et capacités';
+  if(S.view==='univers'&&S.uni==='chron')return S.chPage==='fetes'?'Fêtes':'Chronique'; /* lot 3 */
   if(S.view==='univers')return 'Univers';
   return ({home:'Accueil',gains:'XP',team:'Personnages',planning:'Planning',players:'Joueurs',rules:'Règles',params:'Paramètres'})[S.view]||'';}
 function navSnap(){const g=S.dlg&&(S.dlg.kind==='cons'||S.dlg.kind==='pl')?{kind:S.dlg.kind,t:S.dlg.t,id:S.dlg.id,nav:S.dlg.nav}:null;

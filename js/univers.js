@@ -1,6 +1,7 @@
 /* La belle appli — Univers : secrets et créatures */
 /* ---------- Univers › Secrets ---------- */
 const ICON={
+  sablier:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14M5 21h14"/><path d="M6.5 3c0 4.5 2.2 6.6 4.4 8.3.6.4.6 1 0 1.4C8.7 14.4 6.5 16.5 6.5 21M17.5 3c0 4.5-2.2 6.6-4.4 8.3-.6.4-.6 1 0 1.4 2.2 1.7 4.4 3.8 4.4 8.3"/><path d="M9.2 19.2c.9-1.6 1.9-2.4 2.8-2.4s1.9.8 2.8 2.4z"/></svg>', /* lot 3 : date du jeu */
   crayon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
   ref:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/><path d="M12 13h6M12 16h6"/></svg>',
   xp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>',
@@ -42,6 +43,7 @@ function viewUnivers(){
   /* Lot 1 (23/11/2026) : accueil de l'Univers en liste groupée ; les genres de fiche ont leur liste et leur fiche */
   if(!S.uni||S.uni==='home')return fiUniHome();
   if(FI_G[S.uni])return fiUniView();
+  if(S.uni==='chron'||S.uni==='evenement'||S.uni==='agenda')return chUniView(); /* lot 3 */
   if(S.uni==='pouvoirs')return fiUniBack()+`<h2 style="margin-top:2px">Pouvoirs et capacités</h2>`+viewUniPw(); /* lot 2 bis */
   if(S.uni==='creatures')return (S.rf?'':fiUniBack()+`<h2 style="margin-top:2px">Races</h2>`)+viewRaces();
   if(!S.secretsReady)return fiUniBack()+`<div class="card empty">Chargement des secrets…</div>`;

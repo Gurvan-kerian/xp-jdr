@@ -37,6 +37,7 @@ function start(){
     },()=>{});
     db.collection('journaux').onSnapshot(snap=>{if(snap.metadata.hasPendingWrites)return;const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=x;});S.jour=m;S.jourReady=true;afterLoad();},()=>{}); /* lot 2 : une ligne par journal ou quête */
     on('meta/relations',x=>{S.relp=x||{};});
+    on('meta/calendrier',x=>{S.cal=x||null;S.calReady=true;}); /* lot 3 : date du jeu et fêtes */
     db.collection('fiches').onSnapshot(snap=>{if(snap.metadata.hasPendingWrites)return;const m={};snap.docs.forEach(d=>{const x=d.data();if(x)m[d.id]=x;});S.fiches=m;S.fichesReady=true;render();},()=>{}); /* lot 1 */
     on('gains/all',x=>{S.events=(x&&x.events)||[];S.eventsReady=true;});
   }).catch(()=>{setSync('local');S.ready=true;render();});
