@@ -309,15 +309,19 @@ function fiAtCheck(){const s=window.getSelection();if(!s||!s.rangeCount||!s.isCo
   const r=s.getRangeAt(0),n=r.startContainer;if(n.nodeType!==3||!n.parentNode||!n.parentNode.closest||!n.parentNode.closest('#fiEd')){fiAtClose();return;}
   const before=n.nodeValue.slice(0,r.startOffset),m=before.match(/(?:^|[\s(«"' ])@([^@\n]{0,30})$/);
   if(!m||/\s{2}/.test(m[1])){fiAtClose();return;}
-  const q=m[1].replace(/ /g,' '),items=fiSugList(q);if(!items.length&&/\s$/.test(q)){fiAtClose();return;}
-  FI_AT={node:n,start:r.startOffset-m[1].length-1,q,items,sel:0};fiAtPaint();}
+  let q=m[1].replace(/ /g,' '),items=fiSugList(q),after=0;if(!items.length&&/\s$/.test(q)){fiAtClose();return;}
+  /* « @ » tapé juste devant un mot déjà écrit (24/11) : ce mot (jusqu'à 4 mots) sert de recherche et sera remplacé par le lien */
+  if(!q){const nx=n.nodeValue.slice(r.startOffset).replace(/ /g,' '),w=nx.match(/^[^\s@.,;:!?»)\]]+(?:[ '’-][^\s@.,;:!?»)\]]+){0,3}/);
+    if(w){const parts=w[0].split(/(?=[ '’-])/);for(let k=parts.length;k>=1;k--){const cand=parts.slice(0,k).join(''),L=fiSugList(cand);if(L.length&&(k===1||L.some(x=>nrm(x.nom).startsWith(nrm(cand))))){q=cand;items=L;after=cand.length;break;}}}}
+  FI_AT={node:n,start:r.startOffset-m[1].length-1,q,items,sel:0,after};fiAtPaint();}
 function fiAtPaint(){const box=document.getElementById('fiSug');if(!box)return;if(!FI_AT){box.hidden=true;box.innerHTML='';return;}
   const q=FI_AT.q.trim(),hl=s=>{if(!q)return esc(s);const i=nrm(s).indexOf(nrm(q));return i<0?esc(s):esc(s.slice(0,i))+'<b>'+esc(s.slice(i,i+q.length))+'</b>'+esc(s.slice(i+q.length));};
   box.hidden=false;box.innerHTML=`<div class="fisugh">${q?`Fiches correspondant à « ${esc(q)} »`:'Fiches'}</div>`+(FI_AT.items.length?FI_AT.items.map((x,i)=>`<button type="button" class="fisugi" role="option" data-act="fiSug" data-i="${i}" aria-selected="${i===FI_AT.sel}"><span>${hl(x.nom)}</span><small>${esc(x.kind)}${x.prep?' · <i>préparé</i>':''}</small></button>`).join(''):'<div class="muted small" style="padding:6px 10px">Aucune fiche ne correspond.</div>');}
 function fiAtPick(i){const x=FI_AT&&FI_AT.items[i],ed=document.getElementById('fiEd');if(!x||!ed)return;const n=FI_AT.node;if(!n||!n.parentNode||!ed.contains(n)){fiAtClose();return;}
-  let end=n.nodeValue.length;const s=window.getSelection();if(s&&s.rangeCount&&s.getRangeAt(0).startContainer===n)end=s.getRangeAt(0).startOffset;
+  let end=n.nodeValue.length;const s=window.getSelection();if(s&&s.rangeCount&&s.getRangeAt(0).startContainer===n)end=Math.min(n.nodeValue.length,s.getRangeAt(0).startOffset+(FI_AT.after||0));
+  const nxc=n.nodeValue.charAt(end),noSp=!!FI_AT.after&&/^[\s\u00a0.,;:!?»)\]]$/.test(nxc); /* mot repris : pas d'espace en double ni devant la ponctuation */
   const rg=document.createRange();rg.setStart(n,Math.max(0,FI_AT.start));rg.setEnd(n,Math.max(FI_AT.start,end));rg.deleteContents();
-  const box=document.createElement('span');box.innerHTML=fiTagHtml(x.t,x.id,x.nom,fiTokStore(x.t,x.id,x.nom));const tag=box.firstChild,sp=document.createTextNode(' ');
+  const box=document.createElement('span');box.innerHTML=fiTagHtml(x.t,x.id,x.nom,fiTokStore(x.t,x.id,x.nom));const tag=box.firstChild,sp=document.createTextNode(noSp?'':' ');
   rg.insertNode(sp);rg.insertNode(tag);const r2=document.createRange();r2.setStartAfter(sp);r2.collapse(true);
   ed.focus();const s2=window.getSelection();s2.removeAllRanges();s2.addRange(r2);FI_AT=null;fiAtPaint();if(S.dlg&&FI_ED.has(S.dlg.kind))S.dlg.txt=fiSer(ed);}
 
