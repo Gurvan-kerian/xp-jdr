@@ -440,3 +440,9 @@ label.fibig.vide{cursor:pointer;border-color:var(--accent);color:var(--accent)}
 :root[data-theme="dark"] .chrow.fe,:root[data-theme="dark"] .chrow.an{background:var(--surface2)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .chc.we,:root:not([data-theme="light"]) .chc.o{background:var(--surface2)}:root:not([data-theme="light"]) .chrow.fe,:root:not([data-theme="light"]) .chrow.an{background:var(--surface2)}}
 @media (max-width:420px){.chc{min-height:54px}.chb{font-size:8.5px;height:12px;line-height:12px}.chdd{width:34px}}
+
+/* Journaux et quêtes : entrées repliables (24/11/2026) */
+.jreh{display:flex;align-items:center;gap:6px;flex:1;min-width:0;border:0;background:none;padding:2px 0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.jreh .chev{color:var(--brass-lo);width:14px;flex:none;text-align:center}
+.jrent.fold{margin-bottom:8px}.jrent.fold .em{margin-bottom:0}
+.jrall{display:flex;justify-content:flex-end;margin:-2px 0 6px}.jrall .lk::after{content:none}

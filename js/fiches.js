@@ -460,10 +460,13 @@ function jrView(c){const L=jrOf(c),E=canEditC(c),open=S.jrOpen&&L.find(j=>j.id==
     E?`<button type="button" class="addl" data-act="jrNew" data-g="journal">+ Nouveau journal</button>`:'');
   if(E)h+=`<div class="muted small" style="margin-top:4px"><b>Privé</b> : le joueur du personnage (pour une quête de groupe, ceux des participants) et le MJ. <b>Public</b> : toute la table.</div>`;
   return h;}
-function jrEntHtml(c,j,e,hl){const meta=[jrDjTxt(e.dj)],au=(e.auteur||'').trim(),pc=e.pc&&S.chars[e.pc];
+/* Entrées repliables (24/11) : par défaut seule la plus récente est dépliée ; choix gardé pendant la session (S.jrEo) */
+if(!S.jrEo)S.jrEo={};
+const jrEntOpen=(e,last)=>e.id in S.jrEo?!!S.jrEo[e.id]:e.id===last;
+function jrEntHtml(c,j,e,hl,open){const meta=[jrDjTxt(e.dj)],au=(e.auteur||'').trim(),pc=e.pc&&S.chars[e.pc];
   if(au)meta.push('auteur : '+au);else if(j.type==='groupe'&&pc)meta.push('par '+(pc.court||pc.nom));
   if(e.ecrit)meta.push('écrite le '+fmtDate(e.ecrit));const m=meta.filter(Boolean).join(' · ');
-  return `<div class="jrent${hl?' hlx':''}" id="jre-${esc(e.id)}"><div class="eh"><span class="en">${esc(e.nom||'Entrée')}</span>${jrEntEd(j,e)?`<button type="button" class="ibtn" data-act="jrEnt" data-j="${esc(j.id)}" data-e="${esc(e.id)}" aria-label="Modifier l'entrée ${esc(e.nom||'')}">✎</button>`:''}</div>${m?`<div class="em">${esc(m)}</div>`:''}${e.txt?fiRich(e.txt):''}</div>`;}
+  return `<div class="jrent${hl?' hlx':''}${open?'':' fold'}" id="jre-${esc(e.id)}"><div class="eh"><button type="button" class="jreh" data-act="jrEo" data-e="${esc(e.id)}" aria-expanded="${!!open}"><span class="chev" aria-hidden="true">${open?'⌄':'›'}</span><span class="en">${esc(e.nom||'Entrée')}</span></button>${jrEntEd(j,e)?`<button type="button" class="ibtn" data-act="jrEnt" data-j="${esc(j.id)}" data-e="${esc(e.id)}" aria-label="Modifier l'entrée ${esc(e.nom||'')}">✎</button>`:''}</div>${m?`<div class="em">${esc(m)}</div>`:''}${open&&e.txt?fiRich(e.txt):''}</div>`;}
 function jrOpenView(c,j){const q=j.genre==='quete',E=jrCanEd(j),k='jr-'+j.id,st=j.statut||'cours';
   const P=q&&j.type==='groupe'?`<div class="jrparts">${jrParts(j).map(id=>S.chars[id]).filter(Boolean).map(x=>`<span class="jrpc${x.id===c.id?' me':''}">${lk({t:'perso',id:x.id},x.court||x.nom)}</span>`).join('')}</div>`:'';
   let h=`<div style="margin-bottom:8px"><button type="button" class="btn ghost" data-act="jrBack">‹ ${q?'Quêtes':'Journaux'}</button></div>`;
@@ -476,8 +479,9 @@ function jrOpenView(c,j){const q=j.genre==='quete',E=jrCanEd(j),k='jr-'+j.id,st=
     const fin=F.map(x=>jaugeBox(c,false,{...x,done:true},`<div class="relh"><span><b>${esc(x.nom)}</b></span><span class="muted small">validée${x.fin?' le '+fmtDate(x.fin):''}</span></div>`,{})).join('');
     if(J||F.length||E)h+=cBlk(k+'-g','Jauge de recherche',J?(J.cases||0)+' / '+J.taille:'',box+fin+(J?`<div class="muted small">Aussi dans Relations › Autres jauges${j.type==='groupe'?' de chaque participant':''}.</div>`:F.length?'':'<div class="muted small">Aucune jauge ouverte.</div>'),
       E&&!J?`<div class="relbtns"><button type="button" class="addl" data-act="jrJgNew" data-j="${esc(j.id)}">+ Jauge de recherche</button></div>`:'');}
-  const ents=jrEntSorted(j),hl=S.jrHl;
-  h+=cBlk(k+'-e','Entrées',ents.length?String(ents.length):'',ents.map(e=>jrEntHtml(c,j,e,hl===e.id)).join('')||'<div class="muted small">Aucune entrée.</div>',
+  const ents=jrEntSorted(j),hl=S.jrHl,last=ents.length?ents[ents.length-1].id:'';if(hl)S.jrEo[hl]=true;
+  const nOpen=ents.filter(e=>jrEntOpen(e,last)).length,all=ents.length>1?`<div class="jrall"><button type="button" class="lk" data-act="jrEoAll" data-j="${esc(j.id)}" data-v="${nOpen===ents.length?'0':'1'}">${nOpen===ents.length?'Tout replier':'Tout déplier'}</button></div>`:'';
+  h+=cBlk(k+'-e','Entrées',ents.length?String(ents.length):'',ents.length?all+ents.map(e=>jrEntHtml(c,j,e,hl===e.id,jrEntOpen(e,last))).join(''):'<div class="muted small">Aucune entrée.</div>',
     E?`<button type="button" class="addl" data-act="jrEnt" data-j="${esc(j.id)}">+ Entrée</button>`:'');
   if(hl){S.jrHl=null;setTimeout(()=>{const el=document.getElementById('jre-'+hl);if(el&&el.scrollIntoView)el.scrollIntoView({block:'center'});},60);}
   return h;}
@@ -528,6 +532,8 @@ function jrAct(a,d){
   if(a==='jrSel'){S.jrSel=d.v==='q'?'q':d.v==='f'?'f':'j';S.jrOpen=null;render();return true;}
   if(a==='jrOpen'){S.jrOpen=d.j;window.scrollTo(0,0);render();return true;}
   if(a==='jrBack'){S.jrOpen=null;render();return true;}
+  if(a==='jrEo'){const j=S.jour&&S.jour[S.jrOpen];const L=j?jrEntSorted(j):[],last=L.length?L[L.length-1].id:'',e=L.find(x=>x.id===d.e);if(e)S.jrEo[e.id]=!jrEntOpen(e,last);render();return true;}
+  if(a==='jrEoAll'){const j=S.jour&&S.jour[d.j];if(j)for(const e of j.ent||[])S.jrEo[e.id]=d.v==='1';render();return true;}
   if(a==='jrGo'){const j=S.jour&&S.jour[d.j];if(!jrCanRead(j))return true;S.shTab='jour';S.jrSel='q';S.jrOpen=j.id;window.scrollTo(0,0);render();return true;}
   if(S.visit)return true;
   const c=S.chars[S.sel],g=S.dlg,now=new Date().toISOString(),redraw=()=>{S._fiRedraw=true;render();};
