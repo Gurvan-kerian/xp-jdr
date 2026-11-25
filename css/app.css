@@ -590,3 +590,22 @@ body.crea{padding-bottom:24px}
 .cwnew{border-style:dashed;align-items:center;justify-content:center;text-align:center;gap:4px}.cwplus{font-size:28px;line-height:1;color:var(--accent)}
 .pntop{margin:0 0 10px}
 .cwcn{flex:1;min-width:0;text-align:left}
+/* Recette du lot C (25/11/2026) : panier d'achats en PP, bonus de circonstance, Situation datée, suppression d'un brouillon */
+.ppck{justify-content:flex-start}.ppck .ppt{flex:1;min-width:0}.ppck.sel{background:var(--accent-soft);border-color:var(--accent)}
+.ppbox{flex:none;width:22px;height:22px;border:2px solid var(--line);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent-fg);font-size:14px}
+.ppck.sel .ppbox{background:var(--accent);border-color:var(--accent)}
+.ppfx{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.ppbar{position:sticky;bottom:0;margin:4px -4px -4px;padding:10px 12px;background:var(--accent);color:var(--accent-fg);border-radius:12px;display:flex;align-items:center;gap:10px;box-shadow:0 -4px 14px rgba(0,0,0,.18);z-index:2}
+.ppbar>span{flex:1;display:flex;flex-direction:column;font-size:14px}.ppbar small{font-size:12.5px;opacity:.9}
+.ppbar .btn{background:var(--accent-fg);color:var(--accent);border:0;font-weight:700}.ppbar .btn:disabled{opacity:.5}
+.ppln{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.pplt{display:flex;align-items:center;gap:8px}.pplt b{flex:1}.pplt .num{white-space:nowrap}
+.ppwarn{color:var(--plan)}
+.ppln input[type=text]{width:100%}
+.ppjets{display:flex;flex-wrap:wrap;gap:4px;padding:2px 0 6px}
+.srow.end{opacity:.6;font-style:italic}
+.srow .lnk{font-size:12.5px;color:var(--bad);white-space:nowrap;min-height:32px}
+.cwtw{position:relative;display:flex}.cwtw>.cwtile{flex:1;padding-bottom:34px}
+.cwtdel{position:absolute;right:12px;bottom:10px;color:var(--bad);font-size:13px;min-height:28px}
+.cwopt{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface2);color:var(--fg);font:inherit;cursor:pointer;min-height:48px}
+.cwopt.bad{border-color:var(--bad);color:var(--bad)}

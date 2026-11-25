@@ -270,6 +270,9 @@ function cancelAchat(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);
   if(a.key==='atout'&&Array.isArray(n.atouts)){const e=n.atouts.find(x=>x.achat===id);if(e){revokeTyp(n,e);n.atouts=n.atouts.filter(x=>x!==e);}}
   if(a.ppel&&Array.isArray(n.specs)){const k=n.specs.length;n.specs=n.specs.filter(x=>x.ppa!==id);if(n.specs.length<k&&n.spec)n.spec.cur=Math.max(0,(n.spec.cur||0)-(k-n.specs.length));}
   if((a.key||'').startsWith('pp:')){const p=(n.profils||[]).find(x=>x.nom===a.key.slice(3));if(p){const v=p.note==null||p.note===''?0:+p.note;if(!isNaN(v))p.note=v+(+a.pp||0);}rev=true;}
+  /* recette lot C : Fortune ajustée à l'achat, activité remplacée remise en cours */
+  if(a.fortD&&n.fortune){n.fortune.cur=Math.max(0,Math.min(n.fortune.max||15,(n.fortune.cur||0)-a.fortD));rev=true;}
+  if(a.remp){const o=n.achats.find(x=>x.id===a.remp);if(o&&o.ppel){delete o.ppel.fin;delete o.ppel.finT;}}
   n.achats=n.achats.filter(x=>x.id!==id);return{c:ppSync(c,n),reverted:rev};}
 function editAchat(c,id,p){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(a){if(p.label!==undefined)a.label=p.label;if(p.cout!==undefined)a.cout=p.cout;if(p.date!==undefined)a.date=p.date||null;}return n;}
 /* Rattrapage : XP à attribuer pour rejoindre le PJ juste devant (parmi ceux comptés dans la moyenne) */
@@ -455,7 +458,8 @@ function crPP(d,X){const R=crRules(),C=crComps(d,X),rk={},av={},sp={};
   for(const e of d.pp||[]){let rest=+e.cost||0,c0=0,l0=0;
     if(e.rub==='C'){c0=Math.min(rest,ctcMax-ctc);ctc+=c0;rest-=c0;}else if(e.rub==='L'){l0=Math.min(rest,langMax-lang);lang+=l0;rest-=l0;}
     sp[e.prof]=(sp[e.prof]||0)+rest;items.push({e,prof:rest,ctc:c0,lang:l0});}
-  const prin=(d.pp||[]).find(e=>e.rub==='A'&&e.opt==='p'),fort=(prin&&prin.fort!=null?+prin.fort:0)+(d.pp||[]).filter(e=>e.rub==='A'&&e.opt==='s'&&e.fortS!=null).reduce((t,e)=>t+(+e.fortS||0),0);
+  const prin=(d.pp||[]).find(e=>e.rub==='A'&&e.opt==='p'),fort=(prin&&prin.fort!=null?+prin.fort:0)+(d.pp||[]).filter(e=>e.rub==='A'&&e.opt==='s'&&e.fortS!=null).reduce((t,e)=>t+(+e.fortS||0),0)
+    +(d.pp||[]).reduce((t,e)=>t+ppFxFort({id:e.el,titre:e.titre,prof:e.prof}),0); /* recette : « Fortune +x » des éléments */
   return {rk,av,sp,ctc,ctcMax,lang,langMax,items,prin,fort};}
 /* Contrôles par étape : {ok, manque:[…], avert:[…]} */
 function crCheck(b){const d=(b&&b.d)||{},R=crRules(),X=crX(d),out={},put=(k,m,a)=>{out[k]={ok:!m.length,manque:m,avert:a||[]};};

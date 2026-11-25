@@ -380,15 +380,15 @@ function ppFullBlock(c){const B=ppBought(c),free=(c.achats||[]).filter(a=>(a.key
   let h=`<h2>Contacts et points de personnage</h2><div class="card"><div class="fgrid">${(c.profils||[]).map(pr=>`<div class="fr"><span>PP ${esc(profLab(pr.nom,c))}</span><b class="num">${esc(ppFmt(ppHave(pr)))}</b></div>`).join('')}</div>`;
   const G=[['A','Activités'],['E','Possessions'],['L','Langues'],['C','Contacts'],['T','Famille, titres et statuts']];
   for(const [r,l] of G){const L=B.filter(a=>a.ppel.rub===r);if(!L.length)continue;
-    h+=`<div class="fsub">${l}</div>`+L.map(a=>{const x=a.ppel,bits=[PPOPT[x.opt]||'',x.fort!=null?'Fortune '+x.fort:'',x.fortS!=null?'Fortune +'+x.fortS:'',x.spec?'spécialité '+x.spec:'',x.prec||''].filter(Boolean);
+    h+=`<div class="fsub">${l}</div>`+L.map(a=>{const x=a.ppel,bits=[x.fin?(ppGd(x.fin)?"jusqu'au "+ppGd(x.fin):'terminé'):'',ppBits(x)].filter(Boolean);
       const fx=fxOf(c).filter(e=>e.kind==='pp'&&e.src===x.nom);return `<div class="fi"><b>${esc(x.nom)}</b>${bits.length?` <span class="muted small">· ${bits.map(esc).join(' · ')}</span>`:''}${fx.map(e=>`<div class="fxs">Effet : ${esc(fxLabel(e))}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}</div>`).join('')}</div>`;}).join('');}
   if(free.length)h+=`<div class="fsub">Autres dépenses de PP</div>`+free.map(a=>`<div class="fi"><span class="small">${esc(a.label)}</span></div>`).join('');
   if(!B.length&&!free.length)h+='<div class="muted small" style="margin-top:6px">Aucune acquisition en points de personnage.</div>';
-  const fo=B.filter(a=>a.ppel.fort!=null||a.ppel.fortS!=null);
-  if(fo.length)h+=`<div class="muted small" style="margin-top:8px">Fortune ${lv(c,'fortune')} · indicatif : ${fo.map(a=>esc(a.ppel.nom)+' '+(a.ppel.fort!=null?a.ppel.fort:'+'+a.ppel.fortS)).join(' + ')}. La Fortune enregistrée ne change pas.</div>`;
+  const fo=ppFortSrc(c);
+  if(fo.length)h+=`<div class="muted small" style="margin-top:8px">Fortune ${lv(c,'fortune')} · dont ${fo.map(esc).join(', ')}.</div>`;
   return h+'</div>';}
 
-const ppFortSrc=c=>c.type==='PJ'?ppBought(c).filter(a=>a.ppel.fort!=null||a.ppel.fortS!=null).map(a=>a.ppel.nom+' '+(a.ppel.fort!=null?a.ppel.fort+' (principale)':'+'+a.ppel.fortS+' (secondaire)')):[];
+const ppFortSrc=c=>c.type==='PJ'?ppBought(c).filter(a=>!a.ppel.fin&&ppElFort(a.ppel)).map(a=>{const x=a.ppel,v=ppElFort(x);return x.nom+' '+(x.rub==='A'&&x.opt==='p'?v+' (principale)':'+'+v+(x.rub==='A'?' (secondaire)':''));}):[];
 
 /* ---------- Lot 4 bis : liens de la fiche de personnage ---------- */
 /* Race du personnage : lien vers sa fiche ; pour la gestion, picto si la race d'un PJ visible a encore des blocs fermés */
@@ -429,8 +429,14 @@ const shNone='<div class="muted small">—</div>';
 /* lot 4 : encarts remplis d'abord, vides ensuite (ordre habituel conservé dans chaque groupe) */
 const shOrder=L=>L.filter(x=>!x.e).concat(L.filter(x=>x.e)).map(x=>x.h).join('');
 const srcChip=s=>s==='pp'?'<span class="srcb">PP</span>':s==='session'?'<span class="srcb j">session</span>':s==='feal'?'<span class="srcb">féal</span>':'<span class="srcb j">en jeu</span>';
-const ppBits=x=>[PPOPT[x.opt]||'',x.fort!=null?'Fortune '+x.fort:'',x.fortS!=null?'Fortune +'+x.fortS:'',x.spec?'spécialité '+x.spec:'',x.prec||''].filter(Boolean).join(' · ');
-const ppLinesOf=(c,r)=>ppBought(c).filter(a=>a.ppel.rub===r).map(a=>`<div class="srow"><span><b>${esc(a.ppel.nom)}</b>${ppBits(a.ppel)?`<span class="d">${esc(ppBits(a.ppel))}</span>`:''}</span>${srcChip('pp')}</div>`);
+const ppBits=x=>[PPOPT[x.opt]||'',x.fort!=null?'Fortune '+x.fort:'',x.fortS!=null?'Fortune +'+x.fortS:'',ppFxFort(x)?'Fortune +'+ppFxFort(x):'',x.spec?'spécialité '+x.spec:'',x.prec||''].filter(Boolean).join(' · ');
+/* Recette lot C : élément en cours « depuis le … » ; terminé (activité remplacée, titre abandonné) grisé « jusqu'au … » ; abandon d'un titre ou d'un élément « Fortune +x » */
+const ppGd=d=>d&&typeof chOk==='function'&&chOk(d)?chDateTxt(d):'';
+const ppCanAb=(a,r)=>!a.ppel.fin&&!a.ppel.titre&&(r==='T'||(r!=='A'&&ppElFort(a.ppel)>0));
+function ppLinesOf(c,r){const E=canEditC(c),L=ppBought(c).filter(a=>a.ppel.rub===r);
+  return L.filter(a=>!a.ppel.fin).concat(L.filter(a=>a.ppel.fin)).map(a=>{const x=a.ppel,end=!!x.fin,dt=end?(ppGd(x.fin)?"jusqu'au "+ppGd(x.fin):x.finT==='ab'?'abandonné':'terminé'):(ppGd(x.debut)?'depuis le '+ppGd(x.debut):a.crea?'depuis la création':''),
+    bits=[dt,ppBits(x)].filter(Boolean).join(' · ');
+    return `<div class="srow${end?' end':''}"><span><b>${esc(x.nom)}</b>${bits?`<span class="d">${esc(bits)}</span>`:''}</span>${srcChip('pp')}${E&&ppCanAb(a,r)?`<button type="button" class="lnk" data-act="ppAb" data-id="${esc(c.id)}" data-a="${esc(a.id)}">Abandonner / retirer</button>`:''}</div>`;});}
 /* ---------- Lot 2 bis (24/11/2026) : illustration de l'onglet Fiche ----------
    PJ fée : une illustration par forme, selon le sélecteur, distinctes du portrait (cartes, médaillons) ; autres personnages : le portrait seul.
    Illustration manquante : cadre vide (avec « Ajouter » pour le joueur du personnage et la gestion). */
@@ -613,7 +619,7 @@ function cwGoTo(id,step){navClear();S.view='crea';S.cwId=id;S.cwStep=step||0;S.d
 const cwMeta=(b,X)=>{const I=(b.d||{}).ident||{};return (b.kind==='feal'?'Nouveau féal':'Nouveau PJ')+((I.court||'').trim()?' · '+I.court.trim():'');};
 /* Tuiles de Personnages › PJ : brouillons visibles, puis « + Nouveau PJ » */
 function cwTiles(){let h='';for(const b of cwList()){const I=(b.d||{}).ident||{},st=crSteps(b),n=Math.min(b.etape||0,st.length-1),own=S.players[b.par];
-    h+=`<button class="card team cwtile${b.statut==='attente'?' att':''}" data-act="cwOpen" data-id="${esc(b.id)}"><span class="pill ${b.statut==='attente'?'acc':'plan'}">${b.statut==='attente'?'En attente de validation':'Brouillon · reprendre'}</span><span class="nm">${esc((I.court||'').trim()||(b.kind==='feal'?'Nouveau féal':'Nouveau PJ'))}</span><span class="muted small">${b.kind==='feal'?'Féal':'PJ'}${b.d&&b.d.race?' · '+esc(b.d.race):''} · étape ${n+1} / ${st.length}${isGest()&&own?' · par '+esc(own.nom):''}</span>${b.com&&b.statut==='brouillon'?`<span class="small bad">Renvoyé par le MJ</span>`:''}</button>`;}
+    h+=`<div class="cwtw"><button class="card team cwtile${b.statut==='attente'?' att':''}" data-act="cwOpen" data-id="${esc(b.id)}"><span class="pill ${b.statut==='attente'?'acc':'plan'}">${b.statut==='attente'?'En attente de validation':'Brouillon · reprendre'}</span><span class="nm">${esc((I.court||'').trim()||(b.kind==='feal'?'Nouveau féal':'Nouveau PJ'))}</span><span class="muted small">${b.kind==='feal'?'Féal':'PJ'}${b.d&&b.d.race?' · '+esc(b.d.race):''} · étape ${n+1} / ${st.length}${isGest()&&own?' · par '+esc(own.nom):''}</span>${b.com&&b.statut==='brouillon'?`<span class="small bad">Renvoyé par le MJ</span>`:''}</button><button type="button" class="lnk cwtdel" data-act="cwDelAsk" data-id="${esc(b.id)}" aria-label="Supprimer le brouillon ${esc((I.court||'').trim()||'sans nom')}">Supprimer</button></div>`;}
   if(ME&&S.players[ME]&&!S.visit)h+=`<button class="card team cwnew" data-act="cwNew"><span class="cwplus" aria-hidden="true">+</span><span class="nm">Nouveau PJ</span><span class="muted small">Assistant de création (PJ ou féal)</span></button>`;
   return h;}
 /* ---------- Écran de l'assistant ---------- */
@@ -694,7 +700,7 @@ function cwStep(b,k,ck){const d=b.d||{},X=crX(d),R=crRules(),fe=b.kind==='feal';
   if(k==='recap')return cwRecap(b,ck);
   return '';}
 /* Étape Compétences : groupées par profil (majeur, mineur, autres repliés), spécialités dépliables, futiles à part */
-function cwComp(b,d,X,R){const P=crPts(d,X),F=S.cwFold||{};let h=`<div class="cwcnts">${cwCnt('Utiles',P.util,P.utilMax)}${cwCnt('Futiles',P.fut,P.futMax)}${P.espMax?cwCnt('Esprit',P.esp,P.espMax):''}</div>`;
+function cwComp(b,d,X,R){const P=crPts(d,X),F=S.cwFold||{},cP=(d.pp||[]).length?cwPreview(b):null,jt=n=>cP?ppJetChips(cP,n):'';let h=`<div class="cwcnts">${cwCnt('Utiles',P.util,P.utilMax)}${cwCnt('Futiles',P.fut,P.futMax)}${P.espMax?cwCnt('Esprit',P.esp,P.espMax):''}</div>`;
   h+=cwInfo(`Plafond à la création : ${R.compMaxN}, ou ${R.compMaxP} en prédilection. Touche une compétence pour ses spécialités (${R.ptsSpec} pt, Mauvaise main ${R.ptsMM}).${P.espMax?` Bonus d'Esprit : ${P.espMax} point${P.espMax>1?'s':''} gratuits en Érudit ou Savant.`:''}`);
   const typ=(d.atouts||[]).some(a=>a.nom===TYP),r=X&&RACES[X.x.sing],off=k=>[...((r&&r.sp)||[]).filter(e=>'comp:'+e[1]===k).map(e=>[e[0],'Offerte · race']),...(typ?((r&&r.t)||[]).filter(e=>'comp:'+e[1]===k).map(e=>[e[0],'Offerte · atout']):[])];
   const spx=(key,cat)=>{if(!(S.cwSp||{})[key])return '';const mine=(d.specs||[]).map((s,i)=>[s,i]).filter(([s])=>s.key===key),O=off(key);
@@ -703,7 +709,7 @@ function cwComp(b,d,X,R){const P=crPts(d,X),F=S.cwFold||{};let h=`<div class="cw
     x+=`<div class="cwadd">${C.length?`<select data-cwt="spsel:${esc(key)}" aria-label="Spécialité du livre"><option value="">— spécialité du livre —</option>${C.map(e=>`<option${((S.cwTmp||{})['spsel:'+key])===e[0]?' selected':''}>${esc(e[0])}</option>`).join('')}</select>`:''}<input type="text" data-cwt="sp:${esc(key)}" value="${esc((S.cwTmp||{})['sp:'+key]||'')}" placeholder="ou autre spécialité" aria-label="Autre spécialité" autocomplete="off"><button type="button" class="btn" data-act="cwSpAdd" data-k="${esc(key)}">+ Ajouter</button></div>`;
     return `<div class="cwspx">${x}</div>`;};
   const row=c=>{const key='comp:'+c.nom,o=!!(S.cwSp||{})[key],n=(d.specs||[]).filter(s=>s.key===key).length+off(key).length;
-    return `<div class="cwcomp"><div class="cwrow"><button type="button" class="cwdep" data-act="cwSpOpen" data-k="${esc(key)}" aria-expanded="${o}" aria-label="Spécialités de ${esc(c.nom)}">${o?'▴':'▾'}</button><span class="cwcn">${esc(c.nom)}${n?` <small class="pill">${n} spé.</small>`:''}<span class="muted small" style="display:block">départ ${c.start}${c.pred?' · préd.':''} · max ${c.cap}</span></span>${cwStepper('comps',c.nom,c.cur,c.start,c.cap,c.nom)}</div>${spx(key,CATSPEC[c.nom])}</div>`;};
+    return `<div class="cwcomp"><div class="cwrow"><button type="button" class="cwdep" data-act="cwSpOpen" data-k="${esc(key)}" aria-expanded="${o}" aria-label="Spécialités de ${esc(c.nom)}">${o?'▴':'▾'}</button><span class="cwcn">${esc(c.nom)}${n?` <small class="pill">${n} spé.</small>`:''}<span class="muted small" style="display:block">départ ${c.start}${c.pred?' · préd.':''} · max ${c.cap}</span></span>${cwStepper('comps',c.nom,c.cur,c.start,c.cap,c.nom)}</div>${jt(c.nom)?`<div class="ppjets">${jt(c.nom)}</div>`:''}${spx(key,CATSPEC[c.nom])}</div>`;};
   const blk=(p,lab)=>cwSec(`${esc(profLab(p))} · ${lab} <small class="muted">rang ${crRank(P.C,p)}</small>`,P.C.filter(c=>c.prof===p).map(row).join(''));
   h+=blk(d.maj,'majeur')+blk(d.min,'mineur');
   const oth=PROFILS.filter(p=>p!==d.maj&&p!==d.min);
@@ -739,15 +745,24 @@ function cwPPSheet(g){const b=S.brouillons&&S.brouillons[g.bid];if(!b||!cwCanEd(
       ${e.prec?`<div class="muted small">${esc(e.prec)}</div>`:''}${miss.length?`<div class="bad small">Prérequis manquant : ${miss.map(ppPreTxt).map(esc).join(', ')}.</div>`:''}${cost>rest+pool?'<div class="bad small">PP insuffisants.</div>':''}
       <div class="field"><label for="cwppp">Précision <span class="muted small">(facultatif)</span></label><input id="cwppp" type="text" data-cwt="ppPrec" value="${esc(g.prec||'')}" autocomplete="off"></div>
       <div class="actions"><button class="btn" data-act="cwPPBack">Retour</button><button class="btn pri" data-act="cwPPOk"${ok?'':' disabled'}>Ajouter</button></div>`);}
-  const bought=new Set((d.pp||[]).map(e=>e.el));
-  const rows=ppRows(c,p).filter(([,e])=>!e.nocrea&&!e.titre&&(g.rub==='all'||e.rub===g.rub)&&(!q||nrm(e.nom).includes(q)));
+  /* Recette lot C : panier commun avec l'achat en jeu */
+  const ctx=cwPPCtx(b,g);if(g.step==='cart')return ppCartSheet(g,ctx,'Points de personnage');
+  const rows=ppRows(c,p).filter(([,e])=>!e.nocrea&&!e.titre);
   let h=`<div class="shd" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>${esc(profLab(p))}</h2><span class="ppf"><small>PP</small>${esc(ppFmt(rest))}</span></div>
     <div class="field"><input type="search" data-cwt="ppq" value="${esc(g.q||'')}" placeholder="Rechercher dans le tableau…" aria-label="Rechercher dans le tableau"></div>${pfSeg('cwPPRub',g.rub,[['all','Tout'],...PP_RUB.map(r=>[r[0],r[2]])])}`;
-  for(const r of PP_RUB){const L=rows.filter(([,e])=>e.rub===r[0]);if(!L.length)continue;
-    h+=`<h3 class="rs">${esc(r[1])}</h3><div class="ppl">${L.map(([id,e])=>{const got=bought.has(id)&&e.rub!=='L',miss=ppPreMiss(e,c),why=[miss.length?'prérequis : '+miss.map(ppPreTxt).join(', '):'',got?'déjà choisi':''].filter(Boolean).join(' · ');
-      return `<button class="ppi ppw${got||miss.length?' no':' ok'}" data-act="cwPPPick" data-id="${esc(id)}"${got?' disabled':''}><span>${esc(e.nom+ppStar(e))}${e.rub==='A'&&e.fortP!=null?` <small>· Fortune ${e.fortP}</small>`:''}${why?`<span class="why">${esc(why)}</span>`:''}</span><b class="num">${esc(ppCostTxt(e))}</b></button>`;}).join('')}</div>`;}
-  if(!rows.length)h+='<div class="muted small" style="margin:10px 0">Aucun élément.</div>';
-  return sheetW('Points de personnage',h+`<div class="muted small" style="margin-top:6px">Les éléments marqués « pas à la création » ne sont pas proposés.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div>`);}
+  h+=ppCartList(g,ctx,rows);
+  return sheetW('Points de personnage',h+`<div class="muted small" style="margin-top:6px">Coche les éléments puis « Valider ». Les éléments marqués « pas à la création » ne sont pas proposés.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div>`+(g._bar||''));}
+/* Contexte du panier dans l'assistant : PP restants du profil, points de Contact et de langue, activités déjà choisies (remplacées) */
+function cwPPCtx(b,g){const d=b.d||{},X=crX(d),Q=crPP(d,X),c=cwPreview(b),p=g.prof,owned={};for(const e of d.pp||[])owned[e.el]=(owned[e.el]||[]).concat(e);
+  const act=o=>{const j=Q.items.find(it=>it.e.rub==='A'&&it.e.opt===o);return j?{nom:j.e.nom,x:{id:j.e.el,prof:j.e.prof,rub:'A',opt:o,fort:j.e.fort,fortS:j.e.fortS},refund:j.e.prof===p?j.prof:0}:null;};
+  return {c,prof:p,have:Q.av[p]-Q.sp[p],pool:{C:Q.ctcMax-Q.ctc,L:Q.langMax-Q.lang},owned,actP:act('p'),actS:act('s'),crea:true,pfx:'cwPP',ov:false,fort0:Q.fort,
+    fortAfter:cart=>{const D=cwCartApply(clone(d),cart,c,p);return crPP(D,X).fort;}};}
+/* Ajout du panier au brouillon : une activité principale (ou secondaire) remplace la précédente */
+function cwCartApply(D,cart,c,prof){let L=(D.pp||[]).slice();
+  for(const k of cart){const e=ppEls()[k.id];if(!e)continue;const opt=e.rub==='A'||(e.cost&&e.cost.k==='hf')?k.opt:(e.cost&&e.cost.k==='tm'&&isExoF(c)?(k.opt==='t'?'t':'m'):''),it={el:k.id,prof,rub:e.rub,nom:e.nom,opt,cost:ppCost(e,opt,c)};
+    if((k.prec||'').trim())it.prec=k.prec.trim();if(e.rub==='A'){if(e.fortP!=null)it.fort=e.fortP;if(e.fortS!=null)it.fortS=e.fortS;if(e.spec)it.spec=e.spec;L=L.filter(x=>!(x.rub==='A'&&x.opt===opt));}
+    L.push(it);}
+  D.pp=L;return D;}
 /* Aperçu de la fiche (récapitulatif, prérequis) */
 function cwPreview(b){try{return fxSync(crBuild(b,{id:'apercu-'+b.id}).c);}catch(e){console.error(e);return newChar('apercu','Aperçu','Aperçu','PJ');}}
 function cwRecap(b,ck){const st=crSteps(b),todo=st.filter(s=>s[0]!=='recap'&&!(ck[s[0]]||{}).ok),av=st.flatMap(s=>((ck[s[0]]||{}).avert||[]));
@@ -755,11 +770,21 @@ function cwRecap(b,ck){const st=crSteps(b),todo=st.filter(s=>s[0]!=='recap'&&!(c
   for(const a of av)h+=`<p class="cwst warn">⚠ ${esc(a)}</p>`;
   h+=cwSec('Résumé',crSummary(b).map(([t,v,k])=>{const j=st.findIndex(s=>s[0]===k);return `<div class="cwrow"><span><b>${esc(t)}</b><span class="small" style="display:block">${esc(v||'—')}</span></span>${j>=0?`<button type="button" class="chip" data-act="cwGo" data-i="${j}">Modifier</button>`:''}</div>`;}).join(''));
   if(b.kind!=='feal'){const c=cwPreview(b),D=derived(c,'m');
-    h+=cwSec('Valeurs calculées',`<div class="fgrid">${D.filter(([n])=>['PdV','Esquive','Parade','Résistance physique','Résistance psychique'].includes(n)).map(([n,v])=>`<div class="fr"><span>${esc(n)}</span><b class="num">${v}</b></div>`).join('')}<div class="fr"><span>Tricherie</span><b class="num">${tricherie(c)}</b></div><div class="fr"><span>Fortune</span><b class="num">${lv(c,'fortune')}${FORTUNE[lv(c,'fortune')]?' · '+esc(FORTUNE[lv(c,'fortune')][0]):''}</b></div></div>`,'Forme masquée.');}
+    h+=cwSec('Valeurs calculées',`<div class="fgrid">${D.filter(([n])=>['PdV','Esquive','Parade','Résistance physique','Résistance psychique'].includes(n)).map(([n,v])=>`<div class="fr"><span>${esc(n)}</span><b class="num">${v}</b></div>`).join('')}<div class="fr"><span>Tricherie</span><b class="num">${tricherie(c)}</b></div><div class="fr"><span>Fortune</span><b class="num">${lv(c,'fortune')}${FORTUNE[lv(c,'fortune')]?' · '+esc(FORTUNE[lv(c,'fortune')][0]):''}</b></div></div>`,'Forme masquée.');
+    const J=COMPS_ALL.map(n=>[n,ppJetChips(c,n)]).filter(x=>x[1]);if(J.length)h+=cwSec('Bonus de circonstance',J.map(([n,x])=>`<div class="cwrow"><span>${esc(n)}</span><span class="ppjets">${x}</span></div>`).join(''),'Achats en PP : affichés, jamais ajoutés au score.');}
   const ok=!todo.length;
   if(b.statut!=='attente')h+=`<div class="cwsend"><button class="btn pri cta" data-act="cwSend"${ok?'':' disabled'}>Envoyer au MJ</button>${ok?'':'<p class="muted small">Disponible quand toutes les étapes sont complètes.</p>'}</div>`;
-  if(cwCanEd(b))h+=`<div class="cwsend">${S.cwDelAsk?`<p class="small">Supprimer ce brouillon ? Rien n'est gardé.</p><div class="actions"><button class="btn" data-act="cwDelNo">Garder</button><button class="btn" style="color:var(--bad)" data-act="cwDelOk">Supprimer le brouillon</button></div>`:`<button class="btn ghost" data-act="cwDel">Supprimer le brouillon</button>`}</div>`;
+  if(cwSee(b))h+=`<div class="cwsend">${S.cwDelAsk?`<p class="small">Supprimer ce brouillon ? Rien n'est gardé.</p><div class="actions"><button class="btn" data-act="cwDelNo">Garder</button><button class="btn" style="color:var(--bad)" data-act="cwDelOk">Supprimer le brouillon</button></div>`:`<button class="btn ghost" data-act="cwDel">Supprimer le brouillon</button>`}</div>`;
   return h;}
+/* Suppression d'un brouillon : la personne qui crée et la gestion, quel que soit le statut (le signalement « Fiche à valider » disparaît avec lui) */
+function cwDelete(b){const B={...S.brouillons};delete B[b.id];S.brouillons=B;persistDel('brouillons/'+b.id);}
+function cwDlgSheet(g){const b=S.brouillons&&S.brouillons[g.bid];if(!b||!cwSee(b))return '';const nm=((b.d||{}).ident||{}).court||'';
+  if(g.kind==='cwQuit')return sheetW("Quitter l'assistant",`<div class="shd"><h2>Quitter l'assistant</h2></div>
+    <button type="button" class="cwopt" data-act="cwQuitKeep"><b>Garder le brouillon</b><span class="muted small">Reprendre plus tard depuis sa tuile</span></button>
+    <button type="button" class="cwopt bad" data-act="cwAbandon"><b>Abandonner la création</b><span class="small">Le brouillon est supprimé définitivement</span></button>
+    <div class="actions"><button class="btn" data-act="closeSheet">Continuer la création</button></div>`);
+  return sheetW('Supprimer le brouillon',`<div class="shd"><h2>Supprimer le brouillon ?</h2></div><p class="small">Le brouillon ${nm.trim()?'de <b>'+esc(nm.trim())+'</b> ':''}sera supprimé définitivement.${b.statut==='attente'?' Il était en attente de validation : le signalement « Fiche à valider » disparaît aussi.':''}</p>
+    <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn" style="color:var(--bad);border-color:var(--bad)" data-act="cwDelGo">Supprimer</button></div>`);}
 /* Validation par le MJ */
 function cwValSheet(g){const b=S.brouillons&&S.brouillons[g.bid];if(!b||!isGest())return '';
   return sheetW('Validation',`<div class="shd"><h2>${esc(cwMeta(b))}</h2></div><div class="muted small">Par ${esc((S.players[b.par]||{}).nom||'?')} · envoyé le ${fmtDate((b.envoye||'').slice(0,10))}</div>
@@ -781,13 +806,22 @@ function cwAct(a,d){if(!/^cw/.test(a))return false;const g=S.dlg;
   const redraw=()=>{S._force=true;render();return true;};
   if(a==='cwNew'){cwNew();return redraw();}
   if(a==='cwOpen'){const b=S.brouillons&&S.brouillons[d.id];if(!cwSee(b))return true;cwGoTo(b.id,Math.min(b.etape||0,crSteps(b).length-1));S.cwMsg='';return redraw();}
-  if(a==='cwQuit'){S.view='team';S.teamSel='pj';S.cwMsg='';S.cwDelAsk=false;window.scrollTo(0,0);return redraw();}
+  /* Recette lot C : ✕ Quitter propose de garder le brouillon ou d'abandonner la création (suppression, avec confirmation) */
+  if(a==='cwQuit'){const b=cwB();if(b&&cwSee(b)){S.dlg={kind:'cwQuit',bid:b.id};return redraw();}a='cwQuitKeep';}
+  if(a==='cwQuitKeep'){S.dlg=null;S.view='team';S.teamSel='pj';S.cwMsg='';S.cwDelAsk=false;window.scrollTo(0,0);return redraw();}
+  if(a==='cwAbandon'){const b=g&&g.kind==='cwQuit'&&S.brouillons[g.bid];if(!b)return true;S.dlg={kind:'cwDel',bid:b.id,quit:true};return redraw();}
+  if(a==='cwDelAsk'){const b=S.brouillons&&S.brouillons[d.id];if(!cwSee(b))return true;S.dlg={kind:'cwDel',bid:b.id};return redraw();}
+  if(a==='cwDelGo'){const b=g&&g.kind==='cwDel'&&S.brouillons[g.bid];if(!b||!cwSee(b))return true;cwDelete(b);S.dlg=null;if(S.view==='crea'&&S.cwId===b.id){S.view='team';S.teamSel='pj';window.scrollTo(0,0);}setTimeout(()=>toast('Brouillon supprimé'),0);return redraw();}
   if(a==='cwGo'){const b=cwB();if(!b)return true;S.cwStep=Math.max(0,Math.min(+d.i,crSteps(b).length-1));S.cwMsg='';S.cwDelAsk=false;
     if(cwCanEd(b)&&b.etape!==S.cwStep){const n=clone(b);n.etape=S.cwStep;cwSave(n);}window.scrollTo(0,0);return redraw();}
   if(a==='cwValOpen'){if(!isGest())return true;S.dlg={kind:'cwVal',bid:S.cwId,xp:String(crRules().xpStart),com:''};return redraw();}
   if(a==='cwValOk'){if(g&&g.kind==='cwVal')cwValidate(g);return true;}
   if(a==='cwBackDraft'){if(!g||g.kind!=='cwVal'||!isGest())return true;const b0=S.brouillons[g.bid];if(!b0)return true;const b=clone(b0);b.statut='brouillon';b.com=(g.com||'').trim();cwSave(b);S.dlg=null;setTimeout(()=>toast('Renvoyé en brouillon'),0);return redraw();}
   if(a==='cwPPRub'&&g&&g.kind==='cwPP'){g.rub=d.v;return redraw();}
+  if(/^cwPP(Tg|CGo|CBack|COpt|CDel|CBuy)$/.test(a)&&g&&g.kind==='cwPP'){const b=cwB();if(!b||!cwCanEd(b))return true;const ctx=cwPPCtx(b,g);
+    if(a==='cwPPCBuy'){const K=ppCartCalc(ctx,g.cart||[]);if(!K.items.length||ppCartErr(ctx,K).length)return true;const c=ctx.c;cwUpd(D=>{cwCartApply(D,g.cart,c,g.prof);});
+      const n=K.items.length;S.dlg=null;setTimeout(()=>toast(n>1?n+' éléments ajoutés':'Ajouté'),0);return redraw();}
+    ppCartAct(a,d,g,ctx);return redraw();}
   if(a==='cwPPPick'&&g&&g.kind==='cwPP'){const e=ppEls()[d.id];if(!e)return true;g.sel=d.id;g.prec='';const b=cwB(),hp=((b&&b.d.pp)||[]).some(x=>x.rub==='A'&&x.opt==='p');g.opt=e.rub==='A'?(hp?'s':'p'):(e.cost&&e.cost.k==='hf'?(e.cost.a==null?'f':'h'):(e.cost&&e.cost.k==='tm'?'m':''));return redraw();}
   if(a==='cwPPBack'&&g&&g.kind==='cwPP'){g.sel=null;return redraw();}
   if(a==='cwPPOpt'&&g&&g.kind==='cwPP'){g.opt=d.v;return redraw();}
@@ -797,7 +831,7 @@ function cwAct(a,d){if(!/^cw/.test(a))return false;const g=S.dlg;
     cwUpd(D=>{let L=(D.pp||[]).slice();if(opt==='p'&&e.rub==='A')L=L.map(x=>x.rub==='A'&&x.opt==='p'?{...x,opt:'s'}:x);L.push(it);D.pp=L;});S.dlg=null;setTimeout(()=>toast('Ajouté'),0);return redraw();}
   if(S.visit)return true;const b=cwB();if(!b)return true;
   if(a==='cwDel'){S.cwDelAsk=true;return redraw();}if(a==='cwDelNo'){S.cwDelAsk=false;return redraw();}
-  if(a==='cwDelOk'){if(!cwCanEd(b))return true;const B={...S.brouillons};delete B[b.id];S.brouillons=B;persistDel('brouillons/'+b.id);S.cwDelAsk=false;S.view='team';S.teamSel='pj';setTimeout(()=>toast('Brouillon supprimé'),0);return redraw();}
+  if(a==='cwDelOk'){if(!cwSee(b))return true;cwDelete(b);S.cwDelAsk=false;S.view='team';S.teamSel='pj';setTimeout(()=>toast('Brouillon supprimé'),0);return redraw();}
   if(a==='cwSend'){if(!cwCanEd(b)||!crSendable(b))return true;const n=clone(b);n.statut='attente';n.envoye=new Date().toISOString();cwSave(n);S.view='team';S.teamSel='pj';window.scrollTo(0,0);setTimeout(()=>toast('Envoyé au MJ'),0);return redraw();}
   if(a==='cwSpOpen'){S.cwSp={...(S.cwSp||{}),[d.k]:!(S.cwSp||{})[d.k]};return redraw();}
   if(a==='cwFold'){S.cwFold={...(S.cwFold||{}),[d.k]:!(S.cwFold||{})[d.k]};return redraw();}

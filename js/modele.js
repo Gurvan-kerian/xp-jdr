@@ -354,7 +354,48 @@ function ppPreMiss(e,c){return (e.pre||[]).filter(p=>{if(p.t==='spec')return !sp
   if(p.t==='prof'){const pr=(c.profils||[]).find(x=>x.nom===p.n);return !pr||rankOf(c,pr)<p.v;}return compCur(c,p.n)<p.v;});}
 const ppBought=c=>(c.achats||[]).filter(a=>a.ppel);
 function ppFx(c){const out=[];if(!c||!(c.achats||[]).length)return out;const E=ppEls();
-  for(const a of c.achats){const x=a.ppel;if(!x)continue;const fx=x.titre?prOf(x.prof).titre.fx:(E[x.id]||{}).fx;for(const f of fx||[])if(!fxInteg(f))out.push({...f,src:x.nom,kind:'pp'});}return out;}
+  for(const a of c.achats){const x=a.ppel;if(!x||x.fin)continue; /* recette lot C : élément terminé (activité remplacée, titre abandonné) sans effet */const fx=x.titre?prOf(x.prof).titre.fx:(E[x.id]||{}).fx;for(const f of fx||[])if(!fxInteg(f))out.push({...f,src:x.nom,kind:'pp'});}return out;}
+/* ---------- Recette du lot C (25/11/2026) : effets des éléments du tableau des PP, Fortune ----------
+   Effets déduits de la précision (préremplissage ponctuel) : « Fortune +x » → Permanent sur la Fortune ; « +x en Compétence (condition) » → Jet.
+   Une ligne regroupant plusieurs objets (« Pipe sculptée : … ») ne s'applique qu'à l'objet nommé ; le reste est signalé. */
+const PPFX_ALIAS=[['Sciences occultes','Occultisme'],['Larcin','Larçin']];
+function ppFxComp(t){const n=nrm(t);let best=null;for(const [k,v] of COMPS_ALL.map(c=>[c,c]).concat(PPFX_ALIAS)){const m=nrm(k);if(n.startsWith(m)&&(n.length===m.length||!/[a-z]/.test(n[m.length]))&&(!best||m.length>best[1]))best=[v,m.length];}return best;}
+const ppFxVal=v=>+String(v).replace(/\s/g,'');
+const ppFxTxt=v=>String(v||'').replace(/[()]/g,'').replace(/^[,;:]\s*/,'').replace(/\s+/g,' ').trim();
+function ppFxSplit(seg){const out=[];let dep=0,cur='';for(let i=0;i<seg.length;i++){const ch=seg[i],rest=seg.slice(i);if(ch==='(')dep++;if(ch===')')dep=Math.max(0,dep-1);
+    const et=dep===0&&rest.match(/^\s+et\s+(?=[A-ZÉ+])/);
+    if((dep===0&&ch===',')||et||(ch==='('&&/^\(\s*[A-ZÉ][\wé ]*\s*[+-]\s*\d/.test(rest))){out.push(cur);cur='';if(et)i+=et[0].length-1;continue;}cur+=ch;}
+  out.push(cur);return out;}
+function ppFxGuess(nom,prec,sibs){const fx=[],amb=[],N=nrm(nom),hitIn=(n,w)=>{const k=nrm(w).replace(/s$/,'');return !!k&&(n.includes(k)||k.split(' ').every(x=>n.includes(x)));};
+  for(let seg of String(prec||'').split(/\s*;\s*/)){if(!/[+-]\s*\d/.test(seg))continue;
+    const pm=seg.match(/^([^:()]{2,60}?)\s*:\s*(.*)$/);
+    if(pm){const who=pm[1].split(/\s+ou\s+/),mine=who.some(w=>hitIn(N,w)),other=(sibs||[]).some(x=>nrm(x)!==N&&who.some(w=>hitIn(nrm(x),w)));if(!mine&&other)continue;seg=pm[2];}
+    for(let p of ppFxSplit(seg)){p=p.replace(/\)\s*$/,'').trim();if(!/[+-]\s*\d/.test(p))continue;let m,val=0,rest='',tgt=null;
+      if((m=p.match(/^(?:la\s+)?fortune\s*([+-]\s*\d+)/i))||(m=p.match(/^([+-]\s*\d+)\s*en\s+fortune/i))){fx.push({t:'perm',cible:'fortune',val:ppFxVal(m[1]),txt:'',quand:'m'});continue;}
+      if((m=p.match(/^([+-]\s*\d+)\s*(?:en|à)\s+(.+)$/i))){val=ppFxVal(m[1]);tgt=ppFxComp(m[2]);rest=tgt?m[2].slice(tgt[1]):'';}
+      else if((tgt=ppFxComp(p))&&(m=p.slice(tgt[1]).match(/^\s*([+-]\s*\d+)\s*(.*)$/))){val=ppFxVal(m[1]);rest=m[2];}
+      if(!tgt||!val){amb.push(p);continue;}
+      const T=[tgt[0]];let r=rest.trim(),o;while((o=r.match(/^ou\s+(.+)$/i))&&(o=ppFxComp(o[1]))){T.push(o[0]);r=r.replace(/^ou\s+/i,'').slice(o[1]).trim();}
+      for(const t of T)fx.push({t:'jet',cible:t,val,txt:ppFxTxt(r),quand:'m'});}}
+  return {fx,amb};}
+/* Éléments à préremplir : effets vides, pas encore traités (marque fxAuto), précision avec un bonus chiffré */
+function ppFxPlan(){const E=ppEls(),out=[];
+  for(const [id,e] of Object.entries(E)){if(!e||(e.fx||[]).length||e.fxAuto||!/[+-]\s*\d/.test(e.prec||''))continue;
+    const sibs=Object.values(E).filter(x=>x.prof===e.prof&&x.rub===e.rub&&x.prec===e.prec).map(x=>x.nom),g=ppFxGuess(e.nom,e.prec,sibs);out.push({id,e,fx:g.fx,amb:g.amb});}
+  return out;}
+function ppFxPrefill(){const L=ppFxPlan();if(!L.length)return {n:0,fx:0,amb:0};let nfx=0,namb=0;const sig=[];
+  prSaveDoc(d=>{for(const it of L){const e=d.el[it.id];if(!e)continue;e.fx=it.fx.map(f=>({...f}));e.fxAuto=1;nfx+=it.fx.length;
+    if(it.amb.length){namb++;sig.push({obj:{t:'ppel',id:it.id},champ:'Effets',statut:'completer',note:profLab(e.prof)+' › '+e.nom+' : « '+it.amb.join(' ; ')+' » non reconnu, à saisir dans Paramètres › Profils (tableau de PP).'});}}});
+  if(sig.length&&typeof saveSignals==='function'){const now=today(),by=ME||'';saveSignals([...sigStored(),...sig.map(x=>({id:uid('sg'),...x,date:now,by,ok:false}))]);}
+  return {n:L.length,fx:nfx,amb:namb};}
+/* Effets d'un élément acheté (titre de profil compris) et sa part de Fortune */
+const ppElFx=x=>!x?[]:x.titre?(prOf(x.prof).titre.fx||[]):((ppEls()[x.id]||{}).fx||[]);
+const ppFxFort=x=>ppElFx(x).filter(f=>f.t==='perm'&&f.cible==='fortune').reduce((t,f)=>t+(+f.val||0),0);
+function ppElFort(x){if(!x)return 0;let v=ppFxFort(x);if(x.rub==='A'){if(x.opt==='p')v+=+x.fort||0;else if(x.opt==='s')v+=+x.fortS||0;}return v;}
+/* Puces des bonus de circonstance (Jet) d'une compétence, tirés des éléments achetés en PP et en cours */
+function ppJetChips(c,comp){const n=nrm(comp);return fxOf(c).filter(e=>e.kind==='pp'&&e.t==='jet'&&nrm(e.cible)===n).map(e=>`<span class="bn jet">${esc(sgn(e.val))} · ${esc(e.src)}${e.txt?' ('+esc(e.txt)+')':''}</span>`).join('');}
+/* Activité principale / secondaire en cours (non terminée) */
+const ppActOf=(c,opt)=>ppBought(c).find(a=>a.ppel.rub==='A'&&a.ppel.opt===opt&&!a.ppel.fin)||null;
 /* Traits de caractère : c.traits={race,maj:{p,n},min:{p,n},libre} ; féal (humain) : maj et libre seulement */
 function profMajMin(c){const L=(c.profils||[]).slice().sort((a,b)=>rankOf(c,b)-rankOf(c,a)||ppSum(c,b)-ppSum(c,a));return [L[0]&&L[0].nom,L[1]&&L[1].nom];}
 function traitsOf(c){const t=c.traits||{},out=[];if(!isHum(c)&&t.race)out.push([t.race,'race']);for(const k of isHum(c)?['maj']:['maj','min'])if(t[k]&&t[k].n)out.push([t[k].n,profLab(t[k].p,c)]);if(t.libre)out.push([t.libre,'libre']);return out;}

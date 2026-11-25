@@ -37,15 +37,17 @@ function viewParams(){if(!S.paramsReady)return `<h2 style="margin-top:4px">Param
 function viewProfils(){const G=isGest(),E=ppEls(),n={};for(const e of Object.values(E))n[e.prof]=(n[e.prof]||0)+1;
   return `<div class="card"><h3 class="rs" style="margin-top:0">Profils <span class="muted small">6</span></h3>${G?'':'<div class="rolock">Lecture seule : réservé aux personnes ayant les droits de gestion.</div>'}
   <div class="prl">${PROFILS.map(p=>{const x=prOf(p);return `<button class="prr" data-act="pfOpen" data-p="${esc(p)}"><span><b>${esc(x.m)}${x.f&&x.f!==x.m?' / '+esc(x.f):''}</b><small>${PROFCOMPS[p].map(esc).join(' · ')}</small><small>Tableau de PP : ${n[p]||0} éléments · Traits : ${x.traits.map(esc).join(', ')||'—'}</small></span><span aria-hidden="true">›</span></button>`;}).join('')}</div></div>
+  ${G&&ppFxPlan().length?`<div class="card" style="margin-top:10px"><b>Effets des éléments du tableau de PP</b><div class="muted small">${ppFxPlan().length} éléments ont un bonus dans leur précision (« Fortune +1 », « +1 en Classe si… ») mais aucun effet. Préremplir : Permanent pour la Fortune, Jet pour les compétences ; les cas non reconnus sont signalés dans Paramètres › Données. À faire après une sauvegarde.</div><div class="actions"><button class="btn pri" data-act="ppFxPre">Préremplir les effets</button></div></div>`:''}
   <div class="muted small" style="margin-top:10px">Les 6 profils et leurs compétences sont fixes. Noms, traits, spécialités, titre et tableau de points de personnage se modifient ici.</div>`;}
-const PF_KINDS=new Set(['pfEd','ppEl','ppBuy','traits','riEye']);
+const PF_KINDS=new Set(['pfEd','ppEl','ppBuy','traits','riEye','ppAb']);
 const PF_ACTS=new Set(['pfOpen','pfTab','pfRub','pfTrDel','pfTrAdd','pfSpEd','pfSpAdd','pfSpDel','pfSpOk','pfSpCancel','pfSave','ppElOpen','ppElNew','ppElBack','ppElSeg','ppElTg','ppPreNew','ppPreT','ppPreOk','ppPreDel','ppPreCancel','ppElSave','ppElDel','ppElDelOk',
-  'ppRub','ppAch','ppPick','ppTitre','ppOther','ppBack','ppOpt','ppOv','ppBuyOk','trOpen','trSave']);
+  'ppRub','ppAch','ppPick','ppTitre','ppOther','ppBack','ppOpt','ppOv','ppBuyOk','trOpen','trSave','ppTg','ppCGo','ppCBack','ppCOpt','ppCDel','ppCBuy','ppAb','ppAbOk','ppFxPre']);
+const PP_CART_ACTS=new Set(['ppTg','ppCGo','ppCBack','ppCOpt','ppCDel','ppCBuy']);
 function pfDraft(p){const x=prOf(p),sp={};for(const k of PROFCOMPS[p])sp[k]=clone(CATSPEC[k]||[]);
   return {kind:'pfEd',p,tab:'prof',rub:'A',m:x.m||'',f:x.f||'',traits:x.traits.slice(),tnew:'',specs:sp,spEd:null,tnom:x.titre.nom,tdesc:x.titre.desc||'',fx:clone(x.titre.fx||[]),fxEd:null,err:''};}
 const sheetW=(lab,inner)=>`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(lab)}"><div class="in">${inner}</div></div>`;
 const pfSeg=(act,cur,opts,ex='')=>`<div class="seg" role="group">${opts.map(([v,l])=>`<button data-act="${act}" data-v="${v}"${ex} aria-pressed="${cur===v}">${l}</button>`).join('')}</div>`;
-function pfSheet(g){if(g.kind==='pfEd')return pfEdSheet(g);if(g.kind==='ppEl')return ppElSheet(g);if(g.kind==='ppBuy')return ppBuySheet(g);if(g.kind==='traits')return traitsSheet(g);if(g.kind==='riEye')return riEyeSheet(g);return '';}
+function pfSheet(g){if(g.kind==='pfEd')return pfEdSheet(g);if(g.kind==='ppEl')return ppElSheet(g);if(g.kind==='ppBuy')return ppBuySheet(g);if(g.kind==='traits')return traitsSheet(g);if(g.kind==='riEye')return riEyeSheet(g);if(g.kind==='ppAb')return ppAbSheet(g);return '';}
 function pfEdSheet(g){const G=isGest(),p=g.p;let h=`<div class="shd"><h2>${esc(g.m||p)}${g.f&&g.f!==g.m?' / '+esc(g.f):''}</h2></div>${pfSeg('pfTab',g.tab,[['prof','Profil'],['tab','Tableau de PP']])}`;
   if(g.spEd){const e=g.spEd;return sheetW('Spécialités',`<div class="shd"><h2>Spécialités · ${esc(e.comp)}</h2></div><div class="muted small">Nom, caractéristique associée, et case cochée si la spécialité est réservée (à justifier).</div>
     ${e.list.map((x,i)=>`<div class="spr"><input type="text" data-pfs="${i}" data-c="0" value="${esc(x[0]||'')}" aria-label="Nom"><input type="text" data-pfs="${i}" data-c="1" value="${esc(x[1]||'')}" aria-label="Caractéristique" style="max-width:110px"><label class="small"><input type="checkbox" data-pfs="${i}" data-c="2"${x[2]?' checked':''}> réservée</label><button class="btn ghost" data-act="pfSpDel" data-i="${i}" aria-label="Retirer">✕</button></div>`).join('')||'<div class="muted small">Aucune spécialité.</div>'}
@@ -103,27 +105,102 @@ function ppRows(c,prof){return Object.entries(ppEls()).filter(([,e])=>e.prof===p
 const ppStar=e=>e.excl?' *':'';
 function ppBuySheet(g){const c=S.chars[g.cid],pr=c&&(c.profils||[]).find(x=>x.nom===g.prof);if(!pr)return '';
   if(g.sel)return ppConfirmSheet(g,c,pr);
+  if(g.step==='cart')return ppCartSheet(g,ppCtxGame(c,pr,g),'Points de personnage');
   const have=ppHave(pr),rk=rankOf(c,pr),q=nrm(g.q||''),bought={};for(const a of ppBought(c))bought[a.ppel.id]=(bought[a.ppel.id]||[]).concat(a.ppel);
   const P=prOf(g.prof),tid='titre:'+g.prof,sum=ppSum(c,pr);
   let h=`<div class="shd" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>${esc(profLab(g.prof,c))}</h2><span class="ppf" aria-label="PP disponibles"><small>PP</small>${esc(ppFmt(have))}</span></div>
   <div class="muted small">${esc(c.court)} dépense ses PP ${esc(profLab(g.prof,c))} dans ce tableau uniquement.</div>`;
   if(rk>=4){const got=bought[tid],ok=!got&&sum>=PPT_PTS&&have>=PPT_COST;h+=`<div class="card ptc"><div class="prof-head"><b>${ICON.medaille||''} ${esc(P.titre.nom)}</b>${got?'<span class="pill acc">acquis</span>':`<button class="btn${ok?' pri':''}" data-act="ppTitre"${ok?'':' disabled'}>${PPT_COST} PP</button>`}</div><div class="muted small">${sum} / ${PPT_PTS} points de compétences · ${esc(ppFmt(have))} / ${PPT_COST} PP${P.titre.desc?' · '+esc(P.titre.desc):''}</div></div>`;}
   h+=`<div class="field"><input type="search" data-ppb="q" value="${esc(g.q||'')}" placeholder="Rechercher dans le tableau…" aria-label="Rechercher dans le tableau"></div>${pfSeg('ppRub',g.rub,[['all','Tout'],...PP_RUB.map(r=>[r[0],r[2]])])}`;
-  /* Lot 2 bis : achetable = assez de PP, prérequis remplis, pas déjà possédé (les langues se cumulent) ; filtre « Achetables » gardé pendant la session */
-  const ppOk=(id,e)=>!(bought[id]&&e.rub!=='L')&&!ppPreMiss(e,c).length&&ppCostMin(e,c)<=have;
-  const all=ppRows(c,g.prof).filter(([,e])=>(g.rub==='all'||e.rub===g.rub)&&(!q||nrm(e.nom).includes(q))),nOk=all.filter(([id,e])=>ppOk(id,e)).length,fa=!!S.ppAch;
-  h+=`<div style="display:flex;justify-content:flex-end;margin:4px 0 2px"><button type="button" class="chip" data-act="ppAch" aria-pressed="${fa}">Achetables · ${nOk}</button></div>`;
-  const rows=fa?all.filter(([id,e])=>ppOk(id,e)):all;
-  for(const r of PP_RUB){const L=rows.filter(([,e])=>e.rub===r[0]);if(!L.length)continue;
-    h+=`<h3 class="rs">${esc(r[1])}</h3><div class="ppl">${L.map(([id,e])=>{const got=bought[id],miss=ppPreMiss(e,c),cost=ppCostMin(e,c),off=cost>have,ok=ppOk(id,e);
-      const sub=[e.rub==='A'&&e.fortP!=null?'Fortune '+e.fortP:'',e.nocrea?'pas à la création':''].filter(Boolean).join(' · ');
-      if(got&&e.rub!=='L')return `<div class="ppi got ppw no"><span>${esc(e.nom+ppStar(e))} <small>· ✓ ${got.map(x=>esc(PPOPT[x.opt]||'acquis')).join(', ')}</small><span class="why">déjà possédé</span></span><b class="small">acquis</b></div>`;
-      const why=[off?'PP insuffisants':'',miss.length?'prérequis : '+miss.map(ppPreTxt).join(', '):''].filter(Boolean).join(' · ');
-      return `<button class="ppi ppw${off?' off':''}${ok?' ok':' no'}" data-act="ppPick" data-id="${esc(id)}"${off?' disabled':''}><span>${esc(e.nom+ppStar(e))}${sub?` <small>· ${esc(sub)}</small>`:''}${got?` <small>· ✓ ×${got.length}</small>`:''}${why?`<span class="why">${esc(why)}</span>`:''}</span><b class="num">${esc(ppCostTxt(e))}</b></button>`;}).join('')}</div>`;}
-  if(!rows.length)h+=`<div class="muted small" style="margin:10px 0">${fa&&all.length?'Aucun élément achetable pour l\'instant.':'Aucun élément.'}</div>`;
+  /* Recette lot C : panier (cases à cocher, bandeau « Valider »), éléments trop chers grisés, filtre « Achetables » actif par défaut */
+  const ctx=ppCtxGame(c,pr,g);h+=ppCartList(g,ctx,ppRows(c,g.prof));
   h+=`<button class="ppi oth" data-act="ppOther"><span>+ Autre achat <small>· saisie libre : intitulé et coût</small></span></button>
-  <div class="muted small" style="margin-top:6px">* réservé à ce profil. Grisé : pas achetable pour l'instant (raison en petit). Atteindre le rang N de ce profil ajoute N PP automatiquement.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div>`;
+  <div class="muted small" style="margin-top:6px">* réservé à ce profil. Coche les éléments puis « Valider ». Grisé : pas achetable pour l'instant (raison en petit). Atteindre le rang N de ce profil ajoute N PP automatiquement.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div>`+(g._bar||'');
   return sheetW('Points de personnage',h);}
+/* ---------- Recette du lot C (25/11/2026) : panier d'achats en PP, commun au jeu (ppBuy) et à l'assistant (cwPP) ----------
+   g.cart=[{id,opt,prec}] ; g.step='cart' = récapitulatif. ctx = {c, prof, have, pool:{C,L}, owned:{id:[…]}, actP, actS, crea, pfx, ov, fort0}. */
+function ppCtxGame(c,pr,g){const owned={};for(const a of ppBought(c))if(!a.ppel.fin)owned[a.ppel.id]=(owned[a.ppel.id]||[]).concat(a.ppel);
+  const P=ppActOf(c,'p'),Sx=ppActOf(c,'s');return {c,prof:g.prof,have:ppHave(pr),pool:{C:0,L:0},owned,actP:P&&{nom:P.ppel.nom,x:P.ppel,aid:P.id},actS:Sx&&{nom:Sx.ppel.nom,x:Sx.ppel,aid:Sx.id},crea:false,pfx:'pp',ov:canEdit(),fort0:lv(c,'fortune')};}
+function ppCartDefOpt(e,ctx,cart){if(e.rub==='A')return ctx.actP||cart.some(x=>x.opt==='p'&&(ppEls()[x.id]||{}).rub==='A')?'s':'p';
+  const k=e.cost||{};if(k.k==='hf')return k.a==null?'f':'h';if(k.k==='tm'&&isExoF(ctx.c))return 'm';return '';}
+/* Coût de chaque ligne : points de Contact et de langue d'abord (création), le reste en PP du profil */
+function ppCartCalc(ctx,cart){let pc=ctx.pool.C||0,pl=ctx.pool.L||0,tot=0,sum=0;const items=[];
+  for(const it of cart){const e=ppEls()[it.id];if(!e)continue;const cost=ppCost(e,it.opt,ctx.c);let rest=cost,u=0;
+    if(e.rub==='C'){u=Math.min(rest,pc);pc-=u;rest-=u;}else if(e.rub==='L'){u=Math.min(rest,pl);pl-=u;rest-=u;}
+    tot+=rest;sum+=cost;items.push({it,e,cost,pp:rest,pool:u});}
+  for(const o of ['p','s']){const old=o==='p'?ctx.actP:ctx.actS;if(old&&old.refund&&items.some(k=>k.e.rub==='A'&&k.it.opt===o))tot-=old.refund;} /* création : l'activité remplacée rend ses PP */
+  return {items,tot,sum,rest:ctx.have-tot,pc,pl};}
+/* Part de Fortune de chaque ligne (en jeu : ajustement de la Fortune de la fiche) */
+const ppCartX=(id,e,opt,prof)=>{const x={id,prof:prof||e.prof,rub:e.rub,nom:e.nom,opt};if(e.rub==='A'){if(opt==='p'&&e.fortP!=null)x.fort=e.fortP;if(opt==='s'&&e.fortS!=null)x.fortS=e.fortS;if(opt==='p'&&e.spec)x.spec=e.spec;}return x;};
+function ppFortStep(cur,max,x,old){let d;if(x.rub==='A'&&(x.opt==='p'||x.opt==='s')){d=old?ppElFort(x)-ppElFort(old):x.opt==='p'?Math.max(0,(+x.fort||0)-cur)+ppFxFort(x):ppElFort(x);}else d=ppElFort(x);
+  const n=Math.max(0,Math.min(max,cur+d));return {d:n-cur,cur:n};}
+function ppCartErr(ctx,K){const A=K.items.filter(x=>x.e.rub==='A'),err=[];
+  if(A.filter(x=>x.it.opt==='p').length>1)err.push('Une seule activité principale.');if(A.filter(x=>x.it.opt==='s').length>1)err.push('Une seule activité secondaire.');
+  if(K.rest<0)err.push('PP insuffisants.');if(!ctx.ov&&K.items.some(x=>ppPreMiss(x.e,ctx.c).length))err.push('Prérequis manquant.');return err;}
+const ppFxChips=x=>ppElFx(x).filter(f=>f.t!=='rap'||f.txt).map(f=>`<span class="bn ${f.t==='jet'?'jet':f.t==='perm'?'calc':'note'}">${esc(fxLabel(f))}${f.t==='jet'&&f.txt?' · '+esc(f.txt):''}</span>`).join('');
+function ppCartList(g,ctx,all0){const c=ctx.c,P=ctx.pfx,cart=g.cart||(g.cart=[]),K=ppCartCalc(ctx,cart),q=nrm(g.q||''),fa=S.ppAch!==false,inC=id=>cart.findIndex(x=>x.id===id);
+  const st=([id,e])=>{const i=inC(id),got=ctx.owned[id]&&e.rub!=='L',miss=ppPreMiss(e,c),avail=K.rest+(e.rub==='C'?K.pc:e.rub==='L'?K.pl:0),dear=i<0&&ppCostMin(e,c)>avail;
+    const why=[got?(ctx.crea?'déjà choisi':'déjà possédé'):'',dear?'PP insuffisants (reste '+ppFmt(Math.max(0,avail))+')':'',miss.length?'prérequis : '+miss.map(ppPreTxt).join(', ')+(ctx.ov?' (passer outre : gestion)':''):''].filter(Boolean).join(' · ');
+    const dis=i<0&&(got||dear||(miss.length&&!ctx.ov));return {id,e,i,got,miss,dis,ok:i>=0||(!dis&&!miss.length),why};};
+  const all=all0.filter(([,e])=>(g.rub==='all'||e.rub===g.rub)&&(!q||nrm(e.nom).includes(q))).map(st),nOk=all.filter(x=>x.ok&&x.i<0).length;
+  let h=`<div style="display:flex;justify-content:flex-end;margin:4px 0 2px"><button type="button" class="chip" data-act="ppAch" aria-pressed="${fa}">Achetables · ${nOk}</button></div>`;
+  const rows=fa?all.filter(x=>x.ok):all;
+  for(const r of PP_RUB){const L=rows.filter(x=>x.e.rub===r[0]);if(!L.length)continue;
+    h+=`<h3 class="rs">${esc(r[1])}</h3><div class="ppl">${L.map(x=>{const e=x.e,on=x.i>=0,sub=[e.rub==='A'&&e.fortP!=null?'Fortune '+e.fortP+(e.fortS!=null?' (secondaire +'+e.fortS+')':''):'',e.nocrea&&!ctx.crea?'pas à la création':''].filter(Boolean).join(' · ');
+      return `<button type="button" class="ppi ppw ppck${on?' sel':''}${x.dis?' off':''}${x.ok?' ok':' no'}" role="checkbox" aria-checked="${on}" data-act="${P}Tg" data-id="${esc(x.id)}"${x.dis?' disabled':''}><span class="ppbox" aria-hidden="true">${on?'✓':''}</span><span class="ppt">${esc(e.nom+ppStar(e))}${sub?` <small>· ${esc(sub)}</small>`:''}${(e.fx||[]).length?`<span class="ppfx">${ppFxChips({id:x.id})}</span>`:''}${x.why?`<span class="why">${esc(x.why)}</span>`:''}</span><b class="num">${esc(ppCostTxt(e))}</b></button>`;}).join('')}</div>`;}
+  if(!rows.length)h+=`<div class="muted small" style="margin:10px 0">${fa&&all.length?'Aucun élément achetable pour l\'instant.':'Aucun élément.'}</div>`;
+  g._bar=`<div class="ppbar" role="status"><span><b>${cart.length} élément${cart.length>1?'s':''}</b><small>Total ${esc(ppFmt(K.sum))} PP · reste ${esc(ppFmt(K.rest))}</small></span><button type="button" class="btn" data-act="${P}CGo"${cart.length?'':' disabled'}>Valider</button></div>`;
+  return h;}
+/* Récapitulatif du panier : options, précision, effets, Fortune avant → après */
+function ppCartSheet(g,ctx,lab){const c=ctx.c,P=ctx.pfx,cart=g.cart||[],K=ppCartCalc(ctx,cart),err=ppCartErr(ctx,K);
+  let f=ctx.fort0,fmax=(c.fortune&&c.fortune.max)||15;const fr=ctx.crea?ctx.fortAfter(cart):null;
+  const lines=K.items.map((k,i)=>{const e=k.e,it=k.it,x=ppCartX(it.id,e,it.opt,ctx.prof),kc=e.cost||{},miss=ppPreMiss(e,c);let opt='',warn=[];
+    if(e.rub==='A')opt=pfSeg(P+'COpt',it.opt,[['p','Principale'],['s','Secondaire']],` data-i="${i}"`);
+    else if(kc.k==='hf'&&kc.a!=null&&kc.b!=null)opt=pfSeg(P+'COpt',it.opt,[['h','Humain'],['f','Fée']],` data-i="${i}"`);
+    else if(kc.k==='tm'&&isExoF(c))opt=pfSeg(P+'COpt',it.opt==='t'?'t':'m',[['m','Fée moderne'],['t','Fée traditionnelle']],` data-i="${i}"`);
+    const old=e.rub==='A'?(it.opt==='p'?ctx.actP:it.opt==='s'?ctx.actS:null):null;
+    if(old)warn.push('Remplace '+old.nom+' (activité '+(it.opt==='p'?'principale':'secondaire')+')');
+    if(!ctx.crea){const r=ppFortStep(f,fmax,x,old&&old.x);if(r.d)warn.push('Fortune '+f+' → '+r.cur+' ('+sgn(r.d)+')');f=r.cur;}
+    if(miss.length)warn.push('Prérequis manquant : '+miss.map(ppPreTxt).join(', ')+(ctx.ov?' (passer outre : gestion)':''));
+    const bits=[e.rub==='A'&&it.opt==='p'&&e.fortP!=null?'Fortune '+e.fortP:'',e.rub==='A'&&it.opt==='s'&&e.fortS!=null?'Fortune +'+e.fortS:'',e.rub==='A'&&it.opt==='p'&&e.spec?'spécialité '+e.spec+' offerte':'',k.pool?ppFmt(k.pool)+(e.rub==='C'?' pt de Contact':' pt de langue'):''].filter(Boolean);
+    return `<div class="ppln"><div class="pplt"><b>${esc(e.nom)}</b><span class="num">${esc(ppFmt(k.cost))} PP</span><button type="button" class="ibtn" data-act="${P}CDel" data-i="${i}" aria-label="Retirer ${esc(e.nom)} du panier">✕</button></div>
+      ${opt}${bits.length?`<div class="muted small">${esc(bits.join(' · '))}</div>`:''}${(e.fx||[]).length?`<div>${ppFxChips({id:it.id})}</div>`:''}${e.prec?`<div class="muted small">${esc(e.prec)}</div>`:''}${warn.map(w=>`<div class="small ppwarn">${esc(w)}</div>`).join('')}
+      <input type="text" data-ppcart="${i}" value="${esc(it.prec||'')}" placeholder="Précision (facultatif)" aria-label="Précision : ${esc(e.nom)}" autocomplete="off"></div>`;}).join('');
+  const f1=ctx.crea?fr:f;
+  return sheetW(lab,`<div class="shd" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>Mon panier · ${esc(profLab(ctx.prof,c))}</h2><span class="ppf"><small>Total</small>${esc(ppFmt(K.sum))}</span></div>
+    ${lines||'<div class="muted small">Panier vide.</div>'}
+    <div class="calc"><span>Total</span><b>${esc(ppFmt(K.sum))} PP${K.sum!==K.tot?' (dont '+esc(ppFmt(K.sum-K.tot))+' en points de Contact / langue)':''}</b><span>Fortune</span><b>${ctx.fort0}${f1!==ctx.fort0?' → '+f1:''}</b><span>Reste après achat</span><b>${esc(ppFmt(K.rest))} PP ${esc(profLab(ctx.prof,c))}</b></div>
+    ${err.map(x=>`<div class="bad small">${esc(x)}</div>`).join('')}
+    ${ctx.crea?'':'<div class="muted small">Chaque achat est inscrit dans l\'historique et peut y être annulé (la Fortune est alors rétablie).</div>'}
+    <div class="actions"><button class="btn" data-act="${P}CBack">Retour</button><button class="btn pri" data-act="${P}CBuy"${cart.length&&!err.length?'':' disabled'}>Acheter</button></div>`);}
+/* Actions communes du panier ; renvoie true si traitée */
+function ppCartAct(a,d,g,ctx){const P=ctx.pfx,cart=g.cart||(g.cart=[]);
+  if(a===P+'Tg'){const e=ppEls()[d.id];if(!e)return true;const i=cart.findIndex(x=>x.id===d.id);if(i>=0)cart.splice(i,1);else cart.push({id:d.id,opt:ppCartDefOpt(e,ctx,cart),prec:''});return true;}
+  if(a===P+'CGo'){if(cart.length)g.step='cart';return true;}
+  if(a===P+'CBack'){g.step='';return true;}
+  if(a===P+'COpt'){const it=cart[+d.i];if(it)it.opt=d.v;return true;}
+  if(a===P+'CDel'){cart.splice(+d.i,1);if(!cart.length)g.step='';return true;}
+  return false;}
+/* Achat en jeu : une ligne d'achat par élément, Fortune ajustée, activité remplacée marquée terminée */
+function ppCartBuy(g){const c0=S.chars[g.cid];if(!c0||!canEditC(c0))return;const pr0=(c0.profils||[]).find(x=>x.nom===g.prof);if(!pr0)return;
+  const ctx=ppCtxGame(c0,pr0,g),K=ppCartCalc(ctx,g.cart||[]);if(!K.items.length||ppCartErr(ctx,K).length)return;
+  const c=clone(c0),pr=(c.profils||[]).find(x=>x.nom===g.prof),dt=today(),gd=typeof chNow==='function'?chNow():null;c.achats=c.achats||[];c.fortune=c.fortune||{max:15,cur:0};
+  let fcur=c.fortune.cur||0;const fmax=c.fortune.max||15;
+  K.items.forEach((k,j)=>{const e=k.e,it=k.it,x=ppCartX(it.id,e,it.opt,g.prof),prec=(it.prec||'').trim(),aid='a'+Date.now().toString(36)+j+Math.floor(Math.random()*1e3);if(prec)x.prec=prec;if(gd)x.debut=gd;
+    const oldA=e.rub==='A'&&(it.opt==='p'||it.opt==='s')?c.achats.find(a=>a.ppel&&a.ppel.rub==='A'&&a.ppel.opt===it.opt&&!a.ppel.fin):null;
+    const r=ppFortStep(fcur,fmax,x,oldA&&oldA.ppel);fcur=r.cur;
+    const a={id:aid,date:dt,label:`PP ${g.prof} - ${ppFmt(k.cost)} - ${e.nom}${x.opt?' ('+PPOPT[x.opt]+')':''}${prec?' : '+prec:''}`,cout:0,key:'pp:'+g.prof,pp:k.cost,ppel:x};
+    if(r.d)a.fortD=r.d;if(oldA){oldA.ppel.fin=gd||{};oldA.ppel.finT='remp';a.remp=oldA.id;}
+    c.achats.push(a);
+    if(x.spec&&!specsOf(c).some(s=>nrmS(s.nom)===nrmS(x.spec))){const cp=specComp(x.spec);c.spec=c.spec||{cur:0};c.spec.cur=(c.spec.cur||0)+1;c.specs=[...specsOf(c),{nom:x.spec,cible:cp?'comp:'+cp:null,offert:true,ppa:aid}];}});
+  pr.note=ppHave(pr)-K.tot;c.fortune.cur=fcur;S.dlg=null;saveChar(c);toast(K.items.length>1?K.items.length+' achats enregistrés':'Achat enregistré');}
+/* Abandon / retrait d'un titre ou d'un élément « Fortune +x » : bonus retiré, pas de remboursement, gardé grisé « jusqu'au … » */
+function ppAbSheet(g){const c=S.chars[g.cid],a=c&&(c.achats||[]).find(x=>x.id===g.aid);if(!a||!a.ppel||a.ppel.fin||!canEditC(c))return '';const x=a.ppel,v=ppElFort(x),f=lv(c,'fortune'),f1=Math.max(0,f-v),gd=typeof chNow==='function'?chNow():null;
+  return sheetW('Abandonner',`<div class="shd"><h2>Abandonner / retirer</h2></div><p class="small">« ${esc(x.nom)} »${v?` : Fortune ${f} → ${f1}`:''}. Aucun PP n'est rendu. L'élément reste affiché, grisé, ${gd?"jusqu'au "+esc(chDateTxt(gd))+' (date du jeu)':'avec la mention « abandonné » (pas de date du jeu)'}.</p>
+    <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="ppAbOk">Abandonner</button></div>`);}
+function ppAbandon(g){const c0=S.chars[g.cid];if(!canEditC(c0))return;const c=clone(c0),a=(c.achats||[]).find(x=>x.id===g.aid);if(!a||!a.ppel||a.ppel.fin)return;
+  const v=ppElFort(a.ppel);c.fortune=c.fortune||{max:15,cur:0};const f=c.fortune.cur||0,n=Math.max(0,f-v);c.fortune.cur=n;
+  a.ppel.fin=(typeof chNow==='function'&&chNow())||{};a.ppel.finT='ab';if(f-n)a.ppel.finD=f-n;S.dlg=null;saveChar(c);toast('Abandonné');}
 function ppSelEl(g,c){if(g.sel==='titre'){const P=prOf(g.prof);return {prof:g.prof,rub:'T',nom:P.titre.nom,cost:{k:'u',a:PPT_COST},pre:[],titre:true,prec:P.titre.desc||''};}return ppEls()[g.sel];}
 function ppConfirmSheet(g,c,pr){const have=ppHave(pr);
   if(g.sel==='other'){const n=+String(g.ocost||'').replace(',','.')||0,ok=n>0&&(g.olab||'').trim();
@@ -156,7 +233,8 @@ function ppBuyOk(g){const c0=S.chars[g.cid];if(!c0)return;const c=clone(c0),pr=(
   const opt=e.rub==='A'||(e.cost&&e.cost.k==='hf')?g.opt:(e.cost&&e.cost.k==='tm'&&isExoF(c0)?(g.opt==='t'?'t':'m'):''),prec=(g.prec||'').trim();pr.note=have-cost;
   const x={id:g.sel==='titre'?'titre:'+g.prof:g.sel,prof:g.prof,rub:e.rub,nom:e.nom,opt};if(e.titre)x.titre=true;if(prec)x.prec=prec;
   if(e.rub==='A'){if(opt==='p'&&e.fortP!=null)x.fort=e.fortP;if(opt==='s'&&e.fortS!=null)x.fortS=e.fortS;if(opt==='p'&&e.spec)x.spec=e.spec;}
-  c.achats.push({id:aid,date:today(),label:`PP ${g.prof} - ${ppFmt(cost)} - ${e.nom}${opt?' ('+PPOPT[opt]+')':''}${prec?' : '+prec:''}`,cout:0,key:'pp:'+g.prof,pp:cost,ppel:x});
+  const gd=typeof chNow==='function'?chNow():null;if(gd)x.debut=gd;c.fortune=c.fortune||{max:15,cur:0};const f0=c.fortune.cur||0,fd=Math.max(0,Math.min(c.fortune.max||15,f0+ppElFort(x)))-f0;c.fortune.cur=f0+fd; /* recette lot C */
+  c.achats.push({id:aid,date:today(),label:`PP ${g.prof} - ${ppFmt(cost)} - ${e.nom}${opt?' ('+PPOPT[opt]+')':''}${prec?' : '+prec:''}`,cout:0,key:'pp:'+g.prof,pp:cost,ppel:x,...(fd?{fortD:fd}:{})});
   if(x.spec&&!specsOf(c).some(s=>nrmS(s.nom)===nrmS(x.spec))){const cp=specComp(x.spec);c.spec=c.spec||{cur:0};c.spec.cur=(c.spec.cur||0)+1;c.specs=[...specsOf(c),{nom:x.spec,cible:cp?'comp:'+cp:null,offert:true,ppa:aid}];}
   S.dlg=null;saveChar(c);toast('Achat enregistré');}
 /* Traits de caractère et nature féerique */
@@ -174,12 +252,17 @@ function traitsSheet(g){const c=S.chars[g.cid];if(!c)return '';const hum=isHum(c
 function pfAct(a,d,t){const g=S.dlg,G=isGest();
   if(a==='pfOpen'){S.dlg=pfDraft(d.p);return;}
   if(a==='trOpen'){const c=S.chars[d.id||S.sel];if(!canEditC(c))return false;S.dlg=trDraft(c);return;}
+  if(a==='ppAb'){const c=S.chars[d.id];if(!canEditC(c))return false;S.dlg={kind:'ppAb',cid:c.id,aid:d.a};return;}
+  if(a==='ppFxPre'){if(!isGest())return false;const r=ppFxPrefill();toast(r.n?r.fx+' effet'+(r.fx>1?'s':'')+' prérempli'+(r.fx>1?'s':'')+(r.amb?' · '+r.amb+' élément'+(r.amb>1?'s':'')+' signalé'+(r.amb>1?'s':'')+' (Paramètres › Données)':''):'Rien à préremplir');return;}
+  if(a==='ppAbOk'&&g&&g.kind==='ppAb'){ppAbandon(g);return false;}
   if(!g)return false;
+  if(a==='ppAch'&&(g.kind==='ppBuy'||g.kind==='cwPP')){S.ppAch=S.ppAch===false;return;}
   if(g.kind==='traits'){if(a==='trSave'){const c0=S.chars[g.cid];if(!canEditC(c0))return false;const c=clone(c0),hum=isHum(c);
       const tr={};if(!hum&&g.race)tr.race=g.race;if(g.maj)tr.maj={p:g.majP,n:g.maj};if(!hum&&g.min)tr.min={p:g.minP,n:g.min};if(g.libre.trim())tr.libre=g.libre.trim();c.traits=tr;S.dlg=null;saveChar(c);toast('Traits enregistrés');return false;}
     return;}
   if(g.kind==='ppBuy'){
-    if(a==='ppAch')S.ppAch=!S.ppAch;else if(a==='ppRub')g.rub=d.v;else if(a==='ppPick'){const e=ppEls()[d.id];if(!e)return;const c=S.chars[g.cid];g.sel=d.id;g.prec='';g.ov=false;g.opt=e.rub==='A'?(ppBought(c).some(x=>x.ppel.opt==='p'&&x.ppel.rub==='A')?'s':'p'):(e.cost&&e.cost.k==='hf'?(e.cost.a==null?'f':'h'):'');}
+    if(PP_CART_ACTS.has(a)){const c=S.chars[g.cid],pr=c&&(c.profils||[]).find(x=>x.nom===g.prof);if(!pr)return;if(a==='ppCBuy'){ppCartBuy(g);return false;}ppCartAct(a,d,g,ppCtxGame(c,pr,g));return;}
+    if(a==='ppRub')g.rub=d.v;else if(a==='ppPick'){const e=ppEls()[d.id];if(!e)return;const c=S.chars[g.cid];g.sel=d.id;g.prec='';g.ov=false;g.opt=e.rub==='A'?(ppBought(c).some(x=>x.ppel.opt==='p'&&x.ppel.rub==='A')?'s':'p'):(e.cost&&e.cost.k==='hf'?(e.cost.a==null?'f':'h'):'');}
     else if(a==='ppTitre'){g.sel='titre';g.opt='';g.prec='';g.ov=false;}else if(a==='ppOther'){g.sel='other';g.olab='';g.ocost='';}
     else if(a==='ppBack')g.sel=null;else if(a==='ppOpt')g.opt=d.v;else if(a==='ppOv'){if(G)g.ov=!g.ov;}
     else if(a==='ppBuyOk'){if(!canEditC(S.chars[g.cid]))return false;ppBuyOk(g);return false;}
@@ -211,6 +294,7 @@ function pfInput(t,ev){const g=S.dlg;if(!g)return false;const D=t.dataset;
   if(D.ppe!==undefined&&g.kind==='ppEl'){g[D.ppe]=t.value;g.err='';if(D.ppe==='rub'&&ev==='change'){S._force=true;render();}return true;}
   if(D.ppp!==undefined&&g.kind==='ppEl'&&g.preEd){g.preEd[D.ppp]=t.value;return true;}
   if(D.trf!==undefined&&g.kind==='traits'){g[D.trf]=t.value;if(ev==='change'&&/P$/.test(D.trf)){g[D.trf.slice(0,-1)]='';S._force=true;render();}return true;}
+  if(D.ppcart!==undefined&&(g.kind==='ppBuy'||g.kind==='cwPP')){const it=(g.cart||[])[+D.ppcart];if(it)it.prec=t.value;return true;}
   if(D.ppb!==undefined&&g.kind==='ppBuy'){g[D.ppb]=t.value;
     if(D.ppb==='q'&&ev==='input'){S._force=true;render();const el=document.querySelector('[data-ppb="q"]');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}}
     else if((D.ppb==='olab'||D.ppb==='ocost')){const b=q0('#sheetRoot [data-act="ppBuyOk"]');if(b)b.disabled=!((+String(g.ocost||'').replace(',','.')||0)>0&&(g.olab||'').trim());}

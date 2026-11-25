@@ -75,7 +75,9 @@ function itemRow(c,key,dispo){
   const spk=r.kind==='comp'||r.kind==='fut'||r.kind==='prof',sps=spk?specsOf(c).filter(x=>x.cible===key):[];
   const so=!!(S.specOpen&&S.specOpen[c.id+'|'+key]);
 
-  let after=spk&&so?specList(c,key,dispo):'';
+  /* recette lot C : bonus de circonstance des éléments achetés en PP (Jet : affiché, jamais ajouté) */
+  const jets=(r.kind==='comp'||r.kind==='fut')&&typeof ppJetChips==='function'?ppJetChips(c,r.nom):'';
+  let after=(jets?`<div class="ppjets">${jets}</div>`:'')+(spk&&so?specList(c,key,dispo):'');
   if(r.kind==='atout'&&c.type==='PJ'){const ao=!!(S.specOpen&&S.specOpen[c.id+'|atout']);if(ao)after=atoutList(c,dispo);}
   return `<div class="irow${atMax?' max':can?' can':''}"><button class="rmain" data-act="${pwk?'pwToggle':spk||(r.kind==='atout'&&c.type==='PJ')?'specToggle':'open'}" data-key="${esc(key)}"${pwk?` data-id="${esc(c.id)}" aria-expanded="${!!(S.pwOpen&&S.pwOpen[c.id])}"`:spk||(r.kind==='atout'&&c.type==='PJ')?` aria-expanded="${spk?so:!!(S.specOpen&&S.specOpen[c.id+'|atout'])}"`:''}><span class="nm">${esc(r.nom)}${sub}${acc?`<span class="accst" title="${esc(r.nom)} ${accW(r.nom)} : +1 hors maximum" aria-label="accru">★</span>`:''}</span>${max!=null?(acc?barAcc(cur,max,planned):bar(cur,max,planned)):'<span></span>'}<span class="lv">${lvTxt}</span></button>${tail}</div>${after}`;
 }

@@ -103,6 +103,40 @@ async function open(browser,base,db,me){const ctx=await browser.newContext({view
   await page.evaluate(()=>{S.id&&(S.id.state='ok');S.view='team';S.teamSel='pj';render();});return {page,errs,ctx};}
 const SHOT=async(p,n)=>{if(process.env.SHOTS)await p.screenshot({path:path.join(process.env.SHOTS,n+'.png'),fullPage:true});};
 const click=async(p,sel)=>{await p.click(sel);await p.waitForTimeout(120);};
+
+console.log('1 bis. Recette (25/11) : effets des éléments de PP, Fortune, panier');
+r(`toast=function(){};S.profils=null;S.signalDoc=null;ME='lorenzo';`);
+ok(r(`JSON.stringify(ppFxGuess('fusil de chasse stylisé','Classe +1 quand pertinent et très robuste').fx)`)==='[{"t":"jet","cible":"Classe","val":1,"txt":"quand pertinent et très robuste","quand":"m"}]','précision « Classe +1 quand pertinent » → Jet Classe +1 avec sa condition');
+ok(r(`ppFxGuess('revolver','Pipe sculptée : +1 en Classe si fumée',['revolver','pipe sculptée']).fx.length===0&&ppFxGuess('pipe sculptée','Pipe sculptée : +1 en Classe si fumée',['revolver','pipe sculptée']).fx[0].txt==='si fumée'`),'ligne à plusieurs objets : l\'effet ne va qu\'à l\'objet nommé');
+ok(r(`(()=>{const g=ppFxGuess('grande bibliothèque','Fortune +1 (Culture +1 quand consultée)').fx;return g.length===2&&g[0].t==='perm'&&g[0].cible==='fortune'&&g[1].cible==='Culture';})()`),'« Fortune +1 (Culture +1 …) » → Permanent Fortune + Jet Culture');
+ok(r(`ppFxGuess('une antique médaille prisée','Médaille : +1 en Autorité ou Entregent auprès des soldats',['une arme à feu lourde','une antique médaille prisée']).fx.map(f=>f.cible).join()`)==='Autorité,Entregent','« +1 en Autorité ou Entregent » → deux Jets');
+ok(r(`ppFxGuess('kit de jeu truqué','Kit truqué : +2 en Jeu ; déguisement : +1 en Comédie',['kit de jeu truqué','kit de déguisement']).amb[0]`)==='+2 en Jeu','cible inconnue (futile) : non reconnue, à signaler');
+const nPlan=r(`ppFxPlan().length`);ok(nPlan>=20,'préremplissage : '+nPlan+' éléments concernés');
+r(`PRE=ppFxPrefill();`);ok(r(`PRE.fx>=20&&ppFxPlan().length===0&&Object.values(ppEls()).some(e=>e.fxAuto)`),'préremplissage : effets écrits ('+r('PRE.fx')+'), rien à refaire ensuite');
+ok(r(`sigStored().filter(x=>x.obj.t==='ppel').length===PRE.amb&&PRE.amb>0`),'cas non reconnus signalés dans Paramètres › Données ('+r('PRE.amb')+')');
+r(`ART=Object.entries(ppEls()).find(([,e])=>nrm(e.nom)==="collection d'art");FUS=Object.entries(ppEls()).find(([,e])=>/^fusil de chasse/.test(nrm(e.nom)));
+  ACTS=Object.entries(ppEls()).filter(([,e])=>e.prof==='Gentleman'&&e.rub==='A'&&e.fortP!=null&&!(e.pre||[]).length).sort((a,b)=>a[1].fortP-b[1].fortP);`);
+ok(r(`!!ART&&ppFxFort({id:ART[0]})===1&&ACTS.length>=2&&ACTS[0][1].fortP<ACTS[ACTS.length-1][1].fortP`),'« collection d\'art » : Fortune +1');
+ok(r(`(()=>{const D=JSON.parse(JSON.stringify(B.d)),f0=crPP(D,X).fort;D.pp.push({el:ART[0],prof:'Gentleman',rub:'E',nom:ART[1].nom,opt:'',cost:3});return crPP(D,X).fort===f0+1;})()`),'création : « Fortune +1 » ajouté à la Fortune calculée');
+ok(r(`(()=>{const D={pp:[{el:ACTS[0][0],prof:'Gentleman',rub:'A',nom:'x',opt:'p',cost:1},{el:'z',prof:'Gentleman',rub:'A',nom:'y',opt:'s',cost:1}]};cwCartApply(D,[{id:ACTS[ACTS.length-1][0],opt:'p',prec:''}],S.chars.kerian,'Gentleman');return D.pp.length===2&&D.pp.filter(x=>x.opt==='p').length===1&&D.pp.some(x=>x.el===ACTS[ACTS.length-1][0]);})()`),'création : une nouvelle activité principale remplace l\'ancienne');
+/* en jeu */
+r(`(()=>{const c=S.chars.kerian;c.profils.find(p=>p.nom==='Gentleman').note=30;c.fortune.cur=2;c.achats=[];})();
+  S.cal={date:{a:1902,m:3,j:12}};G1={kind:'ppBuy',cid:'kerian',prof:'Gentleman',rub:'all',q:'',cart:[{id:ACTS[0][0],opt:'p',prec:''},{id:ART[0],opt:'',prec:''},{id:FUS?FUS[0]:ART[0],opt:'',prec:'Purdey'}]};`);
+const fP0=r(`ACTS[0][1].fortP`),fP1=r(`ACTS[ACTS.length-1][1].fortP`);
+r(`ppCartBuy(G1);K1=S.chars.kerian;`);
+ok(r(`K1.achats.length===3&&K1.achats.every(a=>a.ppel&&a.ppel.debut&&a.ppel.debut.a===1902)`),'panier en jeu : une ligne d\'achat par élément, date du jeu');
+ok(r(`K1.fortune.cur`)===Math.max(2,fP0)+1,'Fortune : activité principale (au moins sa valeur) + « Fortune +1 » ('+r('K1.fortune.cur')+')');
+ok(r(`K1.profils.find(p=>p.nom==='Gentleman').note===30-K1.achats.reduce((t,a)=>t+a.pp,0)`),'PP du profil débités du total du panier');
+ok(!r(`FUS`)||r(`/fusil/.test(ppJetChips(K1,'Classe'))&&ppJetChips(K1,'Entregent')===''`),'bonus de circonstance affiché sur la compétence concernée seulement');
+const f1=r(`K1.fortune.cur`);
+r(`ppCartBuy({kind:'ppBuy',cid:'kerian',prof:'Gentleman',rub:'all',q:'',cart:[{id:ACTS[ACTS.length-1][0],opt:'p',prec:''}]});K2=S.chars.kerian;OLD=K2.achats.find(a=>a.ppel.id===ACTS[0][0]);NEW=K2.achats.find(a=>a.ppel.id===ACTS[ACTS.length-1][0]);`);
+ok(r(`!!OLD.ppel.fin&&OLD.ppel.finT==='remp'&&NEW.remp===OLD.id`),'changement d\'activité principale : l\'ancienne est terminée (date du jeu)');
+ok(r(`K2.fortune.cur`)===Math.min(15,f1+(fP1-fP0)),'changement d\'activité : Fortune ajustée de la différence');
+ok(r(`/jusqu&#39;au/.test(ppLinesOf(K2,'A').join(''))&&/depuis le/.test(ppLinesOf(K2,'A').join(''))&&/srow end/.test(ppLinesOf(K2,'A').join(''))`),'Situation : ancienne activité grisée « jusqu\'au », nouvelle « depuis le »');
+r(`K3=cancelAchat(K2,NEW.id).c;`);ok(r(`K3.fortune.cur===${f1}&&!K3.achats.find(a=>a.id===OLD.id).ppel.fin`),'annulation de l\'achat : Fortune rétablie, ancienne activité remise en cours');
+r(`S.chars.kerian=K3;AB=K3.achats.find(a=>a.ppel.id===ART[0]);ppAbandon({kind:'ppAb',cid:'kerian',aid:AB.id});K4=S.chars.kerian;`);
+ok(r(`K4.fortune.cur===${f1}-1&&K4.achats.find(a=>a.id===AB.id).ppel.finT==='ab'`),'abandon : bonus de Fortune retiré, pas de remboursement, élément gardé « terminé »');
+ok(r(`(()=>{const ctx=ppCtxGame(K4,K4.profils.find(p=>p.nom==='Gentleman'),{prof:'Gentleman'});const K=ppCartCalc(ctx,[{id:ACTS[0][0],opt:'p'},{id:ACTS[ACTS.length-1][0],opt:'p'}]);return ppCartErr(ctx,K).some(e=>/principale/.test(e));})()`),'panier : deux activités principales refusées');
 (async()=>{
   console.log('2. Navigateur');const srv=await serve(),base='http://127.0.0.1:'+srv.address().port;
   const browser=await chromium.launch({executablePath:fs.existsSync('/usr/bin/google-chrome')?undefined:undefined,args:['--no-sandbox']}).catch(()=>chromium.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']}));
@@ -119,22 +153,39 @@ const click=async(p,sel)=>{await p.click(sel);await p.waitForTimeout(120);};
     await click(page,'.cwfoot .btn.pri');await click(page,'.cwfoot .btn.pri');
     await page.goBack();await page.waitForTimeout(250);ok(await page.evaluate(()=>S.view==='crea'&&S.cwStep===2),'retour du téléphone : étape précédente');
     await page.evaluate(()=>{S.cwStep=4;render();});
-    for(let i=0;i<2;i++)await click(page,'[data-act="cwInc"][data-f="car"][data-k="Agilité"][data-dv="1"]');
+    for(let i=0;i<2;i++){await click(page,'[data-act="cwInc"][data-f="car"][data-k="Agilité"][data-dv="1"]');await page.waitForTimeout(200);}
     ok(await page.evaluate(()=>crCarUsed(cwB().d,crX(cwB().d))===2&&/8 points à répartir/.test(document.querySelector('.cwst').textContent)),'caractéristiques : + / − et compteur');
     await page.evaluate(()=>{S.cwStep=6;render();});ok(await page.evaluate(()=>/profils/.test(document.querySelector('.cwbody').textContent)),'compétences : demande d\'abord les profils');
     await page.evaluate(()=>{S.cwStep=9;render();});ok(await page.evaluate(()=>document.querySelector('[data-act="cwSend"]').disabled),'récapitulatif : envoi bloqué tant qu\'il manque des étapes');
-    await click(page,'[data-act="cwQuit"]');ok(await page.evaluate(()=>S.view==='team'&&!!document.querySelector('.cwtile')),'✕ : retour à Personnages, tuile « Brouillon · reprendre »');
+    await click(page,'[data-act="cwQuit"]');ok(await page.evaluate(()=>S.dlg&&S.dlg.kind==='cwQuit'&&!!document.querySelector('#sheetRoot [data-act="cwAbandon"]')),'✕ : choix « Garder le brouillon » / « Abandonner la création »');await SHOT(page,'r-quit');
+    await click(page,'[data-act="cwQuitKeep"]');ok(await page.evaluate(()=>S.view==='team'&&!!document.querySelector('.cwtile')),'garder : retour à Personnages, tuile « Brouillon · reprendre »');
     /* brouillon complet, envoi */
     await page.evaluate(B=>{const b=JSON.parse(JSON.stringify(cwList()[0]));b.d=B;cwSave(b);S.cwId=b.id;S.view='crea';S.cwStep=9;render();},r(`JSON.parse(JSON.stringify(B.d))`));
     await SHOT(page,'10-recap');await page.evaluate(()=>{S.cwStep=6;S.cwSp={'comp:Classe':true};render();});await SHOT(page,'7-comp');await page.evaluate(()=>{S.cwStep=7;render();});await SHOT(page,'8-pp');await page.evaluate(()=>{S.cwStep=9;render();});
     ok(await page.evaluate(()=>!document.querySelector('[data-act="cwSend"]').disabled&&/PdV/.test(document.querySelector('.cwbody').textContent)),'récapitulatif : valeurs calculées, envoi possible');
     await page.evaluate(()=>{S.cwStep=7;render();});await click(page,'[data-act="cwPPOpen"][data-v="Gentleman"]');
-    ok(await page.evaluate(()=>S.dlg&&S.dlg.kind==='cwPP'&&!!document.querySelector('#sheetRoot .ppl')),'PP : tableau d\'achat du profil');await click(page,'#sheetRoot .actions [data-act="closeSheet"]');
+    ok(await page.evaluate(()=>S.dlg&&S.dlg.kind==='cwPP'&&!!document.querySelector('#sheetRoot .ppl')),'PP : tableau d\'achat du profil');
+    ok(await page.evaluate(()=>S.ppAch!==false&&document.querySelector('#sheetRoot [data-act="ppAch"]').getAttribute('aria-pressed')==='true'&&!!document.querySelector('#sheetRoot .ppbar [data-act="cwPPCGo"][disabled]')),'panier : filtre « Achetables » actif par défaut, « Valider » inactif panier vide');
+    const n0=await page.evaluate(()=>(cwB().d.pp||[]).length);
+    await page.evaluate(()=>{S.ppAch=false;render();});
+    ok(await page.evaluate(()=>!!document.querySelector('#sheetRoot .ppck.off[disabled]')),'éléments trop chers ou déjà choisis : grisés');
+    await page.evaluate(()=>{S.ppAch=true;render();});
+    const ids=await page.evaluate(()=>[...document.querySelectorAll('#sheetRoot .ppck:not([disabled])')].map(b=>b.dataset.id).filter(id=>ppEls()[id].rub==='E').slice(0,2));
+    for(const id of ids)await click(page,`#sheetRoot [data-act="cwPPTg"][data-id="${id}"]`);await SHOT(page,'r-panier');
+    ok(await page.evaluate(n=>new RegExp(n+' éléments').test(document.querySelector('#sheetRoot .ppbar').textContent),ids.length),'panier : bandeau « '+ids.length+' éléments · total · reste »');
+    await click(page,'#sheetRoot [data-act="cwPPCGo"]');await SHOT(page,'r-recap');ok(await page.evaluate(()=>document.querySelectorAll('#sheetRoot .ppln').length===S.dlg.cart.length&&/Mon panier/.test(document.querySelector('#sheetRoot').textContent)),'Valider : récapitulatif du panier');
+    await click(page,'#sheetRoot [data-act="cwPPCBuy"]');ok(await page.evaluate(([n,k])=>!S.dlg&&(cwB().d.pp||[]).length===n+k,[n0,ids.length]),'Acheter : éléments ajoutés au brouillon d\'un coup');
     await page.evaluate(()=>{S.cwStep=9;render();});await click(page,'[data-act="cwSend"]');
     ok(db.all('brouillons')[0].statut==='attente','envoi au MJ : statut « en attente »');
     await SHOT(page,'team');ok(await page.evaluate(()=>/En attente de validation/.test(document.querySelector('.cwtile').textContent)),'tuile « En attente de validation »');
+    ok(await page.evaluate(()=>!!document.querySelector('.cwtw [data-act="cwDelAsk"]')),'tuile en attente : « Supprimer » pour le joueur');
     ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
   {const {page,errs,ctx}=await open(browser,base,db,'bob');ok(await page.evaluate(()=>!document.querySelector('.cwtile')),'autre joueur : ne voit pas le brouillon');await ctx.close();}
+  {const {page,errs,ctx}=await open(browser,base,db,'bob');await click(page,'[data-act="cwNew"]');const n=db.all('brouillons').length;
+    await click(page,'[data-act="cwQuit"]');await click(page,'[data-act="cwAbandon"]');ok(await page.evaluate(()=>S.dlg&&S.dlg.kind==='cwDel'&&/définitivement/.test(document.querySelector('#sheetRoot').textContent)),'abandonner : confirmation demandée');
+    await click(page,'[data-act="cwDelGo"]');ok(db.all('brouillons').length===n-1&&await page.evaluate(()=>S.view==='team'),'abandonner : brouillon supprimé, retour à Personnages');
+    await click(page,'[data-act="cwNew"]');await click(page,'[data-act="cwQuit"]');await click(page,'[data-act="cwQuitKeep"]');await click(page,'.cwtw [data-act="cwDelAsk"]');await SHOT(page,'r-del');await click(page,'[data-act="cwDelGo"]');
+    ok(db.all('brouillons').length===n-1,'tuile : « Supprimer » avec confirmation');ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
   {const {page,errs,ctx}=await open(browser,base,db,'lorenzo');
     await click(page,'.cwtile');await click(page,'[data-act="cwValOpen"]');
     ok(await page.evaluate(()=>S.dlg&&S.dlg.kind==='cwVal'),'MJ : fenêtre de validation');
@@ -151,6 +202,21 @@ const click=async(p,sel)=>{await p.click(sel);await p.waitForTimeout(120);};
     ok(await page.evaluate(()=>{const a=document.querySelector('#app [data-act="pnNew"]'),s=document.querySelector('#app [data-pnq]');return !!a&&!!s&&(a.compareDocumentPosition(s)&Node.DOCUMENT_POSITION_FOLLOWING)>0;}),'Personnages › PNJ : « + Nouveau PNJ » en haut de la liste');
     await page.evaluate(()=>{S.edit=true;render();});await click(page,'#app [data-act="pnNew"]');
     ok(await page.evaluate(()=>!document.querySelector('#sheetRoot [data-k="pj"],#sheetRoot select[data-fin="pj"]')&&/assistant/.test(document.querySelector('#sheetRoot').textContent)),'nouveau PNJ : sans option de rattachement (le féal passe par l\'assistant)');
+    ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
+  {const {page,errs,ctx}=await open(browser,base,db,'lorenzo');
+    await page.evaluate(()=>{S.edit=true;S.view='params';render();ppFxPrefill();const c=JSON.parse(JSON.stringify(S.chars.kerian));c.profils.find(p=>p.nom==='Gentleman').note=20;c.fortune.cur=2;c.achats=[];saveChar(c);S.cal=S.cal||{};S.cal.date={a:1902,m:3,j:12};S.view='sheet';S.sel='kerian';S.shTab='prog';render();});
+    await click(page,'#app [data-act="ppOpen"][data-prof="Gentleman"]');
+    const pick=await page.evaluate(()=>{const E=ppEls(),f=n=>Object.keys(E).find(id=>E[id].prof==='Gentleman'&&n(E[id]));return [f(e=>e.rub==='A'&&e.fortP>=3&&!(e.pre||[]).length&&e.cost.a<=6),f(e=>nrm(e.nom)==="collection d'art"),f(e=>/^tabatiere/.test(nrm(e.nom)))];});
+    for(const id of pick)await click(page,`#sheetRoot [data-act="ppTg"][data-id="${id}"]`);
+    await click(page,'#sheetRoot [data-act="ppCGo"]');await SHOT(page,'r-jeu-recap');
+    ok(await page.evaluate(()=>/Fortune 2 →/.test(document.querySelector('#sheetRoot').textContent)),'en jeu : récapitulatif avec la Fortune avant → après');
+    await click(page,'#sheetRoot [data-act="ppCBuy"]');
+    ok(await page.evaluate(()=>!S.dlg&&S.chars.kerian.achats.length===3&&S.chars.kerian.fortune.cur>2),'en jeu : 3 achats d\'un coup, Fortune de la fiche montée');
+    ok(await page.evaluate(()=>/Classe|tabati/.test((document.querySelector('#app .ppjets')||{}).textContent||'')),'onglet Progrès : bonus de circonstance sous la compétence');await SHOT(page,'r-prog');
+    await page.evaluate(()=>{S.shTab='situ';render();});await SHOT(page,'r-situ');
+    const f0=await page.evaluate(()=>S.chars.kerian.fortune.cur);
+    await click(page,'#app [data-act="ppAb"]');await click(page,'#sheetRoot [data-act="ppAbOk"]');
+    ok(await page.evaluate(f=>S.chars.kerian.fortune.cur===f-1&&!!document.querySelector('#app .srow.end'),f0),'Situation : « Abandonner / retirer » retire le bonus, élément grisé');await SHOT(page,'r-situ2');
     ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
   await browser.close();srv.close();
   console.log(fails?`\n${fails} échec(s)`:'\nTout est vert');process.exit(fails?1:0);})().catch(e=>{console.error(e);process.exit(1);});
