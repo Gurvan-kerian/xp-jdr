@@ -210,6 +210,14 @@ function chFetesView(){const E=canEdit(),a=(chNow()||{a:new Date().getFullYear()
 
 /* ---------- Rattachements des sessions du journal d'XP ---------- */
 const CH_RE_S=/^\s*S\.?\s*0*(\d+)/i,CH_RE_I=/^\s*\[\s*Int\.?\s*0*(\d+)\s*\]/i,CH_RE_F=/^\s*\(\s*0*(\d+)\s*\)/;
+/* lot 4 : événement prérempli à partir d'une session (numéro tiré de l'intitulé, titre, type, PJ présents, date du jeu actuelle) */
+function chEvAuto(e){const sn=chSessNum(e),p=n=>String(n).padStart(3,'0');
+  const num=sn?(sn.type==='Scénario'?String(sn.n).padStart(2,'0')+'.':sn.type==='Interscénario'?'['+p(sn.n)+']':'('+p(sn.n)+')'):'';
+  const nom=String(e.titre||'').replace(CH_RE_I,'').replace(CH_RE_S,'').replace(CH_RE_F,'').replace(/^\s*\.\s*/,'').trim()||String(e.titre||'').trim()||'Événement';
+  const ty=sn?sn.type:(e.type||evType(e)),n=chNow(),now=new Date().toISOString();
+  const f={id:fiRid('f-'),genre:'evenement',vis:'rev',eye:{desc:true,sait:true},desc:'',notes:'',par:ME||'',cree:now,nom,num,type:CH_TYPES.includes(ty)?ty:'Interscénario',duree:1,pj:(e.pj||[]).filter(id=>S.chars[id]),lieux:''};
+  if(n)f.debut={a:n.a,m:n.m,j:n.j};return f;}
+const chEvOpts=()=>chEvs().slice().sort((a,b)=>(chKey(b.debut)||0)-(chKey(a.debut)||0)||String(b.num||'').localeCompare(String(a.num||'')));
 function chSessNum(e){const t=e.titre||'';let m=t.match(CH_RE_I);if(m)return {type:'Interscénario',n:+m[1]};m=t.match(CH_RE_S);if(m)return {type:'Scénario',n:+m[1]};m=t.match(CH_RE_F);if(m)return {type:'Vie du fief',n:+m[1]};return null;}
 function chEvNum(f){const t=(f.num||'').trim();let m=t.match(/^\[\s*0*(\d+)\s*\]/);if(m)return {type:'Interscénario',n:+m[1]};m=t.match(/^\(\s*0*(\d+)\s*\)/);if(m)return {type:'Vie du fief',n:+m[1]};m=t.match(/^0*(\d+)\s*\.?$/);if(m)return {type:'Scénario',n:+m[1]};return null;}
 const chBare=t=>nrm(String(t||'').replace(CH_RE_I,'').replace(CH_RE_S,'').replace(/^\s*\.\s*/,'').replace(/\s*[—–-]\s*[ée]pilogue.*$/i,'').replace(/\s*part\.?\s*\d+\s*$/i,'').replace(/[^\p{L}\p{N} ]/gu,' ').replace(/\s+/g,' ').trim());

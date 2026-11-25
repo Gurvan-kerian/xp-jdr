@@ -18,14 +18,16 @@ const FI_IC={
   lieu:'<path d="M3.5 11L12 4.5l8.5 6.5"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/>',
   objet:'<path d="M9 3h6"/><path d="M10 3v3.2C7 7.7 5.5 10 5.5 13a6.5 6.5 0 0 0 13 0c0-3-1.5-5.3-4.5-6.8V3"/>',
   pouvoirs:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M5 18.5h14"/>',
-  perso:'<circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/>'
+  perso:'<circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/>',
+  bete:'<path d="M4 15c2-6 6-9 11-9 2.5 0 4.5 1 5 3-1.5-.5-3 0-3.5 1.5L15 16c-1 2-3 3-5 3H6"/><path d="M15 9.5h.01"/><path d="M8 19l-1 2M11 19l-.5 2"/>'
 };
 /* Genres de fiche */
 const FI_G={
   lieu:{pl:'Lieux',un:'lieu',nv:'Nouveau lieu',cnt:n=>n+' lieu'+(n>1?'x':''),arbo:true,par:'Lieu parent',sub:'lieu contenu',tl:'Types de lieu'},
   org:{pl:'Organisations',un:'organisation',nv:'Nouvelle organisation',cnt:n=>n+' organisation'+(n>1?'s':''),arbo:true,par:'Organisation parente',sub:'organisation contenue',tl:"Types d'organisation"},
   famille:{pl:'Familles',un:'famille',nv:'Nouvelle famille',cnt:n=>n+' famille'+(n>1?'s':''),tl:'Types de famille'},
-  objet:{pl:'Objets',un:'objet',nv:'Nouvel objet',cnt:n=>n+' objet'+(n>1?'s':''),tl:"Types d'objet"}
+  objet:{pl:'Objets',un:'objet',nv:'Nouvel objet',cnt:n=>n+' objet'+(n>1?'s':''),tl:"Types d'objet"},
+  bete:{pl:'Bestiaire',un:'créature',nv:'Nouvelle créature',cnt:n=>n+' créature'+(n>1?'s':''),tl:'Types de créature',noMj:true} /* lot 4 (clé distincte de « creatures » = races) */
 };
 const FI_RES={lieu:['Fief']}; /* types réservés (le Fief déclenchera son bloc au lot 7) */
 const FI_BACK='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>';
@@ -130,12 +132,11 @@ function fiUniHome(){const G=isGest(),pl=(n,s,p)=>n+' '+(n>1?p:s);
   const sec=S.secretsReady?pl(L.length,'secret','secrets')+' · '+pl(nt,'titre révélé','titres révélés')+(np?' · '+pl(np,'proposition en attente','propositions en attente'):''):'chargement…';
   const rv=raceCres().filter(cr=>raceVisible(cr,raceRec(cr))),rd=rv.filter(cr=>cr.done).length;
   const rac=S.creaturesReady?pl(rv.length,'race','races')+(rd?' · '+pl(rd,'fiche complète','fiches complètes'):''):'chargement…';
-  const npnj=ids().filter(i=>S.chars[i].type==='PNJ').length;
   const row=(act,v,ic,l,sum,bdg)=>`<button type="button" class="pli" data-act="${act}" data-v="${v}"><span class="pic">${FI_SVG(FI_IC[ic])}</span><span class="ptx"><b>${l}${bdg?` <span class="bdg" aria-label="${bdg} en attente">${bdg}</span>`:''}</b><small>${esc(sum)}</small></span><span aria-hidden="true" class="pch">›</span></button>`;
   const grp=(t,rows)=>`<div class="pgrp">${t}</div><div class="plst">${rows.join('')}</div>`;
   return `<h2 style="margin-top:4px">Univers</h2>`
     +grp('Récit',[row('uni','chron','chron','Chronique',chUniSum()),row('uni','secrets','secrets','Secrets',sec,np)]) /* lot 3 */
-    +grp('Peuples',[row('uni','creatures','races','Races',rac),row('uni','pouvoirs','pouvoirs','Pouvoirs et capacités',uniPwSum()),row('tab','team','pnj','PNJ',pl(npnj,'PNJ','PNJ')+' · page Personnages'),row('uni','famille','famille','Familles',cnt('famille')),row('uni','org','org','Organisations',cnt('org'))])
+    +grp('Peuples',[row('uni','creatures','races','Races',rac),row('uni','pouvoirs','pouvoirs','Pouvoirs et capacités',uniPwSum()),row('uni','bete','bete','Bestiaire',cnt('bete')),row('uni','famille','famille','Familles',cnt('famille')),row('uni','org','org','Organisations',cnt('org'))])
     +grp('Lieux et choses',[row('uni','lieu','lieu','Lieux',cnt('lieu')),row('uni','objet','objet','Objets',cnt('objet'))]);}
 /* lot 3 : résumé de l'entrée Chronique */
 function chUniSum(){if(!S.fichesReady)return 'chargement…';const n=chEvs().length,d=chNow();return (n?n+' événement'+(n>1?'s':''):'aucun événement pour l\'instant')+(d?' · '+chDateTxt(d):'');}
@@ -186,7 +187,7 @@ function fiFicheView(f){
     if(V.length||ed){const rows=V.map(it=>`<div class="fiit${it.rev?'':' fihid'}"><div class="fiitx">${fiRich(it.txt)}</div>${ed?`<button type="button" class="fiedi" data-act="fiItem" data-i="${esc(it.id)}" aria-label="Modifier l'élément">${ICON.crayon}</button>`:''}${G?eyeBtn('fiEye',`data-k="item" data-i="${esc(it.id)}"`,!!it.rev,"Élément de « Ce que l'on sait »"):''}</div>`).join('');
       h+=fiBlk('sait',"Ce que l'on sait",G?`${nr} / ${A.length} révélé${nr>1?'s':''}`:String(V.length||''),(rows||'<div class="muted small">Rien pour l\'instant.</div>')+(ed?`<div class="radd"><button class="btn" data-act="fiItem" data-i="">+ Un élément</button></div>`:''),{hid:G&&!e.sait,eye:G?eyeBtn('fiEye','data-k="sait"',!!e.sait,"Ce que l'on sait"):''});}}
   /* Notes MJ : gestion seule, jamais révélées */
-  if(G&&((f.notes||'').trim()||E))h+=fiBlk('notes','Notes MJ','jamais révélées',(f.notes||'').trim()?fiRich(f.notes):'<div class="muted small">Aucune note.</div>',{edit:E?'fiEd':'',ea:' data-b="notes"',hid:true});
+  if(G&&!Gm.noMj&&((f.notes||'').trim()||E))h+=fiBlk('notes','Notes MJ','jamais révélées',(f.notes||'').trim()?fiRich(f.notes):'<div class="muted small">Aucune note.</div>',{edit:E?'fiEd':'',ea:' data-b="notes"',hid:true});
   /* Mentions */
   const M=fiMentions('fiche',f.id);
   h+=fiBlk('ment','Mentions',M.length?M.length+' · mises à jour automatiquement':'',fiMentionsHtml(M));
@@ -221,6 +222,7 @@ function fiTypeField(g,val){const T=fiTypes(g,isGest()),v=(val||'').trim(),known
 function fiSheet(g){
   if(/^jr/.test(g.kind))return jrSheet(g); /* lot 2 */
   if(/^ch/.test(g.kind))return chSheet(g); /* lot 3 */
+  if(/^pn/.test(g.kind))return pnSheet(g); /* lot 4 */
   if(g.kind==='fiNew'){const Gm=FI_G[g.genre];if(!Gm||!fiCanNew())return null;
     return fiShell(g,Gm.nv,`<h2>${Gm.nv}</h2>
       <div class="field"><label for="fiNm">Nom</label><input id="fiNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
@@ -353,6 +355,7 @@ document.addEventListener('focusout',ev=>{if(ev.target&&ev.target.id==='fiEd')se
 function fiAct(a,d){
   if(/^jr[A-Z]/.test(a))return jrAct(a,d); /* lot 2 : journaux et quêtes */
   if(/^ch[A-Z]/.test(a))return chAct(a,d); /* lot 3 : chronique et calendrier */
+  if(/^pn[A-Z]/.test(a))return pnAct(a,d); /* lot 4 : PNJ */
   if(a==='uni'){S.uni=d.v||'home';S.chPage=null;S.sec=null;S.rf=null;S.fi=null;S.fiQ='';S.fiTy='';window.scrollTo(0,0);render();return true;}
   if(a==='fiOpen'){const f=S.fiches[d.id];if(!fiSee(f))return true;S.fi=f.id;S.uni=f.genre;window.scrollTo(0,0);render();return true;}
   if(a==='fiBack'){if(S.nav.length){navBack();return true;}S.fi=null;window.scrollTo(0,0);render();return true;}
@@ -594,3 +597,188 @@ function jrAct(a,d){
 /* Aperçu de la date du jeu pendant la saisie */
 document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset||!/^dj_/.test(t.dataset.fin||'')||!S.dlg||S.dlg.kind!=='jrEnt')return;const p=document.getElementById('jrDjP');if(p)p.textContent=jrDjTxt(jrDjOf(S.dlg));});
 document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||!/^dj_/.test(t.dataset.fin||'')||!S.dlg||S.dlg.kind!=='jrEnt')return;const p=document.getElementById('jrDjP');if(p)p.textContent=jrDjTxt(jrDjOf(S.dlg));});
+
+/* ---------- Lot 4 (25/11/2026) : PNJ v2 ----------
+   Champs d'un PNJ (collection chars, type 'PNJ') : vis ('prep'|'rev', absent = révélé), eye {bloc:bool} (absent = Portrait et Situation ouverts),
+   por {role, app, car, fm} (textes « @ »), alias (id du PNJ principal), liens [{id, pnj, lab, rec}], situ.lieux [{id, nom, note, res}].
+   Féal (PNJ rattaché à un PJ) : toujours révélé, sans œil, onglet Progression. Droits : canEditC (vues.js). */
+const PN_POR=[['role','Rôle'],['app','Apparence'],['car','Caractère'],['fm','Forme masquée']];
+const PN_SIT=[['titres','Titres'],['familles','Familles'],['orgs','Organisations'],['lieux','Résidence et lieux'],['poss','Possessions']];
+const PN_EYE0={role:true,app:true,car:true,fm:true,titres:true,familles:true,orgs:true,lieux:true,poss:true};
+const pnEye=c=>(c&&c.eye)||PN_EYE0;
+const pnBlkSee=(c,k)=>!!c&&vis(c)&&(isGest()||isFeal(c)||!!pnEye(c)[k]);
+const pnMain=c=>c&&c.alias&&S.chars[c.alias]&&S.chars[c.alias].type==='PNJ'?S.chars[c.alias]:null;
+const pnAliases=c=>Object.values(S.chars).filter(x=>x.type==='PNJ'&&x.alias===c.id&&x.id!==c.id).sort((a,b)=>(a.court||'').localeCompare(b.court||'','fr'));
+const pnCanNew=()=>!S.visit&&(canEdit()||(!isGest()&&!!ME));
+const pnHasFm=c=>!!c.race&&c.race!==HUMAIN;
+const pnName=c=>c.court||c.nom||'?';
+const pnRaces=()=>[HUMAIN].concat(Object.keys(RACES).filter(r=>r!==HUMAIN).sort((a,b)=>a.localeCompare(b,'fr')));
+/* Situation : rubriques d'un PNJ (les fiefs et possessions notables déjà saisis sont rangés dans Résidence et lieux / Possessions) */
+const pnSitRows=(c,k)=>{const s=situOf(c),x=k==='lieux'?(s.fiefs||[]).map(e=>({...e,_k:'fiefs'})).concat((s.lieux||[]).map(e=>({...e,_k:'lieux'}))):k==='poss'?(s.poss||[]).map(e=>({...e,_k:'poss'})).concat((s.possN||[]).map(e=>({...e,_k:'possN'}))):(s[k]||[]).map(e=>({...e,_k:k}));return x;};
+const pnSitNames=(c,k)=>pnBlkSee(c,k)?pnSitRows(c,k).map(e=>(e.nom||'').trim()).filter(Boolean):[];
+const pnRes=c=>{const L=pnBlkSee(c,'lieux')?pnSitRows(c,'lieux'):[];const r=L.find(e=>e.res)||L[0];return r?r.nom:'';};
+const pnFold=(k,empty)=>{const f=(S.fiFold||{})[k];return f==null?!!empty:f;};
+function pnBlk(k,title,sum,body,o){o=o||{};const fold=pnFold(k,o.empty),id='fb-'+k;
+  const ed=o.edit?`<button type="button" class="edl" data-act="${o.edit}"${o.ea||''}>${ICON.crayon} Modifier</button>`:'';
+  return `<section class="rblk${o.hid?' fihid':''}"><div class="rbh"><button type="button" class="rbt" data-act="pnFold" data-k="${k}"${o.empty?' data-e="1"':''} aria-expanded="${!fold}" aria-controls="${id}"><span class="tt"><span class="t">${title}</span>${sum!==''&&sum!=null?`<span class="n">${sum}</span>`:''}</span><span class="chev" aria-hidden="true">${fold?'›':'⌄'}</span></button>${ed}${o.eye||''}</div>${fold?'':`<div class="rbb" id="${id}">${body}</div>`}</section>`;}
+const pnEyeB=(c,k,lab)=>isGest()&&!isFeal(c)?eyeBtn('pnEye',`data-k="${k}"`,!!pnEye(c)[k],lab):'';
+const pnAv=c=>{const im=portrait(c);return `<span class="pnav">${im?`<img src="${im}" alt="">`:`<span class="ini">${esc(pnName(c).slice(0,1))}</span>`}</span>`;};
+
+/* ---------- Personnages › PNJ : liste ---------- */
+function pnListView(){const G=isGest(),F=S.pnF||{},all=ids().map(i=>S.chars[i]).filter(c=>c.type==='PNJ');
+  const opts=k=>{const m={};for(const c of all)for(const n of (k==='lieux'?pnSitNames(c,'lieux'):pnSitNames(c,k)))m[n]=1;return Object.keys(m).sort((a,b)=>a.localeCompare(b,'fr'));};
+  const sel=(k,l)=>{const O=opts(k),v=F[k]||'';if(!O.length&&!v)return '';return `<label class="pnchip${v?' on':''}"><span>${esc(v?l+' : '+v:l)}</span><span aria-hidden="true">${v?'✕':'▾'}</span><select data-pnf="${k}" aria-label="Filtrer par ${esc(l.toLowerCase())}"><option value="">${esc(l)} : tous</option>${O.map(o=>`<option${o===v?' selected':''}>${esc(o)}</option>`).join('')}</select></label>`;};
+  let h=`<div class="fisrch"><input type="search" data-pnq="1" value="${esc(S.pnQ||'')}" placeholder="Rechercher un nom" aria-label="Rechercher un PNJ" autocomplete="off"></div>`;
+  h+=`<div class="pnchips">${sel('familles','Famille')}${sel('orgs','Organisation')}${sel('lieux','Lieu')}${G?`<button type="button" class="chip" data-act="pnPrepF" aria-pressed="${!!S.pnPrep}">Préparés</button>`:''}</div>`;
+  h+=`<div id="pnRes">${pnListBody()}</div>`;
+  if(pnCanNew())h+=`<button class="btn pri cta" data-act="pnNew">+ Nouveau PNJ</button>`;
+  return h;}
+function pnListBody(){const G=isGest(),F=S.pnF||{},q=nrm(S.pnQ||'');
+  let L=ids().map(i=>S.chars[i]).filter(c=>c.type==='PNJ');
+  if(!L.length)return `<div class="card empty">Aucun PNJ pour l'instant.</div>`;
+  L=L.filter(c=>(!q||nrm(c.court).includes(q)||nrm(c.nom).includes(q))&&(!G||!S.pnPrep||!pnRev(c))&&['familles','orgs','lieux'].every(k=>!F[k]||pnSitNames(c,k).includes(F[k])));
+  if(!L.length)return `<div class="card empty">Aucun PNJ ne correspond.</div>`;
+  L.sort((a,b)=>pnName(a).localeCompare(pnName(b),'fr',{sensitivity:'base'}));
+  const row=c=>{const m=pnMain(c),org=pnSitNames(c,'orgs')[0]||'',res=pnRes(c);
+    const sub=G&&m?`<small class="pnreal">alias de ${esc(pnName(m))}${org?' · '+esc(org):''}</small>`:`<small>${esc([c.race?raceLabel(c):'',isFeal(c)?'Féal de '+pnName(S.chars[c.pj]):org,res].filter(Boolean).join(' · '))}</small>`;
+    const rk=!actif(c)?`<span class="pndead">${c.statut==='mort'?'† '+(c.genre==='f'?'morte':'mort'):esc(STATUTS[c.statut]||'')}</span>`:!pnRev(c)?'<span class="tag2">préparé</span>':`<span class="pnrk">${esc(rangOf(c))}</span>`;
+    return `<button type="button" class="pnli${pnRev(c)?'':' prep'}" data-act="sel" data-id="${esc(c.id)}">${pnAv(c)}<span class="pntx"><b>${esc(pnName(c))}</b>${sub}</span>${rk}</button>`;};
+  const fk=['familles','orgs','lieux'].find(k=>F[k]);
+  if(fk)return `<div class="pgrp">${esc(F[fk])} · ${L.length}</div><div class="plst pnlst">${L.map(row).join('')}</div>`;
+  const grp={};for(const c of L){const k=(nrm(pnName(c))[0]||'#').toUpperCase();(grp[k]=grp[k]||[]).push(c);}
+  return Object.keys(grp).map(k=>`<div class="pgrp">${esc(k)}</div><div class="plst pnlst">${grp[k].map(row).join('')}</div>`).join('');}
+
+/* ---------- Fiche PNJ : en-tête ---------- */
+function pnSheetHead(c){const G=isGest(),fe=isFeal(c);
+  let h=`<button class="back" data-act="pnBack">${FI_BACK}PNJ</button>`;
+  if(G&&!fe){const e=pnEye(c),K=pnVisKeys(c),n=K.filter(k=>e[k]).length;
+    h+=!pnRev(c)?`<div class="fivis prep"><span class="fivi" aria-hidden="true">${EYE_C}</span><span class="fivt"><b>Fiche préparée</b> · invisible des joueurs</span><button class="btn pri" data-act="pnEye" data-k="fiche">Révéler</button></div>`
+      :`<div class="fivis">${eyeBtn('pnEye','data-k="fiche"',true,'Fiche '+pnName(c))}<span class="fivt"><b>Fiche révélée</b> · ${n} bloc${n>1?'s':''} sur ${K.length} visible${n>1?'s':''}</span></div>`;}
+  const im=portrait(c),inner=im?`<img src="${im}" alt="">`:`<span class="ini">${esc(pnName(c).slice(0,1))}</span>`;
+  const med=canPortrait(c)?`<label class="shmed ed" aria-label="Changer le portrait de ${esc(pnName(c))}">${inner}<span class="pen" aria-hidden="true">✎</span><input type="file" accept="image/*" data-ptrfile="${esc(c.id)}" hidden></label>`:im?`<button type="button" class="shmed" data-act="fiImg" data-cid="${esc(c.id)}" aria-label="Agrandir le portrait de ${esc(pnName(c))}">${inner}</button>`:`<span class="shmed">${inner}</span>`;
+  const tit=pnSitNames(c,'titres')[0],fam=pnSitNames(c,'familles')[0],age=(typeof chAgeTxt==='function'&&chAgeTxt(c)||{}).age;
+  const kv=[['Race',c.race?raceLk(c):''],['Titre',tit?esc(tit):''],['Famille',fam?esc(fam):''],['Rang',esc(rangOf(c))],['Âge',age?esc(age):''],['Statut',esc(STATUTS[c.statut||'actif']||'')]].filter(x=>x[1]);
+  h+=`<div class="card pnhead"><div class="shhd">${med}<div style="flex:1;min-width:0"><div class="shname"><span>${esc(c.nom||c.court)}</span>${kankaBtn(c.kanka,c.nom||c.court,'Fiche Kanka de '+pnName(c))}</div>${fe?`<div class="small pnfeal">Féal de ${lk({t:'perso',id:c.pj},pnName(S.chars[c.pj]))}</div>`:''}<div class="pnkv">${kv.map(([a,b])=>`<span>${a}</span><b>${b}</b>`).join('')}</div></div></div>${canEditC(c)?`<div style="margin-top:8px"><button type="button" class="edl" data-act="pcOpen" data-id="${esc(c.id)}">${ICON.crayon} En-tête</button></div>`:''}</div>`;
+  return h;}
+const pnVisKeys=c=>(c.alias?['idr']:[]).concat(PN_POR.filter(([k])=>k!=='fm'||pnHasFm(c)).map(x=>x[0]),PN_SIT.map(x=>x[0]),['autres']);
+
+/* ---------- Fiche PNJ : onglets ---------- */
+function pnSheetBody(c,s,id){const tab=shTabOf(c);let h=shTabsBar(c,tab);
+  if(tab==='prog'){h+=`<div class="xpbar"><div class="xpd"><b class="num">${s.dispo}</b><span>XP dispo</span></div><div class="xpo"><span><b class="num">${s.prevu}</b> prévu</span><span class="${s.manque?'bad':''}"><b class="num">${s.manque}</b> manque</span></div><div class="xpm">${s.gains} gagnés · ${s.spent} dépensés</div></div>`;
+    h+=cBlk('pn-der','Valeurs dérivées','',`<div class="fgrid">${derived(c,'m').map(([n,v])=>`<div class="fr"><span>${esc(n)}</span><b class="num">${v}</b></div>`).join('')}</div>`);
+    return h+viewProg(c,s,id);}
+  if(tab==='situ')h+=pnSitu(c);else if(tab==='rel')h+=pnRel(c);else h+=pnPortrait(c);
+  const M=fiMentions('perso',c.id);
+  h+=pnBlk('pn-ment','Mentions',M.length?String(M.length):'',fiMentionsHtml(M),{empty:!M.length});
+  return h;}
+function pnPortrait(c){const G=isGest(),E=canEditC(c),e=pnEye(c);let h='';
+  const m=pnMain(c);
+  if(m&&pnBlkSee(c,'idr'))h+=pnBlk('pn-idr','Identité réelle','',`Alias de ${lk({t:'perso',id:m.id},pnName(m))}`+(E?`<div class="relbtns"><button type="button" class="addl" data-act="pnAliasOff">Détacher de ${esc(pnName(m))}</button></div>`:''),{hid:G&&!e.idr,eye:pnEyeB(c,'idr','Identité réelle')});
+  const A=pnAliases(c).filter(a=>G||(vis(a)&&pnBlkSee(a,'idr')));
+  if(A.length||E){const st=a=>G?(!pnRev(a)?'<span class="tag2">préparé</span>':`<span class="muted small">révélé · identité ${pnEye(a).idr?'révélée':'cachée'}</span>`):'';
+    h+=pnBlk('pn-alias','Alias',A.length?String(A.length):'',(A.map(a=>`<div class="srow"><span>${lk({t:'perso',id:a.id},pnName(a))}</span>${st(a)}</div>`).join('')||'<div class="muted small">Aucun alias.</div>')+(E?`<div class="relbtns"><button type="button" class="addl" data-act="pnAlias">+ Alias</button></div>`:''),{empty:!A.length});}
+  const B=[];
+  for(const [k,l] of PN_POR){if(k==='fm'&&!pnHasFm(c))continue;if(!pnBlkSee(c,k))continue;const t=((c.por||{})[k]||'').trim();if(!t&&!E&&!G)continue;
+    B.push({e:!t,h:pnBlk('pn-'+k,l,'',t?fiRich(t):'<div class="muted small">Pas encore renseigné.</div>',{empty:!t,edit:E?'pnTxt':'',ea:` data-b="${k}"`,hid:G&&!isFeal(c)&&!e[k],eye:pnEyeB(c,k,l)})});}
+  h+=shOrder(B);
+  if(!h&&!G)h=`<div class="card"><span class="muted small">Rien de connu pour l'instant.</span></div>`;
+  return h;}
+function pnSitu(c){const G=isGest(),E=canEditC(c),e=pnEye(c),B=[];
+  for(const [k,l] of PN_SIT){if(!pnBlkSee(c,k))continue;const R=pnSitRows(c,k);if(!R.length&&!E&&!G)continue;
+    const rows=R.map(x=>`<div class="srow"><span><b>${esc(x.nom)}</b>${x._k==='orgs'&&x.role?` <span class="muted">· ${esc(x.role)}</span>`:''}${x._k==='lieux'&&x.res?' <span class="muted">· résidence</span>':''}${x.note?`<span class="d">${esc(x.note)}</span>`:''}</span>${E?`<button type="button" class="ibtn" data-act="situEd" data-k="${x._k}" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">✎</button>`:''}</div>`).join('');
+    const add=E?`<div class="relbtns"><button type="button" class="addl" data-act="situEd" data-k="${k}">+ ${({titres:'Titre',familles:'Famille',orgs:'Organisation',lieux:'Lieu',poss:'Possession'})[k]}</button></div>`:'';
+    B.push({e:!R.length,h:pnBlk('pn-'+k,l,R.length?String(R.length):'',(rows||shNone)+add,{empty:!R.length,hid:G&&!isFeal(c)&&!e[k],eye:pnEyeB(c,k,l)})});}
+  return shOrder(B)||(G?'':`<div class="card"><span class="muted small">Rien de connu pour l'instant.</span></div>`);}
+function pnRel(c){const G=isGest(),E=canEditC(c),e=pnEye(c);let h='';
+  /* PJ liés : calculés depuis les Relations des PJ */
+  const P=pjIds().map(i=>S.chars[i]).flatMap(pj=>(pj.rel||[]).filter(r=>r.pnj===c.id).map(r=>({pj,r})));
+  const pl=P.map(({pj,r})=>{const J=(r.jauges||[]).filter(j=>!j.done);
+    return `<div class="srow"><span>${lk({t:'perso',id:pj.id},pj.court)} <span class="muted">· ${esc(REL_NIV[r.niv]||r.niv||'')}</span>${J.map(j=>`<span class="d">jauge ${esc(REL_OBJ[j.obj]?REL_OBJ[j.obj][2]:'')} : ${j.cases||0} / ${j.taille}</span>`).join('')}</span></div>`;}).join('');
+  h+=pnBlk('pn-pjl','PJ liés',P.length?String(P.length):'',(pl||'<div class="muted small">Aucun PJ lié.</div>')+'<div class="muted small" style="margin-top:4px">Calculé depuis les Relations des PJ.</div>',{empty:!P.length});
+  if(pnBlkSee(c,'autres')){const L=(c.liens||[]).filter(l=>{const p=S.chars[l.pnj];return p&&vis(p);});
+    const rows=L.map(l=>{const p=S.chars[l.pnj];return `<div class="srow"><span>${lk({t:'perso',id:p.id},pnName(p))}${l.lab?` <span class="muted">· ${esc(l.lab)}</span>`:''} <span class="muted" title="${l.rec?'Lien réciproque':'Sens unique'}">${l.rec?'⇄':'→'}</span></span>${E?`<button type="button" class="ibtn" data-act="pnLien" data-i="${esc(l.id)}" aria-label="Modifier le lien avec ${esc(pnName(p))}">✎</button>`:''}</div>`;}).join('');
+    h+=pnBlk('pn-autres','Autres PNJ',L.length?String(L.length):'',(rows||'<div class="muted small">Aucun lien.</div>')+(E?`<div class="relbtns"><button type="button" class="addl" data-act="pnLien">+ Lien avec un PNJ</button></div>`:''),{empty:!L.length,hid:G&&!isFeal(c)&&!e.autres,eye:pnEyeB(c,'autres','Autres PNJ')});}
+  return h;}
+
+/* ---------- Fenêtres ---------- */
+['pnTxt','pnNew','pnLien','pnAlias'].forEach(k=>FI_DLG.add(k));FI_ED.add('pnTxt');
+const pnSel=(k,v,L,lab)=>`<div class="field"><label for="pn-${k}">${lab}</label><select id="pn-${k}" data-fin="${k}">${L.map(([o,t])=>`<option value="${esc(o)}"${o===v?' selected':''}>${esc(t)}</option>`).join('')}</select></div>`;
+const pnSeg=(k,v,L,lab)=>`<div class="field"><label>${lab}</label><div class="seg" role="group" aria-label="${esc(lab)}">${L.map(([o,t])=>`<button type="button" data-act="pnSet" data-k="${k}" data-v="${o}" aria-pressed="${v===o}">${t}</button>`).join('')}</div></div>`;
+const pnErr=g=>g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:'';
+function pnSheet(g){
+  if(g.kind==='pnTxt'){const c=S.chars[g.cid];if(!c||!canEditC(c))return null;const tt=(PN_POR.find(x=>x[0]===g.b)||[,''])[1];
+    return fiShell(g,'Modifier : '+tt,`<div><h2>Modifier : ${esc(tt)}</h2><div class="muted small">${esc(pnName(c))}</div></div>
+      <div class="fiedw"><div id="fiEd" class="fied" contenteditable="true" role="textbox" aria-multiline="true" aria-label="${esc(tt)}" spellcheck="true">${fiEdHtml(g.txt)}</div><div id="fiSug" class="fisug" role="listbox" hidden></div></div>
+      <div class="muted small">Tape <b>@</b> puis quelques lettres pour lier une fiche ; une ligne qui commence par « - » devient une liste.</div>
+      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pnTxtSave">Enregistrer</button></div>`);}
+  if(g.kind==='pnNew'){if(!pnCanNew())return null;const gest=canEdit();
+    return fiShell(g,'Nouveau PNJ',`<h2>Nouveau PNJ</h2>${g.main?`<div class="muted small">Alias de ${esc(pnName(S.chars[g.main]||{}))}</div>`:''}
+      <div class="field"><label for="pnNm">Nom</label><input id="pnNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
+      <div class="frow">${pnSel('race',g.race,[['','— à préciser —']].concat(pnRaces().map(r=>[r,r])),'Race')}${pnSel('rang',g.rang,pnjRangs().map(r=>[r,r]),'Rang')}</div>
+      ${g.main?'':pnSel('pj',g.pj,[['','Aucun']].concat(pjIds().map(i=>[i,'Féal de '+S.chars[i].court])),'Rattachement')}
+      ${gest&&!g.pj?pnSeg('vis',g.vis,[['prep','Préparé'],['rev','Révélé']],'Visibilité')+`<div class="muted small">${g.vis==='prep'?'Préparé : invisible des joueurs (listes, liens « @ », Relations) jusqu\'à la révélation.':'Révélé : visible par toute la table ; les blocs restent à ouvrir un par un.'}</div>`:!g.pj?'<div class="muted small">Le PNJ sera visible par toute la table.</div>':'<div class="muted small">Un féal est toujours visible par toute la table.</div>'}
+      ${pnErr(g)}<div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pnCreate">Créer et ouvrir</button></div>`);}
+  if(g.kind==='pnLien'){const c=S.chars[g.cid];if(!c||!canEditC(c))return null;const cur=g.i&&(c.liens||[]).find(l=>l.id===g.i),p=cur&&S.chars[cur.pnj];
+    const L=Object.values(S.chars).filter(x=>x.type==='PNJ'&&x.id!==c.id&&vis(x)&&(cur?x.id===cur.pnj:!(c.liens||[]).some(l=>l.pnj===x.id))).sort((a,b)=>pnName(a).localeCompare(pnName(b),'fr'));
+    return fiShell(g,'Lien avec un PNJ',`<h2>Lien avec un PNJ</h2><div class="muted small">${esc(pnName(c))}</div>
+      ${cur?`<div class="field"><label>PNJ</label><div class="inp ro">${esc(p?pnName(p):'?')}</div></div>`:pnSel('pnj',g.pnj,[['','— choisir —']].concat(L.map(x=>[x.id,pnName(x)+(pnRev(x)?'':' (préparé)')])),'PNJ')}
+      <div class="field"><label for="pnLb">Étiquette</label><input id="pnLb" type="text" data-fin="lab" value="${esc(g.lab)}" placeholder="ex. supérieur, rival, frère" autocomplete="off"></div>
+      ${pnSeg('rec',g.rec,[['0','Sens unique'],['1','Lien réciproque']],'Sens')}<div class="muted small">Lien réciproque inscrit le lien sur les deux fiches.</div>
+      ${pnErr(g)}<div class="actions">${cur?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="pnLienDelOk">Confirmer le retrait${cur.rec?' (des deux fiches)':''}</button>`:`<button class="btn ghost" data-act="pnLienDel">Retirer</button>`):''}<button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pnLienSave">${cur?'Enregistrer':'Ajouter'}</button></div>`);}
+  if(g.kind==='pnAlias'){const c=S.chars[g.cid];if(!c||!canEditC(c))return null;
+    const L=Object.values(S.chars).filter(x=>x.type==='PNJ'&&x.id!==c.id&&!x.alias&&!isFeal(x)&&!pnAliases(x).length&&vis(x)).sort((a,b)=>pnName(a).localeCompare(pnName(b),'fr'));
+    return fiShell(g,'Ajouter un alias',`<h2>Ajouter un alias</h2><div class="muted small">${esc(pnName(c))}</div>
+      ${pnSeg('mode',g.mode,[['new','Nouvelle fiche'],['old','Fiche existante']],'Alias')}
+      ${g.mode==='old'?pnSel('pnj',g.pnj,[['','— choisir —']].concat(L.map(x=>[x.id,pnName(x)+(pnRev(x)?'':' (préparé)')])),'PNJ existant'):`<div class="field"><label for="pnNm">Nom de l'alias</label><input id="pnNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div><div class="muted small">Fiche préremplie (race, rang)${canEdit()?', préparée':''} ; son bloc « Identité réelle » reste fermé.</div>`}
+      ${pnErr(g)}<div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pnAliasSave">${g.mode==='old'?'Rattacher':'Créer et ouvrir'}</button></div>`);}
+  return null;}
+
+/* ---------- Actions ---------- */
+function pnSaveC(n){saveChar(n);}
+function pnMake(o){let id=slug(o.nom)||'pnj';if(S.chars[id])id=id+'-'+Date.now().toString(36).slice(-4);
+  const c=newChar(id,o.nom,o.nom,'PNJ');if(o.race)c.race=o.race;if(o.rang)c.rang=o.rang;
+  if(o.pj){c.pj=o.pj;c.pjDate=today();}else{c.vis=o.vis;c.eye=o.vis==='rev'?{...PN_EYE0,autres:true}:{};} /* révélé : blocs ouverts (règle des fiches) ; préparé : blocs fermés */
+  if(o.main)c.alias=o.main;c.par=ME||'';c.cree=new Date().toISOString();return c;}
+function pnAct(a,d){
+  const c=S.chars[S.sel],g=S.dlg;
+  if(a==='pnTeam'){S.teamSel=d.v==='pnj'?'pnj':'pj';render();return true;}
+  if(a==='pnBack'){if(S.nav.length){navBack();return true;}S.view='team';S.teamSel='pnj';window.scrollTo(0,0);render();return true;}
+  if(a==='pnFold'){S.fiFold={...(S.fiFold||{}),[d.k]:!pnFold(d.k,d.e==='1')};render();return true;}
+  if(a==='pnPrepF'){S.pnPrep=!S.pnPrep;render();return true;}
+  if(a==='pnSet'){if(g&&FI_DLG.has(g.kind)){g[d.k]=d.v;if(d.k==='vis'||d.k==='mode')g.err='';S._fiRedraw=true;render();}return true;}
+  if(S.visit)return true;
+  if(a==='pnEye'){if(!c||c.type!=='PNJ'||!isGest()||isFeal(c))return true;const n=clone(c);let open;
+    if(d.k==='fiche'){open=!pnRev(n);if(!open&&!canEdit())return true;n.vis=open?'rev':'prep';}
+    else{const e={...pnEye(n)};open=!e[d.k];if(!open&&!canEdit())return true;e[d.k]=open;n.eye=e;}
+    pnSaveC(n);setTimeout(()=>toast(open?'Visible par toute la table':'Caché aux joueurs'),0);return true;}
+  if(a==='pnTxt'){if(!c||!canEditC(c))return true;fiOpenDlg({kind:'pnTxt',cid:c.id,b:d.b,txt:(c.por||{})[d.b]||''});render();return true;}
+  if(a==='pnTxtSave'){const x=g&&S.chars[g.cid];if(!x||!canEditC(x))return true;const ed=document.getElementById('fiEd'),txt=ed?fiSer(ed):(g.txt||'');
+    const n=clone(x);n.por={...(n.por||{}),[g.b]:txt};FI_AT=null;S.dlg=null;pnSaveC(n);return true;}
+  if(a==='pnNew'){if(!pnCanNew())return true;const R=pnjRangs();fiOpenDlg({kind:'pnNew',nom:'',race:'',rang:R[0]||'Larbin',pj:'',vis:canEdit()?'prep':'rev'});render();return true;}
+  if(a==='pnCreate'){if(!g||g.kind!=='pnNew'||!pnCanNew())return true;const nom=(g.nom||'').trim();if(!nom){g.err='Le nom est obligatoire.';S._fiRedraw=true;render();return true;}
+    const nc=pnMake({nom,race:g.race,rang:g.rang,pj:g.pj&&S.chars[g.pj]?g.pj:'',vis:canEdit()?(g.vis==='rev'?'rev':'prep'):'rev'});
+    S.dlg=null;S.chars[nc.id]=nc;persist('chars/'+nc.id,nc);S.view='sheet';S.sel=nc.id;S.shTab='por';window.scrollTo(0,0);render();setTimeout(()=>toast('PNJ créé'),0);return true;}
+  if(a==='pnLien'){if(!c||!canEditC(c))return true;const cur=d.i&&(c.liens||[]).find(l=>l.id===d.i);fiOpenDlg({kind:'pnLien',cid:c.id,i:cur?cur.id:'',pnj:cur?cur.pnj:'',lab:cur?cur.lab||'':'',rec:cur&&!cur.rec?'0':'1'});render();return true;}
+  if(a==='pnLienSave'||a==='pnLienDel'||a==='pnLienDelOk'){const x=g&&S.chars[g.cid];if(!x||!canEditC(x))return true;
+    if(a==='pnLienDel'){g.confirm=true;S._fiRedraw=true;render();return true;}
+    const cur=g.i&&(x.liens||[]).find(l=>l.id===g.i),pid=cur?cur.pnj:g.pnj,p=pid&&S.chars[pid];
+    if(!p){g.err='Choisis un PNJ dans la liste.';S._fiRedraw=true;render();return true;}
+    const lab=(g.lab||'').trim(),rec=g.rec==='1',n=clone(x),o=clone(p);n.liens=(n.liens||[]).slice();o.liens=(o.liens||[]).slice();
+    const back=o.liens.findIndex(l=>l.pnj===x.id);
+    if(a==='pnLienDelOk'){n.liens=n.liens.filter(l=>l.id!==g.i);if(cur&&cur.rec&&back>=0)o.liens.splice(back,1);}
+    else{const v={id:cur?cur.id:uid('l'),pnj:p.id,lab,rec};if(cur)n.liens=n.liens.map(l=>l.id===cur.id?v:l);else n.liens.push(v);
+      if(rec){if(back>=0)o.liens[back]={...o.liens[back],rec:true};else o.liens.push({id:uid('l'),pnj:x.id,lab,rec:true});}
+      else if(cur&&cur.rec&&back>=0)o.liens[back]={...o.liens[back],rec:false};}
+    S.dlg=null;S.chars[o.id]=o;persist('chars/'+o.id,o);pnSaveC(n);setTimeout(()=>toast('Enregistré'),0);return true;}
+  if(a==='pnAlias'){if(!c||!canEditC(c))return true;fiOpenDlg({kind:'pnAlias',cid:c.id,mode:'new',nom:'',pnj:''});render();return true;}
+  if(a==='pnAliasSave'){const x=g&&S.chars[g.cid];if(!x||!canEditC(x))return true;
+    if(g.mode==='old'){const p=g.pnj&&S.chars[g.pnj];if(!p){g.err='Choisis un PNJ dans la liste.';S._fiRedraw=true;render();return true;}
+      const n=clone(p);n.alias=x.id;n.eye={...pnEye(n),idr:false};S.dlg=null;S.chars[n.id]=n;persist('chars/'+n.id,n);render();setTimeout(()=>toast('Alias rattaché'),0);return true;}
+    const nom=(g.nom||'').trim();if(!nom){g.err='Le nom est obligatoire.';S._fiRedraw=true;render();return true;}
+    const nc=pnMake({nom,race:x.race||'',rang:x.rang||'',main:x.id,vis:canEdit()?'prep':'rev'});nc.eye={...nc.eye,idr:false};if(x.genre)nc.genre=x.genre;
+    S.dlg=null;S.chars[nc.id]=nc;persist('chars/'+nc.id,nc);S.sel=nc.id;S.shTab='por';window.scrollTo(0,0);render();setTimeout(()=>toast('Alias créé'),0);return true;}
+  if(a==='pnAliasOff'){if(!c||!canEditC(c)||!c.alias)return true;const n=clone(c);delete n.alias;pnSaveC(n);return true;}
+  return false;}
+/* Recherche et filtres de la liste des PNJ */
+document.addEventListener('input',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.pnq!==undefined){S.pnQ=t.value;const r=document.getElementById('pnRes');if(r)r.innerHTML=pnListBody();}});
+document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.pnf!==undefined){S.pnF={...(S.pnF||{}),[t.dataset.pnf]:t.value};render();}});

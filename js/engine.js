@@ -306,6 +306,9 @@ const EYE_LABELS={comp:'Compétences de prédilection',atyp:'Atouts féeriques',
 const eyeIsOpen=(e,k,i)=>k==='pw'?!!(e.pw||[])[i]:EYE_GROUPS[k]?EYE_GROUPS[k].every(b=>e[b]):!!e[k];
 function eyeApply(e,k,i,open){if(k==='all')Object.assign(e,eyeAll(open));else if(k==='pw'){e.pw=(e.pw||[]).slice();e.pw[i]=open;}else if(EYE_GROUPS[k]){for(const b of EYE_GROUPS[k])e[b]=open;}else e[k]=open;return e;}
 const eyeOf=(cr,x)=>(x&&x.eye)?x.eye:eyeAll(!!(cr&&cr.done));
+/* lot 4 : « Fiche complète » ouvre aussi le Portrait et ses Informations (hors XP) */
+const raceAllOpen=cr=>{const e=eyeOf(cr,raceRec(cr));return eyeFull(e)&&!!e.por&&!((S.races[cr.id]||{}).infos||[]).some(i=>i&&i.cache);};
+const raceClosedExtra=cr=>{const e=eyeOf(cr,raceRec(cr));return (e.por?0:1)+((S.races[cr.id]||{}).infos||[]).filter(i=>i&&i.cache).length;};
 const eyeFull=e=>!!e.fiche&&EYE_BLOCKS.every(([k])=>e[k])&&[0,1,2,3,4,5,6,7].every(i=>(e.pw||[])[i]);
 const eyeCount=e=>{const l=[e.fiche,...EYE_BLOCKS.map(([k])=>e[k]),...[0,1,2,3,4,5,6,7].map(i=>(e.pw||[])[i])];return [l.filter(Boolean).length,l.length];};
 /* Le joueur qui joue cette race voit toute la fiche, sauf les pouvoirs profond et légendaire tant qu'ils sont fermés */
@@ -321,7 +324,7 @@ function raceEyeSet(id,k,i,open,sid){
   eyeApply(e,k,i,open);
   const wasFull=eyeFull(before),isFull=eyeFull(e);
   const base=S.races[id]||{sing:x0.sing,car:null,acc:[],pred:[],fut:[],at:[],typ:[]};
-  S.races={...S.races,[id]:{...base,eye:e}};persist('meta/races',{byId:S.races});
+  S.races={...S.races,[id]:{...base,eye:e,...(k==='all'&&open&&base.infos?{infos:base.infos.map(x=>({...x,cache:false}))}:{})}};persist('meta/races',{byId:S.races});
   if(wasFull===isFull){rebuildRaces();render();return;}
   const list=clone(S.creatures),c=list.find(x=>x.id===id);let evs=S.events;
   if(isFull){c.done=true;c.date=today();const t=allPJ();if(t.length){const ne={id:'g'+Date.now().toString(36)+'-c',date:c.date,titre:c.nom+' complété',type:CRE_TYPE,creature:{id},entries:t.map(p=>({perso:p,nature:'Groupe',montant:+PRM.creXP||1}))};if(sid&&sessById(sid))ne.sessionId=sid;evs=[...evs,ne];}}

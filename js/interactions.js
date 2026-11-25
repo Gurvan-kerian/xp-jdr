@@ -96,7 +96,10 @@ document.addEventListener('click',ev=>{
   else if(a==='sessNew'){S.dlg={kind:'sn',type:'Scénario',titre:sessPrefix('Scénario'),date:today(),pj:allPJ()};}
   else if(a==='sdPj'){const w=S.dlg.pj||[];S.dlg.pj=w.includes(d.id)?w.filter(x=>x!==d.id):[...w,d.id];}
   else if(a==='sessEdit'||a==='sessEditId'){const e=a==='sessEdit'?curSession():sessById(d.id);if(!e)return;S.dlg={kind:'sm',id:e.id,type:evType(e),titre:e.titre||'',date:e.date||'',confirm:false,pj:presents(e)};}
-  else if(a==='sessCreate'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;const e={id:'g'+Date.now().toString(36),session:true,date:g.date||today(),titre:t,type:g.type||'Scénario',entries:[],pnj:{},pj:g.pj||[]};S.curSess=e.id;saveEvents([...S.events,e]);return;}
+  else if(a==='sessCreate'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;const e={id:'g'+Date.now().toString(36),session:true,date:g.date||today(),titre:t,type:g.type||'Scénario',entries:[],pnj:{},pj:g.pj||[]};
+    /* lot 4 : Scénario et Interscénario rattachés à un événement, existant ou nouveau prérempli */
+    if(e.type==='Scénario'||e.type==='Interscénario'){const x=g.evt&&g.evt!=='__new'&&S.fiches[g.evt];if(x)e.evt=x.id;else{const f=chEvAuto(e);S.fiches={...S.fiches,[f.id]:f};fiSave(f,true);e.evt=f.id;}}
+    S.curSess=e.id;saveEvents([...S.events,e]);return;}
   else if(a==='sessSave'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;const pj=g.pj||[];
     saveEvents(S.events.map(e=>{if(e.id!==g.id)return e;const ch=pjIds();let en=e.entries;
       const sc=en.filter(x=>x.nature==='Scénario'&&x.montant&&ch.includes(x.perso));
@@ -167,7 +170,7 @@ document.addEventListener('click',ev=>{
     if(a==='spBuyO'&&S.spOther)delete S.spOther[c0.id+'|'+key];saveChar(c);return;}
   else if(a==='rfOpen'){S.dlg=null;S.view='univers';S.uni='creatures';S.rf=rfDraft(d.id);S.rfEd=false;S.rfBlk=null;S.rfPor=null;window.scrollTo(0,0);}
   else if(a==='rfNew'){if(!canEdit())return;S.rf=rfDraft(null);S.rfEd=true;S.edDirty=false;window.scrollTo(0,0);}
-  else if(a==='raceFull'){if(!isGest())return;const cr=S.creatures.find(c=>c.id===d.id);if(!cr||eyeFull(eyeOf(cr,raceRec(cr))))return;S.dlg={kind:'eye',t:'race',id:d.id,k:'all',i:0,open:true,sess:(sessList()[0]||{}).id||''};}
+  else if(a==='raceFull'){if(!isGest())return;const cr=S.creatures.find(c=>c.id===d.id);if(!cr||raceAllOpen(cr))return;S.dlg={kind:'eye',t:'race',id:d.id,k:'all',i:0,open:true,sess:(sessList()[0]||{}).id||''};}
   else if(a==='rfBack'){S.rf=null;S.rfEd=false;S.rfBlk=null;S.rfPor=null;}
   else if(a==='rfFlt'){S.rff=d.v;}
   else if(a==='rfFam'){S.rffam=S.rffam===d.v?'':d.v;}
@@ -325,7 +328,7 @@ document.addEventListener('click',ev=>{
   else if(a==='star'){const n=+d.n,auto=scenarioCount(S.events),cs=starCount(S.events,S.heritage.delta);const h={score:S.heritage.score,delta:(n===cs?n-1:n)-auto};S.heritage=h;persist('meta/heritage',h);}
   else if(a==='starReset'){S.heritage={score:S.heritage.score,delta:0};persist('meta/heritage',S.heritage);}
   else if(a==='addP'){if(!isGest())return;const n=S.newP.nom.trim();if(n){const p={id:slug(n),nom:n,role:S.newP.role,parti:false,persos:[]};S.newP={nom:'',role:'Joueur'};S.dlg=null;savePlayer(p);return;}}
-  else if(a==='addC'){const f=S.newC,court=f.court.trim();if(!isGest())f.owner=ME||'';if(court){S.dlg=null;const c=newChar(slug(court),court,f.nom.trim(),f.type);S.newC={court:'',nom:'',type:'PJ',owner:f.owner};S.chars[c.id]=c;persist('chars/'+c.id,c);if(f.owner&&S.players[f.owner]){const p=clone(S.players[f.owner]);p.persos=[...(p.persos||[]),c.id];S.players[p.id]=p;persist('players/'+p.id,p);}render();return;}}
+  else if(a==='addC'){const f=S.newC,court=f.court.trim();if(!isGest())f.owner=ME||'';if(court){S.dlg=null;const c=newChar(slug(court),court,f.nom.trim(),'PJ'); /* lot 4 : les PNJ se créent depuis Personnages › PNJ */S.newC={court:'',nom:'',type:'PJ',owner:f.owner};S.chars[c.id]=c;persist('chars/'+c.id,c);if(f.owner&&S.players[f.owner]){const p=clone(S.players[f.owner]);p.persos=[...(p.persos||[]),c.id];S.players[p.id]=p;persist('players/'+p.id,p);}render();return;}}
   render();
 });
 const q0=s=>document.querySelector(s);
@@ -376,7 +379,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.pd!==undefined&&S.dlg){S.dlg[t.dataset.pd]=t.value;if(t.dataset.pd==='date'){const b=q0('#sheetRoot [data-act="pdOk"]');if(b)b.disabled=!(t.value&&t.value>=today());}}
   else if(t.dataset.nv!==undefined&&S.dlg&&S.dlg.kind==='ne'){S.dlg.vals[t.dataset.nv]=t.value;}
   else if(t.dataset.nem!==undefined&&S.dlg&&S.dlg.kind==='ne'){S.dlg.m=t.value;}
-  else if(t.dataset.sd!==undefined&&S.dlg){if(t.dataset.sd==='type'&&S.dlg.kind==='sn'){const old=S.dlg.titre||'';if(!old.trim()||old===sessPrefix(S.dlg.type)){S.dlg.titre=sessPrefix(t.value);const i=q0('#sdi');if(i)i.value=S.dlg.titre;const b=q0('#sheetRoot [data-act="sessCreate"]');if(b)b.disabled=!S.dlg.titre.trim();}}S.dlg[t.dataset.sd]=t.value;if(t.dataset.sd==='titre'){const b=q0('#sheetRoot [data-act="sessCreate"],#sheetRoot [data-act="sessSave"]');if(b)b.disabled=!t.value.trim();}if(S.dlg.kind==='rat'){const g=S.dlg,b=q0('#sheetRoot [data-act="ratOk"]'),n=Math.floor(+g.montant||0);if(b){b.disabled=!(n>0&&g.who.length&&(g.titre||'').trim());b.textContent='Attribuer '+n+' XP';}}}
+  else if(t.dataset.sd!==undefined&&S.dlg){if(t.dataset.sd==='type'&&S.dlg.kind==='sn'){const old=S.dlg.titre||'';if(!old.trim()||old===sessPrefix(S.dlg.type)){S.dlg.titre=sessPrefix(t.value);const i=q0('#sdi');if(i)i.value=S.dlg.titre;const b=q0('#sheetRoot [data-act="sessCreate"]');if(b)b.disabled=!S.dlg.titre.trim();}}S.dlg[t.dataset.sd]=t.value;if(t.dataset.sd==='type'&&S.dlg.kind==='sn'){S._force=true;render();return;}if(t.dataset.sd==='titre'){const b=q0('#sheetRoot [data-act="sessCreate"],#sheetRoot [data-act="sessSave"]');if(b)b.disabled=!t.value.trim();}if(S.dlg.kind==='rat'){const g=S.dlg,b=q0('#sheetRoot [data-act="ratOk"]'),n=Math.floor(+g.montant||0);if(b){b.disabled=!(n>0&&g.who.length&&(g.titre||'').trim());b.textContent='Attribuer '+n+' XP';}}}
   else if(t.dataset.sxs!==undefined&&S.dlg){S.dlg.sess=t.value;if(S.dlg.gain){S._force=true;render();}}
   else if(t.dataset.cr!==undefined&&S.dlg){S.dlg.nom=t.value;const v=t.value.trim(),dup=!!v&&S.creatures.some(c=>c.id!==S.dlg.id&&c.nom.toLowerCase()===v.toLowerCase());const b=q0('#sheetRoot [data-act="creAddOk"],#sheetRoot [data-act="creSave"]');if(b)b.disabled=!v||dup;const w=document.getElementById('crdup');if(w)w.style.display=dup?'':'none';}
   else if(t.dataset.sx!==undefined&&S.dlg){S.dlg.txt=t.value;const b=q0('#sheetRoot [data-act="sxOk"],#sheetRoot [data-act="seSave"],#sheetRoot [data-act="propSend"]');if(b)b.disabled=!t.value.trim();}
@@ -414,7 +417,7 @@ document.addEventListener('change',ev=>{
     rd.onload=()=>{const im=new Image();im.onload=()=>{window._ptrImg=im;const w=im.naturalWidth,h=im.naturalHeight,base=Math.max(220/w,220/h);S.dlg={kind:'ptr',cid,lab,back,src:rd.result,w,h,base,z:1,x:130-w*base/2,y:130-h*base/2};S._force=true;render();};im.src=rd.result;};rd.readAsDataURL(f);}
   else if(t.dataset.cf&&!canEditC(S.chars[t.dataset.id])){render();}
   else if(pfInput(t,'change')||riInput(t,'change')){}
-  else if(t.dataset.cf==='race'){if(S.chars[t.dataset.id].race&&!canEdit())return;let c=clone(S.chars[t.dataset.id]);c.race=t.value||null;if(c.race&&c.creation&&!c.spPred)c=grantPredSp(c);saveChar(c);}
+  else if(t.dataset.cf==='race'){if(S.chars[t.dataset.id].race&&!canEdit()&&S.chars[t.dataset.id].type!=='PNJ')return;let c=clone(S.chars[t.dataset.id]);c.race=t.value||null;if(c.race&&c.creation&&!c.spPred)c=grantPredSp(c);saveChar(c);}
   else if(t.dataset.cf==='kanka'){if(!canEdit())return;const c=clone(S.chars[t.dataset.id]);const v=t.value.trim();if(v&&!/^https?:\/\//.test(v)){render();return;}c.kanka=v;saveChar(c);}
   else if(t.dataset.cf==='pj'){const c=clone(S.chars[t.dataset.id]);const v=t.value||null;if(v!==(c.pj||null)){c.pj=v;c.pjDate=v?today():null;}saveChar(c);}
   else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'||k==='genre'?t.value:(t.value.trim()||c[k]);saveChar(c);}

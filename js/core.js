@@ -11,7 +11,7 @@ const S={chars:{},players:{},events:[],ready:false,view:window.__openDates?'plan
 /* Lot 2 : au rechargement, l'appli rouvre la même page et le même onglet (mémoire de l'onglet du navigateur) */
 const KANKA_URL='https://app.kanka.io/w/350361';
 const kankaHref=(lien,nom)=>(lien&&/^https?:\/\//.test(lien))?lien:KANKA_URL+'/search?q='+encodeURIComponent(nom||'');
-const NAV_KEYS=['view','sel','shTab','uni','sec','ptab','forme','fi'];
+const NAV_KEYS=['view','sel','shTab','uni','sec','ptab','forme','fi','teamSel'];
 function navSave(){try{const o={};for(const k of NAV_KEYS)o[k]=S[k];o.pv=S.plan&&S.plan.view;sessionStorage.setItem('xp.nav',JSON.stringify(o));}catch(e){}}
 if(window.__openSec){S.view='univers';S.uni='secrets';S.sec=window.__openSec;}
 (function navLoad(){if(window.__openDates||window.__openSec)return;try{const o=JSON.parse(sessionStorage.getItem('xp.nav')||'null');if(!o)return;for(const k of NAV_KEYS)if(o[k]!==undefined&&o[k]!==null)S[k]=o[k];if(o.pv)S.plan.view=o.pv;}catch(e){}})();
@@ -28,7 +28,10 @@ const lastMJ=p=>!!p&&p.role==='MJ'&&!p.parti&&mjCount()<=1;
 const isGest=()=>!S.asPlayer&&!!ME&&hasGest(S.players[ME]);
 const gestCount=()=>Object.values(S.players).filter(hasGest).length;
 const meOwns=c=>!!ME&&!!S.players[ME]&&(S.players[ME].persos||[]).includes(c.id);
-const vis=c=>!c.cache||meOwns(c)||owners(c).length===0||isGest();
+/* Lot 4 : un PNJ est préparé (invisible des joueurs) ou révélé ; un féal est toujours révélé. Le réglage « cache » ne vaut plus que pour les PJ. */
+const isFeal=c=>!!c&&c.type==='PNJ'&&!!c.pj&&!!S.chars[c.pj];
+const pnRev=c=>!!c&&(isFeal(c)||c.vis!=='prep');
+const vis=c=>c.type==='PNJ'?(isGest()||pnRev(c)):(!c.cache||meOwns(c)||owners(c).length===0||isGest());
 const ids=()=>Object.keys(S.chars).filter(i=>vis(S.chars[i])).sort((a,b)=>{const i=ORDER.indexOf(a),j=ORDER.indexOf(b);return (i<0?99:i)-(j<0?99:j)||(S.chars[a].court||'').localeCompare(S.chars[b].court||'');});
 const pjIds=()=>ids().filter(i=>S.chars[i].type==='PJ');
 const playersSorted=()=>Object.values(S.players).sort((a,b)=>(a.nom||'').localeCompare(b.nom||''));

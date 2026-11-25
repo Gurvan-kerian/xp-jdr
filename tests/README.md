@@ -11,4 +11,7 @@
 - `lot3.test.js` (24/11/2026) : calculs (jours de la semaine, lune, solstices et équinoxes, âges, numéros de session) puis, dans le navigateur, sur des données en version 2 : accueil « Deux horloges » et ordre des onglets, date du jeu, événement créé par un joueur, résumé, liste et vue mois, filtre par PJ, Feuilleton, agenda et droits de son auteur, fêtes, âge et anniversaire, rattachements des sessions, historique (retour du téléphone / page précédente, fenêtre fermée d'abord, onglets sans étape, rechargement).
   `node tests/lot3.test.js chemin/vers/donnees-v2.json`
 
+- `lot4.test.js` (25/11/2026) : PNJ v2 et Bestiaire, sur des données inventées (ou un export en argument) : visibilité des PNJ préparés / révélés et du féal, droits, onglets, liste PJ | PNJ (recherche, filtres), fiche PNJ, création par un joueur et par la gestion, Révéler, alias, lien réciproque, PJ liés, Relations d'un PJ, traits sur l'onglet Fiche, forme démasquée par défaut, Progression du féal, Bestiaire sans Notes MJ, session Scénario rattachée à un événement prérempli, tour des écrans sans erreur.
+  `node tests/lot4.test.js`
+
 Installation : `npm install` puis `npx playwright install chromium`, puis `npm test`.
