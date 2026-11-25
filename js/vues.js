@@ -18,13 +18,13 @@ function heritageCard(){
 }
 function viewTeam(){
   const hc=heritageCard();
-  if(!ids().length&&!fiCanNew())return hc+emptyState();
+  if(!ids().length&&!fiCanNew()&&!(ME&&S.players[ME]&&!S.visit))return hc+emptyState();
   /* lot 4 : sélecteur PJ | PNJ ; PNJ en liste (fiches.js, pnListView) */
   const P=pjIds(),N=ids().filter(i=>S.chars[i].type==='PNJ'),sel=S.teamSel==='pnj'?'pnj':'pj';
   let h=`<h2 style="margin-top:4px">Personnages</h2><div class="seg teamseg" role="group" aria-label="PJ ou PNJ">${[['pj','PJ · '+P.length],['pnj','PNJ · '+N.length]].map(([v,l])=>`<button type="button" data-act="pnTeam" data-v="${v}" aria-pressed="${sel===v}">${l}</button>`).join('')}</div>`;
   if(sel==='pnj')return h+pnListView();
   const act=P.filter(i=>actif(S.chars[i])),arc=P.filter(i=>!actif(S.chars[i]));
-  h+=hc+`<div class="grid">${act.map(i=>teamCard(S.chars[i])).join('')}</div>`;
+  h+=hc+`<div class="grid">${act.map(i=>teamCard(S.chars[i])).join('')}${cwTiles()}</div>`; /* lot C : brouillons et « + Nouveau PJ » en fin de grille */
   if(arc.length)h+=`<h2>Archives</h2><div class="grid">${arc.map(i=>teamCard(S.chars[i])).join('')}</div>`;
   return h;
 }
@@ -313,7 +313,7 @@ function viewPlayers(){
     const arch=vc.filter(c=>!act(c));
     h+=grp('PJ actifs',vc.filter(c=>act(c)&&c.type==='PJ'))+grp('PNJ',vc.filter(c=>act(c)&&c.type==='PNJ'));
     h+=`<div class="grp2">Archives</div>`+(arch.length?`<div class="card lcard">${arch.map(row).join('')}</div>`:`<div class="card"><span class="muted small">Décédés et retirés : aucun</span></div>`);
-    if(ME&&!S.visit)h+=`<div class="actions" style="margin-top:10px"><button class="btn" data-act="newCOpen">+ Nouveau personnage</button></div>`;
+    if(ME&&!S.visit)h+=`<div class="actions" style="margin-top:10px"><button class="btn" data-act="cwNew">+ Nouveau personnage</button></div>`; /* lot C : ouvre l'assistant */
   }
   return h;
 }
@@ -359,8 +359,6 @@ function pcSheet(g){const c=S.chars[g.id];if(!c)return null;const ed=canEditC(c)
   if(G)h+=`<div class="danger2"><span>Zone sensible</span><button class="lnk-bad" data-act="cDel" data-id="${c.id}">Supprimer le personnage</button></div>`;
   return h+`</div></div>`;}
 function newPSheet(){return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Nouveau joueur"><div class="in"><div class="shd"><h2>Nouveau joueur</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div><div class="frow"><div class="field"><label for="np-n">Nom</label><input id="np-n" type="text" data-np="nom" value="${esc(S.newP.nom)}"></div><div class="field"><label for="np-r">Rôle</label><select id="np-r" data-np="role">${['Joueur','MJ'].map(r=>`<option${S.newP.role===r?' selected':''}>${r}</option>`).join('')}</select></div></div><div class="actions"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="addP">Ajouter</button></div></div></div>`;}
-function newCSheet(){const pl=playersSorted().filter(p=>!p.parti),G=isGest();if(!G&&!S.newC.owner)S.newC.owner=ME||'';
-  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Nouveau personnage"><div class="in"><div class="shd"><h2>Nouveau personnage</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div><div class="frow"><div class="field"><label for="nc-c">Nom court</label><input id="nc-c" type="text" data-nc="court" value="${esc(S.newC.court)}"></div><div class="field"><label for="nc-n">Nom complet</label><input id="nc-n" type="text" data-nc="nom" value="${esc(S.newC.nom)}"></div><div class="field"><label for="nc-t">Type</label><select id="nc-t" data-nc="type"><option value="PJ"${S.newC.type==='PJ'?' selected':''}>PJ</option></select></div><div class="field"><label for="nc-o">Joueur</label>${G?`<select id="nc-o" data-nc="owner"><option value="">— aucun —</option>${pl.map(p=>`<option value="${p.id}"${S.newC.owner===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}</select>`:`<div class="ro2">${esc((S.players[ME]||{}).nom||'—')}</div>`}</div></div><div class="muted small" style="margin-bottom:8px">La fiche démarre à zéro. L'assistant de création remplacera bientôt ce formulaire.</div><div class="actions"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="addC">Créer</button></div></div></div>`;}
 function viewRules(){
   const rows=[['Féerie',`(niveau suivant) × ${RULES.feerie}`],['Masque',`(niveau suivant) × ${RULES.masque}`],['Tricherie','moyenne Féerie/Masque, arrondie à l\'inférieur (calculée)'],['Caractéristique',`(niveau suivant) × ${RULES.carac}, sauf 1→2 qui coûte ${RULES.carac12}`],['Compétence',`(niveau suivant) × ${RULES.comp}`],['Compétence futile',`(niveau suivant) × ${RULES.fut}`],['Fortune',`(niveau suivant) × ${RULES.fortune} ; le détail donne la situation, l\'argent de poche, l\'argent disponible par mois et le modificateur de Classe et Entregent. Dépenser plus du double du mois en moins de deux mois fait perdre un rang`],['Atout féerique',`${RULES.atout} points par atout. Chaque race propose 4 atouts, plus « Spécialités typiques » qui offre les 2 spécialités typiques de la race (ou 2 spécialités à choisir). Le compteur affiche acquis / listés (un atout ajouté à la main compte dans les listés). Pas d'atout pour les humains`],['Spécialité',`${RULES.spec} points (${RULES.mauvaiseMain} pour Mauvaise main, ${RULES.specFut} pour une compétence futile). Elle se rattache à une compétence (à un profil pour un PNJ), donne +1 et ne demande aucun rang ; * = obligatoire pour agir dans ce domaine. Tant que des spécialités comptées restent à rattacher, en choisir une est gratuit`],['Points de personnage (PP)','atteindre le rang N d\'un profil ajoute N PP sur ce profil (automatique depuis le 16/11/2026). Toucher « PP » pour en dépenser : la dépense est inscrite dans l\'historique des achats et peut être annulée'],['Profil d\'un PNJ',`(niveau suivant) × ${RULES.prof}, soit quatre compétences à la fois`],['Rang de profil (PJ)','moyenne arrondie à l\'inférieur des quatre compétences'],['Masque et résistances','+1 de résistance physique et psychique par niveau de Masque au-delà de 5'],['Palier Profond',`Féerie ${STAGES[0].feerie}, une caractéristique ${STAGES[0].carac}, une compétence ${STAGES[0].comp}, ${STAGES[0].atout} atouts féeriques`],['Palier Légendaire',`Féerie ${STAGES[1].feerie}, une caractéristique ${STAGES[1].carac}, une compétence ${STAGES[1].comp}, ${STAGES[1].atout} atouts féeriques (après Profond)`],['Caractéristique accrue','une seule par personnage : +1 au score, au-delà du maximum (ex. Esprit 6/9 devient 7/10). Le coût d\'évolution et les paliers Profond et Légendaire se calculent sur la base, sans le bonus. Se coche dans le détail de la caractéristique'],['Rang PJ : éligibilité',`seules les compétences dont le niveau max est de ${PALIER_MAX} ou plus comptent pour Profond et Légendaire`],['Autres dépenses','Fief, Triche, PNJ : montant libre, sans maximum ni évolution'],['Rang d\'héritage','une étoile par gain de type Scénario (30 au maximum), corrigeable à la main'],['Secrets de l\'univers','titre +1, indice +1, vérité mineure +2, vérité majeure +3 ; +4 quand toutes les vérités majeures d\'un secret sont découvertes. XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Secret de l\'univers »)'],['Races de l\'univers','+1 quand toutes nos connaissances sur une race sont réunies (fiche complète). XP de nature Groupe pour tous les PJ actifs, inscrite au journal d\'XP (type « Race de l\'univers »)'],['Sessions de jeu','chaque gain d\'XP est saisi dans une session (type, intitulé, date) ; les secrets et les races complétées peuvent y être rattachés. Une session ne peut être supprimée tant que des découvertes y sont rattachées'],['Part des PNJ','PNJ rattaché à un PJ : 50 % des gains du PJ dans la session s\'il a participé activement, 25 % sinon, arrondi à l\'inférieur ; sessions datées à partir du rattachement'],['Planning','chaque joueur coche ses disponibilités en journée et en soirée ; créneaux préférés : samedi soir et dimanche journée. « Prochaines dates » : dates validées, créneaux où toute la table est libre, dates proposées que chacun accepte ou décline ; la prochaine date validée s\'affiche sur l\'accueil. Si un MJ décline une proposition, elle est refusée et ne peut pas être validée. Des créneaux consécutifs libres pour toute la table (par exemple samedi soir et dimanche journée) forment une seule date'],['Alerte de gains','PJ actif dont le total est inférieur d\'au moins '+GAP+' XP à la moyenne du groupe'],['Rattrapage d\'XP','sur la ligne d\'un PJ en alerte, la flèche ↑ ouvre une attribution pré-remplie (type Autre, nature Individuel, date du jour) du nombre d\'XP qui le ramène au total du PJ juste devant. Rien n\'est attribué automatiquement, tout reste modifiable. Hors session de jeu, sans part pour les PNJ rattachés']];
   return `<h2 style="margin-top:4px">Règles appliquées</h2><div class="card">${rows.map(r=>`<div class="ev"><div class="t" style="min-width:140px">${esc(r[0])}</div><div class="muted" style="text-align:right">${esc(r[1])}</div></div>`).join('')}</div>
@@ -479,8 +477,9 @@ function viewSheetTab(c,tab){
   if(x){const av=(x.av||[]).filter(e=>e&&e[0]),dv=(x.dv||[]).filter(e=>e&&e[0]);
     h+=cBlk('avdv','Avantages et désavantages',`${av.length} + ${dv.length}`,(av.length?`<div class="fsub">Avantages</div>`+av.map(e=>item(e[0],e[1],fxLines('av',e[0]))).join(''):'')+(dv.length?`<div class="fsub">Désavantages</div>`+dv.map(e=>item(e[0],e[1],fxLines('dv',e[0]))).join(''):'')||shNone);
     const capL=(x.cap||[]).filter(e=>e&&e[0]);
-    const cap=capL.map(e=>{const cid=capIdByName(S.capacites||{},e[0]),th=cid?illThumb('cap',cid,48):'',nm=capLk(e);return th?`<div class="fi fil">${th}<div><b>${nm}</b>${e[1]?`<div class="s">${esc(e[1])}</div>`:''}${fxLines('cap',e[0])}</div></div>`:`<div class="fi"><b>${nm}</b>${e[1]?`<div class="s">${esc(e[1])}</div>`:''}${fxLines('cap',e[0])}</div>`;}).join('')+(c.accru?`<div class="fi"><b>${esc(c.accru)} ${accW(c.accru)}</b><div class="fxs${fm==='d'?'':' off'}">Effet : ${esc(c.accru)} +1 · démasqué seulement</div></div>`:'');
-    h+=cBlk('cap','Capacités naturelles',String(capL.length+(c.accru?1:0)),cap||shNone);
+    const cap=capL.map(e=>{const cid=capIdByName(S.capacites||{},e[0]),th=cid?illThumb('cap',cid,48):'',nm=capLk(e);return th?`<div class="fi fil">${th}<div><b>${nm}</b>${e[1]?`<div class="s">${esc(e[1])}</div>`:''}${fxLines('cap',e[0])}</div></div>`:`<div class="fi"><b>${nm}</b>${e[1]?`<div class="s">${esc(e[1])}</div>`:''}${fxLines('cap',e[0])}</div>`;}).join('')+(c.accru?`<div class="fi"><b>${esc(c.accru)} ${accW(c.accru)}</b><div class="fxs${fm==='d'?'':' off'}">Effet : ${esc(c.accru)} +1 · démasqué seulement</div></div>`:'')
+      +(c.capx&&c.capx.nom?`<div class="fi"><b>${capLk([c.capx.nom,'',c.capx.v])}</b><div class="s">Choix définitif de la création</div>${fxLines('cap',c.capx.nom)}</div>`:''); /* lot C */
+    h+=cBlk('cap','Capacités naturelles',String(capL.length+(c.accru?1:0)+(c.capx&&c.capx.nom?1:0)),cap||shNone);
     const at=atoutsOf(c).filter(a=>a&&a.nom);
     h+=cBlk('at','Atouts féeriques',String(at.length),at.map(a=>{const d=(x.at||[]).find(e=>e&&nrmA(e[0])===nrmA(a.nom));
       /* lot 4 : sous l'atout « Spécialités typiques », les 2 spécialités de la race (fiche de race, onglet Création) */
@@ -599,3 +598,245 @@ function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
   else if(a==='relODel'){if(!confirm('Retirer cette jauge ?'))return true;setC(n=>{n.jauges=(n.jauges||[]).filter(j=>j.id!==d.j);});}
   render();return true;}
 function shInput(t){if(relpInput(t))return true;if(t.dataset.dk!==undefined&&S.dlg&&S.dlg.f&&SH_DLG.has(S.dlg.kind)){S.dlg.f[t.dataset.dk]=t.value;if(t.tagName==='SELECT'&&t.dataset.dk==='pnj'){S.dlg.err='';render();}return true;}return false;}
+
+/* ---------- Lot C (25/11/2026) : assistant de création de personnage (préfixe cw) ----------
+   Écran plein écran S.view='crea' (S.cwId, S.cwStep) ; brouillons dans S.brouillons (collection brouillons) ; règles dans engine.js (cr*). */
+const cwB=()=>S.brouillons&&S.brouillons[S.cwId];
+const cwSee=b=>!!b&&!S.visit&&!!ME&&(isGest()||b.par===ME);
+const cwCanEd=b=>cwSee(b)&&(isGest()||b.statut!=='attente');
+const cwList=()=>Object.values(S.brouillons||{}).filter(cwSee).sort((a,b)=>(a.cree||'').localeCompare(b.cree||''));
+function cwSave(b){b.maj=new Date().toISOString();S.brouillons={...(S.brouillons||{}),[b.id]:b};S.cwSaved=true;persist('brouillons/'+b.id,b);}
+function cwUpd(fn){const b0=cwB();if(!cwCanEd(b0))return false;const b=clone(b0);b.d=b.d||{};const r=fn(b.d,b);if(r===false)return false;cwSave(b);return true;}
+function cwNew(){if(!ME||S.visit||!S.players[ME])return;const id='br-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),now=new Date().toISOString();
+  const b={id,kind:'pj',par:ME,cree:now,maj:now,etape:0,statut:'brouillon',d:{ident:{owner:isGest()?'':ME}}};cwSave(b);cwGoTo(id,0);}
+function cwGoTo(id,step){navClear();S.view='crea';S.cwId=id;S.cwStep=step||0;S.dlg=null;S.sheet=null;S.cwSaved=false;window.scrollTo(0,0);}
+const cwMeta=(b,X)=>{const I=(b.d||{}).ident||{};return (b.kind==='feal'?'Nouveau féal':'Nouveau PJ')+((I.court||'').trim()?' · '+I.court.trim():'');};
+/* Tuiles de Personnages › PJ : brouillons visibles, puis « + Nouveau PJ » */
+function cwTiles(){let h='';for(const b of cwList()){const I=(b.d||{}).ident||{},st=crSteps(b),n=Math.min(b.etape||0,st.length-1),own=S.players[b.par];
+    h+=`<button class="card team cwtile${b.statut==='attente'?' att':''}" data-act="cwOpen" data-id="${esc(b.id)}"><span class="pill ${b.statut==='attente'?'acc':'plan'}">${b.statut==='attente'?'En attente de validation':'Brouillon · reprendre'}</span><span class="nm">${esc((I.court||'').trim()||(b.kind==='feal'?'Nouveau féal':'Nouveau PJ'))}</span><span class="muted small">${b.kind==='feal'?'Féal':'PJ'}${b.d&&b.d.race?' · '+esc(b.d.race):''} · étape ${n+1} / ${st.length}${isGest()&&own?' · par '+esc(own.nom):''}</span>${b.com&&b.statut==='brouillon'?`<span class="small bad">Renvoyé par le MJ</span>`:''}</button>`;}
+  if(ME&&S.players[ME]&&!S.visit)h+=`<button class="card team cwnew" data-act="cwNew"><span class="cwplus" aria-hidden="true">+</span><span class="nm">Nouveau PJ</span><span class="muted small">Assistant de création (PJ ou féal)</span></button>`;
+  return h;}
+/* ---------- Écran de l'assistant ---------- */
+const cwChip=(act,attrs,on,lab,dis)=>`<button type="button" class="chip" data-act="${act}" ${attrs} aria-pressed="${!!on}"${dis?' disabled':''}>${lab}</button>`;
+const cwSec=(t,body,sub)=>`<section class="card cwsec"><h3>${t}</h3>${sub?`<p class="muted small">${sub}</p>`:''}${body}</section>`;
+const cwInfo=t=>`<p class="cwinfo">${t}</p>`;
+const cwStepper=(f,k,v,mn,mx,lab)=>`<span class="cwstp"><button type="button" data-act="cwInc" data-f="${f}" data-k="${esc(k)}" data-dv="-1" aria-label="Moins : ${esc(lab)}"${v<=mn?' disabled':''}>−</button><b class="num">${v}</b><button type="button" data-act="cwInc" data-f="${f}" data-k="${esc(k)}" data-dv="1" aria-label="Plus : ${esc(lab)}"${v>=mx?' disabled':''}>+</button></span>`;
+const cwTxt=(path,v,lab,ph,ta)=>`<div class="field"><label for="cw-${esc(path)}">${lab}</label>${ta?`<textarea id="cw-${esc(path)}" rows="${ta}" data-cwf="${esc(path)}" placeholder="${esc(ph||'')}">${esc(v||'')}</textarea>`:`<input id="cw-${esc(path)}" type="text" data-cwf="${esc(path)}" value="${esc(v||'')}" placeholder="${esc(ph||'')}" autocomplete="off">`}</div>`;
+const cwCnt=(lab,v,mx)=>`<div class="cwcnt${v===mx?' ok':v>mx?' bad':''}"><span>${lab}</span><b class="num">${typeof v==='number'?ppFmt(v):v} / ${ppFmt(mx)}</b></div>`;
+function viewCrea(){const b=cwB();
+  if(!b||!cwSee(b)){S.view='team';return `<div class="card empty">Ce brouillon n'existe plus ou n'est pas visible.</div>`;}
+  const st=crSteps(b),i=Math.max(0,Math.min(S.cwStep||0,st.length-1)),k=st[i][0],ck=crCheck(b),cur=ck[k]||{ok:true,manque:[],avert:[]},E=cwCanEd(b);
+  let h=`<div class="cwhead"><div class="cwtop"><span class="small">${S.cwSaved?'Brouillon enregistré':b.statut==='attente'?'Envoyé au MJ':'Brouillon'}</span><button type="button" class="cwx" data-act="cwQuit" aria-label="Quitter l'assistant (le brouillon est gardé)">✕</button></div>
+    <h1>${esc(cwMeta(b))}</h1><span class="small">Étape ${i+1} / ${st.length} · ${esc(st[i][1])}</span><div class="cwbar"><i style="width:${Math.round(100*(i+1)/st.length)}%"></i></div>
+    <div class="cwdots" role="list">${st.map((s,j)=>`<button type="button" role="listitem" data-act="cwGo" data-i="${j}" class="${j===i?'on':''}${(ck[s[0]]||{}).ok?' ok':''}" aria-label="Étape ${j+1} : ${esc(s[1])}${(ck[s[0]]||{}).ok?' (complète)':''}" title="${esc(s[1])}">${j+1}</button>`).join('')}</div></div>`;
+  if(b.com&&b.statut==='brouillon')h+=`<div class="cwcom"><b>Message du MJ</b><div>${esc(b.com)}</div></div>`;
+  if(b.statut==='attente')h+=`<div class="cwcom att"><b>En attente de validation par le MJ.</b>${isGest()?`<div class="actions"><button class="btn pri" data-act="cwValOpen">Valider ou renvoyer</button></div>`:'<div class="small">La fiche ne peut plus être modifiée ; le MJ peut la renvoyer en brouillon.</div>'}</div>`;
+  if(S.cwMsg)h+=`<div class="cwcom" role="status">${esc(S.cwMsg)}</div>`;
+  h+=k==='recap'?'':cur.ok?`<p class="cwst ok">✓ Étape complète</p>`:`<p class="cwst todo" role="status">À compléter : ${esc(cur.manque.join(' ; '))}</p>`;
+  for(const a of cur.avert||[])h+=`<p class="cwst warn">⚠ ${esc(a)}</p>`;
+  h+=`<fieldset class="cwbody"${E?'':' disabled'}>`+cwStep(b,k,ck)+`</fieldset>`;
+  h+=`<div class="cwfoot">${i>0?`<button class="btn" data-act="cwGo" data-i="${i-1}">‹ Précédente</button>`:''}${i<st.length-1?`<button class="btn pri" data-act="cwGo" data-i="${i+1}">Suivante ›</button>`:''}</div>`;
+  return `<div class="cwiz">${h}</div>`;}
+function cwStep(b,k,ck){const d=b.d||{},X=crX(d),R=crRules(),fe=b.kind==='feal';
+  if(k==='race'){let h=cwSec('Statut',`<div class="chips cwchips">${cwChip('cwKind','data-v="pj"',!fe,'PJ')}${cwChip('cwKind','data-v="feal"',fe,"Féal d'un de mes PJ")}</div>`,"Un PNJ non rattaché n'a pas de scores : il se crée depuis Personnages › PNJ.");
+    if(fe){const L=pjIds().map(id=>S.chars[id]).filter(c=>actif(c)&&(isGest()||owners(c).some(p=>p.id===ME)));
+      h+=cwSec('Rattachement',L.length?`<div class="chips cwchips">${L.map(c=>cwChip('cwSet',`data-p="pj" data-v="${esc(c.id)}"`,d.pj===c.id,esc(c.court))).join('')}</div>`:'<p class="muted small">Aucun PJ actif à rattacher.</p>','Le féal est un humain, au rang Larbin, toujours visible de toute la table.');
+      return h+cwInfo(`Féal : ${R.fealC3} caractéristiques à 3 et ${R.fealC2} à 2 ; ${R.fealProf} points de profils (${R.fealProfMax} au plus par profil) ; ${R.trFeal} traits. Pas de compétences, d'atouts, de capacités ni de pouvoirs.`);}
+    const RL=crRaceList(),grp=f=>RL.filter(o=>o.cr.fam===f);
+    let rh='';for(const [f,l] of [['trad','Fées traditionnelles'],['mod','Fées modernes'],['','Autres']]){const L=f?grp(f):RL.filter(o=>o.cr.fam!=='trad'&&o.cr.fam!=='mod');if(!L.length)continue;
+      rh+=`<p class="cwgl">${l}</p><div class="chips cwchips">${L.map(o=>cwChip('cwRace',`data-v="${esc(o.x.sing)}"`,d.race===o.x.sing,esc(raceNm(o.x)))).join('')}</div>`;}
+    h+=cwSec('Race',rh||'<p class="muted small">Aucune race disponible (caractéristiques à renseigner dans Univers › Races).</p>','Exotiques exclues ; seules les races visibles sont proposées.');
+    if(X){const x=X.x,mins=CARACS.reduce((t,c)=>t+crCarLim({},X,c).min,0),pred=crPredList(d,X).map(p=>p.alt?p.alt.join(' ou '):p.nom),av=(x.av||[]).filter(e=>e&&e[0]).map(e=>e[0]),dv=(x.dv||[]).filter(e=>e&&e[0]).map(e=>e[0]);
+      h+=cwSec(esc(raceNm(x))+' — aperçu',`<p class="small">${esc(NATF[X.cr.fam]||'')}${x.taille?' · taille : '+esc(x.taille):''} · minima ${mins} · prédilection : ${esc(pred.join(', ')||'—')}</p>${av.length?`<p class="small"><b>Avantages :</b> ${esc(av.join(', '))}</p>`:''}${dv.length?`<p class="small"><b>Désavantages :</b> ${esc(dv.join(', '))}</p>`:''}<p class="small">Avantages et désavantages acquis d'office. ${lk({t:'race',id:X.cr.id},'Ouvrir la fiche de race')}</p>`);
+      const T=crRaceTraits(X);h+=cwSec('Trait de caractère de la race',T.length?`<div class="chips cwchips">${T.map(t=>cwChip('cwSet',`data-p="traitRace" data-v="${esc(t)}"`,d.traitRace===t,esc(t))).join('')}</div>`:cwTxt('traitRace',d.traitRace,'Trait','Aucun trait saisi pour cette race : saisie libre'));}
+    return h+cwInfo(`Féerie ${R.feStart}, Masque ${R.maStart} et Tricherie ${Math.floor((R.feStart+R.maStart)/2)} sont fixés d'office pour un PJ.`);}
+  if(k==='cap'){if(!X)return cwInfo('Choisis d\'abord une race (étape 1).');const x=X.x,L=x.choix||[],ch=crChoix(d,X);
+    let h=cwSec('Capacités acquises',(x.cap||[]).filter(e=>e&&e[0]).map(e=>`<div class="cwrow"><span>${capLk(e)}${e[1]?`<span class="muted small" style="display:block">${esc(e[1])}</span>`:''}</span><span class="pill good">acquise</span></div>`).join('')||'<p class="muted small">Aucune capacité saisie pour cette race.</p>');
+    h+=cwSec('Choix définitif',L.length?`<div class="chips cwchips">${L.map((o,j)=>cwChip('cwSet',`data-p="capx" data-v="${j}" data-n="1"`,ch&&ch.i===j,esc(o[0]==='acc'?o[1]+' '+accW(o[1]):choixFull(o)),L.length===1)).join('')}</div>${L.length===1?'<p class="muted small">Une seule option : attribuée d\'office.</p>':''}`:'<p class="muted small">Aucun choix pour cette race.</p>','Définitif : ne pourra plus être changé après validation. Une caractéristique accrue gagne +1 au-delà du maximum.');
+    return h;}
+  if(k==='pw'){if(!X)return cwInfo('Choisis d\'abord une race (étape 1).');const x=X.x,sl=pwSlots(x),P=d.pw||[],full=P.length>=R.feStart;
+    const row=j=>{const id=sl[j];if(!id)return `<div class="cwrow off"><span class="muted">${PW_LAB[j]} · emplacement vide</span></div>`;if(id==='?')return `<div class="cwrow off"><span class="muted">${PW_LAB[j]} · pouvoir inconnu (le MJ le dévoilera)</span></div>`;
+      const on=P.some(o=>o.i===j),see=isGest()||pwVisible(X.cr,x,j),nm=see?pwFull(x,j):'Pouvoir scellé',p=pwCat(id);
+      return `<div class="cwrow"><span><b>${esc(nm)}</b> <span class="muted small">· ${PW_LAB[j].toLowerCase()}</span>${see&&p.desc?`<span class="muted small" style="display:block">${esc(p.desc)}</span>`:''}</span>${cwChip('cwPw',`data-i="${j}" data-id="${esc(id)}"`,on,on?'✓ choisi':'Choisir',!on&&full)}</div>`;};
+    return cwSec(`Pouvoirs · ${P.length} / ${R.feStart}`,[0,1,2,3,4,5].map(row).join(''),`Autant de pouvoirs que le rang de Féerie (${R.feStart}), parmi les emplacements masqués et démasqués de la race.`)+cwInfo(`Féerie ${R.feStart} · Masque ${R.maStart} · Tricherie ${Math.floor((R.feStart+R.maStart)/2)} (fixés).`);}
+  if(k==='at'){const A=d.atouts||[],full=A.length>=R.atStart,x=X&&X.x,r=X&&RACES[X.x.sing];
+    const lst=(x?(x.at||[]).filter(e=>e&&e[0]):[]).concat([[TYP,r&&r.t&&r.t.length?'offre '+r.t.map(t=>t[0]+' ('+t[1]+')').join(', '):'offre 2 spécialités typiques']]);
+    let h=cwSec(`Atouts de la race · ${A.length} / ${R.atStart}`,lst.map(([n,ds])=>{const on=A.some(a=>a.nom===n);return `<div class="cwrow"><span><b>${esc(n)}</b>${ds?`<span class="muted small" style="display:block">${esc(ds)}</span>`:''}</span>${cwChip('cwAt',`data-nom="${esc(n)}"`,on,on?'✓ choisi':'Choisir',!on&&full)}</div>`;}).join(''),x?'':'Choisis d\'abord une race pour voir ses atouts.');
+    const lib=A.filter(a=>a.src==='libre');
+    h+=cwSec('Autre atout',lib.map(a=>`<div class="cwrow"><span>${esc(a.nom)}</span><button type="button" class="chip" data-act="cwAtDel" data-nom="${esc(a.nom)}" aria-label="Retirer ${esc(a.nom)}">✕</button></div>`).join('')+(full?'':`<div class="cwadd"><input type="text" data-cwt="at" value="${esc((S.cwTmp||{}).at||'')}" placeholder="Nom de l'atout" aria-label="Autre atout" autocomplete="off"><button type="button" class="btn" data-act="cwAtAdd">Ajouter</button></div>`),'Saisie libre, hors liste de la race.');
+    return h;}
+  if(k==='car'){if(fe){const V=d.fealCar||{},n3=Object.values(V).filter(v=>+v===3).length,n2=Object.values(V).filter(v=>+v===2).length;
+      return `<div class="cwcnts">${cwCnt('À 3',n3,R.fealC3)}${cwCnt('À 2',n2,R.fealC2)}</div>`+cwSec('Caractéristiques',CARACS.map(c=>{const v=+V[c]||0;return `<div class="cwrow"><span>${esc(c)}</span><span class="seg sm cwseg">${[['3','3'],['2','2']].map(([o,l])=>`<button type="button" data-act="cwFeCar" data-k="${esc(c)}" data-v="${o}" aria-pressed="${String(v)===o}"${String(v)!==o&&(o==='3'?n3>=R.fealC3:n2>=R.fealC2)?' disabled':''}>${l}</button>`).join('')}</span></div>`;}).join(''),'Répartition fixe : le joueur choisit lesquelles.');}
+    if(!X)return cwInfo('Choisis d\'abord une race (étape 1).');const u=crCarUsed(d,X),ch=crChoix(d,X);
+    let h=`<div class="cwcnts">${cwCnt('Points répartis',u,R.carLib)}</div>`+cwInfo(`Minima de la race + ${R.carLib} points ; plafond ${R.carMax} (ou maximum de la race s'il est plus bas).`);
+    h+=cwSec('Caractéristiques',CARACS.map(c=>{const l=crCarLim(d,X,c),v=crCarVal(d,X,c),acc=ch&&ch.t==='acc'&&ch.nom===c;return `<div class="cwrow"><span>${esc(c)}<span class="muted small" style="display:block">min ${l.min} · max ${l.max}${acc?' · accrue +1 (démasqué)':''}</span></span>${cwStepper('car',c,v,l.min,l.max,c)}</div>`;}).join(''));
+    if(crTroll(X))h+=cwSec('Ajustement du troll',`<label class="cwck"><input type="checkbox" data-cwck="troll"${d.troll?' checked':''}> Constitution max −1, Esprit max +1</label>`,'Facultatif.');
+    const con=crCarVal(d,X,'Constitution'),es=Math.max(0,crCarVal(d,X,'Esprit')-R.espSeuil),ct=Math.max(0,crCarVal(d,X,'Prestance')-R.ctcSeuil);
+    return h+cwInfo(`PdV ${9+3*con+(ch&&ch.t==='acc'&&ch.nom==='Constitution'?3:0)} · bonus d'Esprit : ${es} point${es>1?'s':''} (Érudit ou Savant) · Prestance : ${ct} point${ct>1?'s':''} de Contact.`);}
+  if(k==='prof'){if(fe){const P=d.fealProf||{},tot=PROFILS.reduce((t,p)=>t+(+P[p]||0),0),T=d.traits||{},hi=Math.max(0,...PROFILS.map(p=>+P[p]||0)),top=PROFILS.filter(p=>hi>0&&(+P[p]||0)===hi);
+      let h=`<div class="cwcnts">${cwCnt('Points de profils',tot,R.fealProf)}</div>`+cwSec('Profils',PROFILS.map(p=>`<div class="cwrow"><span>${esc(profLab(p))}</span>${cwStepper('fealProf',p,+P[p]||0,0,Math.min(R.fealProfMax,(+P[p]||0)+R.fealProf-tot),profLab(p))}</div>`).join(''),`${R.fealProf} points, ${R.fealProfMax} au plus par profil.`);
+      const tp=T.maj&&top.includes(T.maj.p)?T.maj.p:top[0];
+      h+=cwSec('Trait du profil le plus haut',top.length?(top.length>1?`<div class="chips cwchips">${top.map(p=>cwChip('cwFeTrP',`data-v="${p}"`,tp===p,esc(profLab(p)))).join('')}</div>`:'')+`<div class="chips cwchips">${prOf(tp).traits.map(t=>cwChip('cwFeTr',`data-p="${tp}" data-v="${esc(t)}"`,T.maj&&T.maj.p===tp&&T.maj.n===t,esc(t))).join('')}</div>`:'<p class="muted small">Répartis d\'abord les points.</p>');
+      return h+cwSec('Trait libre',cwTxt('traits.libre',T.libre,'Trait libre'));}
+    const T=d.traits||{},tr=(p,f)=>{const L=prOf(p).traits||[];return L.length?`<div class="chips cwchips">${L.map(t=>cwChip('cwSet',`data-p="traits.${f}" data-v="${esc(t)}"`,T[f]===t,esc(t))).join('')}</div>`:cwTxt('traits.'+f,T[f],'Trait');};
+    let h=cwSec(`Profil majeur (+${R.profMaj})`,`<div class="chips cwchips">${PROFILS.map(p=>cwChip('cwSet',`data-p="maj" data-v="${p}"`,d.maj===p,esc(profLab(p)),d.min===p)).join('')}</div>${d.maj?'<p class="cwgl">Trait du profil majeur</p>'+tr(d.maj,'maj'):''}`,`+${R.profMaj} à toutes ses compétences ; +${R.ppMaj} PP.`);
+    h+=cwSec(`Profil mineur (+${R.profMin})`,`<div class="chips cwchips">${PROFILS.map(p=>cwChip('cwSet',`data-p="min" data-v="${p}"`,d.min===p,esc(profLab(p)),d.maj===p)).join('')}</div>${d.min?'<p class="cwgl">Trait du profil mineur</p>'+tr(d.min,'min'):''}`,`+${R.profMin} à toutes ses compétences ; +${R.ppMin} PP.`);
+    return h+cwSec('Trait libre',cwTxt('traits.libre',T.libre,'Trait libre'),`${R.trPJ} traits en tout : race, profil majeur, profil mineur, libre.`);}
+  if(k==='comp'){if(!d.maj||!d.min)return cwInfo('Choisis d\'abord les profils majeur et mineur (étape 6).');return cwComp(b,d,X,R);}
+  if(k==='pp'){if(!d.maj||!d.min)return cwInfo('Choisis d\'abord les profils majeur et mineur (étape 6).');return cwPPStep(b,d,X,R);}
+  if(k==='id'){const I=d.ident||{},G=isGest(),pl=playersSorted().filter(p=>!p.parti),n=I.naiss||{},S0=d.situ||{};
+    let h=cwSec('Identité',cwTxt('ident.court',I.court,'Nom court (obligatoire)','ex. Aël')+cwTxt('ident.nom',I.nom,'Nom complet (facultatif)')+
+      `<div class="field"><label>Genre (facultatif)</label><div class="seg cwseg">${[['','—'],['m','Masculin'],['f','Féminin']].map(([v,l])=>`<button type="button" data-act="cwSet" data-p="ident.genre" data-v="${v}" aria-pressed="${(I.genre||'')===v}">${l}</button>`).join('')}</div></div>`+
+      `<div class="field"><label for="cw-own">Joueur (obligatoire)</label>${G?`<select id="cw-own" data-cwf="ident.owner"><option value="">— choisir —</option>${pl.map(p=>`<option value="${esc(p.id)}"${I.owner===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}</select>`:`<div class="inp ro">${esc((S.players[I.owner]||{}).nom||'')}</div>`}</div>`+
+      `<div class="field"><label>Date de naissance dans le jeu (facultatif)</label><div class="frow cwnaiss">${[['j','Jour',2],['m','Mois',2],['a','Année',4]].map(([f,l,w])=>`<input type="number" inputmode="numeric" data-cwf="ident.naiss.${f}" data-num="1" value="${esc(n[f]||'')}" placeholder="${l}" aria-label="${l}" style="max-width:${w*22+30}px">`).join('')}</div></div>`+
+      '<p class="muted small">Portrait : il se met depuis la fiche, une fois le personnage validé.</p>');
+    return h+cwSec('Situation (facultatif)',CR_SITU.map(([f,l])=>cwTxt('situ.'+f,S0[f],l,'Une entrée par ligne',2)).join(''),'En texte libre ; reliée aux fiches (familles, organisations, lieux, objets) quand elles existeront.');}
+  if(k==='recap')return cwRecap(b,ck);
+  return '';}
+/* Étape Compétences : groupées par profil (majeur, mineur, autres repliés), spécialités dépliables, futiles à part */
+function cwComp(b,d,X,R){const P=crPts(d,X),F=S.cwFold||{};let h=`<div class="cwcnts">${cwCnt('Utiles',P.util,P.utilMax)}${cwCnt('Futiles',P.fut,P.futMax)}${P.espMax?cwCnt('Esprit',P.esp,P.espMax):''}</div>`;
+  h+=cwInfo(`Plafond à la création : ${R.compMaxN}, ou ${R.compMaxP} en prédilection. Touche une compétence pour ses spécialités (${R.ptsSpec} pt, Mauvaise main ${R.ptsMM}).${P.espMax?` Bonus d'Esprit : ${P.espMax} point${P.espMax>1?'s':''} gratuits en Érudit ou Savant.`:''}`);
+  const typ=(d.atouts||[]).some(a=>a.nom===TYP),r=X&&RACES[X.x.sing],off=k=>[...((r&&r.sp)||[]).filter(e=>'comp:'+e[1]===k).map(e=>[e[0],'Offerte · race']),...(typ?((r&&r.t)||[]).filter(e=>'comp:'+e[1]===k).map(e=>[e[0],'Offerte · atout']):[])];
+  const spx=(key,cat)=>{if(!(S.cwSp||{})[key])return '';const mine=(d.specs||[]).map((s,i)=>[s,i]).filter(([s])=>s.key===key),O=off(key);
+    let x=O.map(([n,l])=>`<div class="cwsp"><span>${esc(n)}</span><span class="muted small">${l}</span></div>`).join('')+mine.map(([s,i])=>`<div class="cwsp"><span>${esc(s.nom)}${s.mm?' <small class="muted">(Mauvaise main)</small>':''}</span><button type="button" class="chip" data-act="cwSpDel" data-i="${i}" aria-label="Retirer ${esc(s.nom)}">✕ ${crSpecCost(s)} pt</button></div>`).join('');
+    const C=(cat||[]).filter(e=>e[0]!=='Langue : '&&!mine.some(([s])=>nrmS(s.nom)===nrmS(e[0]))&&!O.some(o=>nrmS(o[0])===nrmS(e[0])));
+    x+=`<div class="cwadd">${C.length?`<select data-cwt="spsel:${esc(key)}" aria-label="Spécialité du livre"><option value="">— spécialité du livre —</option>${C.map(e=>`<option${((S.cwTmp||{})['spsel:'+key])===e[0]?' selected':''}>${esc(e[0])}</option>`).join('')}</select>`:''}<input type="text" data-cwt="sp:${esc(key)}" value="${esc((S.cwTmp||{})['sp:'+key]||'')}" placeholder="ou autre spécialité" aria-label="Autre spécialité" autocomplete="off"><button type="button" class="btn" data-act="cwSpAdd" data-k="${esc(key)}">+ Ajouter</button></div>`;
+    return `<div class="cwspx">${x}</div>`;};
+  const row=c=>{const key='comp:'+c.nom,o=!!(S.cwSp||{})[key],n=(d.specs||[]).filter(s=>s.key===key).length+off(key).length;
+    return `<div class="cwcomp"><div class="cwrow"><button type="button" class="cwdep" data-act="cwSpOpen" data-k="${esc(key)}" aria-expanded="${o}" aria-label="Spécialités de ${esc(c.nom)}">${o?'▴':'▾'}</button><span class="cwcn">${esc(c.nom)}${n?` <small class="pill">${n} spé.</small>`:''}<span class="muted small" style="display:block">départ ${c.start}${c.pred?' · préd.':''} · max ${c.cap}</span></span>${cwStepper('comps',c.nom,c.cur,c.start,c.cap,c.nom)}</div>${spx(key,CATSPEC[c.nom])}</div>`;};
+  const blk=(p,lab)=>cwSec(`${esc(profLab(p))} · ${lab} <small class="muted">rang ${crRank(P.C,p)}</small>`,P.C.filter(c=>c.prof===p).map(row).join(''));
+  h+=blk(d.maj,'majeur')+blk(d.min,'mineur');
+  const oth=PROFILS.filter(p=>p!==d.maj&&p!==d.min);
+  h+=`<section class="card cwsec"><h3>Autres profils</h3>${oth.map(p=>{const o=!!F[p],pred=P.C.filter(c=>c.prof===p&&c.pred).map(c=>c.nom);return `<div class="cwrow"><span>${esc(profLab(p))} <small class="muted">rang ${crRank(P.C,p)}</small>${pred.length?`<span class="muted small" style="display:block">prédilection : ${esc(pred.join(', '))}</span>`:''}</span><button type="button" class="chip" data-act="cwFold" data-k="${p}" aria-expanded="${o}">${o?'Replier':'Déplier'}</button></div>${o?P.C.filter(c=>c.prof===p).map(row).join(''):''}`;}).join('')}</section>`;
+  const xy=crPredList(d,X).filter(e=>e.alt);
+  if(xy.length)h+=cwSec('Choix « X ou Y » de la race',xy.map(e=>`<div class="chips cwchips">${e.alt.map(n=>cwChip('cwXY',`data-k="${esc(e.key)}" data-v="${esc(n)}"`,e.nom===n,esc(n))).join('')}</div>`).join(''),'Définitif à la validation.');
+  let fh='';for(const f of P.F){const key='fut:'+f.k;
+    const head=f.alt?`<div class="chips cwchips">${f.alt.map(n=>cwChip('cwXY',`data-k="${esc(f.key)}" data-v="${esc(n)}"`,f.nom===n,esc(n))).join('')}</div>`:f.libre?`<input type="text" data-cwf="futN.${f.j}" value="${esc(f.nom)}" placeholder="${esc(f.lab)}" aria-label="${esc(f.lab)}" autocomplete="off">`:f.own?`<input type="text" data-cwf="futL.${f.k.slice(1)}.nom" value="${esc(f.nom)}" placeholder="Nom de la futile" aria-label="Nom de la futile" autocomplete="off">`:'';
+    const o=!!(S.cwSp||{})[key];
+    fh+=`<div class="cwcomp"><div class="cwrow"><button type="button" class="cwdep" data-act="cwSpOpen" data-k="${esc(key)}" aria-expanded="${o}" aria-label="Spécialités">${o?'▴':'▾'}</button><span class="cwcn">${esc(f.nom||'(à nommer)')}<span class="muted small" style="display:block">départ ${f.start}${f.pred?' · préd.':''} · max ${f.cap}</span>${head}</span>${cwStepper(f.own?'futL':'futV',f.k,f.cur,f.start,f.cap,f.nom||'futile')}${f.own?`<button type="button" class="chip" data-act="cwFutDel" data-i="${f.k.slice(1)}" aria-label="Retirer">✕</button>`:''}</div>${spx(key,[])}</div>`;}
+  fh+=`<div class="cwadd"><button type="button" class="btn" data-act="cwFutAdd">+ Ajouter une futile</button></div>`;
+  h+=cwSec(`Compétences futiles · ${R.ptsFut} points`,fh,((X&&X.x.spf)||[]).length?'Spécialités futiles offertes par la race : '+esc(X.x.spf.map(e=>e[0]).join(', '))+'.':'');
+  return h+cwSec('Fixées d\'office',`<div class="cwrow"><span>Féerie</span><b>${R.feStart}</b></div><div class="cwrow"><span>Masque</span><b>${R.maStart}</b></div>`);}
+/* Étape PP et Fortune : un bloc par profil doté de PP, achats dans le tableau du profil (fenêtre cwPP) */
+function cwPPStep(b,d,X,R){const Q=crPP(d,X);
+  let h=`<div class="cwcnts">${Q.ctcMax?cwCnt('Contact',Q.ctc,Q.ctcMax):''}${Q.langMax?cwCnt('Langues',Q.lang,Q.langMax):''}<div class="cwcnt"><span>Fortune</span><b class="num">${Q.fort}${FORTUNE[Q.fort]?' · '+esc(FORTUNE[Q.fort][0]):''}</b></div></div>`;
+  h+=cwInfo(`PP d'un profil = son rang (+${R.ppMaj} majeur, +${R.ppMin} mineur), à dépenser dans son tableau. Points de Contact : contacts seulement ; points de langue : langues seulement (${R.langCult} par rang de Culture). Activité principale : Fortune et spécialité offerte.`);
+  for(const p of PROFILS){const L=Q.items.map((it,i)=>[it,i]).filter(([it])=>it.e.prof===p);if(!Q.av[p]&&!L.length)continue;const rest=Q.av[p]-Q.sp[p];
+    h+=cwSec(`${esc(profLab(p))} <small class="muted">${p===d.maj?'majeur · ':p===d.min?'mineur · ':''}rang ${Q.rk[p]}</small>`,`<div class="cwrow"><span>PP</span><b class="num${rest<0?' bad':''}">${ppFmt(Q.sp[p])} / ${ppFmt(Q.av[p])}</b></div>`+
+      L.map(([it,i])=>{const e=it.e,src=[it.ctc?ppFmt(it.ctc)+' Contact':'',it.lang?ppFmt(it.lang)+' langue':''].filter(Boolean).join(' + ');return `<div class="cwrow"><span><b>${esc(e.nom)}</b>${e.opt?` <small class="muted">(${esc(PPOPT[e.opt]||'')})</small>`:''}<span class="muted small" style="display:block">${ppFmt(e.cost)} PP${src?' dont '+src:''}${e.rub==='A'&&e.opt==='p'&&e.fort!=null?' · Fortune '+e.fort:''}${e.rub==='A'&&e.opt==='s'&&e.fortS!=null?' · Fortune +'+e.fortS:''}${e.rub==='A'&&e.opt==='p'&&e.spec?' · spécialité '+esc(e.spec)+' offerte':''}${e.prec?' · '+esc(e.prec):''}</span></span><button type="button" class="chip" data-act="cwPPDel" data-i="${i}" aria-label="Retirer ${esc(e.nom)}">✕</button></div>`;}).join('')+
+      `<div class="cwadd"><button type="button" class="btn" data-act="cwPPOpen" data-v="${p}">Acheter dans le tableau</button></div>`);}
+  return h;}
+/* Fenêtre d'achat (tableau du profil), sur l'aperçu de la fiche : prérequis, coûts selon la nature de la race */
+function cwPPSheet(g){const b=S.brouillons&&S.brouillons[g.bid];if(!b||!cwCanEd(b))return '';const d=b.d||{},X=crX(d),Q=crPP(d,X),c=cwPreview(b),p=g.prof,rest=Q.av[p]-Q.sp[p],q=nrm(g.q||'');
+  const hasPrin=(d.pp||[]).some(e=>e.rub==='A'&&e.opt==='p');
+  if(g.sel){const e=ppEls()[g.sel];if(!e){g.sel=null;return cwPPSheet(g);}const k=e.cost||{},cost=ppCost(e,g.opt,c),miss=ppPreMiss(e,c),pool=e.rub==='C'?Q.ctcMax-Q.ctc:e.rub==='L'?Q.langMax-Q.lang:0;
+    let opt='';if(e.rub==='A')opt=`<div class="field"><label>Activité</label>${pfSeg('cwPPOpt',g.opt,[['p','Principale'],['s','Secondaire']])}${hasPrin&&g.opt==='p'?'<div class="bad small">Une activité principale est déjà choisie : elle sera remplacée.</div>':''}</div>`;
+    else if(k.k==='hf'&&k.a!=null&&k.b!=null)opt=`<div class="field"><label>Le contact est</label>${pfSeg('cwPPOpt',g.opt,[['h','Humain'],['f','Fée']])}</div>`;
+    else if(k.k==='tm'&&isExoF(c))opt=`<div class="field"><label>Coût appliqué</label>${pfSeg('cwPPOpt',g.opt==='t'?'t':'m',[['m','Fée moderne'],['t','Fée traditionnelle']])}</div>`;
+    const ok=!miss.length&&cost<=rest+pool;
+    return sheetW('Confirmer un achat',`<div class="shd"><h2>${esc(e.nom)}</h2></div><div class="muted small">${esc(profLab(p))} · ${esc((PP_RUB.find(r=>r[0]===e.rub)||[])[1]||'')}</div>${opt}
+      <div class="calc"><span>Coût</span><b>${esc(ppFmt(cost))} PP</b>${pool>0?`<span>${e.rub==='C'?'Points de Contact':'Points de langue'} disponibles</span><b>${esc(ppFmt(pool))}</b>`:''}<span>PP ${esc(profLab(p))} restants</span><b>${esc(ppFmt(rest))}</b></div>
+      ${e.prec?`<div class="muted small">${esc(e.prec)}</div>`:''}${miss.length?`<div class="bad small">Prérequis manquant : ${miss.map(ppPreTxt).map(esc).join(', ')}.</div>`:''}${cost>rest+pool?'<div class="bad small">PP insuffisants.</div>':''}
+      <div class="field"><label for="cwppp">Précision <span class="muted small">(facultatif)</span></label><input id="cwppp" type="text" data-cwt="ppPrec" value="${esc(g.prec||'')}" autocomplete="off"></div>
+      <div class="actions"><button class="btn" data-act="cwPPBack">Retour</button><button class="btn pri" data-act="cwPPOk"${ok?'':' disabled'}>Ajouter</button></div>`);}
+  const bought=new Set((d.pp||[]).map(e=>e.el));
+  const rows=ppRows(c,p).filter(([,e])=>!e.nocrea&&!e.titre&&(g.rub==='all'||e.rub===g.rub)&&(!q||nrm(e.nom).includes(q)));
+  let h=`<div class="shd" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>${esc(profLab(p))}</h2><span class="ppf"><small>PP</small>${esc(ppFmt(rest))}</span></div>
+    <div class="field"><input type="search" data-cwt="ppq" value="${esc(g.q||'')}" placeholder="Rechercher dans le tableau…" aria-label="Rechercher dans le tableau"></div>${pfSeg('cwPPRub',g.rub,[['all','Tout'],...PP_RUB.map(r=>[r[0],r[2]])])}`;
+  for(const r of PP_RUB){const L=rows.filter(([,e])=>e.rub===r[0]);if(!L.length)continue;
+    h+=`<h3 class="rs">${esc(r[1])}</h3><div class="ppl">${L.map(([id,e])=>{const got=bought.has(id)&&e.rub!=='L',miss=ppPreMiss(e,c),why=[miss.length?'prérequis : '+miss.map(ppPreTxt).join(', '):'',got?'déjà choisi':''].filter(Boolean).join(' · ');
+      return `<button class="ppi ppw${got||miss.length?' no':' ok'}" data-act="cwPPPick" data-id="${esc(id)}"${got?' disabled':''}><span>${esc(e.nom+ppStar(e))}${e.rub==='A'&&e.fortP!=null?` <small>· Fortune ${e.fortP}</small>`:''}${why?`<span class="why">${esc(why)}</span>`:''}</span><b class="num">${esc(ppCostTxt(e))}</b></button>`;}).join('')}</div>`;}
+  if(!rows.length)h+='<div class="muted small" style="margin:10px 0">Aucun élément.</div>';
+  return sheetW('Points de personnage',h+`<div class="muted small" style="margin-top:6px">Les éléments marqués « pas à la création » ne sont pas proposés.</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div>`);}
+/* Aperçu de la fiche (récapitulatif, prérequis) */
+function cwPreview(b){try{return fxSync(crBuild(b,{id:'apercu-'+b.id}).c);}catch(e){console.error(e);return newChar('apercu','Aperçu','Aperçu','PJ');}}
+function cwRecap(b,ck){const st=crSteps(b),todo=st.filter(s=>s[0]!=='recap'&&!(ck[s[0]]||{}).ok),av=st.flatMap(s=>((ck[s[0]]||{}).avert||[]));
+  let h=todo.length?cwSec('À compléter',todo.map(s=>`<div class="cwrow"><span><b>${esc(s[1])}</b><span class="muted small" style="display:block">${esc(ck[s[0]].manque.join(' ; '))}</span></span><button type="button" class="chip" data-act="cwGo" data-i="${st.indexOf(s)}">Ouvrir</button></div>`).join('')):`<p class="cwst ok">✓ Toutes les étapes sont complètes</p>`;
+  for(const a of av)h+=`<p class="cwst warn">⚠ ${esc(a)}</p>`;
+  h+=cwSec('Résumé',crSummary(b).map(([t,v,k])=>{const j=st.findIndex(s=>s[0]===k);return `<div class="cwrow"><span><b>${esc(t)}</b><span class="small" style="display:block">${esc(v||'—')}</span></span>${j>=0?`<button type="button" class="chip" data-act="cwGo" data-i="${j}">Modifier</button>`:''}</div>`;}).join(''));
+  if(b.kind!=='feal'){const c=cwPreview(b),D=derived(c,'m');
+    h+=cwSec('Valeurs calculées',`<div class="fgrid">${D.filter(([n])=>['PdV','Esquive','Parade','Résistance physique','Résistance psychique'].includes(n)).map(([n,v])=>`<div class="fr"><span>${esc(n)}</span><b class="num">${v}</b></div>`).join('')}<div class="fr"><span>Tricherie</span><b class="num">${tricherie(c)}</b></div><div class="fr"><span>Fortune</span><b class="num">${lv(c,'fortune')}${FORTUNE[lv(c,'fortune')]?' · '+esc(FORTUNE[lv(c,'fortune')][0]):''}</b></div></div>`,'Forme masquée.');}
+  const ok=!todo.length;
+  if(b.statut!=='attente')h+=`<div class="cwsend"><button class="btn pri cta" data-act="cwSend"${ok?'':' disabled'}>Envoyer au MJ</button>${ok?'':'<p class="muted small">Disponible quand toutes les étapes sont complètes.</p>'}</div>`;
+  if(cwCanEd(b))h+=`<div class="cwsend">${S.cwDelAsk?`<p class="small">Supprimer ce brouillon ? Rien n'est gardé.</p><div class="actions"><button class="btn" data-act="cwDelNo">Garder</button><button class="btn" style="color:var(--bad)" data-act="cwDelOk">Supprimer le brouillon</button></div>`:`<button class="btn ghost" data-act="cwDel">Supprimer le brouillon</button>`}</div>`;
+  return h;}
+/* Validation par le MJ */
+function cwValSheet(g){const b=S.brouillons&&S.brouillons[g.bid];if(!b||!isGest())return '';
+  return sheetW('Validation',`<div class="shd"><h2>${esc(cwMeta(b))}</h2></div><div class="muted small">Par ${esc((S.players[b.par]||{}).nom||'?')} · envoyé le ${fmtDate((b.envoye||'').slice(0,10))}</div>
+    ${crSummary(b).map(([t,v])=>`<div class="small" style="margin:4px 0"><b>${esc(t)}</b> : ${esc(v||'—')}</div>`).join('')}
+    ${b.kind==='feal'?'':`<div class="field"><label for="cwxp">XP de départ</label><input id="cwxp" type="number" min="0" inputmode="numeric" data-cwt="valxp" value="${esc(g.xp)}" style="max-width:120px"></div>`}
+    <div class="field"><label for="cwcom">Commentaire <span class="muted small">(affiché en tête de l'assistant en cas de renvoi)</span></label><textarea id="cwcom" rows="3" data-cwt="valcom">${esc(g.com||'')}</textarea></div>
+    ${crSendable(b)?'':'<div class="bad small">Des étapes ne sont plus complètes : renvoyer en brouillon.</div>'}
+    <div class="actions"><button class="btn" data-act="closeSheet">Fermer</button><button class="btn" data-act="cwBackDraft">Renvoyer en brouillon</button><button class="btn pri" data-act="cwValOk"${crSendable(b)?'':' disabled'}>Valider la fiche</button></div>`);}
+function cwValidate(g){const b=S.brouillons&&S.brouillons[g.bid];if(!b||!isGest()||!crSendable(b))return;const court=((b.d.ident||{}).court||'').trim();
+  let id=slug(court);while(S.chars[id])id=slug(court);
+  const {c,ev}=crBuild(b,{id,xp:b.kind==='feal'?0:g.xp});c.par=b.par||'';c.cree=c.cree||new Date().toISOString();
+  saveChar(c);
+  const ow=b.kind==='feal'?'':(b.d.ident||{}).owner;if(ow&&S.players[ow]){const p=clone(S.players[ow]);if(!(p.persos||[]).includes(id)){p.persos=[...(p.persos||[]),id];savePlayer(p);}}
+  if(ev)saveEvents([...S.events,ev]);
+  const B={...S.brouillons};delete B[b.id];S.brouillons=B;persistDel('brouillons/'+b.id);
+  S.dlg=null;navClear();S.view='sheet';S.sel=id;S.shTab=b.kind==='feal'?'por':'prog';window.scrollTo(0,0);render();setTimeout(()=>toast('Fiche validée'),0);}
+/* Actions ; renvoie true si traitée */
+function cwAct(a,d){if(!/^cw/.test(a))return false;const g=S.dlg;
+  const redraw=()=>{S._force=true;render();return true;};
+  if(a==='cwNew'){cwNew();return redraw();}
+  if(a==='cwOpen'){const b=S.brouillons&&S.brouillons[d.id];if(!cwSee(b))return true;cwGoTo(b.id,Math.min(b.etape||0,crSteps(b).length-1));S.cwMsg='';return redraw();}
+  if(a==='cwQuit'){S.view='team';S.teamSel='pj';S.cwMsg='';S.cwDelAsk=false;window.scrollTo(0,0);return redraw();}
+  if(a==='cwGo'){const b=cwB();if(!b)return true;S.cwStep=Math.max(0,Math.min(+d.i,crSteps(b).length-1));S.cwMsg='';S.cwDelAsk=false;
+    if(cwCanEd(b)&&b.etape!==S.cwStep){const n=clone(b);n.etape=S.cwStep;cwSave(n);}window.scrollTo(0,0);return redraw();}
+  if(a==='cwValOpen'){if(!isGest())return true;S.dlg={kind:'cwVal',bid:S.cwId,xp:String(crRules().xpStart),com:''};return redraw();}
+  if(a==='cwValOk'){if(g&&g.kind==='cwVal')cwValidate(g);return true;}
+  if(a==='cwBackDraft'){if(!g||g.kind!=='cwVal'||!isGest())return true;const b0=S.brouillons[g.bid];if(!b0)return true;const b=clone(b0);b.statut='brouillon';b.com=(g.com||'').trim();cwSave(b);S.dlg=null;setTimeout(()=>toast('Renvoyé en brouillon'),0);return redraw();}
+  if(a==='cwPPRub'&&g&&g.kind==='cwPP'){g.rub=d.v;return redraw();}
+  if(a==='cwPPPick'&&g&&g.kind==='cwPP'){const e=ppEls()[d.id];if(!e)return true;g.sel=d.id;g.prec='';const b=cwB(),hp=((b&&b.d.pp)||[]).some(x=>x.rub==='A'&&x.opt==='p');g.opt=e.rub==='A'?(hp?'s':'p'):(e.cost&&e.cost.k==='hf'?(e.cost.a==null?'f':'h'):(e.cost&&e.cost.k==='tm'?'m':''));return redraw();}
+  if(a==='cwPPBack'&&g&&g.kind==='cwPP'){g.sel=null;return redraw();}
+  if(a==='cwPPOpt'&&g&&g.kind==='cwPP'){g.opt=d.v;return redraw();}
+  if(a==='cwPPOk'&&g&&g.kind==='cwPP'){const e=ppEls()[g.sel],b=cwB();if(!e||!b)return true;const c=cwPreview(b),cost=ppCost(e,g.opt,c);if(ppPreMiss(e,c).length)return true;
+    const opt=e.rub==='A'||(e.cost&&e.cost.k==='hf')?g.opt:(e.cost&&e.cost.k==='tm'&&isExoF(c)?(g.opt==='t'?'t':'m'):''),it={el:g.sel,prof:g.prof,rub:e.rub,nom:e.nom,opt,cost};
+    if((g.prec||'').trim())it.prec=g.prec.trim();if(e.rub==='A'){if(e.fortP!=null)it.fort=e.fortP;if(e.fortS!=null)it.fortS=e.fortS;if(e.spec)it.spec=e.spec;}
+    cwUpd(D=>{let L=(D.pp||[]).slice();if(opt==='p'&&e.rub==='A')L=L.map(x=>x.rub==='A'&&x.opt==='p'?{...x,opt:'s'}:x);L.push(it);D.pp=L;});S.dlg=null;setTimeout(()=>toast('Ajouté'),0);return redraw();}
+  if(S.visit)return true;const b=cwB();if(!b)return true;
+  if(a==='cwDel'){S.cwDelAsk=true;return redraw();}if(a==='cwDelNo'){S.cwDelAsk=false;return redraw();}
+  if(a==='cwDelOk'){if(!cwCanEd(b))return true;const B={...S.brouillons};delete B[b.id];S.brouillons=B;persistDel('brouillons/'+b.id);S.cwDelAsk=false;S.view='team';S.teamSel='pj';setTimeout(()=>toast('Brouillon supprimé'),0);return redraw();}
+  if(a==='cwSend'){if(!cwCanEd(b)||!crSendable(b))return true;const n=clone(b);n.statut='attente';n.envoye=new Date().toISOString();cwSave(n);S.view='team';S.teamSel='pj';window.scrollTo(0,0);setTimeout(()=>toast('Envoyé au MJ'),0);return redraw();}
+  if(a==='cwSpOpen'){S.cwSp={...(S.cwSp||{}),[d.k]:!(S.cwSp||{})[d.k]};return redraw();}
+  if(a==='cwFold'){S.cwFold={...(S.cwFold||{}),[d.k]:!(S.cwFold||{})[d.k]};return redraw();}
+  if(a==='cwPPOpen'){if(!cwCanEd(b))return true;S.dlg={kind:'cwPP',bid:b.id,prof:d.v,rub:'all',q:'',sel:null};return redraw();}
+  if(!cwCanEd(b))return true;S.cwMsg='';
+  if(a==='cwKind'){const k=d.v==='feal'?'feal':'pj';if(b.kind!==k){const n=clone(b);n.kind=k;cwSave(n);}return redraw();}
+  if(a==='cwRace'){cwUpd(D=>{const r=crRaceSet(D,d.v);Object.keys(D).forEach(x=>delete D[x]);Object.assign(D,r.d);if(r.lost.length)S.cwMsg='Race changée : '+r.lost.join(', ')+' retirés (choix de l\'ancienne race).';});return redraw();}
+  if(a==='cwSet'){cwUpd(D=>{cwPath(D,d.p,d.n?+d.v:d.v);if(d.p==='maj'||d.p==='min'){const t={...(D.traits||{})};t[d.p]='';D.traits=t;}});return redraw();}
+  if(a==='cwPw'){cwUpd(D=>{const L=(D.pw||[]).slice(),i=+d.i,j=L.findIndex(o=>o.i===i);if(j>=0)L.splice(j,1);else if(L.length<crRules().feStart)L.push({i,id:d.id});else return false;D.pw=L;});return redraw();}
+  if(a==='cwAt'){cwUpd(D=>{const L=(D.atouts||[]).slice(),j=L.findIndex(x=>x.nom===d.nom);if(j>=0)L.splice(j,1);else if(L.length<crRules().atStart)L.push({nom:d.nom,src:'race'});else return false;D.atouts=L;});return redraw();}
+  if(a==='cwAtAdd'){const v=((S.cwTmp||{}).at||'').trim();if(!v)return true;cwUpd(D=>{const L=(D.atouts||[]).slice();if(L.length>=crRules().atStart||L.some(x=>nrmA(x.nom)===nrmA(v)))return false;L.push({nom:v,src:'libre'});D.atouts=L;});S.cwTmp={...(S.cwTmp||{}),at:''};return redraw();}
+  if(a==='cwAtDel'){cwUpd(D=>{D.atouts=(D.atouts||[]).filter(x=>x.nom!==d.nom);});return redraw();}
+  if(a==='cwInc'){const dv=+d.dv,f=d.f,k=d.k;cwUpd(D=>{const X=crX(D);
+      if(f==='car'){const l=crCarLim(D,X,k),v=crCarVal(D,X,k)+dv;if(v<l.min||v>l.max)return false;D.car={...(D.car||{}),[k]:v};}
+      else if(f==='comps'){const c=crComps(D,X).find(x=>x.nom===k);if(!c)return false;const v=c.cur+dv;if(v<c.start||v>c.cap)return false;D.comps={...(D.comps||{}),[k]:v};}
+      else if(f==='futV'){const x=crFutAll(D,X).find(y=>y.k===k);if(!x)return false;const v=x.cur+dv;if(v<x.start||v>x.cap)return false;D.futV={...(D.futV||{}),[k]:v};}
+      else if(f==='futL'){const i=+k.slice(1),L=(D.futL||[]).slice(),x=L[i];if(!x)return false;const v=(+x.cur||0)+dv;if(v<0||v>crRules().compMaxN)return false;L[i]={...x,cur:v};D.futL=L;}
+      else if(f==='fealProf'){const R=crRules(),P={...(D.fealProf||{})},v=(+P[k]||0)+dv,tot=PROFILS.reduce((t,p)=>t+(+P[p]||0),0)+dv;if(v<0||v>R.fealProfMax||tot>R.fealProf)return false;P[k]=v;D.fealProf=P;}
+      else return false;});return redraw();}
+  if(a==='cwFeCar'){cwUpd(D=>{const V={...(D.fealCar||{})};if(String(V[d.k])===d.v)delete V[d.k];else V[d.k]=+d.v;D.fealCar=V;});return redraw();}
+  if(a==='cwFeTrP'){cwUpd(D=>{D.traits={...(D.traits||{}),maj:{p:d.v,n:''}};});return redraw();}
+  if(a==='cwFeTr'){cwUpd(D=>{D.traits={...(D.traits||{}),maj:{p:d.p,n:d.v}};});return redraw();}
+  if(a==='cwXY'){cwUpd(D=>{D.xy={...(D.xy||{}),[d.k]:d.v};});return redraw();}
+  if(a==='cwFutAdd'){cwUpd(D=>{D.futL=[...(D.futL||[]),{nom:'',cur:0}];});return redraw();}
+  if(a==='cwFutDel'){cwUpd(D=>{const i=+d.i;D.futL=(D.futL||[]).filter((x,j)=>j!==i);D.specs=(D.specs||[]).filter(s=>(s.key||'')!=='fut:l'+i).map(s=>{const m=(s.key||'').match(/^fut:l(\d+)$/);return m&&+m[1]>i?{...s,key:'fut:l'+(+m[1]-1)}:s;});});return redraw();}
+  if(a==='cwSpAdd'){const T=S.cwTmp||{},nom=((T['sp:'+d.k]||'').trim()||(T['spsel:'+d.k]||'').trim());if(!nom)return true;
+    cwUpd(D=>{const L=(D.specs||[]).slice();if(L.some(s=>s.key===d.k&&nrmS(s.nom)===nrmS(nom)))return false;L.push({key:d.k,nom,mm:nrm(nom)==='mauvaise main'});D.specs=L;});S.cwTmp={...T,['sp:'+d.k]:'',['spsel:'+d.k]:''};return redraw();}
+  if(a==='cwSpDel'){cwUpd(D=>{D.specs=(D.specs||[]).filter((s,i)=>i!==+d.i);});return redraw();}
+  if(a==='cwPPDel'){cwUpd(D=>{D.pp=(D.pp||[]).filter((x,i)=>i!==+d.i);});return redraw();}
+  return true;}
+function cwPath(o,path,v){const ks=path.split('.');for(let i=0;i<ks.length-1;i++){const k=ks[i],nx=ks[i+1],arr=/^\d+$/.test(nx);o[k]=o[k]&&typeof o[k]==='object'?(Array.isArray(o[k])?o[k].slice():{...o[k]}):(arr?[]:{});o=o[k];}o[ks[ks.length-1]]=v;}
+/* Saisies : texte enregistré à la sortie du champ ; listes déroulantes et cases tout de suite */
+function cwInput(t,ev){const ds=t.dataset;
+  if(ds.cwt!==undefined){S.cwTmp={...(S.cwTmp||{}),[ds.cwt]:t.value};const g=S.dlg;
+    if(g&&g.kind==='cwPP'){if(ds.cwt==='ppq'){g.q=t.value;if(ev==='input'){S._force=true;renderSheet();const i=document.querySelector('#sheetRoot [data-cwt="ppq"]');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}}}if(ds.cwt==='ppPrec')g.prec=t.value;}
+    if(g&&g.kind==='cwVal'){if(ds.cwt==='valxp')g.xp=t.value;if(ds.cwt==='valcom')g.com=t.value;}
+    return true;}
+  if(ds.cwck!==undefined){if(ev!=='change')return true;cwUpd(D=>{D[ds.cwck]=!!t.checked;});S._force=true;render();return true;}
+  if(ds.cwf===undefined)return false;const b0=cwB();if(!cwCanEd(b0))return true;
+  const v=ds.num?(t.value===''?'':+t.value):t.value;
+  if(ev==='input'&&t.tagName!=='SELECT'){const b=clone(b0);b.d=b.d||{};cwPath(b.d,ds.cwf,v);S.brouillons={...S.brouillons,[b.id]:b};S.cwPend=b;return true;}
+  const b=clone(b0);b.d=b.d||{};cwPath(b.d,ds.cwf,v);S.cwPend=null;cwSave(b);S._force=true;render();return true;}

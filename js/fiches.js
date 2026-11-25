@@ -630,10 +630,10 @@ const pnAv=c=>{const im=portrait(c);return `<span class="pnav">${im?`<img src="$
 function pnListView(){const G=isGest(),F=S.pnF||{},all=ids().map(i=>S.chars[i]).filter(c=>c.type==='PNJ');
   const opts=k=>{const m={};for(const c of all)for(const n of (k==='lieux'?pnSitNames(c,'lieux'):pnSitNames(c,k)))m[n]=1;return Object.keys(m).sort((a,b)=>a.localeCompare(b,'fr'));};
   const sel=(k,l)=>{const O=opts(k),v=F[k]||'';if(!O.length&&!v)return '';return `<label class="pnchip${v?' on':''}"><span>${esc(v?l+' : '+v:l)}</span><span aria-hidden="true">${v?'✕':'▾'}</span><select data-pnf="${k}" aria-label="Filtrer par ${esc(l.toLowerCase())}"><option value="">${esc(l)} : tous</option>${O.map(o=>`<option${o===v?' selected':''}>${esc(o)}</option>`).join('')}</select></label>`;};
-  let h=`<div class="fisrch"><input type="search" data-pnq="1" value="${esc(S.pnQ||'')}" placeholder="Rechercher un nom" aria-label="Rechercher un PNJ" autocomplete="off"></div>`;
+  let h=pnCanNew()?`<button class="btn pri cta pntop" data-act="pnNew">+ Nouveau PNJ</button>`:''; /* lot C : bouton en haut de la liste */
+  h+=`<div class="fisrch"><input type="search" data-pnq="1" value="${esc(S.pnQ||'')}" placeholder="Rechercher un nom" aria-label="Rechercher un PNJ" autocomplete="off"></div>`;
   h+=`<div class="pnchips">${sel('familles','Famille')}${sel('orgs','Organisation')}${sel('lieux','Lieu')}${G?`<button type="button" class="chip" data-act="pnPrepF" aria-pressed="${!!S.pnPrep}">Préparés</button>`:''}</div>`;
   h+=`<div id="pnRes">${pnListBody()}</div>`;
-  if(pnCanNew())h+=`<button class="btn pri cta" data-act="pnNew">+ Nouveau PNJ</button>`;
   return h;}
 function pnListBody(){const G=isGest(),F=S.pnF||{},q=nrm(S.pnQ||'');
   let L=ids().map(i=>S.chars[i]).filter(c=>c.type==='PNJ');
@@ -718,7 +718,7 @@ function pnSheet(g){
     return fiShell(g,'Nouveau PNJ',`<h2>Nouveau PNJ</h2>${g.main?`<div class="muted small">Alias de ${esc(pnName(S.chars[g.main]||{}))}</div>`:''}
       <div class="field"><label for="pnNm">Nom</label><input id="pnNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
       <div class="frow">${pnSel('race',g.race,[['','— à préciser —']].concat(pnRaces().map(r=>[r,r])),'Race')}${pnSel('rang',g.rang,pnjRangs().map(r=>[r,r]),'Rang')}</div>
-      ${g.main?'':pnSel('pj',g.pj,[['','Aucun']].concat(pjIds().map(i=>[i,'Féal de '+S.chars[i].court])),'Rattachement')}
+      ${g.main?'':'<div class="muted small">Un féal (PNJ rattaché à un PJ) se crée avec l\'assistant : Personnages › PJ › + Nouveau PJ.</div>'}
       ${gest&&!g.pj?pnSeg('vis',g.vis,[['prep','Préparé'],['rev','Révélé']],'Visibilité')+`<div class="muted small">${g.vis==='prep'?'Préparé : invisible des joueurs (listes, liens « @ », Relations) jusqu\'à la révélation.':'Révélé : visible par toute la table ; les blocs restent à ouvrir un par un.'}</div>`:!g.pj?'<div class="muted small">Le PNJ sera visible par toute la table.</div>':'<div class="muted small">Un féal est toujours visible par toute la table.</div>'}
       ${pnErr(g)}<div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pnCreate">Créer et ouvrir</button></div>`);}
   if(g.kind==='pnLien'){const c=S.chars[g.cid];if(!c||!canEditC(c))return null;const cur=g.i&&(c.liens||[]).find(l=>l.id===g.i),p=cur&&S.chars[cur.pnj];
@@ -759,7 +759,7 @@ function pnAct(a,d){
     const n=clone(x);n.por={...(n.por||{}),[g.b]:txt};FI_AT=null;S.dlg=null;pnSaveC(n);return true;}
   if(a==='pnNew'){if(!pnCanNew())return true;const R=pnjRangs();fiOpenDlg({kind:'pnNew',nom:'',race:'',rang:R[0]||'Larbin',pj:'',vis:canEdit()?'prep':'rev'});render();return true;}
   if(a==='pnCreate'){if(!g||g.kind!=='pnNew'||!pnCanNew())return true;const nom=(g.nom||'').trim();if(!nom){g.err='Le nom est obligatoire.';S._fiRedraw=true;render();return true;}
-    const nc=pnMake({nom,race:g.race,rang:g.rang,pj:g.pj&&S.chars[g.pj]?g.pj:'',vis:canEdit()?(g.vis==='rev'?'rev':'prep'):'rev'});
+    const nc=pnMake({nom,race:g.race,rang:g.rang,pj:'',vis:canEdit()?(g.vis==='rev'?'rev':'prep'):'rev'});
     S.dlg=null;S.chars[nc.id]=nc;persist('chars/'+nc.id,nc);S.view='sheet';S.sel=nc.id;S.shTab='por';window.scrollTo(0,0);render();setTimeout(()=>toast('PNJ créé'),0);return true;}
   if(a==='pnLien'){if(!c||!canEditC(c))return true;const cur=d.i&&(c.liens||[]).find(l=>l.id===d.i);fiOpenDlg({kind:'pnLien',cid:c.id,i:cur?cur.id:'',pnj:cur?cur.pnj:'',lab:cur?cur.lab||'':'',rec:cur&&!cur.rec?'0':'1'});render();return true;}
   if(a==='pnLienSave'||a==='pnLienDel'||a==='pnLienDelOk'){const x=g&&S.chars[g.cid];if(!x||!canEditC(x))return true;

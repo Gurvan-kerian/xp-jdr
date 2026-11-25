@@ -5,10 +5,12 @@
    Visibles seulement par les personnes ayant les droits de gestion. */
 const SIG_ST={completer:'À compléter',valider:'À valider',confirmer:'À confirmer'};
 const SIG_RANK={confirmer:0,valider:1,completer:2};
-const SIG_OBJ={race:'Race',pouvoir:'Pouvoir',capacite:'Capacité',perso:'Personnage'};
+const SIG_OBJ={race:'Race',pouvoir:'Pouvoir',capacite:'Capacité',perso:'Personnage',brouillon:'Fiche à valider'};
 const SIG_ICO='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>';
 /* Manques détectables, recalculés à chaque affichage */
 function sigAuto(){if(!modelV1())return [];const out=[],add=(t,id,champ,statut,note)=>out.push({id:'auto:'+t+':'+id+':'+champ,auto:true,obj:{t,id},champ,statut,note:note||'',ok:false});
+  /* lot C : fiche de création envoyée au MJ */
+  for(const b of Object.values(S.brouillons||{}))if(b&&b.statut==='attente'){const I=(b.d||{}).ident||{};add('brouillon',b.id,'Fiche à valider','valider',(b.kind==='feal'?'Féal':'PJ')+' « '+((I.court||'').trim()||'?')+' », envoyé par '+((S.players[b.par]||{}).nom||'?')+' : Personnages › PJ, tuile « En attente de validation ».');}
   for(const [id,p] of Object.entries(S.pouvoirs||{})){if(!p.type)add('pouvoir',id,'Type','completer');if(!pwNat(id))add('pouvoir',id,'Nature','completer','Nature (masqué / démasqué) impossible à déduire des emplacements de race');if(!(p.desc||'').trim())add('pouvoir',id,'Description','completer');}
   for(const [id,k] of Object.entries(S.capacites||{})){if(!k.type)add('capacite',id,'Type','completer');if(!(k.desc||'').trim())add('capacite',id,'Description','completer');}
   for(const cr of S.creatures||[]){const r=S.races&&S.races[cr.id];if(!r||r.hum)continue;
@@ -26,7 +28,7 @@ function sigPicto(t,id){const L=sigOpenFor(t,id);if(!L.length)return '';
   return `<span class="ui-sig" role="img" title="${esc(L.map(s=>s.champ+' : '+SIG_ST[s.statut]).join(' · '))}" aria-label="${L.length} signalement${L.length>1?'s':''} : ${esc(L.map(s=>s.champ).join(', '))}">${SIG_ICO}</span>`;}
 function sigObjName(o){if(!o)return '';if(o.t==='race'){const cr=(S.creatures||[]).find(c=>c.id===o.id),r=S.races&&S.races[o.id];return (r&&r.sing)||(cr&&cr.nom)||o.id;}
   if(o.t==='pouvoir')return (S.pouvoirs&&S.pouvoirs[o.id]&&S.pouvoirs[o.id].nom)||o.id;if(o.t==='capacite')return (capOf(o.id)||{}).nom||o.id;
-  if(o.t==='perso')return (S.chars[o.id]&&S.chars[o.id].court)||o.id;return o.id;}
+  if(o.t==='perso')return (S.chars[o.id]&&S.chars[o.id].court)||o.id;if(o.t==='brouillon'){const b=S.brouillons&&S.brouillons[o.id];return (b&&((b.d||{}).ident||{}).court)||'Nouveau personnage';}return o.id;}
 /* Ouvrir l'élément concerné : fiche de race, pouvoir, personnage ; une capacité ouvre la première race qui l'utilise */
 /* Lot 4 bis : passe par le mécanisme commun des liens (pile du retour) ; pouvoir et capacité ouvrent leur fiche de consultation */
 function sigOpenAttrs(o){if(!o)return '';const t={race:'race',pouvoir:'pw',capacite:'cap',perso:'perso'}[o.t];if(!t)return '';const L={t,id:o.id};return lnkOk(L)?lnkAttrs(L):'';}

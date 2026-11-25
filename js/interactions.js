@@ -15,6 +15,7 @@ document.addEventListener('click',ev=>{
   else if(a==='rfUnkCancel'&&S.rf){delete S.rf.unkAsk;render();return;}
   if(rfLeaveAsk(a,d,ev))return;
   if(fiAct(a,d))return; /* lot 1 : fiches de l'Univers */
+  if(cwAct(a,d))return; /* lot C : assistant de création */
   if(shCharAct(a,d))return; /* fiche de personnage : Relations, Situation, Journaux */ /* lot 4 bis : éditeur de race avec changements non enregistrés */
   if(S.rfEd&&S.rf&&/^rf/.test(a)&&!/^(rfSave|rfEdOn|rfEdOff|rfBack|rfOpen|rfTab|rfHum|rfNew|rfUnkCancel|rfFold|rfEdBlk|rfPorSave|rfPorCancel)$/.test(a))S.edDirty=true;
   if(socleAct(a,d,t)){render();return;}
@@ -52,7 +53,6 @@ document.addEventListener('click',ev=>{
   else if(a==='pcOpen'){S.dlg={kind:'pc',id:d.id};}
   else if(a==='pcSheetGo'){S.dlg=null;S.view='sheet';S.sel=d.id;window.scrollTo(0,0);}
   else if(a==='newPOpen'){if(!isGest())return;S.dlg={kind:'newp'};}
-  else if(a==='newCOpen'){S.newC={...S.newC,owner:isGest()?S.newC.owner:(ME||'')};S.dlg={kind:'newc'};}
   else if(a==='ownNo'){if(S.dlg)delete S.dlg.own;}
   else if(a==='ownOk'){const g=S.dlg,c=S.chars[g.id];if(!c||!canEditC(c))return;const np=g.own;delete g.own;
     for(const p of Object.values(S.players)){const has=(p.persos||[]).includes(c.id);if(has&&p.id!==np){const n=clone(p);n.persos=n.persos.filter(x=>x!==c.id);savePlayer(n);}if(!has&&p.id===np){const n=clone(p);n.persos=[...(n.persos||[]),c.id];savePlayer(n);}}
@@ -328,7 +328,6 @@ document.addEventListener('click',ev=>{
   else if(a==='star'){const n=+d.n,auto=scenarioCount(S.events),cs=starCount(S.events,S.heritage.delta);const h={score:S.heritage.score,delta:(n===cs?n-1:n)-auto};S.heritage=h;persist('meta/heritage',h);}
   else if(a==='starReset'){S.heritage={score:S.heritage.score,delta:0};persist('meta/heritage',S.heritage);}
   else if(a==='addP'){if(!isGest())return;const n=S.newP.nom.trim();if(n){const p={id:slug(n),nom:n,role:S.newP.role,parti:false,persos:[]};S.newP={nom:'',role:'Joueur'};S.dlg=null;savePlayer(p);return;}}
-  else if(a==='addC'){const f=S.newC,court=f.court.trim();if(!isGest())f.owner=ME||'';if(court){S.dlg=null;const c=newChar(slug(court),court,f.nom.trim(),'PJ'); /* lot 4 : les PNJ se créent depuis Personnages › PNJ */S.newC={court:'',nom:'',type:'PJ',owner:f.owner};S.chars[c.id]=c;persist('chars/'+c.id,c);if(f.owner&&S.players[f.owner]){const p=clone(S.players[f.owner]);p.persos=[...(p.persos||[]),c.id];S.players[p.id]=p;persist('players/'+p.id,p);}render();return;}}
   render();
 });
 const q0=s=>document.querySelector(s);
@@ -336,6 +335,7 @@ document.addEventListener('keydown',ev=>{const t=ev.target;if(S.pinF&&(/^[0-9]$/
 document.addEventListener('input',ev=>{
   if(editorOpen())S.edDirty=true;
   if(shInput(ev.target))return;
+  if(cwInput(ev.target,'input'))return; /* lot C */
   if(socleInput(ev.target,'input'))return;
   const t=ev.target;
   if(t.dataset.f){S.form[t.dataset.f]=t.value;}
@@ -343,7 +343,6 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.fut){S.futForm[t.dataset.fut]=t.value;}
   else if(t.dataset.pnj){S.pnjForm[t.dataset.pnj]=t.value;}
   else if(t.dataset.np){S.newP[t.dataset.np]=t.value;}
-  else if(t.dataset.nc){S.newC[t.dataset.nc]=t.value;}
   else if(t.dataset.as){S.asheet[t.dataset.as]=t.value;}
   else if(t.dataset.sh){S.sheet[t.dataset.sh]=t.value;}
   else if(t.dataset.sxh!==undefined&&S.dlg){S.dlg.hid=t.checked;S._force=true;render();}
@@ -392,11 +391,11 @@ document.addEventListener('input',ev=>{
   if(t.dataset.dp!==undefined){const c=S.chars[S.dlg.id],dispo=summary(c,S.events).dispo,p=Math.floor(+t.value)||0,b=q('#sheetRoot [data-act="dlgOk"]'),af=document.getElementById('dafter');if(b)b.disabled=!(p>=1&&p<=dispo&&(S.dlg.nom!=='PNJ'||pnjOf(c).length===1||S.dlg.pnj));if(af)af.textContent=(dispo-p)+' XP';document.querySelectorAll('#sheetRoot [data-xn]').forEach(x=>x.textContent=p||'…');}
   if(t.dataset.dn!==undefined){const b=q('[data-act="dlgOk"]');if(b)b.disabled=!(S.dlg.nom||'').trim();}
   if(t.dataset.np){const b=q('[data-act="addP"]');if(b)b.disabled=!S.newP.nom.trim();}
-  if(t.dataset.nc){const b=q('[data-act="addC"]');if(b)b.disabled=!S.newC.court.trim();}
 });
 document.addEventListener('change',ev=>{
   if(editorOpen())S.edDirty=true;
   const t=ev.target;S._force=true;
+  if(cwInput(t,'change'))return; /* lot C */
   {const sr=socleInput(t,'change');if(sr){if(sr==='r')render();return;}}
   if(t.dataset.cursess){S.curSess=t.value;render();}
   else if(t.dataset.spoff!==undefined&&S.sheet){S.sheet.sp={...(S.sheet.sp||{}),off:t.checked};renderSheet();}
@@ -422,7 +421,7 @@ document.addEventListener('change',ev=>{
   else if(t.dataset.cfeal){const c0=S.chars[t.dataset.cfeal];if(!c0||!canEditC(c0))return;const c=clone(c0);if(t.checked)c.feal=true;else delete c.feal;saveChar(c);} /* lot 4 : PNJ humain féal non rattaché */
   else if(t.dataset.cf==='pj'){const c=clone(S.chars[t.dataset.id]);const v=t.value||null;if(v!==(c.pj||null)){c.pj=v;c.pjDate=v?today():null;}saveChar(c);}
   else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'||k==='genre'?t.value:(t.value.trim()||c[k]);saveChar(c);}
-  else if(t.dataset.np==='role'||t.dataset.nc==='type'||t.dataset.nc==='owner'){render();}
+  else if(t.dataset.np==='role'){render();}
 });
 document.addEventListener('focusout',()=>{setTimeout(()=>{if(S.dirty&&!(document.activeElement&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))){S._force=true;render();}},60);});
 

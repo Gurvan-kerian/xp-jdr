@@ -14,4 +14,7 @@
 - `lot4.test.js` (25/11/2026) : PNJ v2 et Bestiaire, sur des données inventées (ou un export en argument) : visibilité des PNJ préparés / révélés et du féal, droits, onglets, liste PJ | PNJ (recherche, filtres), fiche PNJ, création par un joueur et par la gestion, Révéler, alias, lien réciproque, PJ liés, Relations d'un PJ, traits sur l'onglet Fiche, forme démasquée par défaut, Progression du féal, Bestiaire sans Notes MJ, session Scénario rattachée à un événement prérempli, tour des écrans sans erreur.
   `node tests/lot4.test.js`
 
+- `lotC.test.js` (25/11/2026) : création de personnage, sur des données inventées : ordre des étapes (PJ 10, féal 5), caractéristiques (minima + 10, plafond, troll), compétences (majeur, mineur, prédilection, plafonds, bonus d'Esprit, X/Y, futiles, spécialités), PP (rang + 8 / + 4, Contact, langues, Fortune), complétude et envoi, retour en arrière, construction de la fiche (section Création, 0 XP, XP de départ), féal ; dans le navigateur : tuile « + Nouveau PJ », plein écran, brouillon, retour du téléphone, envoi, renvoi et validation par le MJ, bouton PNJ en haut. `SHOTS=dossier` enregistre des captures.
+  `node tests/lotC.test.js`
+
 Installation : `npm install` puis `npx playwright install chromium`, puis `npm test`.

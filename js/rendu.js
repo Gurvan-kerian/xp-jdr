@@ -84,7 +84,8 @@ function renderSheet0(){
     if(SH_DLG.has(g.kind)){const html=shDlgSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='cons'){const html=consSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='elEdit'||g.kind==='pwPick'){const html=g.kind==='elEdit'?elEditSheet(g):pwPickSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
-    if(g.kind==='pl'||g.kind==='pc'||g.kind==='newp'||g.kind==='newc'){const html=g.kind==='pl'?plSheet(g):g.kind==='pc'?pcSheet(g):g.kind==='newp'?newPSheet():newCSheet();if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
+    if(g.kind==='cwPP'||g.kind==='cwVal'){const html=g.kind==='cwPP'?cwPPSheet(g):cwValSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;} /* lot C */
+    if(g.kind==='pl'||g.kind==='pc'||g.kind==='newp'){const html=g.kind==='pl'?plSheet(g):g.kind==='pc'?pcSheet(g):newPSheet();if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='ne'){const e=sessById(g.id);if(!e){S.dlg=null;root.innerHTML='';return;}
       let body;
       if(g.one){const tg=orderPJ(natTargets(e,g.n));body=`<div class="field"><label for="ne-m">XP par personnage</label><input id="ne-m" type="number" inputmode="numeric" min="0" data-nem="1" value="${esc(g.m)}" placeholder="0"></div>
@@ -191,7 +192,7 @@ function renderSheet0(){
 }
 function render(){
   if(S.gate)return; /* écran du code : rien ne doit le remplacer */
-  const cur=k=>S.view===k||(k==='team'&&S.view==='sheet');
+  const cur=k=>S.view===k||(k==='team'&&(S.view==='sheet'||S.view==='crea'));
   if(S.edit&&(!isGest()||S.visit)){S.edit=false;S.rfEd=false;S.edQuit=false;}
   if(S.view==='params'&&!canEdit())S.view='home'; /* lot 4 bis : Paramètres seulement en mode édition */
   const tabs=[['univers','Univers'],['team','Personnages'],['gains','XP'],['planning','Planning'],['players','Joueurs'],['rules','Règles'],['params','Paramètres']].filter(t=>t[0]!=='params'||canEdit());
@@ -201,7 +202,7 @@ function render(){
   const inMenu=S.view==='players'||S.view==='rules'||S.view==='params';
   document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}" style="position:relative">${ICON[ic]}<span>${l}</span>${bdg(k)}</button>`).join('')+
     `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles, Paramètres" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
-  document.body.classList.toggle('home',S.view==='home');
+  document.body.classList.toggle('home',S.view==='home');document.body.classList.toggle('crea',S.view==='crea'); /* lot C : assistant en plein écran */
   {const mb=document.getElementById('meBtn');if(mb&&mb.parentNode){let eb=document.getElementById('edBtn');const show=isGest()&&!S.visit;
     if(!eb&&show){eb=document.createElement('button');eb.type='button';eb.id='edBtn';eb.className='edbtn';eb.dataset.act='editToggle';mb.parentNode.insertBefore(eb,mb);}
     if(eb){eb.hidden=!show;const on=!!S.edit;eb.classList.toggle('on',on);eb.setAttribute('aria-pressed',String(on));const lab=on?'Quitter le mode édition':'Passer en mode édition';eb.setAttribute('aria-label',lab);eb.title=lab;if(!eb.innerHTML)eb.innerHTML=ICON.crayon;}}}
@@ -210,7 +211,7 @@ function render(){
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;navSave();
   const v=S.view,app=document.getElementById('app');
-  app.innerHTML=idBanners()+socleBanner()+(canEdit()?`<div class="edband" role="status">${ICON.crayon}<span>Mode édition actif : les modifications sont enregistrées pour toute la table</span></div>`:'')+navBar()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():viewRules());
+  app.innerHTML=idBanners()+socleBanner()+(canEdit()?`<div class="edband" role="status">${ICON.crayon}<span>Mode édition actif : les modifications sont enregistrées pour toute la table</span></div>`:'')+navBar()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():v==='crea'?viewCrea():viewRules());
   renderSheet();
   hxTrack(); /* historique : une étape par écran (core.js) */
   {let q=document.getElementById('edqRoot');if(!q){q=document.createElement('div');q.id='edqRoot';document.body.appendChild(q);}const qh=S.edQuit?edQuitSheet():'';if(q.innerHTML!==qh)q.innerHTML=qh;}

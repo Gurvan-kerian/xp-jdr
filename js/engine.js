@@ -408,3 +408,140 @@ const pwToChoose=c=>Math.max(0,pwChoiceMax(c)-(c.pw||[]).filter(o=>o.i<6).length
 /* Capacité ou option de choix avec son sous-type, pour l'affichage */
 const capFull=a=>(a&&a[0]||'')+(a&&a[2]?' ('+a[2]+')':'');
 const choixFull=o=>(o&&o[1]||'')+(o&&o[2]?' ('+o[2]+')':'');
+
+/* ---------- Lot C (25/11/2026) : création de personnage ----------
+   Brouillon (collection brouillons) : b = {id, kind:'pj'|'feal', par, cree, maj, etape, statut:'brouillon'|'attente', envoye, com, d}.
+   d = choix de la personne ; tout le reste est recalculé (fonctions pures ci-dessous). Les réglages viennent de Paramètres › Création. */
+function crRules(){const D=paramDefaults(),o={};for(const [k] of PARAM_DEF.creation.concat(PARAM_DEF.feal)){const v=+PRM[k];o[k]=PRM[k]===''||PRM[k]==null||isNaN(v)?+D[k]:v;}return o;}
+const CR_STEPS_PJ=[['race','Statut, race et trait'],['cap','Capacités naturelles'],['pw','Pouvoirs féeriques'],['at','Atouts féeriques'],['car','Caractéristiques'],['prof','Profils et traits'],['comp','Compétences et spécialités'],['pp','PP et Fortune'],['id','Identité et situation'],['recap','Récapitulatif']];
+const CR_STEPS_FEAL=[['race','Statut et rattachement'],['car','Caractéristiques'],['prof','Profils et traits'],['id','Identité et situation'],['recap','Récapitulatif']];
+const crSteps=b=>b&&b.kind==='feal'?CR_STEPS_FEAL:CR_STEPS_PJ;
+const CR_SITU=[['titres','Titres'],['fiefs','Fiefs'],['familles','Familles'],['orgs','Organisations'],['poss','Possessions courantes'],['possN','Possessions notables']];
+/* Races proposées : fées traditionnelles et modernes visibles, caractéristiques renseignées (ni exotiques, ni Humain) */
+function crRaceList(){return raceCres().map(cr=>({cr,x:raceRec(cr)})).filter(({cr,x})=>x&&x.sing&&!x.hum&&cr.fam!=='exo'&&carOk(x)&&raceVisible(cr,x)).sort((a,b)=>raceNm(a.x).localeCompare(raceNm(b.x),'fr'));}
+function crX(d){if(!d||!d.race)return null;const cr=raceCres().find(c=>raceRec(c).sing===d.race);return cr?{cr,x:raceRec(cr),r:(S.races||{})[cr.id]||{}}:null;}
+const crTroll=X=>!!X&&nrm(X.x.sing)==='troll';
+const crRaceTraits=X=>X?((X.r&&X.r.traits)||X.x.traits||[]).filter(Boolean):[];
+function crCarLim(d,X,k){const R=crRules(),a=(X&&X.x.car&&X.x.car[k])||[1,6];let mx=+a[1];if(isNaN(mx))mx=6;if(d.troll&&crTroll(X)){if(k==='Constitution')mx--;if(k==='Esprit')mx++;}return {min:+a[0]||0,max:Math.min(R.carMax,mx)};}
+function crCarVal(d,X,k){const v=(d.car||{})[k];return v==null||v===''?crCarLim(d,X,k).min:+v;}
+const crCarUsed=(d,X)=>CARACS.reduce((t,k)=>t+crCarVal(d,X,k)-crCarLim(d,X,k).min,0);
+/* Choix définitif de la race (3e capacité ou caractéristique accrue) : attribué d'office s'il n'y a qu'une option */
+function crChoix(d,X){const L=(X&&X.x.choix)||[];if(!L.length)return null;if(L.length===1)return {i:0,t:L[0][0],nom:L[0][1],v:L[0][2]||''};const i=d.capx;return i!=null&&L[i]?{i,t:L[i][0],nom:L[i][1],v:L[i][2]||''}:null;}
+/* Prédilections : utiles (X ou Y à choisir), futiles (X ou Y, ou « au choix » à nommer) */
+function crPredList(d,X){return ((X&&X.x.pred)||[]).map(e=>Array.isArray(e)?{key:e.join('|'),alt:e,nom:(d.xy||{})[e.join('|')]||''}:{nom:e});}
+function crPredSet(d,X){return new Set(crPredList(d,X).map(p=>p.nom).filter(Boolean).map(nrm));}
+function crFutRace(d,X){return ((X&&X.x.fut)||[]).map((e,j)=>{if(Array.isArray(e)){const k=e.join('|');return {j,key:k,alt:e,nom:(d.xy||{})[k]||''};}if(/au choix/i.test(e))return {j,libre:true,lab:e,nom:((d.futN||{})[j]||'').trim()};return {j,nom:e};});}
+function crFutAll(d,X){const R=crRules(),V=d.futV||{};
+  const r=crFutRace(d,X).map(f=>({...f,k:'r'+f.j,pred:true,start:R.predBonus,cap:Math.max(R.predBonus,R.compMaxP),cur:V['r'+f.j]==null?R.predBonus:Math.max(R.predBonus,+V['r'+f.j])}));
+  return r.concat((d.futL||[]).map((f,i)=>({k:'l'+i,nom:(f.nom||'').trim(),pred:false,start:0,cap:R.compMaxN,cur:Math.max(0,+f.cur||0),own:true})));}
+function crComps(d,X){const R=crRules(),P=crPredSet(d,X),V=d.comps||{},out=[];
+  for(const p of PROFILS)for(const n of PROFCOMPS[p]){const pred=P.has(nrm(n)),start=(p===d.maj?R.profMaj:p===d.min?R.profMin:0)+(pred?R.predBonus:0),v=V[n];
+    out.push({prof:p,nom:n,pred,start,cap:Math.max(start,pred?R.compMaxP:R.compMaxN),cur:v==null||v===''?start:Math.max(start,+v)});}
+  return out;}
+const crCompVal=(C,n)=>{const x=C.find(c=>c.nom===n);return x?x.cur:0;};
+const crRank=(C,p)=>Math.floor(C.filter(c=>c.prof===p).reduce((t,c)=>t+c.cur,0)/4);
+const crSpecCost=s=>{const R=crRules();return s.mm?R.ptsMM:R.ptsSpec;};
+function crPts(d,X){const R=crRules(),C=crComps(d,X),F=crFutAll(d,X),S0=d.specs||[];
+  const sp=f=>S0.filter(s=>f(s.key||'')).reduce((t,s)=>t+crSpecCost(s),0);
+  const es=C.filter(c=>c.prof==='Erudit'||c.prof==='Savant').reduce((t,c)=>t+c.cur-c.start,0);
+  const espMax=Math.max(0,crCarVal(d,X,'Esprit')-R.espSeuil),esp=Math.min(espMax,es);
+  const util=C.reduce((t,c)=>t+c.cur-c.start,0)+sp(k=>k.startsWith('comp:'))-esp,fut=F.reduce((t,f)=>t+f.cur-f.start,0)+sp(k=>k.startsWith('fut:'));
+  return {util,utilMax:R.ptsUtil,esp,espMax,fut,futMax:R.ptsFut,C,F};}
+/* PP : rang du profil (+ bonus du majeur / mineur) ; points de Contact et de langue utilisés en premier pour les contacts et les langues */
+function crPP(d,X){const R=crRules(),C=crComps(d,X),rk={},av={},sp={};
+  for(const p of PROFILS){rk[p]=crRank(C,p);av[p]=rk[p]+(p===d.maj?R.ppMaj:p===d.min?R.ppMin:0);sp[p]=0;}
+  const ctcMax=Math.max(0,crCarVal(d,X,'Prestance')-R.ctcSeuil)+Math.max(0,crCompVal(C,'Entregent')-R.ctcSeuil),langMax=R.langCult*crCompVal(C,'Culture');
+  let ctc=0,lang=0;const items=[];
+  for(const e of d.pp||[]){let rest=+e.cost||0,c0=0,l0=0;
+    if(e.rub==='C'){c0=Math.min(rest,ctcMax-ctc);ctc+=c0;rest-=c0;}else if(e.rub==='L'){l0=Math.min(rest,langMax-lang);lang+=l0;rest-=l0;}
+    sp[e.prof]=(sp[e.prof]||0)+rest;items.push({e,prof:rest,ctc:c0,lang:l0});}
+  const prin=(d.pp||[]).find(e=>e.rub==='A'&&e.opt==='p'),fort=(prin&&prin.fort!=null?+prin.fort:0)+(d.pp||[]).filter(e=>e.rub==='A'&&e.opt==='s'&&e.fortS!=null).reduce((t,e)=>t+(+e.fortS||0),0);
+  return {rk,av,sp,ctc,ctcMax,lang,langMax,items,prin,fort};}
+/* Contrôles par étape : {ok, manque:[…], avert:[…]} */
+function crCheck(b){const d=(b&&b.d)||{},R=crRules(),X=crX(d),out={},put=(k,m,a)=>{out[k]={ok:!m.length,manque:m,avert:a||[]};};
+  if(b&&b.kind==='feal'){
+    put('race',d.pj&&S.chars[d.pj]&&S.chars[d.pj].type==='PJ'?[]:['choisir le PJ de rattachement']);
+    {const V=Object.values(d.fealCar||{}),n3=V.filter(v=>+v===3).length,n2=V.filter(v=>+v===2).length,m=[];
+      if(n3!==R.fealC3)m.push(`${R.fealC3} caractéristiques à 3 (${n3} choisies)`);if(n2!==R.fealC2)m.push(`${R.fealC2} caractéristiques à 2 (${n2} choisies)`);put('car',m);}
+    {const P=d.fealProf||{},tot=PROFILS.reduce((t,p)=>t+(+P[p]||0),0),m=[],t=d.traits||{};
+      if(tot!==R.fealProf)m.push(`${R.fealProf} points de profils (${tot} répartis)`);if(PROFILS.some(p=>(+P[p]||0)>R.fealProfMax))m.push(`${R.fealProfMax} au plus par profil`);
+      if(!(t.maj&&t.maj.n))m.push('trait du profil le plus haut');if(!(t.libre||'').trim())m.push('trait libre');put('prof',m);}
+    crIdCheck(d,put);put('recap',Object.keys(out).filter(k=>!out[k].ok).map(k=>(CR_STEPS_FEAL.find(s=>s[0]===k)||[,k])[1]));return out;}
+  {const m=[];if(!X)m.push('choisir une race');else if(!(d.traitRace||'').trim())m.push('choisir le trait de race');put('race',m);}
+  {const L=(X&&X.x.choix)||[];put('cap',X&&L.length>1&&!crChoix(d,X)?['faire le choix définitif']:!X?['choisir d\'abord une race']:[]);}
+  {const m=[],P=d.pw||[];if(!X)m.push('choisir d\'abord une race');else{const sl=pwSlots(X.x);if(P.some(o=>sl[o.i]!==o.id))m.push('pouvoir d\'une autre race à retirer');if(P.length!==R.feStart)m.push(`${R.feStart} pouvoirs à choisir (${P.length} choisis)`);}put('pw',m);}
+  {const A=d.atouts||[],m=[];if(A.length!==R.atStart)m.push(`${R.atStart} atouts à choisir (${A.length} choisis)`);put('at',m);}
+  {const m=[];if(!X)m.push('choisir d\'abord une race');else{const u=crCarUsed(d,X);if(u!==R.carLib)m.push(`${R.carLib-u>0?R.carLib-u+' point'+(R.carLib-u>1?'s':'')+' à répartir':(u-R.carLib)+' point'+(u-R.carLib>1?'s':'')+' de trop'}`);
+    for(const k of CARACS){const l=crCarLim(d,X,k),v=crCarVal(d,X,k);if(v<l.min||v>l.max)m.push(`${k} entre ${l.min} et ${l.max}`);}}put('car',m);}
+  {const m=[],t=d.traits||{};if(!d.maj)m.push('profil majeur');if(!d.min)m.push('profil mineur');if(d.maj&&d.maj===d.min)m.push('profils majeur et mineur différents');
+    if(!(t.maj||'').trim())m.push('trait du profil majeur');if(!(t.min||'').trim())m.push('trait du profil mineur');if(!(t.libre||'').trim())m.push('trait libre');put('prof',m);}
+  {const m=[];if(!d.maj||!d.min)m.push('choisir d\'abord les profils');else{const p=crPts(d,X);
+    for(const x of crPredList(d,X))if(x.alt&&!x.nom)m.push('choix « '+x.alt.join(' ou ')+' »');for(const f of crFutRace(d,X)){if(f.alt&&!f.nom)m.push('choix « '+f.alt.join(' ou ')+' »');if(f.libre&&!f.nom)m.push('nom de la futile « '+f.lab+' »');}
+    if(p.util!==p.utilMax)m.push(p.util<p.utilMax?`${p.utilMax-p.util} point${p.utilMax-p.util>1?'s':''} utile${p.utilMax-p.util>1?'s':''} à dépenser`:`${p.util-p.utilMax} point${p.util-p.utilMax>1?'s':''} utile${p.util-p.utilMax>1?'s':''} de trop`);
+    if(p.esp!==p.espMax)m.push(`${p.espMax-p.esp} point${p.espMax-p.esp>1?'s':''} d'Esprit à placer (Érudit ou Savant)`);
+    if(p.fut!==p.futMax)m.push(p.fut<p.futMax?`${p.futMax-p.fut} point${p.futMax-p.fut>1?'s':''} futile${p.futMax-p.fut>1?'s':''} à dépenser`:`${p.fut-p.futMax} point${p.fut-p.futMax>1?'s':''} futile${p.fut-p.futMax>1?'s':''} de trop`);
+    for(const c of p.C)if(c.cur>c.cap)m.push(`${c.nom} au plus ${c.cap}`);for(const f of p.F)if(f.cur>f.cap)m.push(`${f.nom||'futile'} au plus ${f.cap}`);if(p.F.some(f=>f.own&&!f.nom))m.push('nom d\'une futile');}
+    put('comp',m);}
+  {const m=[],a=[];if(!d.maj||!d.min)m.push('choisir d\'abord les profils');else{const P=crPP(d,X);if(!P.prin)m.push('activité principale');
+    if(P.ctc<P.ctcMax)m.push(`${ppFmt(P.ctcMax-P.ctc)} point${P.ctcMax-P.ctc>1?'s':''} de Contact à placer`);if(P.lang<P.langMax)m.push(`${ppFmt(P.langMax-P.lang)} point${P.langMax-P.lang>1?'s':''} de langue à placer`);
+    for(const p of PROFILS){const r=P.av[p]-P.sp[p];if(r<0)m.push(`PP ${profLab(p)} : ${ppFmt(-r)} dépensé${-r>1?'s':''} de trop`);else if(r>0)a.push(`${ppFmt(r)} PP ${profLab(p)} non dépensé${r>1?'s':''} (perdus après validation)`);}}
+    put('pp',m,a);}
+  crIdCheck(d,put);
+  put('recap',Object.keys(out).filter(k=>!out[k].ok).map(k=>(CR_STEPS_PJ.find(s=>s[0]===k)||[,k])[1]));return out;}
+function crIdCheck(d,put){const I=d.ident||{},m=[];if(!(I.court||'').trim())m.push('nom court');if(!I.owner||!S.players[I.owner])m.push('joueur');put('id',m);}
+const crSendable=b=>{const k=crCheck(b);return Object.values(k).every(x=>x.ok);};
+/* Changement de race : retire les choix devenus impossibles (pouvoirs, atouts de l'ancienne race, choix définitif, X/Y) */
+function crRaceSet(d,sing){const n=clone(d),lost=[];if(n.race===sing)return {d:n,lost};
+  if((n.pw||[]).length)lost.push('pouvoirs');if((n.atouts||[]).some(a=>a.src==='race'))lost.push('atouts de la race');if(n.capx!=null)lost.push('choix définitif');if(n.traitRace)lost.push('trait de race');
+  n.race=sing;n.pw=[];n.atouts=(n.atouts||[]).filter(a=>a.src!=='race');delete n.capx;n.traitRace='';n.xy={};n.futV={};n.futN={};n.troll=false;
+  n.specs=(n.specs||[]).filter(s=>!(s.key||'').startsWith('fut:r'));return {d:n,lost};}
+/* Construction de la fiche (validation par le MJ, ou aperçu pour le récapitulatif) */
+function crBuild(b,opt){opt=opt||{};const d=b.d||{},I=d.ident||{},court=(I.court||'').trim()||'Nouveau personnage',id=opt.id||'apercu',dt=today();
+  if(b.kind==='feal')return crBuildFeal(b,opt,court,id,dt);
+  const R=crRules(),X=crX(d),c=newChar(id,court,(I.nom||'').trim()||court,'PJ');
+  c.race=d.race||null;if(I.genre)c.genre=I.genre;if(I.naiss&&+I.naiss.a>0)c.naiss=I.naiss;
+  for(const k of CARACS)c.carac[k].cur=crCarVal(d,X,k);if(d.troll&&crTroll(X))c.ajust={moins:'Constitution',plus:'Esprit'};
+  const ch=crChoix(d,X);if(ch&&ch.t==='acc')c.accru=ch.nom;else if(ch&&ch.t==='cap')c.capx={nom:ch.nom,v:ch.v||''};
+  c.atout.cur=(d.atouts||[]).length;c.atouts=[];for(const a of d.atouts||[]){const e={nom:a.nom};if(a.nom===TYP)grantTyp(c,e);c.atouts.push(e);}
+  const P=crPts(d,X);for(const p of c.profils)for(const x of p.comps){const v=P.C.find(y=>y.nom===x.nom);x.cur=v?v.cur:0;}
+  const xy={};for(const e of crPredList(d,X))if(e.alt&&e.nom)xy[e.key]=e.nom;for(const f of crFutRace(d,X))if(f.alt&&f.nom)xy[f.key]=f.nom;if(Object.keys(xy).length)c.choix=xy;
+  c.futiles=P.F.filter(f=>f.nom).map(f=>({nom:f.nom,max:6,cur:f.cur}));
+  if(c.race)grantPredSp(c);
+  const fk=k=>{if(!k.startsWith('fut:'))return k;const f=P.F.find(x=>'fut:'+x.k===k);return f?'fut:'+f.nom:null;};
+  for(const s of d.specs||[]){c.spec=c.spec||{cur:0};const from=c.spec.cur||0,aid='a'+Date.now().toString(36)+Math.floor(Math.random()*1e6);c.spec.cur=from+1;
+    c.achats.push({id:aid,date:dt,label:`Spécialité (${s.nom}) · création`,cout:0,key:'spec',from,to:from+1,crea:true});c.specs=[...specsOf(c),{nom:s.nom,cible:fk(s.key||''),achat:aid}];}
+  c.pw=(d.pw||[]).map(o=>({id:o.id,i:o.i,date:dt,v:X?raceVarAt(X.x,o.i):''}));
+  const t=d.traits||{};c.traits={};if((d.traitRace||'').trim())c.traits.race=d.traitRace.trim();if(d.maj&&(t.maj||'').trim())c.traits.maj={p:d.maj,n:t.maj.trim()};if(d.min&&(t.min||'').trim())c.traits.min={p:d.min,n:t.min.trim()};if((t.libre||'').trim())c.traits.libre=t.libre.trim();
+  const Q=crPP(d,X);
+  for(const it of Q.items){const e=it.e,aid='a'+Date.now().toString(36)+Math.floor(Math.random()*1e6),x={id:e.el,prof:e.prof,rub:e.rub,nom:e.nom,opt:e.opt||''};if(e.titre)x.titre=true;if(e.prec)x.prec=e.prec;
+    if(e.rub==='A'){if(e.opt==='p'&&e.fort!=null)x.fort=e.fort;if(e.opt==='s'&&e.fortS!=null)x.fortS=e.fortS;if(e.opt==='p'&&e.spec)x.spec=e.spec;}
+    const src=[it.ctc?ppFmt(it.ctc)+' pt Contact':'',it.lang?ppFmt(it.lang)+' pt langue':''].filter(Boolean).join(', ');
+    c.achats.push({id:aid,date:dt,label:`PP ${e.prof} - ${ppFmt(e.cost)} - ${e.nom}${x.opt?' ('+PPOPT[x.opt]+')':''}${e.prec?' : '+e.prec:''}${src?' · '+src:''} · création`,cout:0,key:'pp:'+e.prof,pp:it.prof,ppel:x,crea:true});
+    if(x.spec&&!specsOf(c).some(s=>nrmS(s.nom)===nrmS(x.spec))){const cp=specComp(x.spec);c.spec.cur=(c.spec.cur||0)+1;c.specs=[...specsOf(c),{nom:x.spec,cible:cp?'comp:'+cp:null,offert:true,ppa:aid}];}}
+  for(const p of c.profils)p.note=(Q.av[p.nom]||0)-(Q.sp[p.nom]||0);
+  c.fortune.cur=Math.max(0,Math.min(c.fortune.max,Q.fort));
+  crSituTo(c,d,dt);c.crea={date:dt,par:b.par||'',etapes:crSummary(b)};
+  return {c,ev:crXpEv(id,court,opt.xp,dt)};}
+function crBuildFeal(b,opt,court,id,dt){const d=b.d||{},I=d.ident||{},c=newChar(id,court,(I.nom||'').trim()||court,'PNJ');c.race=HUMAIN;c.rang='Larbin';
+  if(d.pj){c.pj=d.pj;c.pjDate=dt;}if(I.genre)c.genre=I.genre;if(I.naiss&&+I.naiss.a>0)c.naiss=I.naiss;
+  for(const k of CARACS){const v=+((d.fealCar||{})[k])||0;c.carac[k].cur=v||1;}
+  for(const p of c.profils)p.cur=+((d.fealProf||{})[p.nom])||0;
+  const t=d.traits||{};c.traits={};if(t.maj&&t.maj.n)c.traits.maj={p:t.maj.p,n:t.maj.n};if((t.libre||'').trim())c.traits.libre=t.libre.trim();
+  c.par=b.par||'';c.cree=new Date().toISOString();crSituTo(c,d,dt);c.crea={date:dt,par:b.par||'',etapes:crSummary(b)};
+  return {c,ev:null};}
+function crSituTo(c,d,dt){const s=d.situ||{},o={};for(const [k] of CR_SITU){const L=String(s[k]||'').split('\n').map(x=>x.trim()).filter(Boolean);if(L.length)o[k]=L.map((nom,i)=>({id:'s-'+dt.replace(/-/g,'')+'-'+k+i,date:dt,nom}));}if(Object.keys(o).length)c.situ=o;}
+function crXpEv(id,court,xp,dt){const n=Math.floor(+xp||0);if(n<=0)return null;return {id:'g'+Date.now().toString(36)+'-xd',date:dt,titre:'XP de départ · '+court,type:'Autre',entries:[{perso:id,nature:'Individuel',montant:n}]};}
+/* Résumé par étape (récapitulatif et section « Création » de l'historique) */
+function crSummary(b){const d=b.d||{},X=crX(d),out=[],R=crRules(),T=d.traits||{};
+  if(b.kind==='feal'){const pj=S.chars[d.pj];out.push(['Statut','Féal'+(pj?' de '+pj.court:''),'race']);
+    out.push(['Caractéristiques',CARACS.map(k=>k+' '+(+((d.fealCar||{})[k])||1)).join(', '),'car']);
+    out.push(['Profils',PROFILS.filter(p=>+((d.fealProf||{})[p])).map(p=>profLab(p)+' '+(d.fealProf[p])).join(', ')+((T.maj&&T.maj.n)||T.libre?' · traits : '+[T.maj&&T.maj.n,T.libre].filter(Boolean).join(', '):''),'prof']);out.push(crSumId(d));return out;}
+  out.push(['Race',[d.race,d.traitRace?'trait : '+d.traitRace:''].filter(Boolean).join(' · '),'race']);
+  const ch=crChoix(d,X);if(ch)out.push(['Choix définitif',ch.t==='acc'?ch.nom+' '+accW(ch.nom):choixFull(['cap',ch.nom,ch.v]),'cap']);
+  out.push(['Pouvoirs',(d.pw||[]).map(o=>pwName(o.id)).join(', '),'pw']);out.push(['Atouts',(d.atouts||[]).map(a=>a.nom).join(', '),'at']);
+  out.push(['Caractéristiques',CARACS.map(k=>k+' '+crCarVal(d,X,k)).join(', ')+(d.troll&&crTroll(X)?' (ajustement du troll)':''),'car']);
+  out.push(['Profils',[d.maj?profLab(d.maj)+' (majeur'+(T.maj?', '+T.maj:'')+')':'',d.min?profLab(d.min)+' (mineur'+(T.min?', '+T.min:'')+')':'',T.libre?'trait libre : '+T.libre:''].filter(Boolean).join(' · '),'prof']);
+  if(d.maj&&d.min){const P=crPts(d,X);out.push(['Compétences',P.C.filter(c=>c.cur>0).map(c=>c.nom+' '+c.cur).join(', ')+(P.F.some(f=>f.nom)?' · futiles : '+P.F.filter(f=>f.nom).map(f=>f.nom+' '+f.cur).join(', '):'')+((d.specs||[]).length?' · spécialités : '+d.specs.map(s=>s.nom).join(', '):''),'comp']);
+    const Q=crPP(d,X);out.push(['PP et Fortune',(d.pp||[]).map(e=>e.nom+(e.opt?' ('+PPOPT[e.opt]+')':'')).join(', ')+' · Fortune '+Q.fort,'pp']);}
+  out.push(crSumId(d));return out;}
+function crSumId(d){const I=d.ident||{},p=S.players[I.owner];return ['Identité',[(I.court||'').trim(),(I.nom||'').trim()&&I.nom.trim()!==(I.court||'').trim()?I.nom.trim():'',p?'joué par '+p.nom:''].filter(Boolean).join(' · '),'id'];}

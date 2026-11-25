@@ -11,7 +11,7 @@ const S={chars:{},players:{},events:[],ready:false,view:window.__openDates?'plan
 /* Lot 2 : au rechargement, l'appli rouvre la même page et le même onglet (mémoire de l'onglet du navigateur) */
 const KANKA_URL='https://app.kanka.io/w/350361';
 const kankaHref=(lien,nom)=>(lien&&/^https?:\/\//.test(lien))?lien:KANKA_URL+'/search?q='+encodeURIComponent(nom||'');
-const NAV_KEYS=['view','sel','shTab','uni','sec','ptab','forme','fi','teamSel'];
+const NAV_KEYS=['view','sel','shTab','uni','sec','ptab','forme','fi','teamSel','cwId','cwStep'];
 function navSave(){try{const o={};for(const k of NAV_KEYS)o[k]=S[k];o.pv=S.plan&&S.plan.view;sessionStorage.setItem('xp.nav',JSON.stringify(o));}catch(e){}}
 if(window.__openSec){S.view='univers';S.uni='secrets';S.sec=window.__openSec;}
 (function navLoad(){if(window.__openDates||window.__openSec)return;try{const o=JSON.parse(sessionStorage.getItem('xp.nav')||'null');if(!o)return;for(const k of NAV_KEYS)if(o[k]!==undefined&&o[k]!==null)S[k]=o[k];if(o.pv)S.plan.view=o.pv;}catch(e){}})();
@@ -164,6 +164,7 @@ function navLabel(){const g=S.dlg;
   if(g&&g.kind==='cons'){const e=((g.t==='pw'?S.pouvoirs:S.capacites)||{})[g.id];return e?e.nom:'';}
   if(g&&g.kind==='pl'){const p=S.players[g.id];return p?p.nom:'Joueur';}
   if(S.view==='sheet'){const c=S.chars[S.sel];return c?c.court:'Personnage';}
+  if(S.view==='crea')return 'Création';
   if(S.view==='univers'&&S.uni==='creatures'&&S.rf){if(S.rf.hum)return HUMAIN;const cr=crById(S.rf.id);return cr?raceNm(raceRec(cr)):'Races';}
   if(S.view==='univers'&&S.uni==='creatures')return 'Races';
   if(S.view==='univers'&&S.fi&&S.fiches&&S.fiches[S.fi])return S.fiches[S.fi].nom;
@@ -205,12 +206,12 @@ function navBar(){if(!S.nav.length)return '';const path=S.nav.map(s=>s.lab).filt
    Les étapes sont gardées pendant la session de l'onglet (sessionStorage xp.hx) pour survivre à un rechargement. */
 const HX={L:[],cur:0,key:'',rest:false};
 function hxKey(){const v=S.view,u=v==='univers'||v==='ref',g=S.dlg&&S.dlg.nav?S.dlg.kind+':'+(S.dlg.t||'')+':'+S.dlg.id:'';
-  return [v,v==='sheet'?S.sel:'',v==='sheet'?S.jrOpen||'':'',u?S.uni||'':'',u?S.fi||'':'',u?S.sec||'':'',u&&S.rf?(S.rf.id||(S.rf.hum?'hum':'nv')):'',u?S.chPage||'':'',v==='params'?S.ptab||'':'',v==='players'?S.pTab||'':'',g].join('|');}
-function hxSnap(y){const s=navSnap();s.y=y||0;s.nav=S.nav.slice();s.chPage=S.chPage||null;s.ptab=S.ptab||'';s.pTab=S.pTab||'';s.forme=S.forme;s.chV=S.chV;s.pv=S.plan&&S.plan.view;return s;}
+  return [v,v==='sheet'?S.sel:'',v==='sheet'?S.jrOpen||'':'',u?S.uni||'':'',u?S.fi||'':'',u?S.sec||'':'',u&&S.rf?(S.rf.id||(S.rf.hum?'hum':'nv')):'',u?S.chPage||'':'',v==='params'?S.ptab||'':'',v==='players'?S.pTab||'':'',v==='crea'?(S.cwId||'')+':'+(S.cwStep||0):'',g].join('|');}
+function hxSnap(y){const s=navSnap();s.y=y||0;s.nav=S.nav.slice();s.chPage=S.chPage||null;s.ptab=S.ptab||'';s.pTab=S.pTab||'';s.forme=S.forme;s.chV=S.chV;s.pv=S.plan&&S.plan.view;s.cwId=S.cwId||null;s.cwStep=S.cwStep||0;return s;}
 function hxSave(){try{sessionStorage.setItem('xp.hx',JSON.stringify(HX.L.slice(0,HX.cur+1)));}catch(e){}}
 function hxApply(s){S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.fi=s.fi||null;S.rf=s.rf||null;S.rfTab=s.rfTab;S.rfEd=!!s.rfEd&&canEdit();S.rfBlk=null;S.rfPor=null;
   S.jrOpen=s.jrOpen||null;S.jrSel=s.jrSel||null;S.dlg=s.dlg?{...s.dlg}:null;S.nav=(s.nav||[]).slice();S.chPage=s.chPage||null;S.ptab=s.ptab||'';S.pTab=s.pTab||'';
-  if(s.forme)S.forme=s.forme;if(s.chV)S.chV=s.chV;if(s.pv&&S.plan)S.plan.view=s.pv;S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;}
+  if(s.forme)S.forme=s.forme;if(s.chV)S.chV=s.chV;if(s.pv&&S.plan)S.plan.view=s.pv;if(s.view==='crea'){S.cwId=s.cwId;S.cwStep=s.cwStep||0;}S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;}
 /* Appelé à la fin de chaque rendu : nouvel écran → nouvelle étape ; même écran → l'étape courante est mise à jour */
 function hxTrack(){if(typeof history==='undefined'||!history.pushState)return;const k=hxKey();
   if(HX.rest||!HX.key){HX.rest=false;HX.key=k;HX.L[HX.cur]=hxSnap((HX.L[HX.cur]||{}).y);hxSave();return;}

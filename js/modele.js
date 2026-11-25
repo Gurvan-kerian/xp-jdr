@@ -120,6 +120,8 @@ function fxListV1(c,r,P,C){const out=[];if(!c||!r)return out;
     if(r.fx)for(const k of ['cap','av','dv','at'])for(const e of (r[k]||[])){if(!e||!e[0]||(k==='at'&&!has.has(nrmA(e[0]))))continue;for(const f of (r.fx[fxKey(k,e[0])]||[]))out.push({...f,src:e[0],kind:k});}
     for(const o of c.pw||[]){const p=P[o.id];if(p)for(const f of p.fx||[])out.push({...f,src:p.nom,kind:'pw'});}return out;}
   for(const e of r.cap||[]){const k=C[e.id];if(!k)continue;const v=varOf(k,e.v),L=e.fx?e.fx:[...(k.fx||[]),...((v&&v.fx)||[])];for(const f of L)out.push({...f,src:k.nom,kind:'cap'});}
+  /* lot C : capacité retenue au choix définitif de la création (c.capx = {nom, v}) */
+  if(c.capx&&c.capx.nom){const cid=capIdByName(C,c.capx.nom),k=cid&&C[cid];if(k){const v=varOf(k,varIdByName(k,c.capx.v,false));for(const f of [...(k.fx||[]),...((v&&v.fx)||[])])out.push({...f,src:k.nom,kind:'cap'});}}
   for(const t of ['av','dv'])for(const e of r[t]||[])for(const f of e.fx||[])out.push({...f,src:e.nom,kind:t});
   const A=atoutsOf(c),rid=new Set(A.map(a=>a.rid).filter(Boolean)),nm=new Set(A.map(a=>nrmA(a.nom)));
   for(const e of r.at||[]){if(!(rid.has(e.id)||nm.has(nrmA(e.nom))))continue;for(const f of e.fx||[])out.push({...f,src:e.nom,kind:'at'});}
