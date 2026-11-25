@@ -635,6 +635,7 @@ function viewCrea(){const b=cwB();
   let h=`<div class="cwhead"><div class="cwtop"><span class="small">${S.cwSaved?'Brouillon enregistré':b.statut==='attente'?'Envoyé au MJ':'Brouillon'}</span><button type="button" class="cwx" data-act="cwQuit" aria-label="Quitter l'assistant (le brouillon est gardé)">✕</button></div>
     <h1>${esc(cwMeta(b))}</h1><span class="small">Étape ${i+1} / ${st.length} · ${esc(st[i][1])}</span><div class="cwbar"><i style="width:${Math.round(100*(i+1)/st.length)}%"></i></div>
     <div class="cwdots" role="list">${st.map((s,j)=>`<button type="button" role="listitem" data-act="cwGo" data-i="${j}" class="${j===i?'on':''}${(ck[s[0]]||{}).ok?' ok':''}" aria-label="Étape ${j+1} : ${esc(s[1])}${(ck[s[0]]||{}).ok?' (complète)':''}" title="${esc(s[1])}">${j+1}</button>`).join('')}</div></div>`;
+  h+=cwFxBox(b);
   if(b.com&&b.statut==='brouillon')h+=`<div class="cwcom"><b>Message du MJ</b><div>${esc(b.com)}</div></div>`;
   if(b.statut==='attente')h+=`<div class="cwcom att"><b>En attente de validation par le MJ.</b>${isGest()?`<div class="actions"><button class="btn pri" data-act="cwValOpen">Valider ou renvoyer</button></div>`:'<div class="small">La fiche ne peut plus être modifiée ; le MJ peut la renvoyer en brouillon.</div>'}</div>`;
   if(S.cwMsg)h+=`<div class="cwcom" role="status">${esc(S.cwMsg)}</div>`;
@@ -726,6 +727,8 @@ function cwComp(b,d,X,R){const P=crPts(d,X),F=S.cwFold||{},cP=(d.pp||[]).length?
 /* Étape PP et Fortune : un bloc par profil doté de PP, achats dans le tableau du profil (fenêtre cwPP) */
 function cwPPStep(b,d,X,R){const Q=crPP(d,X);
   let h=`<div class="cwcnts">${Q.ctcMax?cwCnt('Contact',Q.ctc,Q.ctcMax):''}${Q.langMax?cwCnt('Langues',Q.lang,Q.langMax):''}<div class="cwcnt"><span>Fortune</span><b class="num">${Q.fort}${FORTUNE[Q.fort]?' · '+esc(FORTUNE[Q.fort][0]):''}</b></div></div>`;
+  {const src=Q.fortRaceSrc.concat(Q.items.filter(it=>it.e.rub==='A'&&(it.e.opt==='p'&&it.e.fort!=null||it.e.opt==='s'&&it.e.fortS!=null)).map(it=>it.e.nom+' '+(it.e.opt==='p'?it.e.fort+' (principale)':'+'+it.e.fortS+' (secondaire)')));
+    if(src.length)h+=`<p class="muted small cwfxs">Fortune : dont ${esc(src.join(', '))}</p>`;}
   h+=cwInfo(`PP d'un profil = son rang (+${R.ppMaj} majeur, +${R.ppMin} mineur), à dépenser dans son tableau. Points de Contact : contacts seulement ; points de langue : langues seulement (${R.langCult} par rang de Culture). Activité principale : Fortune et spécialité offerte.`);
   for(const p of PROFILS){const L=Q.items.map((it,i)=>[it,i]).filter(([it])=>it.e.prof===p);if(!Q.av[p]&&!L.length)continue;const rest=Q.av[p]-Q.sp[p];
     h+=cwSec(`${esc(profLab(p))} <small class="muted">${p===d.maj?'majeur · ':p===d.min?'mineur · ':''}rang ${Q.rk[p]}</small>`,`<div class="cwrow"><span>PP</span><b class="num${rest<0?' bad':''}">${ppFmt(Q.sp[p])} / ${ppFmt(Q.av[p])}</b></div>`+
@@ -763,6 +766,35 @@ function cwCartApply(D,cart,c,prof){let L=(D.pp||[]).slice();
     if((k.prec||'').trim())it.prec=k.prec.trim();if(e.rub==='A'){if(e.fortP!=null)it.fort=e.fortP;if(e.fortS!=null)it.fortS=e.fortS;if(e.spec)it.spec=e.spec;L=L.filter(x=>!(x.rub==='A'&&x.opt===opt));}
     L.push(it);}
   D.pp=L;return D;}
+/* Encart « Le personnage à ce stade » (25/11/2026) : sous l'en-tête, recalculé à chaque choix sur l'aperçu de la fiche (même calcul que le récapitulatif et la fiche validée) */
+const CW_DER=['Esquive','Parade','Résistance physique','Résistance psychique','Base mêlée','Base tir'];
+function cwVals(b){const c=cwPreview(b),v={};for(const k of CARACS)v[k]=lv(c,'carac:'+k);
+  if(b.kind==='feal'){for(const p of PROFILS)v['prof:'+p]=lv(c,'prof:'+p);return {c,v,fs:[]};}
+  for(const [n,x] of derived(c,'m'))v[n]=x;v.Fortune=lv(c,'fortune');
+  return {c,v,fs:fxIntSrc(c,'fortune').concat(ppFortSrc(c))};}
+/* Dernier changement : comparaison avec les valeurs du précédent affichage du même brouillon */
+function cwDiff(b,o){const s=S.cwSnap;
+  if(!s||s.id!==b.id){S.cwSnap={id:b.id,v:o.v,fs:o.fs};S.cwLast=null;return null;}
+  const ch=Object.keys(o.v).filter(k=>o.v[k]!==s.v[k]);
+  if(ch.length){const nw=o.fs.filter(x=>!s.fs.includes(x)).map(x=>x.replace(/^[+−-]?\d+\s+/,'').replace(/\s+[+−-]?\d+(\s*\(.*\))?$/,''));
+    const t=ch.slice(0,3).map(k=>(k.startsWith('prof:')?profLab(k.slice(5)):k)+' '+sgn(o.v[k]-s.v[k])).join(', ')+(ch.length>3?'…':'')+(nw.length?' · '+nw.join(', '):'');
+    S.cwLast={id:b.id,t,keys:ch};S.cwSnap={id:b.id,v:o.v,fs:o.fs};}
+  return S.cwLast&&S.cwLast.id===b.id?S.cwLast:null;}
+function cwFxBox(b){let o;try{o=cwVals(b);}catch(e){console.error(e);return '';}
+  const fe=b.kind==='feal',L=cwDiff(b,o),hi=k=>L&&L.keys.includes(k)?' hi':'',c=o.c,op=!!S.cwOpen;
+  const tile=(n,lab,v)=>`<div class="cwfxt${hi(n)}"><span>${esc(lab)}</span><b class="num">${v}</b></div>`;
+  let h=`<section class="cwfx" aria-label="Le personnage à ce stade"><div class="cwfxh"><span>Le personnage à ce stade</span><button type="button" class="chip" data-act="cwFx" aria-expanded="${op}">${op?'Replier ▴':'Détail ▾'}</button></div>`;
+  if(fe)h+=`<p class="muted small cwfxs">Caractéristiques et profils du féal.</p>`;
+  else h+=`<div class="cwfxk">${tile('PdV','PdV',o.v.PdV)}${tile('Initiative','Initiative',o.v.Initiative)}${tile('Fortune','Fortune',o.v.Fortune)}</div>`;
+  if(L&&L.t)h+=`<p class="cwfxl" role="status">Dernier changement : ${esc(L.t)}</p>`;
+  if(op){const grid=(t,sub,ks,lab)=>`<div class="cwfxb"><div class="cwgl">${t}${sub?` <small>· ${sub}</small>`:''}</div><div class="cwfxg">${ks.map(k=>tile(k,lab?lab(k):k,o.v[k])).join('')}</div></div>`;
+    if(fe)h+=grid('Caractéristiques','',CARACS)+grid('Profils','',PROFILS.map(p=>'prof:'+p),k=>profLab(k.slice(5)));
+    else{const d=b.d||{},X=crX(d),R=crRules(),esp=X?Math.max(0,crCarVal(d,X,'Esprit')-R.espSeuil):0,J=fxOf(c).filter(e=>e.t==='jet'),fs=o.fs;
+      const row=(n,v,f)=>`<div class="cwrow"><span>${esc(n)}<span class="muted small" style="display:block">${esc(f)}</span></span><b class="num">${v}</b></div>`;
+      h+=grid('Autres valeurs dérivées','forme masquée',CW_DER)+grid('Caractéristiques','',CARACS);
+      h+=`<div class="cwfxb"><div class="cwgl">Valeurs calculées</div>${row('Points de vie',o.v.PdV,derFormula(c,'m','PdV').replace(/^PdV : /,''))}${row('Initiative',o.v.Initiative,derFormula(c,'m','Initiative').replace(/^Initiative : /,''))}${row('Fortune',o.v.Fortune,fs.length?'dont '+fs.join(', '):'aucune source pour l\'instant (pas de rang de départ)')}${row('Bonus d\'Esprit',esp+' point'+(esp>1?'s':''),'compétences d\'Érudit ou de Savant')}</div>`;
+      h+=`<div class="cwfxb"><div class="cwgl">Bonus de circonstance <small>· affichés, jamais ajoutés</small></div>${J.length?J.map(e=>`<div class="cwfxj">${fxChip(e)} ${e.txt?esc(e.txt)+' ':''}<span class="muted small">· ${esc(e.src)}</span></div>`).join(''):'<p class="muted small cwfxs">Aucun pour l\'instant.</p>'}</div>`;}}
+  return h+'</section>';}
 /* Aperçu de la fiche (récapitulatif, prérequis) */
 function cwPreview(b){try{return fxSync(crBuild(b,{id:'apercu-'+b.id}).c);}catch(e){console.error(e);return newChar('apercu','Aperçu','Aperçu','PJ');}}
 function cwRecap(b,ck){const st=crSteps(b),todo=st.filter(s=>s[0]!=='recap'&&!(ck[s[0]]||{}).ok),av=st.flatMap(s=>((ck[s[0]]||{}).avert||[]));
@@ -805,6 +837,7 @@ function cwValidate(g){const b=S.brouillons&&S.brouillons[g.bid];if(!b||!isGest(
 function cwAct(a,d){if(!/^cw/.test(a))return false;const g=S.dlg;
   const redraw=()=>{S._force=true;render();return true;};
   if(a==='cwNew'){cwNew();return redraw();}
+  if(a==='cwFx'){S.cwOpen=!S.cwOpen;return redraw();}
   if(a==='cwOpen'){const b=S.brouillons&&S.brouillons[d.id];if(!cwSee(b))return true;cwGoTo(b.id,Math.min(b.etape||0,crSteps(b).length-1));S.cwMsg='';return redraw();}
   /* Recette lot C : ✕ Quitter propose de garder le brouillon ou d'abandonner la création (suppression, avec confirmation) */
   if(a==='cwQuit'){const b=cwB();if(b&&cwSee(b)){S.dlg={kind:'cwQuit',bid:b.id};return redraw();}a='cwQuitKeep';}

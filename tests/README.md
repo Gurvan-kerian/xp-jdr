@@ -17,4 +17,7 @@
 - `lotC.test.js` (25/11/2026) : création de personnage, sur des données inventées : ordre des étapes (PJ 10, féal 5), caractéristiques (minima + 10, plafond, troll), compétences (majeur, mineur, prédilection, plafonds, bonus d'Esprit, X/Y, futiles, spécialités), PP (rang + 8 / + 4, Contact, langues, Fortune), complétude et envoi, retour en arrière, construction de la fiche (section Création, 0 XP, XP de départ), féal ; dans le navigateur : tuile « + Nouveau PJ », plein écran, brouillon, retour du téléphone, envoi, renvoi et validation par le MJ, bouton PNJ en haut. `SHOTS=dossier` enregistre des captures.
   `node tests/lotC.test.js`
 
+- `lotC-etapes.test.js` (25/11/2026) : calculs de la création étape par étape sur les vraies races (export en argument) : après chaque étape, PdV, Initiative et Fortune de l'encart « Le personnage à ce stade », de l'étape PP et de la fiche validée identiques ; Fortune des atouts et avantages (Manoir somptueux, Brevets, Fortune immobilière, Trésor précieux), Initiative (Vivacité, Rapière ancestrale), dernier changement signalé, retour en arrière, féal.
+  `node tests/lotC-etapes.test.js chemin/vers/donnees-v2.json`
+
 Installation : `npm install` puis `npx playwright install chromium`, puis `npm test`.

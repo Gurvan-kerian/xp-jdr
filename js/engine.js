@@ -458,9 +458,14 @@ function crPP(d,X){const R=crRules(),C=crComps(d,X),rk={},av={},sp={};
   for(const e of d.pp||[]){let rest=+e.cost||0,c0=0,l0=0;
     if(e.rub==='C'){c0=Math.min(rest,ctcMax-ctc);ctc+=c0;rest-=c0;}else if(e.rub==='L'){l0=Math.min(rest,langMax-lang);lang+=l0;rest-=l0;}
     sp[e.prof]=(sp[e.prof]||0)+rest;items.push({e,prof:rest,ctc:c0,lang:l0});}
-  const prin=(d.pp||[]).find(e=>e.rub==='A'&&e.opt==='p'),fort=(prin&&prin.fort!=null?+prin.fort:0)+(d.pp||[]).filter(e=>e.rub==='A'&&e.opt==='s'&&e.fortS!=null).reduce((t,e)=>t+(+e.fortS||0),0)
+  const prin=(d.pp||[]).find(e=>e.rub==='A'&&e.opt==='p'),fortPP=(prin&&prin.fort!=null?+prin.fort:0)+(d.pp||[]).filter(e=>e.rub==='A'&&e.opt==='s'&&e.fortS!=null).reduce((t,e)=>t+(+e.fortS||0),0)
     +(d.pp||[]).reduce((t,e)=>t+ppFxFort({id:e.el,titre:e.titre,prof:e.prof}),0); /* recette : « Fortune +x » des éléments */
-  return {rk,av,sp,ctc,ctcMax,lang,langMax,items,prin,fort};}
+  /* encart du 25/11 : Fortune des effets de race et d'atouts (Manoir somptueux, Brevets, Trésor précieux…) */
+  const fR=crFxRace(d,X).filter(e=>fxInteg(e)&&e.cible==='fortune'),fortRace=fR.reduce((t,e)=>t+(+e.val||0),0),fort=Math.max(0,Math.min(15,fortPP+fortRace));
+  return {rk,av,sp,ctc,ctcMax,lang,langMax,items,prin,fort,fortPP,fortRace,fortRaceSrc:fR.map(e=>sgn(e.val)+' '+e.src)};}
+/* Effets de race, de capacité retenue, d'atouts et de pouvoirs d'un brouillon (même moteur que la fiche) */
+function crFxRace(d,X){if(!d||!d.race||!X)return [];const c={race:d.race,type:'PJ',fx:true,atouts:(d.atouts||[]).map(a=>({nom:a.nom})),pw:(d.pw||[]).map(o=>({...o}))};
+  const ch=crChoix(d,X);if(ch&&ch.t==='cap')c.capx={nom:ch.nom,v:ch.v||''};try{return fxOf0(c);}catch(e){return [];}}
 /* Contrôles par étape : {ok, manque:[…], avert:[…]} */
 function crCheck(b){const d=(b&&b.d)||{},R=crRules(),X=crX(d),out={},put=(k,m,a)=>{out[k]={ok:!m.length,manque:m,avert:a||[]};};
   if(b&&b.kind==='feal'){
@@ -523,7 +528,7 @@ function crBuild(b,opt){opt=opt||{};const d=b.d||{},I=d.ident||{},court=(I.court
     c.achats.push({id:aid,date:dt,label:`PP ${e.prof} - ${ppFmt(e.cost)} - ${e.nom}${x.opt?' ('+PPOPT[x.opt]+')':''}${e.prec?' : '+e.prec:''}${src?' · '+src:''} · création`,cout:0,key:'pp:'+e.prof,pp:it.prof,ppel:x,crea:true});
     if(x.spec&&!specsOf(c).some(s=>nrmS(s.nom)===nrmS(x.spec))){const cp=specComp(x.spec);c.spec.cur=(c.spec.cur||0)+1;c.specs=[...specsOf(c),{nom:x.spec,cible:cp?'comp:'+cp:null,offert:true,ppa:aid}];}}
   for(const p of c.profils)p.note=(Q.av[p.nom]||0)-(Q.sp[p.nom]||0);
-  c.fortune.cur=Math.max(0,Math.min(c.fortune.max,Q.fort));
+  c.fortune.cur=Math.max(0,Math.min(c.fortune.max,Q.fortPP)); /* les effets de race et d'atouts sont ajoutés par fxSync (bonus intégrés) */
   crSituTo(c,d,dt);c.crea={date:dt,par:b.par||'',etapes:crSummary(b)};
   return {c,ev:crXpEv(id,court,opt.xp,dt)};}
 function crBuildFeal(b,opt,court,id,dt){const d=b.d||{},I=d.ident||{},c=newChar(id,court,(I.nom||'').trim()||court,'PNJ');c.race=HUMAIN;c.rang='Larbin';
