@@ -22,7 +22,7 @@ function demoDocs(){const ch=(id,court,type,o)=>({...GEN.run(`newChar(${JSON.str
 const docsPath=process.argv[2];const DOCS=docsPath?JSON.parse(fs.readFileSync(docsPath,'utf8')):demoDocs();
 
 console.log('1. Calculs');
-{const app=loadApp(ROOT,['config','engine','modele','migrations','core','vues','univers','fiches','chronique','planning']),r=c=>app.run(c);
+if(!docsPath){const app=loadApp(ROOT,['config','engine','modele','migrations','core','vues','univers','fiches','chronique','planning']),r=c=>app.run(c);
   setDocs(app,demoDocs());
   r(`ME='alice';S.edit=false;`);
   ok(r(`vis(S.chars.hector)&&vis(S.chars.ismael)&&!vis(S.chars.armand)`),'joueur : PNJ sans réglage = révélé, féal visible, PNJ préparé invisible');
@@ -70,6 +70,7 @@ const DBG=process.env.DBG;
   let browser;try{browser=await chromium.launch();}catch(e){browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});}
   const db=fakeDb(JSON.parse(JSON.stringify(DOCS)));
   try{
+    if(!docsPath){
     console.log('2. Joueur');
     {const {page,errs,ctx}=await open(browser,base,db,'alice');
       let t=await txt(page);ok(/PJ · 1/.test(t)&&/PNJ · 2/.test(t),'sélecteur PJ · 1 | PNJ · 2 (le préparé ne compte pas)');
@@ -141,12 +142,16 @@ const DBG=process.env.DBG;
       const ev=(db.get('gains/all').events||[]).slice(-1)[0],f=ev&&ev.evt&&db.get('fiches/'+ev.evt);
       if(DBG)console.log(JSON.stringify(f));ok(f&&f.genre==='evenement'&&f.num==='01.'&&f.nom==='Le bal des masques'&&f.debut&&f.debut.j===9,'session créée avec son événement prérempli ('+(f&&f.num)+')');
       ok(errs.length===0,'aucune erreur JavaScript'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
+    }
     console.log('4. Tour des écrans (gestion puis joueur)');
-    for(const me of ['lorenzo','alice']){const {page,errs,ctx}=await open(browser,base,db,me);
+    const PL=Object.entries(DOCS).filter(([k])=>k.startsWith('players/')).map(([,p])=>p).filter(p=>!p.parti);
+    const MES=docsPath?[PL.find(p=>p.role==='MJ'||p.gestion),PL.find(p=>!(p.role==='MJ'||p.gestion)&&(p.persos||[]).length)].filter(Boolean).map(p=>p.id):['lorenzo','alice'];
+    const CH=Object.values(DOCS).filter(x=>x&&x.court&&x.type).map(x=>x.id);
+    for(const me of MES){const {page,errs,ctx}=await open(browser,base,db,me);
       for(const st of [{view:'home'},{view:'univers',uni:'home'},{view:'univers',uni:'creatures'},{view:'univers',uni:'pouvoirs'},{view:'univers',uni:'chron'},{view:'univers',uni:'bete'},{view:'team',teamSel:'pj'},{view:'team',teamSel:'pnj'},{view:'gains'},{view:'planning'},{view:'players'},
-        ...['prog','fiche','feer','rel','situ','jour'].map(t=>({view:'sheet',sel:'kerian',shTab:t})),...['por','situ','rel','prog'].map(t=>({view:'sheet',sel:'hector',shTab:t})),...['por','prog'].map(t=>({view:'sheet',sel:'ismael',shTab:t}))])
+        ...CH.flatMap(id=>['prog','fiche','feer','rel','situ','jour','por'].map(t=>({view:'sheet',sel:id,shTab:t})))])
         await page.evaluate(o=>{Object.assign(S,o);S.fi=null;S.dlg=null;render();},st);
-      await page.evaluate(()=>{S.dlg={kind:'pc',id:'hector'};render();});await page.evaluate(()=>{S.dlg={kind:'newc'};render();});
+      for(const id of CH)await page.evaluate(id=>{S.dlg={kind:'pc',id};render();},id);for(const k of ['shFold','pnFold'])await page.evaluate(()=>{S.dlg=null;render();});await page.evaluate(()=>{S.dlg={kind:'newc'};render();});
       ok(errs.length===0,me+' : aucune erreur sur '+'tous les écrans'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
   }catch(e){fails++;console.log('  ✗ '+e.message);}
   await browser.close();srv.close();

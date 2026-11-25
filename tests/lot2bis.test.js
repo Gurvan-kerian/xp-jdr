@@ -37,7 +37,7 @@ const expected=k=>{const M=(k==='pw'?S.pouvoirs:S.capacites)||{};let n=0;for(con
     console.log('A. Pouvoirs et capacités dans Univers — joueur');
     {const db=fakeDb(JSON.parse(JSON.stringify(docs)));const {page,errs,ctx}=await open(browser,base,db,'peter');
       await page.evaluate(()=>{S.view='univers';S.uni='home';render();});
-      const home=await page.textContent('#app');ok(/Peuples[\s\S]*Races[\s\S]*Pouvoirs et capacités[\s\S]*PNJ/.test(home),'entrée « Pouvoirs et capacités » dans Peuples, après Races');
+      const home=await page.textContent('#app');ok(/Peuples[\s\S]*Races[\s\S]*Pouvoirs et capacités[\s\S]*Bestiaire/.test(home),'entrée « Pouvoirs et capacités » dans Peuples, après Races (puis Bestiaire, lot 4)');
       await page.click('[data-act="uni"][data-v="pouvoirs"]');
       for(const k of ['pw','cap']){await page.evaluate(k=>{S.pcat=k;S.pq='';S.cq='';S.pwf='all';render();},k);
         const [n,tot]=await page.evaluate(`(${expected.toString()})('${k}')`);const shown=await page.$$eval('[data-act="consOpen"]',l=>l.length);
@@ -88,7 +88,7 @@ const expected=k=>{const M=(k==='pw'?S.pouvoirs:S.capacites)||{};let n=0;for(con
       await page.evaluate(G=>{S.ptr={...S.ptr,'ill-masque-kerian':G};render();},GIF);
       ok(!!(await page.$('.shill .fibig img[data-big="ill-masque-kerian"]')),'PJ masqué : illustration masquée');
       await page.evaluate(()=>{S.sel='ismael';S.shTab='fiche';render();});
-      ok(!(await page.$('.formesw'))&&!!(await page.$('.shill')),'PNJ humain : une seule illustration, sans sélecteur de forme');
+      ok(!(await page.$('.formesw'))&&!!(await page.$('.pnhead .shmed')),'PNJ (lot 4) : portrait dans l\'en-tête, sans sélecteur de forme');
       await page.evaluate(()=>{const p=ME;ME='peter';render();window.__m=!!document.querySelector('.shhd label.shmed');ME=p;render();});ok(!(await page.evaluate(()=>window.__m)),'autre joueur : médaillon sans ✎');
       await page.evaluate(()=>{S.view='team';S.sel=null;render();});ok(!(await page.$('#app .fibig')),'cartes des personnages : pas d\'agrandissement');
       /* enregistrement : la grande image est gardée pour un portrait de personnage */
