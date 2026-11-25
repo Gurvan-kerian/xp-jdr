@@ -419,6 +419,7 @@ document.addEventListener('change',ev=>{
   else if(pfInput(t,'change')||riInput(t,'change')){}
   else if(t.dataset.cf==='race'){if(S.chars[t.dataset.id].race&&!canEdit()&&S.chars[t.dataset.id].type!=='PNJ')return;let c=clone(S.chars[t.dataset.id]);c.race=t.value||null;if(c.race&&c.creation&&!c.spPred)c=grantPredSp(c);saveChar(c);}
   else if(t.dataset.cf==='kanka'){if(!canEdit())return;const c=clone(S.chars[t.dataset.id]);const v=t.value.trim();if(v&&!/^https?:\/\//.test(v)){render();return;}c.kanka=v;saveChar(c);}
+  else if(t.dataset.cfeal){const c0=S.chars[t.dataset.cfeal];if(!c0||!canEditC(c0))return;const c=clone(c0);if(t.checked)c.feal=true;else delete c.feal;saveChar(c);} /* lot 4 : PNJ humain féal non rattaché */
   else if(t.dataset.cf==='pj'){const c=clone(S.chars[t.dataset.id]);const v=t.value||null;if(v!==(c.pj||null)){c.pj=v;c.pjDate=v?today():null;}saveChar(c);}
   else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'||k==='genre'?t.value:(t.value.trim()||c[k]);saveChar(c);}
   else if(t.dataset.np==='role'||t.dataset.nc==='type'||t.dataset.nc==='owner'){render();}

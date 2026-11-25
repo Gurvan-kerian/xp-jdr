@@ -85,7 +85,7 @@ const DBG=process.env.DBG;
       await click(page,'[data-act="sel"][data-id="hector"]');await wait(page);t=await txt(page);
       ok(/Portrait/.test(t)&&/Situation/.test(t)&&/Relations/.test(t)&&!/Progrès/.test(t)&&!/XP dispo/.test(t),'fiche PNJ : Portrait, Situation, Relations ; ni Progrès ni bandeau XP');
       if(DBG)console.log(t);ok(/Rang\s*Cador/.test(t)&&/Mentions/i.test(t),'rang dans l\'en-tête, Mentions');
-      ok(!(await page.$('.pchips')),'pas de rangée de médaillons sur une fiche PNJ');
+      ok(!(await page.$('.pchips')),'pas de rangée de médaillons sur une fiche PNJ non rattaché');
       await click(page,'[data-act="pnTxt"][data-b="role"]');await page.evaluate(()=>{const e=document.getElementById('fiEd');e.innerText='Espion de la Monarchie';e.dispatchEvent(new Event('input',{bubbles:true}));});
       await click(page,'[data-act="pnTxtSave"]');await wait(page);ok((db.get('chars/hector').por||{}).role==='Espion de la Monarchie','le joueur renseigne le Rôle d\'un PNJ révélé');
       /* création par un joueur */
@@ -102,6 +102,9 @@ const DBG=process.env.DBG;
       ok(await page.evaluate(()=>{const b=document.querySelector('[data-act="forme"][data-v="d"]');return !!b&&b.getAttribute('aria-pressed')==='true';}),'forme démasquée par défaut');
       /* féal */
       await page.evaluate(()=>{S.sel='ismael';S.shTab='prog';render();});t=await txt(page);if(DBG)console.log(t);
+      ok(await page.evaluate(()=>[...document.querySelectorAll('.pchips .pchip')].map(b=>b.dataset.id).join()==='kerian,ismael'),'médaillons : PJ puis PNJ rattachés en fin de liste');
+      await page.evaluate(()=>{S.shTab='rel';render();});ok(/Féal de\s*Kerian/.test(await page.evaluate(()=>document.getElementById('app').innerText)),'PJ liés : « Féal de Kerian » pour le PNJ rattaché');
+      await page.evaluate(()=>{S.shTab='prog';render();});t=await txt(page);
       ok(/Progression/i.test(t)&&/Valeurs dérivées/i.test(t)&&/XP dispo/i.test(t)&&/Caractéristiques/i.test(t),'féal : onglet Progression (valeurs dérivées, XP, caractéristiques)');
       ok(errs.length===0,'aucune erreur JavaScript'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
 
@@ -115,6 +118,11 @@ const DBG=process.env.DBG;
       await fill(page,'nom','Le Corbeau');await click(page,'[data-act="pnCreate"]');await wait(page);
       const co=db.all('chars').find(c=>c.court==='Le Corbeau');ok(co&&co.vis==='prep'&&Object.keys(co.eye||{}).length===0,'PNJ créé par la gestion : préparé, blocs fermés');
       await click(page,'[data-act="pnEye"][data-k="fiche"]');await wait(page);ok(db.get('chars/'+co.id).vis==='rev','Révéler');
+      /* PNJ humain féal non rattaché */
+      await page.evaluate(()=>{const n=JSON.parse(JSON.stringify(S.chars[S.sel]));n.race='Humain';saveChar(n);S.dlg={kind:'pc',id:n.id};render();});
+      await page.evaluate(()=>{const b=document.querySelector('[data-cfeal]');b.checked=true;b.dispatchEvent(new Event('change',{bubbles:true}));});await wait(page);
+      ok(db.get('chars/'+co.id).feal===true,'case « Féal » d\'un PNJ humain non rattaché');
+      await page.evaluate(()=>{S.dlg=null;render();});ok(/Humain · féal/.test(await txt(page)),'en-tête : « Humain · féal »');
       /* alias rattaché à Hector */
       await page.evaluate(()=>{S.sel='hector';S.shTab='por';render();});await click(page,'[data-act="pnFold"][data-k="pn-alias"]');await click(page,'[data-act="pnAlias"]');
       await click(page,'[data-act="pnSet"][data-k="mode"][data-v="old"]');await fill(page,'pnj',co.id);await click(page,'[data-act="pnAliasSave"]');await wait(page);

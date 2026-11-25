@@ -612,6 +612,8 @@ const pnAliases=c=>Object.values(S.chars).filter(x=>x.type==='PNJ'&&x.alias===c.
 const pnCanNew=()=>!S.visit&&(canEdit()||(!isGest()&&!!ME));
 const pnHasFm=c=>!!c.race&&c.race!==HUMAIN;
 const pnName=c=>c.court||c.nom||'?';
+const pnFeal=c=>isFeal(c)||(!!c.feal&&c.race===HUMAIN); /* féal : humain favorable aux fées (rattaché ou non) */
+const pnRaceTxt=c=>c.race?raceLabel(c)+(pnFeal(c)?' · féal':''):'';
 const pnRaces=()=>[HUMAIN].concat(Object.keys(RACES).filter(r=>r!==HUMAIN).sort((a,b)=>a.localeCompare(b,'fr')));
 /* Situation : rubriques d'un PNJ (les fiefs et possessions notables déjà saisis sont rangés dans Résidence et lieux / Possessions) */
 const pnSitRows=(c,k)=>{const s=situOf(c),x=k==='lieux'?(s.fiefs||[]).map(e=>({...e,_k:'fiefs'})).concat((s.lieux||[]).map(e=>({...e,_k:'lieux'}))):k==='poss'?(s.poss||[]).map(e=>({...e,_k:'poss'})).concat((s.possN||[]).map(e=>({...e,_k:'possN'}))):(s[k]||[]).map(e=>({...e,_k:k}));return x;};
@@ -640,7 +642,7 @@ function pnListBody(){const G=isGest(),F=S.pnF||{},q=nrm(S.pnQ||'');
   if(!L.length)return `<div class="card empty">Aucun PNJ ne correspond.</div>`;
   L.sort((a,b)=>pnName(a).localeCompare(pnName(b),'fr',{sensitivity:'base'}));
   const row=c=>{const m=pnMain(c),org=pnSitNames(c,'orgs')[0]||'',res=pnRes(c);
-    const sub=G&&m?`<small class="pnreal">alias de ${esc(pnName(m))}${org?' · '+esc(org):''}</small>`:`<small>${esc([c.race?raceLabel(c):'',isFeal(c)?'Féal de '+pnName(S.chars[c.pj]):org,res].filter(Boolean).join(' · '))}</small>`;
+    const sub=G&&m?`<small class="pnreal">alias de ${esc(pnName(m))}${org?' · '+esc(org):''}</small>`:`<small>${esc([pnRaceTxt(c),isFeal(c)?'Féal de '+pnName(S.chars[c.pj]):org,res].filter(Boolean).join(' · '))}</small>`;
     const rk=!actif(c)?`<span class="pndead">${c.statut==='mort'?'† '+(c.genre==='f'?'morte':'mort'):esc(STATUTS[c.statut]||'')}</span>`:!pnRev(c)?'<span class="tag2">préparé</span>':`<span class="pnrk">${esc(rangOf(c))}</span>`;
     return `<button type="button" class="pnli${pnRev(c)?'':' prep'}" data-act="sel" data-id="${esc(c.id)}">${pnAv(c)}<span class="pntx"><b>${esc(pnName(c))}</b>${sub}</span>${rk}</button>`;};
   const fk=['familles','orgs','lieux'].find(k=>F[k]);
@@ -650,14 +652,14 @@ function pnListBody(){const G=isGest(),F=S.pnF||{},q=nrm(S.pnQ||'');
 
 /* ---------- Fiche PNJ : en-tête ---------- */
 function pnSheetHead(c){const G=isGest(),fe=isFeal(c);
-  let h=`<button class="back" data-act="pnBack">${FI_BACK}PNJ</button>`;
+  let h=`<button class="back" data-act="pnBack">${FI_BACK}PNJ</button>`+(fe?shChips(c.id):'');
   if(G&&!fe){const e=pnEye(c),K=pnVisKeys(c),n=K.filter(k=>e[k]).length;
     h+=!pnRev(c)?`<div class="fivis prep"><span class="fivi" aria-hidden="true">${EYE_C}</span><span class="fivt"><b>Fiche préparée</b> · invisible des joueurs</span><button class="btn pri" data-act="pnEye" data-k="fiche">Révéler</button></div>`
       :`<div class="fivis">${eyeBtn('pnEye','data-k="fiche"',true,'Fiche '+pnName(c))}<span class="fivt"><b>Fiche révélée</b> · ${n} bloc${n>1?'s':''} sur ${K.length} visible${n>1?'s':''}</span></div>`;}
   const im=portrait(c),inner=im?`<img src="${im}" alt="">`:`<span class="ini">${esc(pnName(c).slice(0,1))}</span>`;
   const med=canPortrait(c)?`<label class="shmed ed" aria-label="Changer le portrait de ${esc(pnName(c))}">${inner}<span class="pen" aria-hidden="true">✎</span><input type="file" accept="image/*" data-ptrfile="${esc(c.id)}" hidden></label>`:im?`<button type="button" class="shmed" data-act="fiImg" data-cid="${esc(c.id)}" aria-label="Agrandir le portrait de ${esc(pnName(c))}">${inner}</button>`:`<span class="shmed">${inner}</span>`;
   const tit=pnSitNames(c,'titres')[0],fam=pnSitNames(c,'familles')[0],age=(typeof chAgeTxt==='function'&&chAgeTxt(c)||{}).age;
-  const kv=[['Race',c.race?raceLk(c):''],['Titre',tit?esc(tit):''],['Famille',fam?esc(fam):''],['Rang',esc(rangOf(c))],['Âge',age?esc(age):''],['Statut',esc(STATUTS[c.statut||'actif']||'')]].filter(x=>x[1]);
+  const kv=[['Race',c.race?raceLk(c)+(pnFeal(c)?' · féal':''):''],['Titre',tit?esc(tit):''],['Famille',fam?esc(fam):''],['Rang',esc(rangOf(c))],['Âge',age?esc(age):''],['Statut',esc(STATUTS[c.statut||'actif']||'')]].filter(x=>x[1]);
   h+=`<div class="card pnhead"><div class="shhd">${med}<div style="flex:1;min-width:0"><div class="shname"><span>${esc(c.nom||c.court)}</span>${kankaBtn(c.kanka,c.nom||c.court,'Fiche Kanka de '+pnName(c))}</div>${fe?`<div class="small pnfeal">Féal de ${lk({t:'perso',id:c.pj},pnName(S.chars[c.pj]))}</div>`:''}<div class="pnkv">${kv.map(([a,b])=>`<span>${a}</span><b>${b}</b>`).join('')}</div></div></div>${canEditC(c)?`<div style="margin-top:8px"><button type="button" class="edl" data-act="pcOpen" data-id="${esc(c.id)}">${ICON.crayon} En-tête</button></div>`:''}</div>`;
   return h;}
 const pnVisKeys=c=>(c.alias?['idr']:[]).concat(PN_POR.filter(([k])=>k!=='fm'||pnHasFm(c)).map(x=>x[0]),PN_SIT.map(x=>x[0]),['autres']);
@@ -691,8 +693,9 @@ function pnSitu(c){const G=isGest(),E=canEditC(c),e=pnEye(c),B=[];
   return shOrder(B)||(G?'':`<div class="card"><span class="muted small">Rien de connu pour l'instant.</span></div>`);}
 function pnRel(c){const G=isGest(),E=canEditC(c),e=pnEye(c);let h='';
   /* PJ liés : calculés depuis les Relations des PJ */
-  const P=pjIds().map(i=>S.chars[i]).flatMap(pj=>(pj.rel||[]).filter(r=>r.pnj===c.id).map(r=>({pj,r})));
-  const pl=P.map(({pj,r})=>{const J=(r.jauges||[]).filter(j=>!j.done);
+  const fp=isFeal(c)&&vis(S.chars[c.pj])?S.chars[c.pj]:null;
+  const P=(fp?[{pj:fp,r:{niv:'feal'}}]:[]).concat(pjIds().map(i=>S.chars[i]).flatMap(pj=>(pj.rel||[]).filter(r=>r.pnj===c.id&&!(fp&&pj.id===fp.id&&r.niv==='allie')).map(r=>({pj,r}))));
+  const pl=P.map(({pj,r})=>{if(r.niv==='feal')return `<div class="srow"><span>Féal de ${lk({t:'perso',id:pj.id},pj.court)}</span></div>`;const J=(r.jauges||[]).filter(j=>!j.done);
     return `<div class="srow"><span>${lk({t:'perso',id:pj.id},pj.court)} <span class="muted">· ${esc(REL_NIV[r.niv]||r.niv||'')}</span>${J.map(j=>`<span class="d">jauge ${esc(REL_OBJ[j.obj]?REL_OBJ[j.obj][2]:'')} : ${j.cases||0} / ${j.taille}</span>`).join('')}</span></div>`;}).join('');
   h+=pnBlk('pn-pjl','PJ liés',P.length?String(P.length):'',(pl||'<div class="muted small">Aucun PJ lié.</div>')+'<div class="muted small" style="margin-top:4px">Calculé depuis les Relations des PJ.</div>',{empty:!P.length});
   if(pnBlkSee(c,'autres')){const L=(c.liens||[]).filter(l=>{const p=S.chars[l.pnj];return p&&vis(p);});
