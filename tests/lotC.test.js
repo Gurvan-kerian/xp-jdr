@@ -136,6 +136,9 @@ ok(r(`/jusqu&#39;au/.test(ppLinesOf(K2,'A').join(''))&&/depuis le/.test(ppLinesO
 r(`K3=cancelAchat(K2,NEW.id).c;`);ok(r(`K3.fortune.cur===${f1}&&!K3.achats.find(a=>a.id===OLD.id).ppel.fin`),'annulation de l\'achat : Fortune rétablie, ancienne activité remise en cours');
 r(`S.chars.kerian=K3;AB=K3.achats.find(a=>a.ppel.id===ART[0]);ppAbandon({kind:'ppAb',cid:'kerian',aid:AB.id});K4=S.chars.kerian;`);
 ok(r(`K4.fortune.cur===${f1}-1&&K4.achats.find(a=>a.id===AB.id).ppel.finT==='ab'`),'abandon : bonus de Fortune retiré, pas de remboursement, élément gardé « terminé »');
+ok(r(`(()=>{const KIT=Object.entries(ppEls()).find(([,e])=>/kit de jeu truque/.test(nrm(e.nom)));prSaveDoc(d=>{d.el[KIT[0]].fx=[{t:'jet',cible:'fut:Jeu',val:2,txt:'',quand:'m'}];});
+  const c=JSON.parse(JSON.stringify(K4));c.futiles=[{nom:'Jeu',max:6,cur:2}];c.achats.push({id:'akit',date:'2026-11-25',label:'kit',cout:0,key:'pp:Roublard',pp:1,ppel:{id:KIT[0],prof:'Roublard',rub:'E',nom:KIT[1].nom,opt:''}});
+  return /kit de jeu/.test(ppJetChips(c,'Jeu'))&&ppJetChips(c,'Classe').indexOf('kit')<0&&fxLabel({t:'jet',cible:'fut:Jeu',val:2})==='Jeu +2';})()`),'Jet sur une compétence futile (« fut:Jeu ») : affiché sous la futile du même nom');
 ok(r(`(()=>{const ctx=ppCtxGame(K4,K4.profils.find(p=>p.nom==='Gentleman'),{prof:'Gentleman'});const K=ppCartCalc(ctx,[{id:ACTS[0][0],opt:'p'},{id:ACTS[ACTS.length-1][0],opt:'p'}]);return ppCartErr(ctx,K).some(e=>/principale/.test(e));})()`),'panier : deux activités principales refusées');
 (async()=>{
   console.log('2. Navigateur');const srv=await serve(),base='http://127.0.0.1:'+srv.address().port;

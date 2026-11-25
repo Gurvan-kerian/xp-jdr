@@ -349,7 +349,7 @@ const FX_KIND={cap:'Capacité',av:'Avantage',dv:'Désavantage',at:'Atout',pw:'Po
 const fxKey=(k,n)=>k+':'+nrm(n);
 const fxTarget=c=>!c?'':c==='fortune'?'Fortune':c.replace(/^(car|comp|der):/,'');
 const sgn=v=>(v>0?'+':v<0?'−':'')+Math.abs(v);
-const fxLabel=e=>e.t==='rap'?e.txt:e.t==='perm'?fxTarget(e.cible)+' '+sgn(e.val):(e.cible||'Jet')+' '+sgn(e.val);
+const fxLabel=e=>e.t==='rap'?e.txt:e.t==='perm'?fxTarget(e.cible)+' '+sgn(e.val):(String(e.cible||'').replace(/^fut:/,'')||'Jet')+' '+sgn(e.val);
 /* Nom de race affiché pour un personnage : au féminin si le personnage est féminin et que la race a un nom féminin */
 function raceLabel(c){if(!c||!c.race)return '';if(c.genre!=='f')return c.race;const x=raceRecOf(c);return (x&&(x.fem||'').trim())||c.race;}
 function raceRecOf(c){const cr=c&&c.race&&S.creatures.find(x=>raceRec(x).sing===c.race);return cr?raceRec(cr):null;}

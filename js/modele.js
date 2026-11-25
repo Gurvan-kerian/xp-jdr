@@ -393,7 +393,7 @@ const ppElFx=x=>!x?[]:x.titre?(prOf(x.prof).titre.fx||[]):((ppEls()[x.id]||{}).f
 const ppFxFort=x=>ppElFx(x).filter(f=>f.t==='perm'&&f.cible==='fortune').reduce((t,f)=>t+(+f.val||0),0);
 function ppElFort(x){if(!x)return 0;let v=ppFxFort(x);if(x.rub==='A'){if(x.opt==='p')v+=+x.fort||0;else if(x.opt==='s')v+=+x.fortS||0;}return v;}
 /* Puces des bonus de circonstance (Jet) d'une compétence, tirés des éléments achetés en PP et en cours */
-function ppJetChips(c,comp){const n=nrm(comp);return fxOf(c).filter(e=>e.kind==='pp'&&e.t==='jet'&&nrm(e.cible)===n).map(e=>`<span class="bn jet">${esc(sgn(e.val))} · ${esc(e.src)}${e.txt?' ('+esc(e.txt)+')':''}</span>`).join('');}
+function ppJetChips(c,comp){const n=nrm(comp);return fxOf(c).filter(e=>e.kind==='pp'&&e.t==='jet'&&nrm(String(e.cible||'').replace(/^fut:/,''))===n).map(e=>`<span class="bn jet">${esc(sgn(e.val))} · ${esc(e.src)}${e.txt?' ('+esc(e.txt)+')':''}</span>`).join('');}
 /* Activité principale / secondaire en cours (non terminée) */
 const ppActOf=(c,opt)=>ppBought(c).find(a=>a.ppel.rub==='A'&&a.ppel.opt===opt&&!a.ppel.fin)||null;
 /* Traits de caractère : c.traits={race,maj:{p,n},min:{p,n},libre} ; féal (humain) : maj et libre seulement */

@@ -350,7 +350,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.rfq!==undefined){S.rfq=t.value;S._force=true;const pos=t.selectionStart;render();const i=q0('[data-rfq]');if(i){i.focus();try{i.setSelectionRange(pos,pos);}catch(e){}}}
   else if(t.dataset.rfk!==undefined&&S.rf){S.rf[t.dataset.rfk]=t.value;if(t.dataset.rfk==='sing'||t.dataset.rfk==='fem'){const b=q0('[data-act="rfSave"]');if(b)b.disabled=!((S.rf.sing||'').trim()||(S.rf.fem||'').trim());}}
   else if(t.dataset.rfc!==undefined&&S.rf){S.rf.car[t.dataset.rfc][+t.dataset.m]=t.value;}
-  else if(t.dataset.fxcf!==undefined){const ctx=fxCtx(t.dataset.c);if(ctx&&ctx.fxEd){ctx.fxEd[t.dataset.fxcf]=t.value;const b=document.querySelector(`[data-act="fxcAdd"][data-c="${t.dataset.c}"]`);if(b)b.disabled=!fxOkEd(ctx.fxEd);}}
+  else if(t.dataset.fxcf!==undefined){const ctx=fxCtx(t.dataset.c);if(ctx&&ctx.fxEd){const f=t.dataset.fxcf;if(f==='fut'){const v=t.value.trim();if(v)ctx.fxEd.cible='fut:'+v;else if(/^fut:/.test(ctx.fxEd.cible||''))ctx.fxEd.cible='';}else ctx.fxEd[f]=t.value; /* recette lot C : Jet sur une compétence futile (cible « fut:Nom ») */const b=document.querySelector(`[data-act="fxcAdd"][data-c="${t.dataset.c}"]`);if(b)b.disabled=!fxOkEd(ctx.fxEd);}}
   else if(t.dataset.pwe!==undefined&&S.dlg){S.dlg[t.dataset.pwe]=t.value;S.dlg.err='';}
   else if(t.dataset.pwv!==undefined&&S.dlg&&S.dlg.vEd){S.dlg.vEd[t.dataset.pwv]=t.value;S.dlg.vEd.err='';}
   else if(t.dataset.pq!==undefined){if(t.dataset.pq==='cap')S.cq=t.value;else S.pq=t.value;S._force=true;render();const el=document.querySelector('[data-pq]');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}}
