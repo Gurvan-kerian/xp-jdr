@@ -436,7 +436,7 @@ const ppCanAb=(a,r)=>!a.ppel.fin&&!a.ppel.titre&&(r==='T'||(r!=='A'&&ppElFort(a.
 function ppLinesOf(c,r){const E=canEditC(c),L=ppBought(c).filter(a=>a.ppel.rub===r);
   return L.filter(a=>!a.ppel.fin).concat(L.filter(a=>a.ppel.fin)).map(a=>{const x=a.ppel,end=!!x.fin,dt=end?(ppGd(x.fin)?"jusqu'au "+ppGd(x.fin):x.finT==='ab'?'abandonné':'terminé'):(ppGd(x.debut)?'depuis le '+ppGd(x.debut):a.crea?'depuis la création':''),
     bits=[dt,ppBits(x)].filter(Boolean).join(' · ');
-    return `<div class="srow${end?' end':''}"><span><b>${esc(x.nom)}</b>${bits?`<span class="d">${esc(bits)}</span>`:''}</span>${srcChip('pp')}${E&&ppCanAb(a,r)?`<button type="button" class="lnk" data-act="ppAb" data-id="${esc(c.id)}" data-a="${esc(a.id)}">Abandonner / retirer</button>`:''}</div>`;});}
+    const fk=(c.ppLk||{})[a.id];return `<div class="srow${end?' end':''}"><span><b>${esc(x.nom)}</b>${fk&&S.fiches[fk]?' → '+fi6Ref(fk):''}${bits?`<span class="d">${esc(bits)}</span>`:''}</span>${srcChip('pp')}${E&&ppCanAb(a,r)?`<button type="button" class="lnk" data-act="ppAb" data-id="${esc(c.id)}" data-a="${esc(a.id)}">Abandonner / retirer</button>`:''}</div>`;});}
 /* ---------- Lot 2 bis (24/11/2026) : illustration de l'onglet Fiche ----------
    PJ fée : une illustration par forme, selon le sélecteur, distinctes du portrait (cartes, médaillons) ; autres personnages : le portrait seul.
    Illustration manquante : cadre vide (avec « Ajouter » pour le joueur du personnage et la gestion). */
@@ -494,15 +494,15 @@ function viewSheetTab(c,tab){
       return item(a.nom,d&&d[1],fxLines('at',a.nom)+tyH);}).join('')||shNone);}
   return h;}
 /* ---------- Situation ---------- */
-const SITU=[['titres','Titres','Titre obtenu en jeu'],['fiefs','Fiefs','Fief'],['familles','Familles','Famille'],['orgs','Organisations','Organisation'],['poss','Possessions courantes','Possession'],['possN','Possessions notables','Possession notable'],['lieux','Résidence et lieux','Lieu']]; /* lot 4 : « lieux » pour les PNJ seulement */
+const SITU=[['titres','Titres','Titre obtenu en jeu'],['fiefs','Fiefs','Fief'],['familles','Familles','Famille'],['orgs','Organisations','Organisation'],['poss','Possessions courantes','Possession'],['possN','Possessions notables','Possession notable'],['lieux','Résidence et lieux','Lieu']]; /* lot 4 : « lieux » pour les PNJ ; lot 6 : aussi pour les PJ (nature résidence / propriétaire / autre) */
 const situOf=c=>c.situ||{};
-function situRows(c,k){const E=canEditC(c);return (situOf(c)[k]||[]).map(e=>`<div class="srow"><span><b>${esc(e.nom)}</b>${k==='orgs'&&e.role?` <span class="muted">· ${esc(e.role)}</span>`:''}${e.note?`<span class="d">${esc(e.note)}</span>`:''}</span>${srcChip('jeu')}${E?`<button type="button" class="ibtn" data-act="situEd" data-k="${k}" data-i="${esc(e.id)}" aria-label="Modifier ${esc(e.nom)}">✎</button>`:''}</div>`);}
+function situRows(c,k){const E=canEditC(c);return (situOf(c)[k]||[]).map(e=>`<div class="srow"><span>${situNm(e)}${k==='orgs'&&e.role?` <span class="muted">· ${esc(e.role)}</span>`:''}${k==='lieux'&&situNat(e)!=='autre'?` <span class="muted">· ${SITU_NAT[situNat(e)]}</span>`:''}${e.note?`<span class="d">${esc(e.note)}</span>`:''}</span>${srcChip('jeu')}${E?`<button type="button" class="ibtn" data-act="situEd" data-k="${k}" data-i="${esc(e.id)}" aria-label="Modifier ${esc(e.nom)}">✎</button>`:''}</div>`);}
 function viewSituation(c){let h='';const E=canEditC(c),add=(k,l)=>E?`<button type="button" class="addl" data-act="situEd" data-k="${k}">+ ${l}</button>`:'';
   if(c.type==='PJ'){const f=lv(c,'fortune'),F=FORTUNE[f];h+=`<div class="fortl"><span>Fortune${F?` · <b>${esc(F[0])}</b> <span class="muted small">(${esc(F[1])})</span>`:''}</span><b class="num">${f}</b></div>`;}
   const B=[],A=ppLinesOf(c,'A');B.push({e:!A.length,h:cBlk('act','Activités',A.length?String(A.length):'',A.join('')||shNone,'',!A.length)});
-  for(const [k,l,al] of SITU){if(k==='lieux')continue;let rows=situRows(c,k);
+  for(const [k,l,al] of SITU){let rows=situRows(c,k);
     if(k==='titres')rows=ppLinesOf(c,'T').concat(rows);
-    if(k==='poss')rows=ppLinesOf(c,'E').concat(rows);
+    if(k==='poss')rows=ppLinesOf(c,'E').concat(situObjRows(c),rows); /* lot 6 : objets dont il est détenteur */
     B.push({e:!rows.length,h:cBlk(k,l,rows.length?String(rows.length):'',rows.join('')||shNone,add(k,al),!rows.length)});}
   return h+shOrder(B);}
 /* ---------- Relations v2 (23/11/2026) : Contacts · Alliés · Ennemis · Autres jauges ----------
@@ -552,7 +552,7 @@ const fld=(k,l,v,ta)=>`<div class="field"><label for="dk-${k}">${l}</label>${ta?
 const segF=(k,v,opts,l)=>`<div class="field"><label>${l}</label><div class="seg" role="group" aria-label="${esc(l)}">${opts.map(([o,t])=>`<button type="button" data-act="dlgSet" data-k="${k}" data-v="${o}" aria-pressed="${v===o}">${t}</button>`).join('')}</div></div>`;
 const dlgFoot=(del,ok)=>`${S.dlg&&S.dlg.err?`<div class="bad small" role="alert">${esc(S.dlg.err)}</div>`:''}<div class="actions" style="margin-top:12px">${del?`<button class="btn ghost" data-act="${del}" style="margin-right:auto">${S.dlg&&S.dlg.conf?'Confirmer le retrait':'Retirer'}</button>`:''}<button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="${ok}">Enregistrer</button></div></div></div>`;
 function shDlgSheet(g){const c=S.chars[g.cid];if(!c)return null;const f=g.f;
-  if(g.kind==='situEd'){const L=SITU.find(s=>s[0]===g.k);return dlgHead((g.i?'Modifier : ':'Ajouter : ')+L[2].toLowerCase(),esc(c.court))+fld('nom','Nom',f.nom)+(g.k==='orgs'?fld('role','Rôle dans l\'organisation',f.role):'')+(g.k==='lieux'?segF('res',f.res?'1':'0',[['1','Résidence'],['0','Autre lieu']],'Nature'):'')+fld('note','Note',f.note,2)+(['fiefs','familles','orgs'].includes(g.k)?'<div class="muted small">Le lien vers la fiche viendra quand ces fiches existeront.</div>':'')+dlgFoot(g.i?'situDel':'','situSave');}
+  if(g.kind==='situEd'){const L=SITU.find(s=>s[0]===g.k);return dlgHead((g.i?'Modifier : ':'Ajouter : ')+L[2].toLowerCase(),esc(c.court))+fld('nom','Nom',f.nom)+(g.k==='orgs'?fld('role','Rôle dans l\'organisation',f.role):'')+situFField(g.k,f.f)+(g.k==='lieux'?segF('nat',f.nat||'res',[['res','Résidence'],['prop','Propriétaire'],['autre','Autre lieu']],'Nature'):'')+fld('note','Note',f.note,2)+(['familles','orgs'].includes(g.k)?'<div class="muted small">Le lien vers la fiche viendra avec les fiches Organisation et Famille.</div>':'')+dlgFoot(g.i?'situDel':'','situSave');}
   if(g.kind==='relNew'){const pn=relPnjs(c).filter(p=>!(c.rel||[]).some(r=>r.pnj===p.id&&r.niv===g.niv)),p=f.pnj&&S.chars[f.pnj],rk=p?rangOf(p):'',obj=REL_OBJ[g.niv]?g.niv:null;
     const miss=obj&&p&&(relTaille(rk,obj)==null||relDiff(rk,obj)==null);
     return dlgHead('Ajouter : '+REL_NIV[g.niv].toLowerCase(),esc(c.court))+`<div class="field"><label for="dk-pnj">PNJ (liste de l'appli)</label><select id="dk-pnj" data-dk="pnj"><option value="">— choisir —</option>${pn.map(x=>`<option value="${esc(x.id)}"${f.pnj===x.id?' selected':''}>${esc(x.court||x.nom)}</option>`).join('')}</select></div>`
@@ -571,10 +571,11 @@ function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
   const cc=OPEN.includes(a)?c:S.chars[S.dlg&&S.dlg.cid];if(!cc||!canEditC(cc))return true;
   const now=today(),g=S.dlg;
   const setC=fn=>{const n=clone(cc);fn(n);saveChar(n);};
-  if(a==='situEd'){const e=d.i&&(situOf(cc)[d.k]||[]).find(x=>x.id===d.i);S.dlg={kind:'situEd',cid:cc.id,k:d.k,i:d.i||null,f:e?{nom:e.nom,role:e.role||'',note:e.note||'',res:!!e.res}:{nom:'',role:'',note:'',res:false}};}
-  else if(a==='situSave'){const nom=(g.f.nom||'').trim();if(!nom){g.err='Le nom est obligatoire.';render();return true;}
-    setC(n=>{const s=n.situ={...(n.situ||{})},L=(s[g.k]||[]).slice(),v={nom,...((g.f.role||'').trim()&&g.k==='orgs'?{role:g.f.role.trim()}:{}),...((g.f.note||'').trim()?{note:g.f.note.trim()}:{}),...(g.k==='lieux'&&g.f.res?{res:true}:{})};
-      const i=L.findIndex(x=>x.id===g.i);if(i>=0)L[i]={...L[i],...v,role:v.role,note:v.note,res:v.res};else L.push({id:uid('s'),date:now,...v});s[g.k]=L;});S.dlg=null;toast('Enregistré');}
+  if(a==='situEd'){const e=d.i&&(situOf(cc)[d.k]||[]).find(x=>x.id===d.i);S.dlg={kind:'situEd',cid:cc.id,k:d.k,i:d.i||null,f:e?{nom:e.nom,role:e.role||'',note:e.note||'',res:!!e.res,nat:situNat(e),f:e.f||''}:{nom:'',role:'',note:'',res:false,nat:'res',f:''}};}
+  else if(a==='situSave'){if(situSaveF(cc,g)){S.dlg=null;toast('Enregistré');render();return true;} /* lot 6 : objet ou lieu choisi dans Possessions */
+    const fx=g.f.f&&S.fiches[g.f.f]&&situFk[g.k]?S.fiches[g.f.f]:null,nom=(g.f.nom||'').trim()||(fx?fx.nom:'');if(!nom){g.err='Le nom est obligatoire.';render();return true;}
+    setC(n=>{const s=n.situ={...(n.situ||{})},L=(s[g.k]||[]).slice(),v={nom,...((g.f.role||'').trim()&&g.k==='orgs'?{role:g.f.role.trim()}:{}),...((g.f.note||'').trim()?{note:g.f.note.trim()}:{}),...(g.k==='lieux'?{nat:g.f.nat||'res',res:(g.f.nat||'res')==='res'}:{}),f:fx?fx.id:undefined};
+      const i=L.findIndex(x=>x.id===g.i);if(i>=0)L[i]={...L[i],...v,role:v.role,note:v.note,res:v.res,nat:v.nat,f:v.f};if(!v.f)delete L[i].f;else L.push({id:uid('s'),date:now,...v});s[g.k]=L;});S.dlg=null;toast('Enregistré');}
   else if(a==='situDel'){if(!g.conf){g.conf=true;render();return true;}setC(n=>{const s=n.situ={...(n.situ||{})};s[g.k]=(s[g.k]||[]).filter(x=>x.id!==g.i);});S.dlg=null;}
   else if(a==='relNew'){S.dlg={kind:'relNew',cid:cc.id,niv:d.niv,f:{pnj:'',note:'',taille:'',diff:''}};}
   else if(a==='relNewSave'||a==='relNewJ'){const f=g.f,p=f.pnj&&S.chars[f.pnj];if(!p){g.err='Choisis un PNJ dans la liste.';render();return true;}

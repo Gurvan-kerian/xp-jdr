@@ -20,4 +20,7 @@
 - `lotC-etapes.test.js` (25/11/2026) : calculs de la création étape par étape sur les vraies races (export en argument) : après chaque étape, PdV, Initiative et Fortune de l'encart « Le personnage à ce stade », de l'étape PP et de la fiche validée identiques ; Fortune des atouts et avantages (Manoir somptueux, Brevets, Fortune immobilière, Trésor précieux), Initiative (Vivacité, Rapière ancestrale), dernier changement signalé, retour en arrière, féal.
   `node tests/lotC-etapes.test.js chemin/vers/donnees-v2.json`
 
+- `lot6.test.js` (25/11/2026) : lieux et objets, sur des données inventées (ou un export en argument) : visibilité et arborescence (lieu au parent préparé à la racine), yeux du Fief, rattachement par nom, fief et onglet Gestion, propriétaire / résident ajouté depuis le lieu (inscrit dans la Situation), retrait, objet unique, détenteur et emplacement, collection, Mentions, suppressions (liens repassés en texte), Visiteur ; dans le navigateur : fiches Lieu et Objet (joueur, gestion), Situation d'un PJ, liste des objets, Données, tour des écrans.
+  `node tests/lot6.test.js`
+
 Installation : `npm install` puis `npx playwright install chromium`, puis `npm test`.

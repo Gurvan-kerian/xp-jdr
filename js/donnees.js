@@ -53,7 +53,7 @@ function viewDonnees(){
       <button class="ui-sigm" ${at||'disabled'}>${s.ok?'✓':SIG_ICO}<span><b>${esc(SIG_OBJ[s.obj.t]||'')} · ${esc(sigObjName(s.obj))}</b> › ${esc(s.champ)}<small>${esc(SIG_ST[s.statut]||'')}${s.note?' · '+esc(s.note):''}${s.auto?' · automatique':s.date?' · '+fmtDate(s.date)+(s.auteur?' · '+esc(s.auteur):s.by&&S.players[s.by]?' · '+esc(S.players[s.by].nom):''):''}${s.ok&&s.okDate?' · résolu le '+fmtDate(s.okDate):''}</small></span></button>
       ${s.auto?'':`<button class="btn ghost ui-xs" data-act="sigOk" data-id="${esc(s.id)}">${s.ok?'Rouvrir':'Résolu'}</button>`}</div>`;}).join('')||'<div class="muted small">Aucun signalement pour ce filtre.</div>'}</div>
     ${sigForm()}</div>`;
-  return h;}
+  return h+(typeof fi6RattView==='function'?fi6RattView():'');} /* lot 6 */
 /* Ajout manuel d'un signalement sur n'importe quel élément */
 function sigForm(){const g=S.sigNew;if(!g)return `<div class="actions" style="margin-top:10px"><button class="btn" data-act="sigNew">+ Signalement</button></div>`;
   const opts=g.t==='race'?(S.creatures||[]).filter(c=>S.races&&S.races[c.id]&&!S.races[c.id].hum).map(c=>[c.id,S.races[c.id].sing||c.nom]):g.t==='pouvoir'?Object.entries(S.pouvoirs||{}).map(([id,p])=>[id,p.nom]):g.t==='capacite'?Object.entries(S.capacites||{}).map(([id,k])=>[id,k.nom]):Object.values(S.chars||{}).map(c=>[c.id,c.court]);

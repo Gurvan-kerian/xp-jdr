@@ -465,3 +465,7 @@ label.fibig.vide{cursor:pointer;border-color:var(--accent);color:var(--accent)}
 .pnkv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px;margin-top:4px}.pnkv span{color:var(--muted)}
 .pnfeal{color:var(--accent);font-weight:600}
 .pchip.pchf .ph{width:34px;height:34px;opacity:.9}.pchip.pchf .pn{font-size:11px}
+/* Lot 6 (25/11/2026) : lieux et objets */
+.fi6tabs{margin:8px 0}
+.tag2.uq{background:var(--accent-soft,#cde3dc);color:var(--accent)}
+.rblk .fimg:first-child{margin-top:0}
