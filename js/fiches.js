@@ -1784,7 +1784,7 @@ function aoPreOne(c,p){if(p.t==='race')return nrm(c.race||'')===nrm(p.n||'');
   if(p.t==='art')return ((aoOwn(c,p.n)||{}).cur||0)>=(+p.r||0);
   if(p.t==='carac')return lv(c,'carac:'+p.n)>=(+p.r||0);
   const v=Math.max(lv(c,'comp:'+p.n),lv(c,'fut:'+p.n));if(v<(+p.r||0))return false;
-  return !p.sp||specsOf(c).some(s=>nrm(s.nom)===nrm(p.sp));}
+  return !p.sp||specsOf(c).some(s=>nrm(s.nom).includes(nrm(p.sp)));} /* spécialité : nom contenant le mot (ex. « Connaissance du druidisme ») */
 const aoPreOk=(c,f)=>(f.pre||[]).every(p=>aoPreOne(c,p));
 const aoUnlockable=c=>c&&c.type==='PJ'?aoArts().filter(f=>aoComp(f)&&!aoOwn(c,f.id)&&(f.pre||[]).length&&aoPreOk(c,f)):[];
 /* ---------- Onglet Progrès : section « Arts obscurs » (entre Capacités féeriques et Ressources générales) ---------- */

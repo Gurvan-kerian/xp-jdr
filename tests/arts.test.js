@@ -11,7 +11,7 @@ const GEN=loadApp(ROOT,['config','engine','modele']);
 const now='2026-11-26T20:00:00.000Z';
 const fi=(id,genre,nom,o)=>({id,genre,nom,type:'',parent:'',kanka:'',vis:'rev',eye:{desc:true,sait:true,pre:true,niv:true,sorts:true,prat:true},desc:'',sait:[],notes:'',par:'lorenzo',cree:now,modif:now,...o});
 function demoDocs(){const ch=(id,court,type,o)=>({...GEN.run(`newChar(${JSON.stringify(id)},${JSON.stringify(court)},${JSON.stringify(court)},${JSON.stringify(type)})`),...o});
-  const sl=ch('sloan','Sloan','PJ',{race:'Elfe',traits:[],profils:[{nom:'Aventurier',note:0,comps:[{nom:'Survie',cur:4,max:6},{nom:'Mouvement',cur:1,max:6}]},{nom:'Erudit',note:0,comps:[{nom:'Occultisme',cur:4,max:6},{nom:'Culture',cur:0,max:6}]}],specs:[{nom:'Druidisme',cible:'comp:Occultisme'}]});
+  const sl=ch('sloan','Sloan','PJ',{race:'Elfe',traits:[],profils:[{nom:'Aventurier',note:0,comps:[{nom:'Survie',cur:4,max:6},{nom:'Mouvement',cur:1,max:6}]},{nom:'Erudit',note:0,comps:[{nom:'Occultisme',cur:4,max:6},{nom:'Culture',cur:0,max:6}]}],specs:[{nom:'Connaissance du druidisme',cible:'comp:Occultisme'}]});
   return {'meta/schema':{v:2},
     'players/lorenzo':{id:'lorenzo',nom:'Lorenzo',role:'MJ',persos:[]},
     'players/anne':{id:'anne',nom:'Anne',role:'Joueur',persos:['sloan']},
