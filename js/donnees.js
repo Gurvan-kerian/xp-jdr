@@ -37,11 +37,13 @@ function saveSignals(list){S.signalDoc={list};persist('meta/signalements',S.sign
 /* ---------- Écran Paramètres › Données ---------- */
 function viewDonnees(){
   const v=S.schemaV||0,sc=S.schema||{},G=isGest();
+  if(G&&S.kk&&S.kk.step)return kkView(); /* lot 8 */
   let h=`<div class="card"><h3 class="rs" style="margin-top:0">Données</h3>
     <div class="ui-kv"><span>Version des données</span><b>${v}</b><span>Version attendue par l'appli</span><b>${SCHEMA_V}</b><span>Dernière mise à jour</span><b>${sc.date?fmtDate(sc.date)+(sc.by&&S.players[sc.by]?' · '+esc(S.players[sc.by].nom):''):'—'}</b></div>
     ${S.migPending?`<div class="ui-small" style="margin-top:8px">Une mise à jour des données est en attente : voir la carte en haut de l'écran.</div>`:''}
     ${(sc.hist||[]).length?`<details class="ui-det"><summary>Historique des mises à jour</summary>${sc.hist.slice().reverse().map(x=>`<div class="ui-small"><b>Version ${x.v}</b> · ${fmtDate(x.date)}${(x.rep||[]).map(l=>`<div>${esc(l)}</div>`).join('')}</div>`).join('')}</details>`:''}</div>`;
   if(!G)return h+`<div class="card"><div class="muted">Le journal des signalements est réservé aux personnes ayant les droits de gestion.</div></div>`;
+  h+=kkCard(); /* lot 8 */
   const f=S.sigF=S.sigF||{st:'',t:'',res:false},all=sigAll();
   const L=all.filter(s=>(!f.st||s.statut===f.st)&&(!f.t||(s.obj&&s.obj.t===f.t))&&(f.res||!s.ok)).sort((a,b)=>(a.ok-b.ok)||(!!a.auto-!!b.auto)||(SIG_RANK[a.statut]-SIG_RANK[b.statut])||((SIG_OBJ[a.obj.t]||'').localeCompare(SIG_OBJ[b.obj.t]||''))||sigObjName(a.obj).localeCompare(sigObjName(b.obj),'fr'));
   const open=all.filter(s=>!s.ok).length;
@@ -69,6 +71,7 @@ function sigForm(){const g=S.sigNew;if(!g)return `<div class="actions" style="ma
 
 /* ---------- Actions ---------- */
 function socleAct(a,d){
+  if(/^kk/.test(a))return kkAct(a,d); /* lot 8 */
   if(a==='migRun'){runMigration();return true;}
   if(a==='migSeen'){S.migDone=null;return true;}
   if(a==='goDonnees'){if(!isGest())return true;S.edit=true;navClear();S.migDone=null;S.view='params';S.ptab='donnees';S.dlg=null;window.scrollTo(0,0);return true;}
@@ -82,5 +85,146 @@ function socleAct(a,d){
   else if(a==='sigOk'){saveSignals(sigStored().map(s=>s.id===d.id?{...s,ok:!s.ok,okDate:s.ok?null:today()}:s));}
   return true;}
 /* Saisie dans le formulaire de signalement : 'r' = réafficher (listes), true = rien à réafficher */
-function socleInput(t,type){if(t.dataset.sig===undefined||!S.sigNew)return false;const k=t.dataset.sig;S.sigNew[k]=t.value;if(k==='t')S.sigNew.id='';
+function socleInput(t,type){if(t.dataset.kkfile!==undefined){if(type==='change')kkFile(t);return true;} /* lot 8 */
+  if(t.dataset.kkmode!==undefined){if(S.kk){S.kk.mode=t.value;kkPlan();}return 'r';}
+  if(t.dataset.sig===undefined||!S.sigNew)return false;const k=t.dataset.sig;S.sigNew[k]=t.value;if(k==='t')S.sigNew.id='';
   if(type==='input'){S.dirty=true;return true;}return t.tagName==='SELECT'?'r':true;}
+
+/* ---------- Lot 8 (26/11/2026) : import Kanka (gestion) ----------
+   Fichier préparé par Claude : {format:'xp-import', v:1, source:'kanka', genre:'lieu'|'pnj', date, items:[{id, kanka, data, imgs:[{k, m, th?, big?, url}], force?}],
+   pj:[{id, idm}], infos:[texte], ignores:[{nom, pq}]}. Fiche reconnue par son identifiant, sinon par son adresse Kanka.
+   Relance : un champ n'est mis à jour que s'il n'a pas été modifié dans l'appli depuis le dernier import (empreinte kk.src).
+   Images : vignette (collection portraits) et grande image (table images), fournies dans le fichier (Kanka refuse la récupération depuis l'appli).
+   Compte rendu : meta/imports, dernier import par genre. */
+const KK_G={lieu:{un:'lieu',pl:'lieux',Pl:'Lieux'},pnj:{un:'PNJ',pl:'PNJ',Pl:'PNJ'}};
+const KK_F={lieu:['nom','type','parent','kanka','desc','fief','notes'],
+  pnj:['nom','court','surnom','race','genre','ageLib','statut','kanka','por.role','por.fm','situ.titres','situ.familles','situ.orgs','situ.lieux','situ.poss']};
+const KK_LAB={nom:'nom',type:'type',parent:'lieu parent',kanka:'lien Kanka',desc:'description',fief:'situation féerique',notes:'notes MJ',court:'nom court',surnom:'surnom',race:'race',genre:'genre',ageLib:'âge',statut:'statut',
+  'por.role':'rôle','por.fm':'forme masquée','situ.titres':'titres','situ.familles':'familles','situ.orgs':'organisations','situ.lieux':'résidence et lieux','situ.poss':'possessions'};
+function kkHash(v){const s=stable(v===undefined||kkEmpty(v)?null:v);let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36);}
+const kkGet=(o,p)=>p.split('.').reduce((x,k)=>x==null?undefined:x[k],o);
+function kkSet(o,p,v){const k=p.split('.');let x=o;for(let i=0;i<k.length-1;i++){x[k[i]]=Object.assign({},x[k[i]]||{});x=x[k[i]];}x[k[k.length-1]]=clone(v);}
+const kkEmpty=v=>v==null||v===''||(Array.isArray(v)&&!v.length)||(typeof v==='object'&&!Array.isArray(v)&&Object.values(v).every(kkEmpty));
+const kkEq=(a,b)=>stable(kkEmpty(a)?null:a)===stable(kkEmpty(b)?null:b);
+function kkFind(g,it){if(g==='lieu'){const f=S.fiches&&S.fiches[it.id];if(f)return f;return fiAll().find(x=>x.genre==='lieu'&&it.kanka&&x.kanka===it.kanka)||null;}
+  return (S.chars&&S.chars[it.id])||Object.values(S.chars||{}).find(c=>it.kanka&&c.kanka===it.kanka)||null;}
+const kkName=(g,x)=>g==='lieu'?x.nom:(x.court||x.nom);
+/* Lecture du fichier choisi */
+function kkFile(t){const f=t.files&&t.files[0];t.value='';if(!f||!isGest())return;S.kk={step:'lecture',nomF:f.name};render();
+  const rd=new FileReader();rd.onerror=()=>{S.kk={step:'err',err:'Lecture du fichier impossible.'};render();};
+  rd.onload=()=>{let F=null;try{F=JSON.parse(rd.result);}catch(e){}
+    if(!F||F.format!=='xp-import'||!KK_G[F.genre]||!Array.isArray(F.items)){S.kk={step:'err',err:"Ce fichier n'est pas un fichier d'import de l'appli."};render();return;}
+    S.kk={step:'apercu',F,nomF:f.name,mode:'maj'};kkPlan();render();};
+  rd.readAsText(f);}
+/* Calcul de l'aperçu : pour chaque fiche, créer / mettre à jour (champs) / à jour / ignorer */
+function kkPlan(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g];
+  K.plan=F.items.map(it=>{const ex=kkFind(g,it),imgs=(it.imgs||[]);
+    const imgTodo=imgs.filter(m=>!kkImgDone(ex,m)),imgKo=imgTodo.filter(m=>!m.th&&!m.big);
+    if(!ex)return {it,act:'new',imgTodo,imgKo};
+    if(K.mode==='skip')return {it,ex,act:'ign',why:'déjà dans l\'appli',imgTodo:[],imgKo:[]};
+    const src=(ex.kk&&ex.kk.src)||null,up=[],keep=[];
+    for(const p of FL){const nv=kkGet(it.data,p);if(nv===undefined)continue;const cur=kkGet(ex,p);if(kkEq(cur,nv))continue;
+      const free=src?(src[p]!==undefined&&kkHash(cur)===src[p])||(src[p]===undefined&&kkEmpty(cur)):(kkEmpty(cur)||(it.force||[]).includes(p));
+      (free?up:keep).push(p);}
+    return {it,ex,act:up.length?'maj':'same',up,keep,imgTodo,imgKo};});
+  const pj=(F.pj||[]).filter(x=>S.chars[x.id]&&!(S.chars[x.id].idm||'').trim()&&x.idm);
+  K.pj=pj;}
+function kkImgDone(ex,m){if(!ex)return false;if(m.m!=='big'&&S.ptr&&S.ptr[m.k])return true;return !!(ex.kk&&(ex.kk.img||[]).includes(m.k));}
+/* Liens vers des fiches absentes de l'appli et du fichier : affichés en texte jusqu'à leur import */
+function kkLinksOut(){const K=S.kk,F=K.F,ids=new Set(F.items.map(i=>i.id));let n=0;
+  for(const it of F.items){const s=JSON.stringify(it.data);s.replace(/@\[(perso|fiche):([^|\]]+)\|/g,(m,t,id)=>{if(!ids.has(id)&&!(t==='perso'?S.chars[id]:S.fiches[id]))n++;return m;});}
+  return n;}
+/* ---------- Carte de l'écran Données ---------- */
+function kkCard(){const R=(S.kkImp||{});
+  const last=g=>{const r=R[g];if(!r)return `<span class="muted">pas encore importé</span>`;return `<span>${fmtDate(r.date)} · <b class="kkok">${r.nNew} créé${r.nNew>1?'s':''}</b>${r.nMaj?` · ${r.nMaj} mis à jour`:''}${(r.imgKo||[]).length?` · <span class="kkko">${r.imgKo.length} image${r.imgKo.length>1?'s':''} manquée${r.imgKo.length>1?'s':''}</span>`:''}</span>`;};
+  return `<div class="card kkcard"><h3 class="rs" style="margin-top:0">Import Kanka</h3>
+    <div class="small">Crée ou met à jour des fiches à partir d'un fichier préparé depuis Kanka. Chaque fiche garde son lien Kanka : relancer un import ne crée pas de doublon, et ce qui a été modifié dans l'appli depuis est gardé.</div>
+    <div class="lab2" style="margin-top:10px">Ordre conseillé</div>
+    <div class="kkord"><div class="srow"><span>1. Lieux</span>${last('lieu')}</div><div class="srow"><span>2. PNJ</span>${last('pnj')}</div><div class="srow muted"><span>Puis objets, événements, journaux…</span><span>à venir</span></div></div>
+    ${S.visit||writesLocked()?'<div class="muted small">Import impossible en lecture seule.</div>':`<label class="btn pri kkpick">Choisir un fichier d'import (.json)<input type="file" accept=".json,application/json" data-kkfile hidden></label>`}
+    ${Object.keys(R).filter(g=>KK_G[g]).length?`<div class="actions" style="justify-content:flex-start">${Object.keys(KK_G).filter(g=>R[g]).map(g=>`<button type="button" class="lnk" data-act="kkRep" data-g="${g}">Compte rendu : ${KK_G[g].pl} ›</button>`).join('')}</div>`:''}
+    <div class="kkwarn small">Avant un import : faire une sauvegarde (export Supabase). Les fiches importées sont révélées : visibles de toute la table.</div></div>`;}
+/* ---------- Écrans de l'import ---------- */
+function kkView(){const K=S.kk;
+  if(K.step==='lecture')return `<div class="card"><div class="muted">Lecture de ${esc(K.nomF||'')}…</div></div>`;
+  if(K.step==='err')return `<div class="card"><h3 class="rs" style="margin-top:0">Import Kanka</h3><div class="pinerr">${esc(K.err)}</div><div class="actions"><button class="btn" data-act="kkClose">Retour</button></div></div>`;
+  if(K.step==='run')return kkRunView();
+  if(K.step==='fin')return kkRepView(K.rep,true);
+  if(K.step==='rep')return kkRepView(K.rep,false);
+  const F=K.F,g=F.genre,G=KK_G[g],P=K.plan,n=a=>P.filter(x=>x.act===a).length;
+  const nImg=P.reduce((s,x)=>s+x.imgTodo.length,0),nKo=P.reduce((s,x)=>s+x.imgKo.length,0),nOut=kkLinksOut(),todo=n('new')+n('maj')+(K.pj||[]).length;
+  let h=`<div class="kkhd"><button type="button" class="back" data-act="kkClose">✕ Annuler</button><h2 class="rs" style="margin:0">Aperçu de l'import</h2></div>`;
+  h+=`<div class="muted small">Fichier <b>${esc(K.nomF||'')}</b> · préparé le ${fmtDate(F.date||'')} · ${esc(G.Pl)}</div>`;
+  h+=`<div class="kknums"><div><b class="num kkok">${n('new')}</b><span>à créer</span></div><div><b class="num">${n('maj')}</b><span>à mettre à jour</span></div><div><b class="num">${n('same')+n('ign')+(F.ignores||[]).length}</b><span>à jour ou ignorées</span></div></div>`;
+  const inf=[];if(nImg)inf.push([nImg,`image${nImg>1?'s':''} à enregistrer${nKo?` (dont ${nKo} absente${nKo>1?'s':''} du fichier)`:''}.`]);
+  if(nOut)inf.push([nOut,`lien${nOut>1?'s':''} vers des fiches pas encore dans l'appli : affiché${nOut>1?'s':''} en texte, ${nOut>1?'ils deviendront des liens':'il deviendra un lien'} à leur import.`]);
+  if((F.ignores||[]).length)inf.push([F.ignores.length,`ignoré${F.ignores.length>1?'s':''} : ${F.ignores.map(x=>x.nom+(x.pq?' ('+x.pq+')':'')).join(', ')}.`]);
+  if((K.pj||[]).length)inf.push([K.pj.length,`identité${K.pj.length>1?'s':''} masquée${K.pj.length>1?'s':''} de PJ à renseigner : ${K.pj.map(x=>esc(x.idm)+' ('+esc(S.chars[x.id].court)+')').join(', ')}.`]);
+  h+=`<div class="card"><h3 class="rs" style="margin-top:0">À savoir avant de valider</h3>${inf.map(([a,b])=>`<div class="kkinf"><b class="num">${a}</b><span>${b}</span></div>`).join('')}${(F.infos||[]).map(t=>`<div class="kkinf"><b>·</b><span>${esc(t)}</span></div>`).join('')}</div>`;
+  if(P.some(x=>x.ex))h+=`<div class="card"><div class="lab2">Fiches déjà dans l'appli</div>
+    <label class="kkrad"><input type="radio" name="kkmode" data-kkmode value="maj"${K.mode==='maj'?' checked':''}> Mettre à jour les champs qui n'ont pas été modifiés dans l'appli</label>
+    <label class="kkrad"><input type="radio" name="kkmode" data-kkmode value="skip"${K.mode==='skip'?' checked':''}> Ne pas toucher aux fiches existantes</label></div>`;
+  const st=x=>x.act==='new'?'<span class="kkst kkok">nouveau</span>':x.act==='maj'?`<span class="kkst">mise à jour · ${x.up.map(p=>KK_LAB[p]||p).join(', ')}${x.keep.length?` <span class="muted">(gardé : ${x.keep.map(p=>KK_LAB[p]||p).join(', ')})</span>`:''}</span>`:x.act==='same'?'<span class="kkst muted">à jour</span>':`<span class="kkst muted">ignoré · ${esc(x.why||'')}</span>`;
+  const row=(x,dep)=>`<div class="srow kkrow" style="padding-left:${6+dep*16}px"><span>${esc(x.it.data.nom||'')}${x.it.data.type?` <span class="muted">· ${esc(x.it.data.type)}</span>`:''}${x.imgKo.length?` <span class="kkko small">· ${x.imgKo.length} image${x.imgKo.length>1?'s':''} absente${x.imgKo.length>1?'s':''}</span>`:''}</span>${st(x)}</div>`;
+  let det='';
+  if(g==='lieu'){const by={};for(const x of P)(by[x.it.data.parent||'']=by[x.it.data.parent||'']||[]).push(x);const ids=new Set(P.map(x=>x.it.id));
+    const walk=(pid,dep)=>(by[pid]||[]).sort((a,b)=>(a.it.data.nom||'').localeCompare(b.it.data.nom||'','fr')).map(x=>row(x,dep)+walk(x.it.id,dep+1)).join('');
+    det=walk('',0)+P.filter(x=>x.it.data.parent&&!ids.has(x.it.data.parent)).map(x=>row(x,0)).join('');}
+  else det=P.slice().sort((a,b)=>(a.it.data.nom||'').localeCompare(b.it.data.nom||'','fr',{sensitivity:'base'})).map(x=>row(x,0)).join('')+(F.ignores||[]).map(x=>`<div class="srow kkrow"><span>${esc(x.nom)}</span><span class="kkst muted">ignoré · ${esc(x.pq||'')}</span></div>`).join('');
+  h+=`<details class="card kkdet"${P.length<=60?' open':''}><summary class="lab2">Détail · ${P.length} ${G.pl}</summary>${det}</details>`;
+  h+=`<div class="actions kkact"><button class="btn" data-act="kkClose">Annuler</button><button class="btn pri" data-act="kkGo"${todo||nImg?'':' disabled'}>${todo?`Importer ${todo} ${todo>1?G.pl:G.un}`:nImg?'Enregistrer les images':'Rien à importer'}</button></div>`;
+  return h;}
+function kkRunView(){const K=S.kk,p=K.prog,pc=(a,b)=>b?Math.round(a*100/b):100;
+  const bar=(lab,a,b)=>`<div class="kkbar"><div class="srow"><span>${lab}</span><span>${a} / ${b}${a>=b?' ✓':''}</span></div><div class="kkb"><span style="width:${pc(a,b)}%"></span></div></div>`;
+  return `<h2 class="rs">Import en cours…</h2><div class="card">${bar('Fiches',p.f,p.nf)}${bar('Images',p.i,p.ni)}</div>
+    <div class="kkwarn small">Garde cet écran ouvert jusqu'à la fin. Si l'import est interrompu, relance le même fichier : ce qui est déjà fait est reconnu.</div>`;}
+function kkRepView(r,fin){if(!r)return '';const G=KK_G[r.genre]||KK_G.lieu;
+  let h=`<div class="kkhd"><button type="button" class="back" data-act="kkClose">‹ Données</button><h2 class="rs" style="margin:0">${fin?'Import terminé':'Compte rendu · '+G.Pl}</h2></div>`;
+  h+=`<div class="kkdone"><b>${r.nNew} ${r.nNew>1?G.pl+' créés':G.un+' créé'}</b>${r.nMaj?` · ${r.nMaj} mis à jour`:''}${r.nPj?` · ${r.nPj} identité${r.nPj>1?'s':''} masquée${r.nPj>1?'s':''}`:''} · ${r.imgOk} image${r.imgOk>1?'s':''} sur ${r.imgOk+(r.imgKo||[]).length} · ${fmtDate(r.date)}${r.by&&S.players[r.by]?' · '+esc(S.players[r.by].nom):''}</div>`;
+  const ko=r.imgKo||[],er=r.err||[];
+  if(ko.length||er.length)h+=`<div class="card"><h3 class="rs" style="margin-top:0">À reprendre</h3>${er.length?`<div class="kkinf"><b class="num kkko">${er.length}</b><span>enregistrement${er.length>1?'s':''} refusé${er.length>1?'s':''} : ${er.map(esc).join(', ')}. Relancer le même fichier.</span></div>`:''}${ko.length?`<div class="kkinf"><b class="num kkko">${ko.length}</b><span>image${ko.length>1?'s':''} non enregistrée${ko.length>1?'s':''} : ${ko.map(x=>esc(x.nom)+' ('+esc(x.lab)+')').join(', ')}. À ajouter à la main, ou relancer avec un nouveau fichier.</span></div>`:''}</div>`;
+  const L=(r.cree||[]).filter(id=>r.genre==='lieu'?S.fiches[id]:S.chars[id]);
+  if(L.length)h+=`<details class="card kkdet"${L.length<=12?' open':''}><summary class="lab2">Fiches créées · ${L.length}</summary>${L.map(id=>`<div class="srow">${lk(r.genre==='lieu'?{t:'fiche',id}:{t:'perso',id},r.genre==='lieu'?S.fiches[id].nom:(S.chars[id].court||S.chars[id].nom))}</div>`).join('')}</details>`;
+  h+=`<div class="actions kkact"><button class="btn" data-act="kkClose">${fin?'Importer un autre fichier':'Retour'}</button><button class="btn pri" data-act="kkSee" data-g="${r.genre}">Voir les ${G.pl}</button></div>`;
+  return h;}
+/* ---------- Actions ---------- */
+function kkAct(a,d){if(!isGest())return true;
+  if(a==='kkClose'){if(S.kk&&S.kk.step==='run')return true;S.kk=null;window.scrollTo(0,0);return true;}
+  if(a==='kkRep'){const r=(S.kkImp||{})[d.g];if(r)S.kk={step:'rep',rep:r};window.scrollTo(0,0);return true;}
+  if(a==='kkSee'){S.kk=null;navClear();if(d.g==='lieu'){S.view='univers';S.uni='lieu';S.fi=null;}else{S.view='team';S.teamSel='pnj';}window.scrollTo(0,0);return true;}
+  if(a==='kkGo'){if(!S.kk||S.kk.step!=='apercu'||S.visit||writesLocked()||!DB)return true;kkRun();return true;}
+  return true;}
+async function kkRun(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g],P=K.plan.filter(x=>x.act==='new'||x.act==='maj'||x.imgTodo.length);
+  const now=new Date().toISOString(),rep={genre:g,date:today(),by:ME||'',nNew:0,nMaj:0,nPj:0,imgOk:0,imgKo:[],err:[],cree:[]};
+  K.step='run';K.prog={f:0,nf:P.filter(x=>x.act==='new'||x.act==='maj').length+(K.pj||[]).length,i:0,ni:P.reduce((s,x)=>s+x.imgTodo.length,0)};render();
+  let ptr=false;const tick=()=>{if(S.view==='params'&&S.ptab==='donnees')render();};
+  for(const x of P){const it=x.it,ex=x.ex?kkFind(g,it):null;
+    /* images d'abord : la fiche note celles qui sont enregistrées */
+    const done=[];
+    for(const m of x.imgTodo){try{
+        if(!m.th&&!m.big)throw new Error('absente');
+        if(m.big)await DB.img.set(m.k,m.big),FI_BIG[m.k]=m.big;
+        if(m.th&&m.m!=='big'){await DB.doc('portraits/'+m.k).set({img:m.th,t:Date.now()});S.ptr={...(S.ptr||{}),[m.k]:m.th};ptr=true;}
+        done.push(m.k);rep.imgOk++;}
+      catch(e){rep.imgKo.push({nom:it.data.nom||it.id,lab:m.k.startsWith('ill-txt-')?'image du texte':m.k.startsWith('ill-carte-')?'carte':g==='pnj'?'portrait':'image'});}
+      K.prog.i++;tick();}
+    if(x.act!=='new'&&x.act!=='maj'&&!done.length)continue;
+    let o;
+    if(!ex){o=g==='lieu'?{id:it.id,genre:'lieu',nom:'',type:'',parent:'',kanka:'',vis:'rev',eye:{desc:true,sait:true,fief:true,pers:true,orgs:true,obj:true,carte:true},desc:'',sait:[],notes:'',par:ME||'',cree:now}
+        :Object.assign(newChar(it.id,it.data.court||it.data.nom,it.data.nom,'PNJ'),{vis:'rev',eye:{...PN_EYE0,autres:true},par:ME||'',cree:now});
+      for(const p of FL){const v=kkGet(it.data,p);if(v!==undefined)kkSet(o,p,v);}
+      o.kk={id:it.kanka||'',d:today(),src:Object.fromEntries(FL.filter(p=>kkGet(it.data,p)!==undefined).map(p=>[p,kkHash(kkGet(it.data,p))])),img:done};}
+    else{o=clone(ex);const src={...((o.kk&&o.kk.src)||{})};
+      for(const p of (x.act==='maj'?x.up:[])){kkSet(o,p,kkGet(it.data,p));src[p]=kkHash(kkGet(it.data,p));}
+      for(const p of FL){const v=kkGet(it.data,p);if(v!==undefined&&src[p]===undefined&&kkEq(kkGet(o,p),v))src[p]=kkHash(v);}
+      o.kk={id:it.kanka||'',d:today(),src,img:[...new Set([...((o.kk&&o.kk.img)||[]),...done])]};}
+    o.modif=now;
+    try{if(g==='lieu'){await DB.doc('fiches/'+o.id).set(o);S.fiches={...S.fiches,[o.id]:o};}
+      else{if(typeof fxSync==='function')o=fxSync(o);await DB.doc('chars/'+o.id).set(o);S.chars={...S.chars,[o.id]:o};}
+      if(!ex){rep.nNew++;rep.cree.push(o.id);}else if(x.act==='maj')rep.nMaj++;}
+    catch(e){console.error(e);rep.err.push(it.data.nom||it.id);}
+    if(x.act==='new'||x.act==='maj')K.prog.f++;tick();}
+  for(const x of K.pj||[]){const c=S.chars[x.id];if(c&&!(c.idm||'').trim()){const n=clone(c);n.idm=x.idm;try{await DB.doc('chars/'+n.id).set(n);S.chars={...S.chars,[n.id]:n};rep.nPj++;}catch(e){rep.err.push(c.court);}}K.prog.f++;tick();}
+  if(ptr){S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});}
+  const R={...(S.kkImp||{}),[g]:rep};S.kkImp=R;persist('meta/imports',R);
+  K.step='fin';K.rep=rep;render();setTimeout(()=>toast('Import terminé'),0);}

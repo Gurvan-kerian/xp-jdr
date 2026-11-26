@@ -27,6 +27,7 @@ function start(){
     on('meta/pouvoirs',x=>{S.pouvoirs=(x&&x.byId)||{};S.pouvoirsReady=true;});
     on('meta/capacites',x=>{S.capacites=(x&&x.byId)||{};S.capReady=true;});
     on('meta/signalements',x=>{S.signalDoc=x||null;});
+    on('meta/imports',x=>{S.kkImp=x||null;}); /* lot 8 : comptes rendus d'import Kanka */
     on('meta/creatures',x=>{S.creatures=(x&&Array.isArray(x.list))?x.list:[];S.creaturesReady=true;});
     on('meta/profils',x=>{S.profils=x&&x.byId?x:null;S.profilsReady=true;applyProfils();});
     on('meta/races',x=>{S.races=(x&&x.byId)||{};S.racesReady=true;});

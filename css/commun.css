@@ -469,3 +469,26 @@ label.fibig.vide{cursor:pointer;border-color:var(--accent);color:var(--accent)}
 .fi6tabs{margin:8px 0}
 .tag2.uq{background:var(--accent-soft,#cde3dc);color:var(--accent)}
 .rblk .fimg:first-child{margin-top:0}
+/* Lot 8 (26/11/2026) : surnom, identité masquée, image dans un texte, import Kanka */
+.shsur{font-family:var(--font-display);font-style:italic;font-size:15px;color:var(--muted);margin-top:2px}
+.shreal{font-size:12px;color:var(--muted);margin-top:2px}
+.pnsur{font-weight:400;font-style:italic;color:var(--muted);font-size:13px}
+.fitimg{margin:4px 0;min-width:120px;min-height:90px}
+.fitimg img{max-height:420px}
+.kkcard .kkord{border:1px solid var(--line);border-radius:10px;padding:0 10px;margin-bottom:10px}
+.kkcard .kkord .srow{justify-content:space-between;font-size:14px}
+.kkpick{display:flex;justify-content:center;min-height:44px;align-items:center;cursor:pointer}
+.kkwarn{background:var(--plan-soft);color:var(--fg);border-radius:10px;padding:10px 12px;margin-top:10px}
+.kkok{color:var(--good)}.kkko{color:var(--bad)}
+.kkhd{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.kknums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.kknums>div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center;display:flex;flex-direction:column}
+.kknums b{font-size:22px}.kknums span{font-size:12px;color:var(--muted)}
+.kkinf{display:flex;gap:10px;font-size:14px;padding:3px 0}.kkinf>b{flex:none;min-width:26px}
+.kkrad{display:flex;gap:8px;align-items:flex-start;font-size:14px;padding:4px 0;min-height:32px}.kkrad input{margin-top:3px}
+.kkdet summary{cursor:pointer;margin:0;padding:4px 0}
+.kkrow{justify-content:space-between;font-size:14px}.kkst{font-size:12px;font-weight:600;text-align:right}
+.kkact{justify-content:flex-end}
+.kkbar{margin:6px 0 12px}.kkbar .srow{justify-content:space-between;border:0;font-size:14px}
+.kkb{height:8px;border-radius:999px;background:var(--surface2);overflow:hidden}.kkb span{display:block;height:8px;background:var(--accent);border-radius:999px}
+.kkdone{background:var(--good-soft);color:var(--fg);border-radius:12px;padding:12px 14px;margin:8px 0 12px}

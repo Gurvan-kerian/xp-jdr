@@ -63,7 +63,7 @@ function fiTypApply(g,from,to){to=(to||'').trim();if(!to||to===from)return;
   for(const f of fiAll())if(f.genre===g&&(f.type||'').trim()===from){const n=clone(f);n.type=to;fiSave(n,true);}render();}
 
 /* ---------- Textes : jetons « @ », lecture et éditeur ---------- */
-const FI_TOK=/@\[(perso|race|secret|fiche):([^|\]]+)\|([^\]]*)\]/g;
+const FI_TOK=/@\[(perso|race|secret|fiche|img):([^|\]]+)\|([^\]]*)\]/g; /* lot 8 : img = image enregistrée dans l'appli (table images) */
 const fiTokObj=(t,id)=>t==='secret'?{t:'secret',n:+id}:{t,id};
 function fiTokName(t,id){
   if(t==='perso'){const c=S.chars[id];return c?(c.court||c.nom):'';}
@@ -73,8 +73,12 @@ function fiTokName(t,id){
   return '';}
 const fiTokClean=s=>String(s||'').replace(/[\]|\n]/g,' ').trim();
 function fiInline(s){let out='',last=0;s=String(s||'');
-  s.replace(FI_TOK,(m,t,id,nom,i)=>{out+=esc(s.slice(last,i));const o=fiTokObj(t,id);out+=lnkOk(o)?lk(o,fiTokName(t,id)||nom):`<span class="nolk">${esc(nom)}</span>`;last=i+m.length;return m;});
+  s.replace(FI_TOK,(m,t,id,nom,i)=>{out+=esc(s.slice(last,i));if(t==='img'){out+=fiImgTok(id,nom);last=i+m.length;return m;}const o=fiTokObj(t,id);out+=lnkOk(o)?lk(o,fiTokName(t,id)||nom):`<span class="nolk">${esc(nom)}</span>`;last=i+m.length;return m;});
   return out+esc(s.slice(last));}
+/* Lot 8 : image dans un texte (grande image chargée à la demande, agrandissable) */
+const FI_PIX='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+function fiImgTok(k,lab){const l=lab&&lab!=='Image'?lab:'';
+  return `<button type="button" class="fibig fitimg" data-act="fiBig" data-id="${esc(k)}" data-src="${FI_PIX}" data-lab="${esc(l)}" aria-label="Agrandir l'image${l?' : '+esc(l):''}"><img src="${bigSrc(k,FI_PIX)}" data-big="${esc(k)}" alt="${esc(l)}"></button>`;}
 /* Mise en forme conservée : paragraphes et listes (« - » en début de ligne) */
 function fiRich(txt){const L=String(txt||'').split('\n');let h='',ul=false;
   for(const raw of L){const l=raw.trim(),li=/^[-•]\s+/.test(l);
@@ -117,6 +121,9 @@ function fiMentions(t,id){const out=[];
     if(t==='fiche'&&F.parent===id)hits.push((FI_G[F.genre]||{}).sub||'fiche contenue');
     if(F.genre==='objet'&&fiBlkSee(F,'det')){if(t==='fiche'&&F.lieu&&F.lieu.f===id)hits.push('emplacement');if(t==='perso'&&(F.det||[]).some(x=>x.id===id))hits.push('détenteur');} /* lot 6 */
     if(hits.length)out.push({grp:ev?'Événements':'Fiches',o:{t:'fiche',id:F.id},nom:F.genre==='evenement'&&(F.num||'').trim()?F.num.trim()+' '+F.nom:F.nom,prec:hits.join(', '),d:ev&&F.debut&&F.debut.a?jrDjIso(F.debut):(F.dj||F.modif||F.cree||'')});}
+  for(const c of Object.values(S.chars||{})){if(c.type!=='PNJ'||(t==='perso'&&c.id===id)||!vis(c))continue; /* lot 8 : textes du Portrait des PNJ */
+    const hits=PN_POR.filter(([k])=>fiHas((c.por||{})[k],t,id)&&pnBlkSee(c,k)).map(([,l])=>'Portrait › '+l);
+    if(hits.length)out.push({grp:'Personnages',o:{t:'perso',id:c.id},nom:fiCN(c),prec:hits.join(', '),d:c.modif||c.cree||''});}
   if(t==='fiche')for(const x of fi6CharLinks(id))out.push({grp:'Personnages',o:{t:'perso',id:x.c.id},nom:fiCN(x.c),prec:'Situation · '+x.lab,d:x.c.modif||''}); /* lot 6 */
   /* lot 2 : descriptions et entrées des journaux et quêtes que la personne peut lire */
   for(const J of jrAll()){if(!jrCanRead(J))continue;const h=jrHost(J),nm=(h?(h.court||h.nom)+' › ':'')+J.nom;
@@ -647,13 +654,13 @@ function pnListView(){const G=isGest(),F=S.pnF||{},all=ids().map(i=>S.chars[i]).
 function pnListBody(){const G=isGest(),F=S.pnF||{},q=nrm(S.pnQ||'');
   let L=ids().map(i=>S.chars[i]).filter(c=>c.type==='PNJ');
   if(!L.length)return `<div class="card empty">Aucun PNJ pour l'instant.</div>`;
-  L=L.filter(c=>(!q||nrm(c.court).includes(q)||nrm(c.nom).includes(q))&&(!G||!S.pnPrep||!pnRev(c))&&['familles','orgs','lieux'].every(k=>!F[k]||pnSitNames(c,k).includes(F[k])));
+  L=L.filter(c=>(!q||nrm(c.court).includes(q)||nrm(c.nom).includes(q)||nrm(c.surnom||'').includes(q))&&(!G||!S.pnPrep||!pnRev(c))&&['familles','orgs','lieux'].every(k=>!F[k]||pnSitNames(c,k).includes(F[k])));
   if(!L.length)return `<div class="card empty">Aucun PNJ ne correspond.</div>`;
   L.sort((a,b)=>pnName(a).localeCompare(pnName(b),'fr',{sensitivity:'base'}));
   const row=c=>{const m=pnMain(c),org=pnSitNames(c,'orgs')[0]||'',res=pnRes(c);
     const sub=G&&m?`<small class="pnreal">alias de ${esc(pnName(m))}${org?' · '+esc(org):''}</small>`:`<small>${esc([pnRaceTxt(c),isFeal(c)?'Féal de '+pnName(S.chars[c.pj]):org,res].filter(Boolean).join(' · '))}</small>`;
     const rk=!actif(c)?`<span class="pndead">${c.statut==='mort'?'† '+(c.genre==='f'?'morte':'mort'):esc(STATUTS[c.statut]||'')}</span>`:!pnRev(c)?'<span class="tag2">préparé</span>':`<span class="pnrk">${esc(rangOf(c))}</span>`;
-    return `<button type="button" class="pnli${pnRev(c)?'':' prep'}" data-act="sel" data-id="${esc(c.id)}">${pnAv(c)}<span class="pntx"><b>${esc(pnName(c))}</b>${sub}</span>${rk}</button>`;};
+    return `<button type="button" class="pnli${pnRev(c)?'':' prep'}" data-act="sel" data-id="${esc(c.id)}">${pnAv(c)}<span class="pntx"><b>${esc(pnName(c))}${(c.surnom||'').trim()?` <i class="pnsur">« ${esc(c.surnom.trim())} »</i>`:''}</b>${sub}</span>${rk}</button>`;};
   const fk=['familles','orgs','lieux'].find(k=>F[k]);
   if(fk)return `<div class="pgrp">${esc(F[fk])} · ${L.length}</div><div class="plst pnlst">${L.map(row).join('')}</div>`;
   const grp={};for(const c of L){const k=(nrm(pnName(c))[0]||'#').toUpperCase();(grp[k]=grp[k]||[]).push(c);}
@@ -669,7 +676,7 @@ function pnSheetHead(c){const G=isGest(),fe=isFeal(c);
   const med=canPortrait(c)?`<label class="shmed ed" aria-label="Changer le portrait de ${esc(pnName(c))}">${inner}<span class="pen" aria-hidden="true">✎</span><input type="file" accept="image/*" data-ptrfile="${esc(c.id)}" hidden></label>`:im?`<button type="button" class="shmed" data-act="fiImg" data-cid="${esc(c.id)}" aria-label="Agrandir le portrait de ${esc(pnName(c))}">${inner}</button>`:`<span class="shmed">${inner}</span>`;
   const tit=pnSitNames(c,'titres')[0],fam=pnSitNames(c,'familles')[0],age=(typeof chAgeTxt==='function'&&chAgeTxt(c)||{}).age;
   const kv=[['Race',c.race?raceLk(c)+(pnFeal(c)?' · féal':''):''],['Titre',tit?esc(tit):''],['Famille',fam?esc(fam):''],['Rang',esc(rangOf(c))],['Âge',age?esc(age):''],['Statut',esc(STATUTS[c.statut||'actif']||'')]].filter(x=>x[1]);
-  h+=`<div class="card pnhead"><div class="shhd">${med}<div style="flex:1;min-width:0"><div class="shname"><span>${esc(c.nom||c.court)}</span>${kankaBtn(c.kanka,c.nom||c.court,'Fiche Kanka de '+pnName(c))}</div>${fe?`<div class="small pnfeal">Féal de ${lk({t:'perso',id:c.pj},pnName(S.chars[c.pj]))}</div>`:''}<div class="pnkv">${kv.map(([a,b])=>`<span>${a}</span><b>${b}</b>`).join('')}</div></div></div>${canEditC(c)?`<div style="margin-top:8px"><button type="button" class="edl" data-act="pcOpen" data-id="${esc(c.id)}">${ICON.crayon} En-tête</button></div>`:''}</div>`;
+  h+=`<div class="card pnhead"><div class="shhd">${med}<div style="flex:1;min-width:0"><div class="shname"><span>${esc(c.nom||c.court)}</span>${kankaBtn(c.kanka,c.nom||c.court,'Fiche Kanka de '+pnName(c))}</div>${(c.surnom||'').trim()?`<div class="shsur">« ${esc(c.surnom.trim())} »</div>`:''}${fe?`<div class="small pnfeal">Féal de ${lk({t:'perso',id:c.pj},pnName(S.chars[c.pj]))}</div>`:''}<div class="pnkv">${kv.map(([a,b])=>`<span>${a}</span><b>${b}</b>`).join('')}</div></div></div>${canEditC(c)?`<div style="margin-top:8px"><button type="button" class="edl" data-act="pcOpen" data-id="${esc(c.id)}">${ICON.crayon} En-tête</button></div>`:''}</div>`;
   return h;}
 const pnVisKeys=c=>(c.alias?['idr']:[]).concat(PN_POR.filter(([k])=>k!=='fm'||pnHasFm(c)).map(x=>x[0]),PN_SIT.map(x=>x[0]),['autres']);
 
