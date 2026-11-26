@@ -492,3 +492,7 @@ label.fibig.vide{cursor:pointer;border-color:var(--accent);color:var(--accent)}
 .kkbar{margin:6px 0 12px}.kkbar .srow{justify-content:space-between;border:0;font-size:14px}
 .kkb{height:8px;border-radius:999px;background:var(--surface2);overflow:hidden}.kkb span{display:block;height:8px;background:var(--accent);border-radius:999px}
 .kkdone{background:var(--good-soft);color:var(--fg);border-radius:12px;padding:12px 14px;margin:8px 0 12px}
+/* Lot 8 b : image de l'événement, spécimens connus */
+.chhead .chimg{float:right;display:flex;gap:6px;align-items:flex-start;margin:0 0 6px 10px}
+.fispec{display:flex;gap:10px;align-items:flex-start}
+.fispec .fithumb{width:56px;height:56px;flex:none}

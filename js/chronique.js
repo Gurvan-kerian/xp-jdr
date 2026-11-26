@@ -178,7 +178,8 @@ function chMonth(){const now=chNow();if(!S.chM){const b=now||chLast()&&chLast().
 function chEvView(f){const G=isGest(),ed=chCanEv();
   let h=`<button class="back" data-act="chBack">${FI_BACK}Chronique</button>`;
   const P=(f.pj||[]).map(id=>S.chars[id]).filter(Boolean).map(c=>lk({t:'perso',id:c.id},c.court||c.nom)).join(', ');
-  h+=`<div class="card fihead chhead"><div class="chhm">${(f.num||'').trim()?`<span class="chnum">${esc(f.num.trim())}</span>`:''}${chEvTag(f)}</div><h2 class="finm">${esc(f.nom)}</h2>
+  const im=illOf('fiche',f.id); /* lot 8 b : image et lien Kanka de l'événement */
+  h+=`<div class="card fihead chhead">${im||f.kanka?`<div class="chimg">${im?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${im}" alt=""></button>`:''}${f.kanka?kankaBtn(f.kanka,f.nom,'Fiche Kanka : '+f.nom):''}</div>`:''}<div class="chhm">${(f.num||'').trim()?`<span class="chnum">${esc(f.num.trim())}</span>`:''}${chEvTag(f)}</div><h2 class="finm">${esc(f.nom)}</h2>
     <div class="small">${esc(chRangeTxt(f.debut,f.duree))}${chOk(f.debut)&&f.debut.j&&(f.duree||1)>1?' · '+f.duree+' jours':''}</div>
     <div class="chkv">${P?`<span>PJ</span><div>${P}</div>`:''}${(f.lieux||'').trim()?`<span>Lieux</span><div>${fiInline(f.lieux)}</div>`:''}</div>
     ${ed?`<div style="margin-top:8px"><button type="button" class="edl" data-act="chEvEd">${ICON.crayon} Numéro, titre, type, dates, PJ, lieux</button></div>`:''}</div>`;
@@ -284,6 +285,7 @@ function chSheet(g){
       <div class="field"><label for="chDu">Durée en jours</label><div class="chdu"><input id="chDu" type="number" min="1" inputmode="numeric" data-fin="duree" value="${esc(g.duree)}"><span class="muted small" data-chprev="fin">${esc(chFinTxt(g))}</span></div></div>
       <div class="field"><span class="flab">PJ impliqués</span><div class="jrparts">${pjs.map(c=>{const on=g.pj.includes(c.id);return `<button type="button" class="jrpc${on?' on':''}" data-act="chPjT" data-v="${esc(c.id)}" aria-pressed="${on}">${esc(c.court||c.nom)}</button>`;}).join('')}</div></div>
       ${chEdField(g,'Lieux <span class="muted">— facultatif</span>','Tape <b>@</b> pour lier une fiche Lieu, ou écris simplement le nom.')}
+      ${f?`<div class="field"><label>Image</label>${illEdit('fiche',f.id,f.nom)}</div>`:''}
       ${chErr(g)}
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="chEvSave">${f?'Enregistrer':'Créer'}</button></div>
       ${f?`<div class="fidel">${g.confirm?`<div class="muted small">Supprimer définitivement « ${esc(f.nom)} » ? Les liens vers cet événement deviendront du texte simple et les sessions rattachées perdront leur lien.</div><div class="actions"><button class="btn ghost" data-act="chSet" data-k="confirm" data-v="">Garder</button><button class="btn" style="color:var(--bad)" data-act="chEvDelOk">Supprimer</button></div>`:`<button class="btn ghost" style="color:var(--bad)" data-act="chSet" data-k="confirm" data-v="1">Supprimer l'événement</button>`}</div>`:''}`);}

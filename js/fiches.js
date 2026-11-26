@@ -117,6 +117,7 @@ function fiMentions(t,id){const out=[];
     if(ev&&fiHas(F.lieux,t,id))hits.push('Lieux');
     if(fiHas(F.desc,t,id)&&fiBlkSee(F,'desc'))hits.push(F.genre==='evenement'?'Résumé':F.genre==='agenda'?'Note':'Description');
     if((F.sait||[]).some(it=>fiHas(it.txt,t,id)&&fiItSee(F,it)))hits.push("Ce que l'on sait");
+    if((F.spec||[]).some(x=>fiHas(x.txt,t,id)&&fiSpecSee(x)))hits.push('Spécimens connus'); /* lot 8 b */
     if(isGest()&&fiHas(F.notes,t,id))hits.push('Notes MJ');
     if(t==='fiche'&&F.parent===id)hits.push((FI_G[F.genre]||{}).sub||'fiche contenue');
     if(F.genre==='objet'&&fiBlkSee(F,'det')){if(t==='fiche'&&F.lieu&&F.lieu.f===id)hits.push('emplacement');if(t==='perso'&&(F.det||[]).some(x=>x.id===id))hits.push('détenteur');} /* lot 6 */
@@ -179,6 +180,11 @@ const fiFolded=k=>!!(S.fiFold||{})[k];
 function fiBlk(k,title,sum,body,o){o=o||{};const fold=fiFolded(k),id='fb-'+k;
   const ed=o.edit?`<button type="button" class="edl" data-act="${o.edit}"${o.ea||''}>${ICON.crayon} Modifier</button>`:'';
   return `<section class="rblk${o.hid?' fihid':''}"><div class="rbh"><button type="button" class="rbt" data-act="fiFold" data-k="${k}" aria-expanded="${!fold}" aria-controls="${id}"><span class="tt"><span class="t">${title}</span>${sum!==''&&sum!=null?`<span class="n">${sum}</span>`:''}</span><span class="chev" aria-hidden="true">${fold?'›':'⌄'}</span></button>${ed}${o.eye||''}</div>${fold?'':`<div class="rbb" id="${id}">${body}</div>`}</section>`;}
+/* Lot 8 b (26/11/2026) : Bestiaire › Spécimens connus — spec:[{id, nom, txt, rev, cree, par}], image illId('spec', id), un œil par spécimen */
+const fiSpecSee=x=>!!x&&(isGest()||!!x.rev);
+function fiSpecBlk(f,ed,G){const A=f.spec||[],V=A.filter(fiSpecSee),nr=A.filter(x=>x.rev).length;if(!V.length&&!ed)return '';
+  const rows=V.map(x=>{const im=illOf('spec',x.id);return `<div class="fiit fispec${x.rev?'':' fihid'}">${im?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('spec',x.id))}" data-lab="${esc(x.nom)}" aria-label="Agrandir l'image de ${esc(x.nom)}"><img src="${im}" alt=""></button>`:''}<div class="fiitx"><b>${esc(x.nom)}</b>${(x.txt||'').trim()?`<div>${fiRich(x.txt)}</div>`:''}</div>${ed?`<button type="button" class="fiedi" data-act="fiSpec" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">${ICON.crayon}</button>`:''}${G?eyeBtn('fiEye',`data-k="spec" data-i="${esc(x.id)}"`,!!x.rev,'Spécimen '+x.nom):''}</div>`;}).join('');
+  return fiBlk('spec','Spécimens connus',G?`${nr} / ${A.length} révélé${nr>1?'s':''}`:String(V.length||''),(rows||'<div class="muted small">Aucun spécimen connu.</div>')+(ed?`<div class="radd"><button class="btn" data-act="fiSpec" data-i="">+ Un spécimen</button></div>`:''));}
 function fiFicheView(f){
   const G=isGest(),E=canEdit(),ed=fiCanEd(f),Gm=FI_G[f.genre]||FI_G.lieu,e=fiEyeOf(f);
   let h=`<button class="back" data-act="fiBack">${FI_BACK}${Gm.pl}</button>`;
@@ -196,6 +202,7 @@ function fiFicheView(f){
   if(fiBlkSee(f,'sait')){const A=(f.sait||[]),V=A.filter(it=>fiItSee(f,it)),nr=A.filter(it=>it.rev).length;
     if(V.length||ed){const rows=V.map(it=>`<div class="fiit${it.rev?'':' fihid'}"><div class="fiitx">${fiRich(it.txt)}</div>${ed?`<button type="button" class="fiedi" data-act="fiItem" data-i="${esc(it.id)}" aria-label="Modifier l'élément">${ICON.crayon}</button>`:''}${G?eyeBtn('fiEye',`data-k="item" data-i="${esc(it.id)}"`,!!it.rev,"Élément de « Ce que l'on sait »"):''}</div>`).join('');
       h+=fiBlk('sait',"Ce que l'on sait",G?`${nr} / ${A.length} révélé${nr>1?'s':''}`:String(V.length||''),(rows||'<div class="muted small">Rien pour l\'instant.</div>')+(ed?`<div class="radd"><button class="btn" data-act="fiItem" data-i="">+ Un élément</button></div>`:''),{hid:G&&!e.sait,eye:G?eyeBtn('fiEye','data-k="sait"',!!e.sait,"Ce que l'on sait"):''});}}
+  if(f.genre==='bete')h+=fiSpecBlk(f,ed,G); /* lot 8 b : spécimens connus */
   h+=fi6Blocks(f); /* lot 6 : blocs propres aux lieux et objets */
   /* Notes MJ : gestion seule, jamais révélées */
   if(G&&!Gm.noMj&&((f.notes||'').trim()||E))h+=fiBlk('notes','Notes MJ','jamais révélées',(f.notes||'').trim()?fiRich(f.notes):'<div class="muted small">Aucune note.</div>',{edit:E?'fiEd':'',ea:' data-b="notes"',hid:true});
@@ -213,8 +220,8 @@ function fiUniView(){const f=S.fi&&S.fiches[S.fi];
   return fiListView(S.uni);}
 
 /* ---------- Fenêtres ---------- */
-const FI_DLG=new Set(['fiNew','fiHead','fiTxt','fiTyp','jrHead','jrEnt','jrJg']);
-const FI_ED=new Set(['fiTxt','jrHead','jrEnt']); /* fenêtres avec l'éditeur « @ » (lot 2 : journaux et quêtes) */
+const FI_DLG=new Set(['fiNew','fiHead','fiTxt','fiTyp','fiSpec','jrHead','jrEnt','jrJg']);
+const FI_ED=new Set(['fiTxt','fiSpec','jrHead','jrEnt']); /* fenêtres avec l'éditeur « @ » (lot 2 : journaux et quêtes) */
 let FI_K=0;
 function fiOpenDlg(g){g._k='fd'+(++FI_K);S.dlg=g;S._fiRedraw=true;}
 /* Les fenêtres de fiche ne sont pas redessinées pendant la saisie (synchronisation toutes les 5 s) */
@@ -222,7 +229,8 @@ function fiSheetHook(g,root){if(!FI_DLG.has(g.kind))return false;
   const ae=document.activeElement,typing=ae&&root.contains(ae)&&(/INPUT|TEXTAREA|SELECT/.test(ae.tagName)||ae.isContentEditable);
   if(!S._fiRedraw&&typing&&root.querySelector(`[data-fidlg="${g._k}"]`))return true;
   S._fiRedraw=false;const html=fiSheet(g);if(!html){S.dlg=null;root.innerHTML='';return true;}root.innerHTML=html;
-  if(g.kind==='fiTxt'){const ed=document.getElementById('fiEd');if(ed&&!g._foc){g._foc=true;ed.focus();const r=document.createRange();r.selectNodeContents(ed);r.collapse(false);const s=window.getSelection();s.removeAllRanges();s.addRange(r);}}
+  if(g.kind==='fiSpec'&&!g._foc){g._foc=true;const n=document.getElementById('fiSpN');if(n&&!n.value)n.focus();}
+  else if(g.kind==='fiTxt'){const ed=document.getElementById('fiEd');if(ed&&!g._foc){g._foc=true;ed.focus();const r=document.createRange();r.selectNodeContents(ed);r.collapse(false);const s=window.getSelection();s.removeAllRanges();s.addRange(r);}}
   else if(/^jr/.test(g.kind)&&!g._foc){g._foc=true;const n=document.getElementById('jrNm');if(n&&!n.value)n.focus();}
   return true;}
 const fiShell=(g,lab,body)=>`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(lab)}" data-fidlg="${g._k}"><div class="in">${body}</div></div>`;
@@ -261,6 +269,14 @@ function fiSheet(g){
       <div class="fiedw"><div id="fiEd" class="fied" contenteditable="true" role="textbox" aria-multiline="true" aria-label="${esc(tt)}" spellcheck="true">${fiEdHtml(g.txt)}</div><div id="fiSug" class="fisug" role="listbox" hidden></div></div>
       <div class="muted small">Tape <b>@</b> puis quelques lettres pour lier une fiche ; flèches + Entrée, ou un clic. Une ligne qui commence par « - » devient une liste.${g.b==='item'&&!it?(isGest()?' L\'élément sera préparé (œil fermé).':' L\'élément sera visible par toute la table.'):''}</div>
       <div class="actions">${canDel?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="fiItDelOk">Confirmer le retrait</button>`:`<button class="btn ghost" data-act="fiItDel">Retirer l'élément</button>`):''}<button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="fiTxtSave">Enregistrer</button></div>`);}
+  if(g.kind==='fiSpec'){const f=S.fiches[g.fid];if(!f||!fiCanEd(f))return null;const it=g.iid?(f.spec||[]).find(x=>x.id===g.iid):null;if(g.iid&&!it)return null;
+    return fiShell(g,'Spécimen connu',`<div><h2>${it?'Spécimen connu':'Nouveau spécimen'}</h2><div class="muted small">${esc(f.nom)}</div></div>
+      <div class="field"><label for="fiSpN">Nom</label><input id="fiSpN" type="text" data-fin="nom" value="${esc(g.nom||'')}" autocomplete="off"></div>
+      <div class="field"><label>Image</label>${illEdit('spec',g.sid,g.nom||f.nom)}</div>
+      <div class="field"><label>Texte</label><div class="fiedw"><div id="fiEd" class="fied" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texte du spécimen" spellcheck="true">${fiEdHtml(g.txt)}</div><div id="fiSug" class="fisug" role="listbox" hidden></div></div></div>
+      <div class="muted small">Tape <b>@</b> pour lier une fiche.${it?'':isGest()?' Le spécimen sera préparé (œil fermé).':' Le spécimen sera visible par toute la table.'}</div>
+      ${g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:''}
+      <div class="actions">${it?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="fiSpecDelOk">Confirmer le retrait</button>`:`<button class="btn ghost" data-act="fiSpecDel">Retirer</button>`):''}<button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="fiSpecSave">Enregistrer</button></div>`);}
   if(g.kind==='fiTyp'){if(!canEdit())return null;const T=fiTypes(g.genre,true),n=(T.find(t=>t[0]===g.type)||[,0])[1];
     const others=T.filter(t=>t[0]!==g.type),v=(g.nom||'').trim(),dup=others.some(t=>t[0]===v);
     return fiShell(g,'Type '+g.type,`<div><h2>${esc(g.type)}</h2><div class="muted small">${esc(fiGm(g.genre).tl)} · ${n} ${g.genre==='jour'?'journa'+(n>1?'ux':'l'):'fiche'+(n>1?'s':'')}</div></div>
@@ -377,7 +393,7 @@ function fiAct(a,d){
   if(a==='fiTy'){S.fiTy=d.v||'';render();return true;}
   if(a==='fiLv'){S.fiLv=d.v;render();return true;}
   if(a==='fiImg'){if(d.cid){const c=S.chars[d.cid];fiViewer(c&&portrait(c),d.cid,c&&c.court);return true;}
-    const src=S.ptr&&S.ptr[d.id];const f=S.fiches[String(d.id).replace(/^ill-fiche-/,'')];fiViewer(src,d.id,f?f.nom:'');return true;}
+    const src=S.ptr&&S.ptr[d.id];const f=S.fiches[String(d.id).replace(/^ill-fiche-/,'')];fiViewer(src,d.id,f?f.nom:(d.lab||''));return true;}
   if(a==='fiBig'){fiViewer(FI_BIG[d.id]||d.src,d.id,d.lab);return true;}
   if(a==='fiSug'){fiAtPick(+d.i);return true;}
   if(a==='closeSheet'&&S.dlg&&FI_DLG.has(S.dlg.kind)){FI_AT=null;return false;}
@@ -396,6 +412,7 @@ function fiAct(a,d){
     if(d.k==='fiche'){open=n.vis!=='rev';if(!open&&!canEdit())return true;n.vis=open?'rev':'prep';}
     else if(fiEyeKeys(n).includes(d.k)){open=!e[d.k];if(!open&&!canEdit())return true;e[d.k]=open;n.eye=e;}
     else if(d.k==='item'){const it=(n.sait||[]).find(x=>x.id===d.i);if(!it)return true;open=!it.rev;if(!open&&!canEdit())return true;it.rev=open;}
+    else if(d.k==='spec'){const it=(n.spec||[]).find(x=>x.id===d.i);if(!it)return true;open=!it.rev;if(!open&&!canEdit())return true;it.rev=open;}
     else return true;fiSave(n);return true;}
   if(a==='fiHead'){if(!fiCanEd(f))return true;fiOpenDlg({kind:'fiHead',id:f.id,nom:f.nom,type:f.type||'',parent:f.parent||'',kanka:f.kanka||'',uniq:!!f.uniq,creaId:(f.crea||{}).id||'',creaNom:(f.crea||{}).id?'':((f.crea||{}).nom||'')});render();return true;}
   if(a==='fiHeadSave'){const g=S.dlg,x=g&&S.fiches[g.id];if(!x||!fiCanEd(x))return true;const nom=(g.nom||'').trim(),kk=(g.kanka||'').trim();
@@ -408,6 +425,13 @@ function fiAct(a,d){
   if(a==='fiDelOk'){const g=S.dlg;if(!g||g.kind!=='fiHead'||!canEdit())return true;const x=S.fiches[g.id];S.dlg=null;if(x){S.fi=null;fiRemove(x.id);}render();setTimeout(()=>toast('Fiche supprimée'),0);return true;}
   if(a==='fiEd'){if(!fiCanEd(f))return true;if(d.b==='notes'&&!canEdit())return true;fiOpenDlg({kind:'fiTxt',fid:f.id,b:d.b,txt:d.b==='notes'?(f.notes||''):d.b==='effet'?(f.effet||''):d.b==='feerie'?((f.fief||{}).feerie||''):(f.desc||'')});render();return true;}
   if(a==='fiItem'){if(!fiCanEd(f))return true;const it=d.i?(f.sait||[]).find(x=>x.id===d.i):null;if(d.i&&!it)return true;fiOpenDlg({kind:'fiTxt',fid:f.id,b:'item',iid:it?it.id:'',txt:it?it.txt:''});render();return true;}
+  if(a==='fiSpec'){if(!fiCanEd(f))return true;const it=d.i?(f.spec||[]).find(x=>x.id===d.i):null;if(d.i&&!it)return true;fiOpenDlg({kind:'fiSpec',fid:f.id,iid:it?it.id:'',sid:it?it.id:fiRid('s'),nom:it?it.nom:'',txt:it?(it.txt||''):''});render();return true;}
+  if(a==='fiSpecDel'){if(S.dlg&&S.dlg.kind==='fiSpec'){S.dlg.confirm=true;S._fiRedraw=true;render();}return true;}
+  if(a==='fiSpecDelOk'){const g=S.dlg,x=g&&S.fiches[g.fid];if(!x||!fiCanEd(x))return true;const n=clone(x);n.spec=(n.spec||[]).filter(y=>y.id!==g.iid);S.dlg=null;fiSave(n);return true;}
+  if(a==='fiSpecSave'){const g=S.dlg,x=g&&S.fiches[g.fid];if(!x||!fiCanEd(x))return true;const nom=(g.nom||'').trim();if(!nom){g.err='Le nom est obligatoire.';S._fiRedraw=true;render();return true;}
+    const ed=document.getElementById('fiEd'),txt=ed?fiSer(ed):(g.txt||''),n=clone(x);n.spec=n.spec||[];const it=g.iid&&n.spec.find(y=>y.id===g.iid);
+    if(it){it.nom=nom;it.txt=txt;}else n.spec.push({id:g.sid,nom,txt,rev:!isGest(),cree:new Date().toISOString(),par:ME||''});
+    FI_AT=null;S.dlg=null;fiSave(n);return true;}
   if(a==='fiItDel'){if(S.dlg&&S.dlg.kind==='fiTxt'){S.dlg.confirm=true;S._fiRedraw=true;render();}return true;}
   if(a==='fiItDelOk'){const g=S.dlg,x=g&&S.fiches[g.fid];if(!x||!fiCanEd(x))return true;const it=(x.sait||[]).find(y=>y.id===g.iid);if(!it||!(canEdit()||it.par===ME))return true;
     const n=clone(x);n.sait=n.sait.filter(y=>y.id!==g.iid);S.dlg=null;fiSave(n);return true;}

@@ -24,3 +24,6 @@
   `node tests/lot6.test.js`
 
 Installation : `npm install` puis `npx playwright install chromium`, puis `npm test`.
+
+- `lot8b.test.js` (26/11/2026) : import Kanka des objets, créatures, événements, journaux et quêtes (aperçu, import, relance sans doublon, fusion des entrées de journal), Bestiaire › Spécimens connus (œil, ajout et retrait par un joueur, Mentions), image et lien Kanka de l'événement. Sans navigateur.
+  `node tests/lot8b.test.js docs.json import-objets.json import-creatures.json import-evenements.json import-journaux.json`
