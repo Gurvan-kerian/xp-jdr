@@ -97,7 +97,7 @@ const sheet=page=>page.evaluate(()=>(document.getElementById('sheetRoot')||{}).i
       await click(page,'[data-act="chTxtSave"]');await page.waitForTimeout(100);
       ok(/Partis de Carnac/.test(await txt(page))&&!(await page.$('[data-act="chTxt"][data-b="notes"]')),'résumé modifié par un joueur ; pas de Notes MJ pour un joueur');
       await page.evaluate(()=>{S.fi=null;S.uni='chron';S.chV='liste';render();});
-      const L=await txt(page);ok(/Mai 1900[\s\S]*aujourd'hui[\s\S]*Avril 1900[\s\S]*\[024\]/.test(L),'liste : mai (repère aujourd\'hui) puis avril avec l\'événement');
+      const L=await txt(page);ok(/Mai 1900[\s\S]*aujourd'hui[\s\S]*Avril 1900[\s\S]*024/.test(L),'liste : mai (repère aujourd\'hui) puis avril avec l\'événement');
       ok(/Beltane/.test(L),'liste : fête du mois en cours');
       await click(page,'[data-act="chV"][data-v="mois"]');
       const m=await page.evaluate(()=>({bars:document.querySelectorAll('.chb.in').length,now:!!document.querySelector('.chc.now'),moon:document.querySelectorAll('.chph').length}));
