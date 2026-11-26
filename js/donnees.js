@@ -99,20 +99,21 @@ function socleInput(t,type){if(t.dataset.kkfile!==undefined){if(type==='change')
 const KK_G={lieu:{un:'lieu',pl:'lieux',Pl:'Lieux'},pnj:{un:'PNJ',pl:'PNJ',Pl:'PNJ'},
   objet:{un:'objet',pl:'objets',Pl:'Objets'},bete:{un:'créature',pl:'créatures',Pl:'Créatures'},evenement:{un:'événement',pl:'événements',Pl:'Événements'},
   journal:{un:'journal ou quête',pl:'journaux et quêtes',Pl:'Journaux et quêtes'},
-  org:{un:'organisation',pl:'organisations',Pl:'Organisations',f:true}}; /* lot 8 b : objets, créatures, événements, journaux et quêtes ; lot 5 a : organisations */
-const KK_FI=new Set(['lieu','objet','bete','evenement','org']); /* genres rangés dans « fiches » */
+  org:{un:'organisation',pl:'organisations',Pl:'Organisations',f:true},famille:{un:'famille',pl:'familles',Pl:'Familles',f:true}}; /* lot 8 b : objets, créatures, événements, journaux et quêtes ; lot 5 a : organisations ; lot 5 b : familles */
+const KK_FI=new Set(['lieu','objet','bete','evenement','org','famille']); /* genres rangés dans « fiches » */
 const KK_F={lieu:['nom','type','parent','kanka','desc','fief','notes'],
   pnj:['nom','court','surnom','race','genre','ageLib','statut','kanka','por.role','por.fm','situ.titres','situ.familles','situ.orgs','situ.lieux','situ.poss'],
   objet:['nom','type','parent','kanka','desc','effet','crea','carac','det','lieu','uniq'],
   bete:['nom','type','kanka','desc','spec'],
   evenement:['num','nom','type','debut','duree','pj','lieux','kanka','desc'],
   journal:['nom','type','perso','parts','statut','pub','desc','kanka'],
-  org:['nom','type','parent','kanka','desc','sait','prat','rangs','titres','rel','mbx']};
+  org:['nom','type','parent','kanka','desc','sait','prat','rangs','titres','rel','mbx'],
+  famille:['nom','type','parent','suzT','kanka','desc','devise','race','speci','terr','vasx','mbx']};
 const KK_LAB={nom:'nom',type:'type',parent:'lieu parent',kanka:'lien Kanka',desc:'description',fief:'situation féerique',notes:'notes MJ',court:'nom court',surnom:'surnom',race:'race',genre:'genre',ageLib:'âge',statut:'statut',
   'por.role':'rôle','por.fm':'forme masquée','situ.titres':'titres','situ.familles':'familles','situ.orgs':'organisations','situ.lieux':'résidence et lieux','situ.poss':'possessions',
   effet:'effet',crea:'créateur',carac:'caractéristiques',det:'détenteurs',lieu:'emplacement',uniq:'unique',spec:'spécimens connus',num:'numéro',debut:'début',duree:'durée',pj:'PJ',lieux:'lieux',
   perso:'personnage',parts:'participants',statut:'statut',pub:'lecture',ent:'entrées',
-  sait:"ce que l'on sait",prat:'pratiques',rangs:'rangs internes',titres:'titres cumulables',rel:'relations',mbx:'membres en texte'};
+  sait:"ce que l'on sait",prat:'pratiques',rangs:'rangs internes',titres:'titres cumulables',rel:'relations',mbx:'membres en texte',suzT:'suzerain en texte',devise:'devise',speci:'spécificité',terr:'territoires',vasx:'vassales sans fiche'};
 function kkHash(v){const s=stable(v===undefined||kkEmpty(v)?null:v);let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36);}
 const kkGet=(o,p)=>p.split('.').reduce((x,k)=>x==null?undefined:x[k],o);
 function kkSet(o,p,v){const k=p.split('.');let x=o;for(let i=0;i<k.length-1;i++){x[k[i]]=Object.assign({},x[k[i]]||{});x=x[k[i]];}x[k[k.length-1]]=clone(v);}
@@ -144,7 +145,7 @@ function kkPlan(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g];
     if(g==='journal'&&kkEntNew(ex,it).length)up.push('ent');
     return {it,ex,act:up.length?'maj':'same',up,keep,imgTodo,imgKo};});
   const pj=(F.pj||[]).filter(x=>S.chars[x.id]&&!(S.chars[x.id].idm||'').trim()&&x.idm);
-  K.pj=pj;K.mem=g==='org'?kkOrgMem(F,true):null;}
+  K.pj=pj;K.mem=g==='org'?kkOrgMem(F,true):g==='famille'?kkFamMem(F,true):null;}
 function kkImgDone(ex,m){if(!ex)return false;if(m.m!=='big'&&S.ptr&&S.ptr[m.k])return true;return !!(ex.kk&&(ex.kk.img||[]).includes(m.k));}
 /* Liens vers des fiches absentes de l'appli et du fichier : affichés en texte jusqu'à leur import */
 function kkLinksOut(){const K=S.kk,F=K.F,ids=new Set(F.items.map(i=>i.id));let n=0;
@@ -156,7 +157,7 @@ function kkCard(){const R=(S.kkImp||{});
   return `<div class="card kkcard"><h3 class="rs" style="margin-top:0">Import Kanka</h3>
     <div class="small">Crée ou met à jour des fiches à partir d'un fichier préparé depuis Kanka. Chaque fiche garde son lien Kanka : relancer un import ne crée pas de doublon, et ce qui a été modifié dans l'appli depuis est gardé.</div>
     <div class="lab2" style="margin-top:10px">Ordre conseillé</div>
-    <div class="kkord">${Object.keys(KK_G).map((g,i)=>`<div class="srow"><span>${i+1}. ${KK_G[g].Pl}</span>${last(g)}</div>`).join('')}<div class="srow muted"><span>Familles, cartes</span><span>à venir</span></div></div>
+    <div class="kkord">${Object.keys(KK_G).map((g,i)=>`<div class="srow"><span>${i+1}. ${KK_G[g].Pl}</span>${last(g)}</div>`).join('')}<div class="srow muted"><span>Cartes</span><span>à venir</span></div></div>
     ${S.visit||writesLocked()?'<div class="muted small">Import impossible en lecture seule.</div>':`<label class="btn pri kkpick">Choisir un fichier d'import (.json)<input type="file" accept=".json,application/json" data-kkfile hidden></label>`}
     ${Object.keys(R).filter(g=>KK_G[g]).length?`<div class="actions" style="justify-content:flex-start">${Object.keys(KK_G).filter(g=>R[g]).map(g=>`<button type="button" class="lnk" data-act="kkRep" data-g="${g}">Compte rendu : ${KK_G[g].pl} ›</button>`).join('')}</div>`:''}
     <div class="kkwarn small">Avant un import : faire une sauvegarde (export Supabase). Les fiches importées sont révélées : visibles de toute la table.</div></div>`;}
@@ -175,7 +176,7 @@ function kkView(){const K=S.kk;
   const inf=[];if(nImg)inf.push([nImg,`image${nImg>1?'s':''} à enregistrer${nKo?` (dont ${nKo} absente${nKo>1?'s':''} du fichier)`:''}.`]);
   if(nOut)inf.push([nOut,`lien${nOut>1?'s':''} vers des fiches pas encore dans l'appli : affiché${nOut>1?'s':''} en texte, ${nOut>1?'ils deviendront des liens':'il deviendra un lien'} à leur import.`]);
   if((F.ignores||[]).length)inf.push([F.ignores.length,`ignoré${F.ignores.length>1?'s':''} : ${F.ignores.map(x=>x.nom+(x.pq?' ('+x.pq+')':'')).join(', ')}.`]);
-  if(K.mem&&K.mem.n)inf.push([K.mem.n,`personnage${K.mem.n>1?'s':''} dont la Situation sera complétée (organisations reliées, rang, rôle, supérieur${K.mem.t?` ; ${K.mem.t} titre${K.mem.t>1?'s':''} de la Monarchie`:''}). Ce qui a été saisi dans l'appli est gardé.`]);
+  if(K.mem&&K.mem.n)inf.push([K.mem.n,`personnage${K.mem.n>1?'s':''} dont la Situation sera complétée (${g==='famille'?'familles reliées ; famille mère retirée quand la branche est indiquée':`organisations reliées, rang, rôle, supérieur${K.mem.t?` ; ${K.mem.t} titre${K.mem.t>1?'s':''} de la Monarchie`:''}`}). Ce qui a été saisi dans l'appli est gardé.`]);
   if(K.mem&&K.mem.ko.length)inf.push([K.mem.ko.length,`appartenance${K.mem.ko.length>1?'s':''} ignorée${K.mem.ko.length>1?'s':''} (personnage absent de l'appli).`]);
   if((K.pj||[]).length)inf.push([K.pj.length,`identité${K.pj.length>1?'s':''} masquée${K.pj.length>1?'s':''} de PJ à renseigner : ${K.pj.map(x=>esc(x.idm)+' ('+esc(S.chars[x.id].court)+')').join(', ')}.`]);
   h+=`<div class="card"><h3 class="rs" style="margin-top:0">À savoir avant de valider</h3>${inf.map(([a,b])=>`<div class="kkinf"><b class="num">${a}</b><span>${b}</span></div>`).join('')}${(F.infos||[]).map(t=>`<div class="kkinf"><b>·</b><span>${esc(t)}</span></div>`).join('')}</div>`;
@@ -185,7 +186,7 @@ function kkView(){const K=S.kk;
   const st=x=>x.act==='new'?'<span class="kkst kkok">nouveau</span>':x.act==='maj'?`<span class="kkst">mise à jour · ${x.up.map(p=>KK_LAB[p]||p).join(', ')}${x.keep.length?` <span class="muted">(gardé : ${x.keep.map(p=>KK_LAB[p]||p).join(', ')})</span>`:''}</span>`:x.act==='same'?'<span class="kkst muted">à jour</span>':`<span class="kkst muted">ignoré · ${esc(x.why||'')}</span>`;
   const row=(x,dep)=>`<div class="srow kkrow" style="padding-left:${6+dep*16}px"><span>${x.it.data.num?esc(x.it.data.num)+' ':''}${esc(x.it.data.nom||'')}${x.it.data.type?` <span class="muted">· ${esc(x.it.data.type)}</span>`:''}${x.imgKo.length?` <span class="kkko small">· ${x.imgKo.length} image${x.imgKo.length>1?'s':''} absente${x.imgKo.length>1?'s':''}</span>`:''}</span>${st(x)}</div>`;
   let det='';
-  if(g==='lieu'||g==='objet'||g==='org'){const by={};for(const x of P)(by[x.it.data.parent||'']=by[x.it.data.parent||'']||[]).push(x);const ids=new Set(P.map(x=>x.it.id));
+  if(g==='lieu'||g==='objet'||g==='org'||g==='famille'){const by={};for(const x of P)(by[x.it.data.parent||'']=by[x.it.data.parent||'']||[]).push(x);const ids=new Set(P.map(x=>x.it.id));
     const walk=(pid,dep)=>(by[pid]||[]).sort((a,b)=>(a.it.data.nom||'').localeCompare(b.it.data.nom||'','fr')).map(x=>row(x,dep)+walk(x.it.id,dep+1)).join('');
     det=walk('',0)+P.filter(x=>x.it.data.parent&&!ids.has(x.it.data.parent)).map(x=>row(x,0)).join('');}
   else det=P.slice().sort((a,b)=>(a.it.data.nom||'').localeCompare(b.it.data.nom||'','fr',{sensitivity:'base'})).map(x=>row(x,0)).join('')+(F.ignores||[]).map(x=>`<div class="srow kkrow"><span>${esc(x.nom)}</span><span class="kkst muted">ignoré · ${esc(x.pq||'')}</span></div>`).join('');
@@ -211,13 +212,13 @@ function kkAct(a,d){if(!isGest())return true;
   if(a==='kkClose'){if(S.kk&&S.kk.step==='run')return true;S.kk=null;window.scrollTo(0,0);return true;}
   if(a==='kkRep'){const r=(S.kkImp||{})[d.g];if(r)S.kk={step:'rep',rep:r};window.scrollTo(0,0);return true;}
   if(a==='kkSee'){const r=(S.kk&&S.kk.rep)||(S.kkImp||{})[d.g]||{};S.kk=null;navClear();
-    if(d.g==='lieu'||d.g==='objet'||d.g==='bete'||d.g==='org'){S.view='univers';S.uni=d.g;S.fi=null;}
+    if(d.g==='lieu'||d.g==='objet'||d.g==='bete'||d.g==='org'||d.g==='famille'){S.view='univers';S.uni=d.g;S.fi=null;}
     else if(d.g==='evenement'){S.view='univers';S.uni='chron';S.fi=null;}
     else if(d.g==='journal'){const j=(S.jour||{})[(r.cree||[])[0]],pc=j&&S.chars[j.perso]?j.perso:'kerian';S.view='sheet';S.sel=pc;S.shTab='jour';S.jrSel='j';}
     else{S.view='team';S.teamSel='pnj';}window.scrollTo(0,0);return true;}
   if(a==='kkGo'){if(!S.kk||S.kk.step!=='apercu'||S.visit||writesLocked()||!DB)return true;kkRun();return true;}
   return true;}
-async function kkRun(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g],P=K.plan.filter(x=>x.act==='new'||x.act==='maj'||x.imgTodo.length);if(g==='org')K.mem=kkOrgMem(F,true);
+async function kkRun(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g],P=K.plan.filter(x=>x.act==='new'||x.act==='maj'||x.imgTodo.length);if(g==='org')K.mem=kkOrgMem(F,true);if(g==='famille')K.mem=kkFamMem(F,true);
   const now=new Date().toISOString(),rep={genre:g,date:today(),by:ME||'',nNew:0,nMaj:0,nPj:0,imgOk:0,imgKo:[],err:[],cree:[]};
   K.step='run';K.prog={f:0,nf:P.filter(x=>x.act==='new'||x.act==='maj').length+(K.pj||[]).length+((K.mem&&K.mem.n)||0),i:0,ni:P.reduce((s,x)=>s+x.imgTodo.length,0)};render();
   let ptr=false;const tick=()=>{if(S.view==='params'&&S.ptab==='donnees')render();};
@@ -233,7 +234,7 @@ async function kkRun(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g],P=K.plan.filter(x
       K.prog.i++;tick();}
     if(x.act!=='new'&&x.act!=='maj'&&!done.length)continue;
     let o;
-    if(!ex){o=KK_FI.has(g)?{id:it.id,genre:g,nom:'',type:'',parent:'',kanka:'',vis:'rev',eye:{desc:true,sait:true,fief:true,pers:true,orgs:true,obj:true,carte:true,effet:true,carac:true,det:true,rangs:true,prat:true,mem:true,lieux:true,rel:true},desc:'',sait:[],notes:'',par:ME||'',cree:now}
+    if(!ex){o=KK_FI.has(g)?{id:it.id,genre:g,nom:'',type:'',parent:'',kanka:'',vis:'rev',eye:{desc:true,sait:true,fief:true,pers:true,orgs:true,obj:true,carte:true,effet:true,carac:true,det:true,rangs:true,prat:true,mem:true,lieux:true,rel:true,terr:true,vas:true},desc:'',sait:[],notes:'',par:ME||'',cree:now}
         :g==='journal'?{id:it.id,genre:it.data.genre==='quete'?'quete':'journal',nom:'',type:'',perso:'',parts:[],pub:true,desc:'',ent:[],jaugesFinies:[],par:ME||'',cree:now}
         :Object.assign(newChar(it.id,it.data.court||it.data.nom,it.data.nom,'PNJ'),{vis:'rev',eye:{...PN_EYE0,autres:true},par:ME||'',cree:now});
       for(const p of FL){const v=kkGet(it.data,p);if(v!==undefined)kkSet(o,p,v);}
@@ -250,7 +251,7 @@ async function kkRun(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g],P=K.plan.filter(x
       if(!ex){rep.nNew++;rep.cree.push(o.id);}else if(x.act==='maj')rep.nMaj++;}
     catch(e){console.error(e);rep.err.push(it.data.nom||it.id);}
     if(x.act==='new'||x.act==='maj')K.prog.f++;tick();}
-  if(g==='org'&&F.membres){const M=kkOrgMem(F,false);for(const n of M.save){try{await DB.doc('chars/'+n.id).set(n);S.chars={...S.chars,[n.id]:n};rep.nMem=(rep.nMem||0)+1;}catch(e){rep.err.push(n.court||n.id);}K.prog.f++;tick();}}
+  if((g==='org'||g==='famille')&&F.membres){const M=g==='org'?kkOrgMem(F,false):kkFamMem(F,false);for(const n of M.save){try{await DB.doc('chars/'+n.id).set(n);S.chars={...S.chars,[n.id]:n};rep.nMem=(rep.nMem||0)+1;}catch(e){rep.err.push(n.court||n.id);}K.prog.f++;tick();}}
   for(const x of K.pj||[]){const c=S.chars[x.id];if(c&&!(c.idm||'').trim()){const n=clone(c);n.idm=x.idm;try{await DB.doc('chars/'+n.id).set(n);S.chars={...S.chars,[n.id]:n};rep.nPj++;}catch(e){rep.err.push(c.court);}}K.prog.f++;tick();}
   if(ptr){S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});}
   const R={...(S.kkImp||{}),[g]:rep};S.kkImp=R;persist('meta/imports',R);
@@ -278,4 +279,17 @@ function kkOrgMem(F,dry){const it={},out={n:0,t:0,ko:[],save:[]};for(const x of 
       else s.orgs.push({id:uid('s'),date:today(),nom,f:d.o,...(d.rang?{rang:d.rang}:{}),...(d.role?{role:d.role}:{}),...(d.sup?{sup:{id:d.sup}}:{})});}
     if(!s.titres.length)delete s.titres;if(!s.orgs.length)delete s.orgs;if(!c.situ&&!Object.keys(s).length)delete n.situ;
     if(stableJ(n)!==stableJ(c)){out.n++;out.t+=nt;if(!dry)out.save.push(n);}}
+  return out;}
+/* Lot 5 b : import des familles — appartenances versées dans Situation › Familles.
+   F.membres : [{c (personnage), o (famille)}]. Ligne reliée par fiche ou par nom identique, sinon ajoutée ; quand le personnage est dans
+   une branche, la ligne de la famille mère (doublon Kanka) est retirée si elle n'a pas de note. Renvoie {n, t, ko, save}. */
+function kkFamMem(F,dry){const it={},out={n:0,t:0,ko:[],save:[]};for(const x of F.items||[])it[x.id]=x.data;const by={};
+  for(const d of F.membres||[]){if(!S.chars[d.c]){out.ko.push(d);continue;}(by[d.c]=by[d.c]||[]).push(d);}
+  const fN=id=>(S.fiches[id]&&S.fiches[id].nom)||(it[id]&&it[id].nom)||'',fP=id=>{const x=S.fiches[id]||it[id];return x&&nrm(x.type)==='branche'?x.parent||'':'';};
+  for(const [cid,L] of Object.entries(by)){const c=S.chars[cid],n=clone(c),s=n.situ={...(n.situ||{})};s.familles=(s.familles||[]).map(e=>({...e}));
+    for(const d of L){const nom=fN(d.o),e=s.familles.find(y=>y.f===d.o||(!y.f&&nrm(y.nom)===nrm(nom)));
+      if(e){e.f=d.o;e.nom=nom;}else s.familles.push({id:uid('s'),date:today(),nom,f:d.o});}
+    for(const d of L){const p=fP(d.o);if(!p)continue;const pn=fN(p);s.familles=s.familles.filter(y=>!((y.f===p||(!y.f&&nrm(y.nom)===nrm(pn)))&&!(y.note||'').trim()));}
+    if(!s.familles.length)delete s.familles;if(!c.situ&&!Object.keys(s).length)delete n.situ;
+    if(stableJ(n)!==stableJ(c)){out.n++;if(!dry)out.save.push(n);}}
   return out;}

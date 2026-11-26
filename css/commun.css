@@ -520,3 +520,5 @@ label.fibig.vide{cursor:pointer;border-color:var(--accent);color:var(--accent)}
 .ogrr{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;align-items:center;border-top:1px solid var(--surface2);padding:8px 0}
 .ogrr input[data-ogr$="|note"]{grid-column:2/4}
 .ogra{grid-column:1/4;display:flex;gap:4px;justify-content:flex-end}
+/* Lot 5 b : familles — devise, race dominante, spécificité dans l'en-tête */
+.fakv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px;margin-top:6px}

@@ -25,7 +25,7 @@ const FI_IC={
 const FI_G={
   lieu:{pl:'Lieux',un:'lieu',nv:'Nouveau lieu',cnt:n=>n+' lieu'+(n>1?'x':''),arbo:true,par:'Lieu parent',sub:'lieu contenu',tl:'Types de lieu'},
   org:{pl:'Organisations',un:'organisation',nv:'Nouvelle organisation',cnt:n=>n+' organisation'+(n>1?'s':''),arbo:true,par:'Organisation parente',sub:'organisation contenue',tl:"Types d'organisation"},
-  famille:{pl:'Familles',un:'famille',nv:'Nouvelle famille',cnt:n=>n+' famille'+(n>1?'s':''),tl:'Types de famille'},
+  famille:{pl:'Familles',un:'famille',nv:'Nouvelle famille',cnt:n=>n+' famille'+(n>1?'s':''),arbo:true,par:'Suzerain (vassale) ou famille mère (branche)',sub:'vassale ou branche',tl:'Types de famille'}, /* lot 5 b : arbre des vassales et branches */
   objet:{pl:'Objets',un:'objet',nv:'Nouvel objet',cnt:n=>n+' objet'+(n>1?'s':''),arbo:true,par:'Fait partie de (collection)',sub:'objet contenu',tl:"Types d'objet"}, /* lot 6 : collections = parent */
   bete:{pl:'Bestiaire',un:'créature',nv:'Nouvelle créature',cnt:n=>n+' créature'+(n>1?'s':''),tl:'Types de créature',noMj:true} /* lot 4 (clé distincte de « creatures » = races) */
 };
@@ -170,9 +170,9 @@ function fiListBody(g){const Gm=FI_G[g],L=fiAll().filter(f=>f.genre===g&&fiSee(f
     if(!R.length)return `<div class="card empty">Aucune fiche ne correspond.</div>`;
     return `<div class="filst">${R.map(f=>{const p=Gm.arbo?fiPath(f).filter(fiSee).map(x=>x.nom).join(' › '):'';return line(f,[f.type,p,fi6Hold(f)].filter(Boolean).join(' · '),0);}).join('')}</div>`;}
   const ids0=new Set(L.map(f=>f.id)),roots=fiSort(L.filter(f=>!f.parent||!ids0.has(f.parent)));
-  const rec=(f,depth)=>{const K=fiSort(fiKidsOf(f.id,L)),n=fiDesc(f.id,L),op=S.fiTree[f.id]!=null?S.fiTree[f.id]:false;
+  const rec=(f,depth)=>{const K=g==='famille'?faKidOrd(fiKidsOf(f.id,L)):fiSort(fiKidsOf(f.id,L)),n=fiDesc(f.id,L),op=S.fiTree[f.id]!=null?S.fiTree[f.id]:false;
     const tog=K.length?`<button type="button" class="fitog" data-act="fiTree" data-id="${esc(f.id)}" aria-expanded="${op}" aria-label="${op?'Replier':'Déplier'} ${esc(f.nom)}">${op?'⌄':'›'}</button>`:'';
-    return line(f,[f.type,K.length?n+' contenu'+(n>1?'s':''):'',fi6Hold(f)].filter(Boolean).join(' · '),depth,tog)+(op?K.map(k=>rec(k,depth+1)).join(''):'');};
+    return line(f,g==='famille'?faListSub(f,K):[f.type,K.length?n+' contenu'+(n>1?'s':''):'',fi6Hold(f)].filter(Boolean).join(' · '),depth,tog)+(op?K.map(k=>rec(k,depth+1)).join(''):'');};
   return `<div class="filst">${roots.map(f=>rec(f,0)).join('')}</div>`;}
 
 /* ---------- La fiche ---------- */
@@ -191,14 +191,14 @@ function fiFicheView(f){
   if(G){if(f.vis!=='rev')h+=`<div class="fivis prep"><span class="fivi" aria-hidden="true">${EYE_C}</span><span class="fivt"><b>Fiche préparée</b> · invisible des joueurs</span><button class="btn pri" data-act="fiReveal">Révéler</button></div>`;
     else{const K=fiEyeKeys(f),n=K.filter(k=>e[k]).length;h+=`<div class="fivis">${eyeBtn('fiEye','data-k="fiche"',true,'Fiche '+f.nom)}<span class="fivt"><b>Fiche révélée</b> · ${n} bloc${n>1?'s':''} sur ${K.length} visible${n>1?'s':''}</span></div>`;}}
   const img=illOf('fiche',f.id),path=fiPath(f);
-  const sub=[f.type?esc(f.type):'',...fi6Sub(f),path.length?path.map(x=>fiSee(x)?lk({t:'fiche',id:x.id},x.nom):`<span class="nolk">${esc(x.nom)}</span>`).join(' › '):''].filter(Boolean).join(' · ');
-  h+=`<div class="card fihead"><div class="fihd">${img?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${img}" alt=""></button>`:`<span class="fithumb vide" aria-hidden="true">${FI_SVG(FI_IC[f.genre],26)}</span>`}<div style="flex:1;min-width:0"><h2 class="finm">${esc(f.nom)}</h2>${sub?`<div class="muted small">${sub}</div>`:''}</div>${f.kanka?kankaBtn(f.kanka,f.nom,'Fiche Kanka : '+f.nom):''}</div>
-    ${ed?`<div style="margin-top:8px"><button type="button" class="edl" data-act="fiHead">${ICON.crayon} Nom, type${Gm.arbo?', '+Gm.par.toLowerCase():''}${f.genre==='objet'?', unique, créateur':''}, image, Kanka</button></div>`:''}</div>`;
+  const sub=[f.type?esc(f.type):'',...fi6Sub(f),...(f.genre==='famille'?faSub(f):[]),path.length&&f.genre!=='famille'?path.map(x=>fiSee(x)?lk({t:'fiche',id:x.id},x.nom):`<span class="nolk">${esc(x.nom)}</span>`).join(' › '):''].filter(Boolean).join(' · ');
+  h+=`<div class="card fihead"><div class="fihd">${img?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${img}" alt=""></button>`:`<span class="fithumb vide" aria-hidden="true">${FI_SVG(FI_IC[f.genre],26)}</span>`}<div style="flex:1;min-width:0"><h2 class="finm">${esc(f.nom)}</h2>${sub?`<div class="muted small">${sub}</div>`:''}${f.genre==='famille'?faHeadKv(f):''}</div>${f.kanka?kankaBtn(f.kanka,f.nom,'Fiche Kanka : '+f.nom):''}</div>
+    ${ed?`<div style="margin-top:8px"><button type="button" class="edl" data-act="fiHead">${ICON.crayon} ${f.genre==='famille'?'Nom, type, suzerain, devise, race':'Nom, type'+(Gm.arbo?', '+Gm.par.toLowerCase():'')}${f.genre==='objet'?', unique, créateur':''}, image, Kanka</button></div>`:''}</div>`;
   const T6=fi6Tabs(f);if(T6){h+=T6;if(S.fiTab==='gest')return h+fi6Gest(f);} /* lot 6 : Fief rattaché à un PJ */
   const OT=f.genre==='org'?ogTab():'';if(OT)h+=ogTabsBar(OT); /* lot 5 a : onglets de l'organisation */
   /* Description */
   if((!OT||OT==='pres')&&fiBlkSee(f,'desc')&&((f.desc||'').trim()||ed))
-    h+=fiBlk('desc','Description','',(f.desc||'').trim()?fiRich(f.desc):'<div class="muted small">Pas encore de description.</div>',{edit:ed?'fiEd':'',ea:' data-b="desc"',hid:G&&!e.desc,eye:G?eyeBtn('fiEye','data-k="desc"',!!e.desc,'Description'):''});
+    h+=fiBlk('desc',f.genre==='famille'?'Présentation':'Description','',(f.desc||'').trim()?fiRich(f.desc):'<div class="muted small">Pas encore de description.</div>',{edit:ed?'fiEd':'',ea:' data-b="desc"',hid:G&&!e.desc,eye:G?eyeBtn('fiEye','data-k="desc"',!!e.desc,'Description'):''});
   /* Ce que l'on sait : un œil par élément */
   if((!OT||OT==='pres')&&fiBlkSee(f,'sait')){const A=(f.sait||[]),V=A.filter(it=>fiItSee(f,it)),nr=A.filter(it=>it.rev).length;
     if(V.length||ed){const rows=V.map(it=>`<div class="fiit${it.rev?'':' fihid'}"><div class="fiitx">${fiRich(it.txt)}</div>${ed?`<button type="button" class="fiedi" data-act="fiItem" data-i="${esc(it.id)}" aria-label="Modifier l'élément">${ICON.crayon}</button>`:''}${G?eyeBtn('fiEye',`data-k="item" data-i="${esc(it.id)}"`,!!it.rev,"Élément de « Ce que l'on sait »"):''}</div>`).join('');
@@ -206,6 +206,7 @@ function fiFicheView(f){
   if(f.genre==='bete')h+=fiSpecBlk(f,ed,G); /* lot 8 b : spécimens connus */
   h+=fi6Blocks(f); /* lot 6 : blocs propres aux lieux et objets */
   if(OT)h+=ogBlocks(f,OT); /* lot 5 a */
+  if(f.genre==='famille')h+=faBlocks(f); /* lot 5 b */
   if(OT&&OT!=='ctx')return h;
   /* Notes MJ : gestion seule, jamais révélées */
   if(G&&!Gm.noMj&&((f.notes||'').trim()||E))h+=fiBlk('notes','Notes MJ','jamais révélées',(f.notes||'').trim()?fiRich(f.notes):'<div class="muted small">Aucune note.</div>',{edit:E?'fiEd':'',ea:' data-b="notes"',hid:true});
@@ -247,6 +248,7 @@ function fiSheet(g){
   if(/^pn/.test(g.kind))return pnSheet(g); /* lot 4 */
   if(/^fi6/.test(g.kind))return fi6Sheet(g); /* lot 6 */
   if(/^fiO/.test(g.kind))return ogSheet(g); /* lot 5 a */
+  if(/^fa[A-Z]/.test(g.kind))return faSheet(g); /* lot 5 b */
   if(g.kind==='fiNew'){const Gm=FI_G[g.genre];if(!Gm||!fiCanNew())return null;
     return fiShell(g,Gm.nv,`<h2>${Gm.nv}</h2>
       <div class="field"><label for="fiNm">Nom</label><input id="fiNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
@@ -259,7 +261,7 @@ function fiSheet(g){
       <div class="field"><label for="fiNm">Nom</label><input id="fiNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
       ${fiTypeField(f.genre,g.type)}
       ${Gm.arbo?`<div class="field"><label for="fiPa">${Gm.par}</label><select id="fiPa" data-fin="parent">${fiParOpts(f.genre,g.parent,f.id)}</select></div>`:''}
-      ${f.genre==='objet'?fi6HeadFields(g):''}
+      ${f.genre==='objet'?fi6HeadFields(g):''}${f.genre==='famille'?faHeadFields(g):''}
       <div class="field"><label for="fiKk">Lien Kanka</label><input id="fiKk" type="url" data-fin="kanka" value="${esc(g.kanka)}" placeholder="https://app.kanka.io/…" autocomplete="off"></div>
       <div class="field"><label>Image</label>${illEdit('fiche',f.id,f.nom)}<div class="muted small" style="margin-top:4px">Une vignette carrée et l'image entière en grand (visible d'un clic sur la vignette).</div></div>
       ${g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:''}
@@ -267,7 +269,7 @@ function fiSheet(g){
       ${canEdit()?`<div class="fidel">${g.confirm?`<div class="muted small">Supprimer définitivement « ${esc(f.nom)} » ? Les liens vers cette fiche deviendront du texte simple${fiKidsOf(f.id).length?' et les fiches contenues remonteront d\'un niveau':''}.</div><div class="actions"><button class="btn ghost" data-act="fiDelNo">Garder</button><button class="btn" style="color:var(--bad)" data-act="fiDelOk">Supprimer</button></div>`:`<button class="btn ghost" style="color:var(--bad)" data-act="fiDel">Supprimer la fiche</button>`}</div>`:''}`);}
   if(g.kind==='fiTxt'){const f=S.fiches[g.fid];if(!f||!fiCanEd(f))return null;if(g.b==='notes'&&!canEdit())return null;
     const it=g.b==='item'&&g.iid?(f.sait||[]).find(x=>x.id===g.iid):null;if(g.b==='item'&&g.iid&&!it)return null;
-    const tt=g.b==='desc'?'Description':g.b==='notes'?'Notes MJ':g.b==='effet'?'Effet':g.b==='feerie'?'Situation féerique':g.b==='prat'?'Pratiques':it?"Ce que l'on sait":"Ce que l'on sait : nouvel élément";
+    const tt=g.b==='desc'?(f.genre==='famille'?'Présentation':'Description'):g.b==='terr'?'Territoires':g.b==='notes'?'Notes MJ':g.b==='effet'?'Effet':g.b==='feerie'?'Situation féerique':g.b==='prat'?'Pratiques':it?"Ce que l'on sait":"Ce que l'on sait : nouvel élément";
     const canDel=it&&(canEdit()||it.par===ME);
     return fiShell(g,'Modifier : '+tt,`<div><h2>Modifier : ${tt}</h2><div class="muted small">${esc(f.nom)}</div></div>
       <div class="fiedw"><div id="fiEd" class="fied" contenteditable="true" role="textbox" aria-multiline="true" aria-label="${esc(tt)}" spellcheck="true">${fiEdHtml(g.txt)}</div><div id="fiSug" class="fisug" role="listbox" hidden></div></div>
@@ -403,6 +405,7 @@ function fiAct(a,d){
   if(a==='closeSheet'&&S.dlg&&FI_DLG.has(S.dlg.kind)){FI_AT=null;return false;}
   if(/^fi6[A-Z]/.test(a))return fi6Act(a,d); /* lot 6 */
   if(/^fiO[A-Z]/.test(a)||(a==='situEd'&&(d.k==='orgs'||d.k==='titres')))return ogAct(a,d); /* lot 5 a */
+  if(/^fa[A-Z]/.test(a))return faAct(a,d); /* lot 5 b */
   if(!/^fi[A-Z]/.test(a))return false;
   if(S.visit)return true;
   const f=S.fi&&S.fiches[S.fi];
@@ -410,7 +413,7 @@ function fiAct(a,d){
   if(a==='fiVis'){if(S.dlg&&S.dlg.kind==='fiNew'&&canEdit()){S.dlg.vis=d.v==='rev'?'rev':'prep';S._fiRedraw=true;render();}return true;}
   if(a==='fiCreate'){const g=S.dlg;if(!g||g.kind!=='fiNew'||!fiCanNew())return true;const nom=(g.nom||'').trim();if(!nom)return true;
     const gest=canEdit(),rev=gest?g.vis==='rev':true,now=new Date().toISOString();
-    const nf={id:fiRid('f-'),genre:g.genre,nom,type:(g.type||'').trim(),parent:FI_G[g.genre].arbo&&g.parent&&S.fiches[g.parent]?g.parent:'',kanka:'',vis:rev?'rev':'prep',eye:Object.fromEntries(['desc','sait'].concat(g.genre==='org'?FI6_EYE.org:[]).map(k=>[k,rev])),desc:'',sait:[],notes:'',par:ME||'',cree:now,modif:now};
+    const nf={id:fiRid('f-'),genre:g.genre,nom,type:(g.type||'').trim(),parent:FI_G[g.genre].arbo&&g.parent&&S.fiches[g.parent]?g.parent:'',kanka:'',vis:rev?'rev':'prep',eye:Object.fromEntries(['desc','sait'].concat(g.genre==='org'||g.genre==='famille'?FI6_EYE[g.genre]:[]).map(k=>[k,rev])),desc:'',sait:[],notes:'',par:ME||'',cree:now,modif:now};
     S.dlg=null;S.fi=nf.id;S.uni=nf.genre;S.fiQ='';S.fiTy='';fiSave(nf);window.scrollTo(0,0);setTimeout(()=>toast('Fiche créée'),0);return true;}
   if(a==='fiReveal'){if(!f||!isGest())return true;const n=clone(f);n.vis='rev';fiSave(n);return true;}
   if(a==='fiEye'){if(!f||!isGest())return true;const n=clone(f),e={...fiEyeOf(n)};let open;
@@ -419,16 +422,17 @@ function fiAct(a,d){
     else if(d.k==='item'){const it=(n.sait||[]).find(x=>x.id===d.i);if(!it)return true;open=!it.rev;if(!open&&!canEdit())return true;it.rev=open;}
     else if(d.k==='spec'){const it=(n.spec||[]).find(x=>x.id===d.i);if(!it)return true;open=!it.rev;if(!open&&!canEdit())return true;it.rev=open;}
     else return true;fiSave(n);return true;}
-  if(a==='fiHead'){if(!fiCanEd(f))return true;fiOpenDlg({kind:'fiHead',id:f.id,nom:f.nom,type:f.type||'',parent:f.parent||'',kanka:f.kanka||'',uniq:!!f.uniq,creaId:(f.crea||{}).id||'',creaNom:(f.crea||{}).id?'':((f.crea||{}).nom||'')});render();return true;}
+  if(a==='fiHead'){if(!fiCanEd(f))return true;fiOpenDlg({kind:'fiHead',id:f.id,nom:f.nom,type:f.type||'',parent:f.parent||'',kanka:f.kanka||'',uniq:!!f.uniq,creaId:(f.crea||{}).id||'',creaNom:(f.crea||{}).id?'':((f.crea||{}).nom||''),devise:f.devise||'',race:f.race||'',speci:f.speci||'',suzT:f.suzT||''});render();return true;}
   if(a==='fiHeadSave'){const g=S.dlg,x=g&&S.fiches[g.id];if(!x||!fiCanEd(x))return true;const nom=(g.nom||'').trim(),kk=(g.kanka||'').trim();
     if(!nom)return true;if(kk&&!/^https?:\/\//.test(kk)){g.err='Le lien Kanka doit commencer par https://';S._fiRedraw=true;render();return true;}
     const n=clone(x);n.nom=nom;n.type=(g.type||'').trim();n.kanka=kk;if(x.genre==='objet')fi6HeadApply(n,g);
     if(FI_G[x.genre].arbo){const p=g.parent&&S.fiches[g.parent];n.parent=p&&p.id!==x.id&&!fiPath(p).some(q=>q.id===x.id)?p.id:'';}
+    if(x.genre==='famille')faHeadApply(n,g); /* lot 5 b */
     S.dlg=null;fiSave(n);setTimeout(()=>toast('Fiche enregistrée'),0);return true;}
   if(a==='fiDel'){if(S.dlg&&S.dlg.kind==='fiHead'&&canEdit()){S.dlg.confirm=true;S._fiRedraw=true;render();}return true;}
   if(a==='fiDelNo'){if(S.dlg){S.dlg.confirm=false;S._fiRedraw=true;render();}return true;}
   if(a==='fiDelOk'){const g=S.dlg;if(!g||g.kind!=='fiHead'||!canEdit())return true;const x=S.fiches[g.id];S.dlg=null;if(x){S.fi=null;fiRemove(x.id);}render();setTimeout(()=>toast('Fiche supprimée'),0);return true;}
-  if(a==='fiEd'){if(!fiCanEd(f))return true;if(d.b==='notes'&&!canEdit())return true;fiOpenDlg({kind:'fiTxt',fid:f.id,b:d.b,txt:d.b==='notes'?(f.notes||''):d.b==='effet'?(f.effet||''):d.b==='feerie'?((f.fief||{}).feerie||''):d.b==='prat'?(f.prat||''):(f.desc||'')});render();return true;}
+  if(a==='fiEd'){if(!fiCanEd(f))return true;if(d.b==='notes'&&!canEdit())return true;fiOpenDlg({kind:'fiTxt',fid:f.id,b:d.b,txt:d.b==='notes'?(f.notes||''):d.b==='effet'?(f.effet||''):d.b==='feerie'?((f.fief||{}).feerie||''):d.b==='prat'?(f.prat||''):d.b==='terr'?(f.terr||''):(f.desc||'')});render();return true;}
   if(a==='fiItem'){if(!fiCanEd(f))return true;const it=d.i?(f.sait||[]).find(x=>x.id===d.i):null;if(d.i&&!it)return true;fiOpenDlg({kind:'fiTxt',fid:f.id,b:'item',iid:it?it.id:'',txt:it?it.txt:''});render();return true;}
   if(a==='fiSpec'){if(!fiCanEd(f))return true;const it=d.i?(f.spec||[]).find(x=>x.id===d.i):null;if(d.i&&!it)return true;fiOpenDlg({kind:'fiSpec',fid:f.id,iid:it?it.id:'',sid:it?it.id:fiRid('s'),nom:it?it.nom:'',txt:it?(it.txt||''):''});render();return true;}
   if(a==='fiSpecDel'){if(S.dlg&&S.dlg.kind==='fiSpec'){S.dlg.confirm=true;S._fiRedraw=true;render();}return true;}
@@ -446,6 +450,7 @@ function fiAct(a,d){
     else if(g.b==='effet')n.effet=txt;
     else if(g.b==='feerie')n.fief={...(n.fief||{}),feerie:txt};
     else if(g.b==='prat')n.prat=txt; /* lot 5 a */
+    else if(g.b==='terr')n.terr=txt; /* lot 5 b */
     else if(g.b==='notes'){if(!canEdit())return true;n.notes=txt;}
     else if(g.b==='item'){n.sait=n.sait||[];if(g.iid){const it=n.sait.find(y=>y.id===g.iid);if(!it)return true;if(!txt){n.sait=n.sait.filter(y=>y.id!==g.iid);}else it.txt=txt;}
       else{if(!txt){S.dlg=null;render();return true;}n.sait.push({id:fiRid('i'),txt,rev:!isGest(),cree:new Date().toISOString(),par:ME||''});}}
@@ -732,7 +737,7 @@ function pnPortrait(c){const G=isGest(),E=canEditC(c),e=pnEye(c);let h='';
   if(!h&&!G)h=`<div class="card"><span class="muted small">Rien de connu pour l'instant.</span></div>`;
   return h;}
 function pnSitu(c){const G=isGest(),E=canEditC(c),e=pnEye(c),B=[];
-  for(const [k,l] of PN_SIT){if(!pnBlkSee(c,k))continue;const OG=k==='orgs'||k==='titres'?ogSitRows(c,k):null; /* lot 5 a */const R=OG||pnSitRows(c,k),nO=k==='poss'?fi6ObjsOf(c.id).length:0;if(!R.length&&!nO&&!E&&!G)continue;
+  for(const [k,l] of PN_SIT){if(!pnBlkSee(c,k))continue;const OG=k==='orgs'||k==='titres'?ogSitRows(c,k):k==='familles'?faSitRows(c):null; /* lot 5 a ; lot 5 b */const R=OG||pnSitRows(c,k),nO=k==='poss'?fi6ObjsOf(c.id).length:0;if(!R.length&&!nO&&!E&&!G)continue;
     const rows=OG?OG.join(''):(k==='poss'?situObjRows(c).join(''):'')+R.map(x=>`<div class="srow"><span>${situNm(x)}${x._k==='orgs'&&x.role?` <span class="muted">· ${esc(x.role)}</span>`:''}${x._k==='lieux'&&situNat(x)!=='autre'?` <span class="muted">· ${SITU_NAT[situNat(x)]}</span>`:''}${x._k==='fiefs'?' <span class="muted">· fief</span>':''}${x.note?`<span class="d">${esc(x.note)}</span>`:''}</span>${E?`<button type="button" class="ibtn" data-act="situEd" data-k="${x._k}" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">✎</button>`:''}</div>`).join('');
     const add=E?`<div class="relbtns"><button type="button" class="addl" data-act="situEd" data-k="${k}">+ ${({titres:'Titre',familles:'Famille',orgs:'Organisation',lieux:'Lieu',poss:'Possession'})[k]}</button></div>`:'';
     B.push({e:!R.length&&!nO,h:pnBlk('pn-'+k,l,R.length+nO?String(R.length+nO):'',(rows||shNone)+add,{empty:!R.length&&!nO,hid:G&&!isFeal(c)&&!e[k],eye:pnEyeB(c,k,l)})});}
@@ -951,7 +956,7 @@ function fi6Act(a,d){if(/^fi6Rt/.test(a))return fi6RattAct(a,d);const f=S.fi&&S.
 /* Suppression d'une fiche : les liens qui la visaient redeviennent du texte (nom gardé) */
 function fi6Unlink(f){if(!f)return;const id=f.id;
   for(const c of Object.values(S.chars||{})){let ch=false;const n=clone(c),s=n.situ||{};
-    for(const k of ['lieux','fiefs','poss','possN','orgs','titres'])for(const e of s[k]||[])if(e.f===id){delete e.f;e.nom=e.nom||f.nom;ch=true;}
+    for(const k of ['lieux','fiefs','poss','possN','orgs','titres','familles'])for(const e of s[k]||[])if(e.f===id){delete e.f;e.nom=e.nom||f.nom;ch=true;}
     for(const e of s.titres||[])if(e.dom&&e.dom.f===id){e.dom={nom:e.dom.nom||f.nom};ch=true;} /* lot 5 a */
     if(n.ppLk)for(const a of Object.keys(n.ppLk))if(n.ppLk[a]===id){delete n.ppLk[a];ch=true;}
     if(ch){S.chars[n.id]=n;persist('chars/'+n.id,n);}}
@@ -965,7 +970,7 @@ function fi6Unlink(f){if(!f)return;const id=f.id;
 /* ---------- Situation : liens vers les fiches (PJ et PNJ) ---------- */
 /* Nom d'une ligne de Situation : lien vers la fiche reliée si la personne la voit */
 const situNm=e=>e.f&&S.fiches[e.f]?fi6Ref(e.f,e.nom):`<b>${esc(e.nom)}</b>`;
-const situFk={fiefs:['lieu'],lieux:['lieu'],poss:['lieu','objet'],possN:['lieu','objet'],orgs:['org']}; /* lot 5 a : organisations */
+const situFk={fiefs:['lieu'],lieux:['lieu'],poss:['lieu','objet'],possN:['lieu','objet'],orgs:['org'],familles:['famille']}; /* lot 5 a : organisations ; lot 5 b : familles */
 function situFField(k,v){const G=situFk[k];if(!G)return '';const L=fiSort(fiAll().filter(x=>G.includes(x.genre)&&fiSee(x)));
   return `<div class="field"><label for="dk-f">Fiche</label><select id="dk-f" data-dk="f"><option value="">— aucune (texte libre) —</option>${L.map(x=>`<option value="${esc(x.id)}"${x.id===v?' selected':''}>${esc((G.length>1?(x.genre==='lieu'?'Lieu · ':'Objet · '):'')+fiPath(x).filter(fiSee).map(p=>p.nom).concat([x.nom]).join(' › '))}</option>`).join('')}</select>${['poss','possN'].includes(k)?'<div class="muted small">Un objet choisi ici est inscrit sur la fiche de l\'objet (détenteur) ; un lieu, dans Résidence et lieux (propriétaire).</div>':''}</div>`;}
 /* Lignes d'objets calculées (Possessions) */
@@ -979,7 +984,7 @@ function situSaveF(cc,g){const fx=g.f.f&&S.fiches[g.f.f];if(!fx||!['poss','possN
 
 /* ---------- Rattachement par nom (Paramètres › Données, gestion) ----------
    Lignes de Situation en texte (fiefs, lieux, possessions) et éléments de PP dont le nom est celui d'une fiche Lieu ou Objet. */
-function fi6RattCands(){const out=[],F=fiAll().filter(x=>x.genre==='lieu'||x.genre==='objet'||x.genre==='org'),by={};for(const x of F){const k=nrm(x.nom);if(k)(by[k]=by[k]||[]).push(x);}
+function fi6RattCands(){const out=[],F=fiAll().filter(x=>['lieu','objet','org','famille'].includes(x.genre)),by={};for(const x of F){const k=nrm(x.nom);if(k)(by[k]=by[k]||[]).push(x);}
   const ign=new Set(S.rtIgn||[]),pick=(nom,G)=>{const L=(by[nrm(nom)]||[]).filter(x=>G.includes(x.genre));return L.length===1?L[0]:null;};
   for(const c of Object.values(S.chars||{})){const s=c.situ||{};
     for(const [k,G] of Object.entries(situFk))for(const e of s[k]||[]){if(e.f||!(e.nom||'').trim())continue;const x=pick(e.nom,G);if(x){const key=c.id+'|'+k+'|'+e.id;if(!ign.has(key))out.push({key,c,k,e,x,lab:e.nom});}}
@@ -991,8 +996,8 @@ function fi6Ratt(r){const c=S.chars[r.c.id];if(!c)return;
   const n=clone(c),s=n.situ={...(n.situ||{})};s[r.k]=(s[r.k]||[]).map(e=>e.id===r.e.id?{...e,f:r.x.id}:e);S.chars[n.id]=n;persist('chars/'+n.id,n);}
 function fi6RattView(){if(!isGest())return '';const L=fi6RattCands();
   return `<div class="card"><h3 class="rs" style="margin-top:0">Rattachement par nom <span class="muted small" style="text-transform:none;letter-spacing:0">${L.length} proposition${L.length>1?'s':''}</span></h3>
-    <div class="ui-small muted" style="margin-bottom:6px">Lignes de Situation saisies en texte (fiefs, lieux, possessions, éléments de PP) qui portent le nom d'une fiche Lieu, Objet ou Organisation. Rien n'est modifié sans validation.</div>
-    ${L.map(r=>`<div class="srow"><span><b>${esc(fiCN(r.c))}</b> · ${esc(r.lab)} → ${lk({t:'fiche',id:r.x.id},r.x.nom)} <span class="muted small">(${r.x.genre==='lieu'?'lieu':r.x.genre==='org'?'organisation':'objet'})</span></span><span style="display:flex;gap:4px"><button class="btn ghost ui-xs" data-act="fi6RtNo" data-k="${esc(r.key)}">Ignorer</button><button class="btn ui-xs" data-act="fi6RtOk" data-k="${esc(r.key)}">Rattacher</button></span></div>`).join('')||'<div class="muted small">Aucune proposition.</div>'}
+    <div class="ui-small muted" style="margin-bottom:6px">Lignes de Situation saisies en texte (fiefs, lieux, possessions, éléments de PP) qui portent le nom d'une fiche Lieu, Objet, Organisation ou Famille. Rien n'est modifié sans validation.</div>
+    ${L.map(r=>`<div class="srow"><span><b>${esc(fiCN(r.c))}</b> · ${esc(r.lab)} → ${lk({t:'fiche',id:r.x.id},r.x.nom)} <span class="muted small">(${r.x.genre==='lieu'?'lieu':r.x.genre==='org'?'organisation':r.x.genre==='famille'?'famille':'objet'})</span></span><span style="display:flex;gap:4px"><button class="btn ghost ui-xs" data-act="fi6RtNo" data-k="${esc(r.key)}">Ignorer</button><button class="btn ui-xs" data-act="fi6RtOk" data-k="${esc(r.key)}">Rattacher</button></span></div>`).join('')||'<div class="muted small">Aucune proposition.</div>'}
     ${L.length>1?`<div class="actions"><button class="btn pri" data-act="fi6RtAll">Tout rattacher</button></div>`:''}</div>`;}
 function fi6RattAct(a,d){if(!/^fi6Rt/.test(a))return false;if(!isGest()||S.visit)return true;const L=fi6RattCands();
   if(a==='fi6RtNo'){S.rtIgn=[...(S.rtIgn||[]),d.k];}
@@ -1243,3 +1248,104 @@ function ogAct(a,d){const f=S.fi&&S.fiches[S.fi],g=S.dlg;
 /* Saisies propres aux fenêtres d'organisation : lignes des rangs, listes qui redessinent la fenêtre */
 document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.ogr===undefined||!S.dlg||S.dlg.kind!=='fiORangs')return;const [i,k]=t.dataset.ogr.split('|');const r=S.dlg.R[+i];if(r)r[k]=t.value;});
 document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.ogre===undefined||!S.dlg||!/^fiO/.test(S.dlg.kind))return;S.dlg[t.dataset.fin]=t.value;if((t.dataset.fin==='cid'&&S.dlg.kind==='fiOMem')||t.dataset.fin==='oid'){S.dlg.sup='';S.dlg.rang='';}S._fiRedraw=true;render();});
+
+/* ---------- Lot 5 b (26/11/2026) : Familles ----------
+   Fiche famille : type Majeure / Mineure / Branche (réservés) ; parent = suzerain (vassale) ou famille mère (branche) ; suzT (suzerain en texte) ;
+   devise, race (nom de race), speci (spécificité), terr (territoires), vasx [{id, nom}] (vassales sans fiche),
+   mbx [{id, nom, note}] (membres en texte), mhid [clé] (membres masqués). Personnage : situ.familles [{id, nom, f, note}].
+   Une branche fait partie de sa famille mère (ses membres en sont membres) ; une vassale non. */
+FI6_EYE.famille=['terr','mem','vas'];
+FI_RES.famille=['Majeure','Mineure','Branche'];
+['faMem','faVas'].forEach(k=>FI_DLG.add(k));
+const faIsBr=f=>!!f&&f.genre==='famille'&&nrm(f.type)==='branche';
+/* Familles dont une fiche fait pleinement partie : remonte les branches */
+function faUp(f){const out=[];let x=f,n=0;while(faIsBr(x)&&x.parent&&n++<20){x=S.fiches[x.parent];if(!x||x.genre!=='famille'||out.includes(x))break;out.push(x);}return out;}
+/* Branches d'une famille (et branches de ses branches) */
+function faBrs(f,seen){seen=seen||new Set([f.id]);const out=[];for(const k of fiSort(fiKidsOf(f.id).filter(x=>faIsBr(x)&&!seen.has(x.id)))){seen.add(k.id);out.push(k,...faBrs(k,seen));}return out;}
+const faKidOrd=K=>fiSort(K.filter(faIsBr)).concat(fiSort(K.filter(x=>!faIsBr(x))));
+function faListSub(f,K){const p=f.parent&&S.fiches[f.parent];if(faIsBr(f))return p?'Branche':(f.type||'');const b=K.filter(faIsBr).length,v=K.length-b;
+  return [p||(f.suzT||'').trim()?(f.type?f.type+' · ':'')+'vassale':(f.type||''),b?b+' branche'+(b>1?'s':''):'',v?v+' vassale'+(v>1?'s':''):''].filter(Boolean).join(' · ');}
+function faSub(f){const p=f.parent&&S.fiches[f.parent];
+  if(p)return [(faIsBr(f)?'branche de ':'vassale de ')+(fiSee(p)?lk({t:'fiche',id:p.id},p.nom):`<span class="nolk">${esc(p.nom)}</span>`)];
+  return (f.suzT||'').trim()?['vassale de '+esc(f.suzT.trim())]:[];}
+function faHeadKv(f){const R=f.race&&typeof RACES!=='undefined'&&RACES[f.race],L=[];
+  if((f.devise||'').trim())L.push(['Devise',`<i>« ${esc(f.devise.trim())} »</i>`]);
+  if(f.race)L.push(['Race dominante',R&&R.cre?lk({t:'race',id:R.cre},f.race):esc(f.race)]);
+  if((f.speci||'').trim())L.push(['Spécificité',esc(f.speci.trim())]);
+  return L.length?`<div class="fakv">${L.map(([a,b])=>`<span class="muted">${a}</span><span>${b}</span>`).join('')}</div>`:'';}
+function faHeadFields(g){const R=typeof pnRaces==='function'?pnRaces():[];
+  return `${ogTxt('suzT',g.suzT,'Ou suzerain en texte (sans fiche)','ex. famille hors de l\'appli')}${ogTxt('devise',g.devise,'Devise')}
+    <div class="field"><label for="og-race">Race dominante</label><select id="og-race" data-fin="race"><option value="">— aucune —</option>${R.concat(g.race&&!R.includes(g.race)?[g.race]:[]).map(r=>`<option value="${esc(r)}"${r===g.race?' selected':''}>${esc(r)}</option>`).join('')}</select></div>
+    ${ogTxt('speci',g.speci,'Spécificité','ex. pouvoir et ambition')}<div class="muted small">Type « Branche » : ses membres font partie de la famille mère. Type « Mineure » rattaché à une famille : vassale (ses membres n'en font pas partie).</div>`;}
+function faHeadApply(n,g){for(const k of ['devise','race','speci','suzT']){const v=(g[k]||'').trim();if(v)n[k]=v;else delete n[k];}if(n.parent)delete n.suzT;}
+/* Membres : Situation › Familles reliée à la fiche ou à l'une de ses branches, puis membres en texte */
+function faMembers(f,all){const G=isGest(),hid=new Set(f.mhid||[]),M=new Set(),out=[];
+  for(const b of [f,...faBrs(f).filter(fiSee)])for(const c of Object.values(S.chars||{})){if(M.has(c.id)||!vis(c)||!fi6CSee(c,'familles'))continue;
+    const e=((c.situ||{}).familles||[]).find(y=>y.f===b.id);if(!e)continue;M.add(c.id);out.push({key:c.id,c,e,br:b===f?null:b,hid:hid.has(c.id)});}
+  for(const x of f.mbx||[])out.push({key:'x:'+x.id,x,br:null,hid:hid.has('x:'+x.id)});
+  const nm=m=>m.c?fiCN(m.c):m.x.nom;
+  return out.filter(m=>all||G||!m.hid).sort((a,b)=>nm(a).localeCompare(nm(b),'fr',{sensitivity:'base'}));}
+function faMRow(f,m){const G=isGest(),ed=fiCanEd(f),c=m.c,nm=c?fiCN(c):m.x.nom,name=c?(vis(c)?lk({t:'perso',id:c.id},nm):`<b>${esc(nm)}</b>`):`<b>${esc(nm)}</b>`;
+  const oth=c?((c.situ||{}).familles||[]).map(y=>y.f&&S.fiches[y.f]).filter(x=>x&&x.id!==f.id&&!(m.br&&x.id===m.br.id)&&fiSee(x)&&!faUp(x).some(u=>u.id===f.id)).map(x=>'aussi '+esc(x.nom)):[];
+  const note=(m.e||m.x||{}).note,sub=(note?[esc(note)]:[]).concat(oth);
+  return `<div class="srow ogm${m.hid?' fihid':''}"><span class="ogmn"><span>${name}${c&&c.type==='PJ'?' <span class="tag2">PJ</span>':''}${sub.length?`<span class="d">${sub.join(' · ')}</span>`:''}</span></span>`
+    +(ed&&!m.br?`<button type="button" class="ibtn" data-act="faMem" data-k="${esc(m.key)}" aria-label="Modifier ${esc(nm)}">✎</button>`:'')
+    +(G?eyeBtn('fiOEyeM',`data-k="${esc(m.key)}"`,!m.hid,'Membre '+nm):'')+`</div>`;}
+function faBlocks(f){const G=isGest(),ed=fiCanEd(f),e=fiEyeOf(f),eye=(k,l)=>G?eyeBtn('fiEye',`data-k="${k}"`,!!e[k],l):'',none=x=>`<div class="muted small">${x}</div>`;let h='';
+  if(fiBlkSee(f,'terr')){const L=ogLieux(f),t=(f.terr||'').trim();
+    if(t||L.length||ed)h+=fiBlk('terr','Territoires',L.length?String(L.length):'',(t?fiRich(f.terr):'')
+      +(L.length?`<div class="lab2" style="margin-top:6px">Lieux liés${fi6Calc()}</div>`+L.map(({l,y})=>`<div class="srow"><span>${lk({t:'fiche',id:l.id},l.nom)}${y.note?`<span class="d">${esc(y.note)}</span>`:''}</span>${ed&&fiCanEd(l)?`<button type="button" class="ibtn" data-act="fiOLieuX" data-l="${esc(l.id)}" data-i="${esc(y.id)}" aria-label="Retirer ce lieu">✕</button>`:''}</div>`).join(''):'')
+      +(!t&&!L.length?none('Non renseigné.'):'')+(ed?`<div class="radd"><button class="btn" data-act="fiOLieu">+ Lieu</button></div>`:''),{edit:ed?'fiEd':'',ea:' data-b="terr"',hid:G&&!e.terr,eye:eye('terr','Territoires')});}
+  if(fiBlkSee(f,'mem')){const L=faMembers(f),D=L.filter(m=>!m.br),grs=[];if(D.length)grs.push({k:'dir',t:f.nom,L:D});
+    for(const b of faBrs(f).filter(fiSee)){const R=L.filter(m=>m.br===b);if(R.length)grs.push({k:'b'+b.id,t:'Branche · '+b.nom,L:R});}
+    const body=!L.length?none('Aucun membre pour l\'instant.'):grs.length===1&&grs[0].k==='dir'?D.map(m=>faMRow(f,m)).join(''):grs.map(g=>ogGrp(f,g,g.L.map(m=>faMRow(f,m)).join(''))).join('');
+    h+=fiBlk('mem','Membres'+fi6Calc(),L.length?String(L.length):'',body+(ed?`<div class="radd"><button class="btn" data-act="faMem" data-k="">+ Membre</button></div>`:'')
+      +`<div class="muted small" style="margin-top:4px">Repris de la Situation des personnages${faBrs(f).length?', branches comprises':''} ; les membres des familles vassales n'en font pas partie.</div>`,{hid:G&&!e.mem,eye:eye('mem','Membres')});}
+  if(fiBlkSee(f,'vas')){const K=fiKidsOf(f.id).filter(x=>x.genre==='famille'&&fiSee(x)),Br=fiSort(K.filter(faIsBr)),V=fiSort(K.filter(x=>!faIsBr(x))),X=f.vasx||[];
+    if(K.length||X.length||ed){const row=x=>{const n=faMembers(x).length;return `<div class="srow"><span>${lk({t:'fiche',id:x.id},x.nom)}${x.type&&!faIsBr(x)?` <span class="muted">· ${esc(x.type)}</span>`:''}${x.vis!=='rev'?' <span class="tag2">préparée</span>':''}</span><span class="muted small">${n} membre${n>1?'s':''}</span></div>`;};
+      let b='';if(Br.length)b+='<div class="lab2">Branches</div>'+Br.map(row).join('');if(V.length)b+='<div class="lab2">Vassales</div>'+V.map(row).join('');
+      if(X.length)b+='<div class="lab2">Vassales sans fiche</div>'+X.map(x=>`<div class="srow"><span><b>${esc(x.nom)}</b></span>${ed?`<span style="display:flex;gap:4px">${fiCanNew()?`<button type="button" class="btn ghost ui-xs" data-act="faVasF" data-i="${esc(x.id)}">+ Fiche</button>`:''}<button type="button" class="ibtn" data-act="faVasX" data-i="${esc(x.id)}" aria-label="Retirer ${esc(x.nom)}">✕</button></span>`:''}</div>`).join('');
+      h+=fiBlk('vas','Vassales et branches'+fi6Calc(),K.length+X.length?String(K.length+X.length):'',(b||none('Aucune.'))
+        +(ed?`<div class="radd"><button class="btn" data-act="fiNew" data-g="famille">+ Nouvelle famille rattachée</button> <button class="btn" data-act="faVas">+ Nom sans fiche</button></div><div class="muted small" style="margin-top:4px">« + Fiche » crée la famille (Mineure, vassale de ${esc(f.nom)}) et retire le nom de la liste.</div>`:''),{hid:G&&!e.vas,eye:eye('vas','Vassales et branches')});}}
+  return h;}
+/* Situation › Familles : lignes saisies, puis familles mères des branches (ligne calculée) */
+function faSitRows(c){const E=canEditC(c),L=(c.situ||{}).familles||[],have=new Set(L.map(e=>e.f).filter(Boolean));
+  const rows=L.map(e=>{const x=e.f&&S.fiches[e.f];return `<div class="srow"><span>${situNm(e)}${x&&faIsBr(x)&&fiSee(x)?' <span class="tag2">Branche</span>':''}${e.note?`<span class="d">${esc(e.note)}</span>`:''}</span>${srcChip('jeu')}${E?`<button type="button" class="ibtn" data-act="situEd" data-k="familles" data-i="${esc(e.id)}" aria-label="Modifier ${esc(e.nom||'')}">✎</button>`:''}</div>`;});
+  for(const e of L){const x=e.f&&S.fiches[e.f];for(const u of faUp(x))if(!have.has(u.id)){have.add(u.id);if(fiSee(u))rows.push(`<div class="srow"><span>${lk({t:'fiche',id:u.id},u.nom)} <span class="muted">· par sa branche</span></span></div>`);}}
+  return rows;}
+/* ---------- Fenêtres et actions ---------- */
+function faSheet(g){const f=S.fiches[g.fid];if(!f||!fiCanEd(f))return null;
+  if(g.kind==='faVas')return fiShell(g,'Vassale sans fiche',`<h2>Vassale sans fiche</h2><div class="muted small">${esc(f.nom)}</div>${ogTxt('nom',g.nom,'Nom')}<div class="muted small">Famille vassale qui n'a pas (encore) de fiche.</div>${ogFoot(g,'faVasSave')}`);
+  if(g.kind==='faMem'){const ex=g.k&&g.k.startsWith('x:'),edC=g.k&&!ex,c=g.cid&&S.chars[g.cid];
+    return fiShell(g,'Membre',`<h2>${g.k?'Membre':'Nouveau membre'}</h2><div class="muted small">${esc(f.nom)}</div>
+      ${edC?`<div class="field"><label>Personnage</label><div class="inp ro">${esc(c?fiCN(c):'')}</div></div>`:ex?'':ogSel('cid',ogCh(),g.cid,'Personnage','— aucun (texte libre) —',true)}
+      ${ex||!g.cid?ogTxt('nom',g.nom,ex?'Nom':'Ou en texte libre'):''}${ogTxt('note',g.note,'Note')}
+      <div class="muted small">${ex||(!g.k&&!g.cid)?'Membre sans fiche personnage, gardé sur la fiche de la famille.':'Inscrit dans la Situation du personnage (Familles).'}</div>${ogFoot(g,'faMemSave',g.k?'faMemDel':'')}`);}
+  return null;}
+function faAct(a,d){const f=S.fi&&S.fiches[S.fi],g=S.dlg;if(S.visit)return true;
+  const err=t=>{g.err=t;S._fiRedraw=true;render();return true;};
+  if(a==='faVas'){if(!fiCanEd(f))return true;fiOpenDlg({kind:'faVas',fid:f.id,nom:'',err:''});render();return true;}
+  if(a==='faVasSave'){const x=g&&S.fiches[g.fid];if(!x||!fiCanEd(x))return true;const nom=(g.nom||'').trim();if(!nom)return err('Écris un nom.');
+    if((x.vasx||[]).some(y=>nrm(y.nom)===nrm(nom))||fiKidsOf(x.id).some(y=>nrm(y.nom)===nrm(nom)))return err('Déjà dans la liste.');
+    const n=clone(x);n.vasx=(n.vasx||[]).concat([{id:uid('v'),nom}]);S.dlg=null;fiSave(n);return true;}
+  if(a==='faVasX'){if(!fiCanEd(f))return true;const n=clone(f);n.vasx=(n.vasx||[]).filter(y=>y.id!==d.i);if(!n.vasx.length)delete n.vasx;fiSave(n);return true;}
+  if(a==='faVasF'){if(!fiCanEd(f)||!fiCanNew())return true;const y=(f.vasx||[]).find(z=>z.id===d.i);if(!y)return true;const now=new Date().toISOString(),rev=canEdit()?f.vis==='rev':true;
+    const nf={id:fiRid('f-'),genre:'famille',nom:y.nom,type:'Mineure',parent:f.id,kanka:'',vis:rev?'rev':'prep',eye:Object.fromEntries(['desc','sait'].concat(FI6_EYE.famille).map(k=>[k,rev])),desc:'',sait:[],notes:'',par:ME||'',cree:now,modif:now};
+    const n=clone(f);n.vasx=n.vasx.filter(z=>z.id!==y.id);if(!n.vasx.length)delete n.vasx;fiSave(nf,true);fiSave(n);setTimeout(()=>toast('Fiche créée : '+y.nom),0);return true;}
+  if(a==='faMem'){if(!fiCanEd(f))return true;const v={kind:'faMem',fid:f.id,k:d.k||'',cid:'',nom:'',note:'',err:''};
+    if(d.k&&d.k.startsWith('x:')){const x=(f.mbx||[]).find(y=>'x:'+y.id===d.k);if(!x)return true;v.nom=x.nom;v.note=x.note||'';}
+    else if(d.k){const c=S.chars[d.k],e=c&&((c.situ||{}).familles||[]).find(y=>y.f===f.id);if(!e)return true;v.cid=c.id;v.note=e.note||'';}
+    fiOpenDlg(v);render();return true;}
+  if(a==='faMemSave'||a==='faMemDel'){const x=g&&S.fiches[g.fid];if(!x||!fiCanEd(x))return true;const ex=g.k&&g.k.startsWith('x:');
+    if(a==='faMemDel'&&!g.conf){g.conf=true;S._fiRedraw=true;render();return true;}
+    if(ex||(!g.k&&!g.cid)){const n=clone(x);n.mbx=(n.mbx||[]).slice();const id=ex?g.k.slice(2):'',i=n.mbx.findIndex(y=>y.id===id);
+      if(a==='faMemDel'){if(i>=0)n.mbx.splice(i,1);n.mhid=(n.mhid||[]).filter(k=>k!==g.k);if(!n.mhid.length)delete n.mhid;if(!n.mbx.length)delete n.mbx;S.dlg=null;fiSave(n);return true;}
+      const nom=(g.nom||'').trim();if(!nom)return err('Choisis un personnage ou écris un nom.');const v=ogClean({id:id||uid('m'),nom,note:(g.note||'').trim()});if(i>=0)n.mbx[i]=v;else n.mbx.push(v);S.dlg=null;fiSave(n);return true;}
+    const c=S.chars[g.cid||g.k];if(!c||!vis(c))return err('Choisis un personnage.');const L=(c.situ||{}).familles||[],e=L.find(y=>y.f===x.id);
+    if(a==='faMemDel'){if(e)ogSetSitu(c.id,'familles',e.id,null);S.dlg=null;render();return true;}
+    if(!g.k&&e)return err('Déjà membre de cette famille.');
+    const base=e||L.find(y=>!y.f&&nrm(y.nom)===nrm(x.nom)); /* ligne en texte du même nom : reliée */
+    const v=ogClean({...(base||{}),id:base?base.id:uid('s'),date:(base&&base.date)||today(),nom:x.nom,f:x.id,note:(g.note||'').trim()});
+    ogSetSitu(c.id,'familles',base&&base.id,v);S.dlg=null;render();setTimeout(()=>toast('Membre enregistré'),0);return true;}
+  return true;}
+document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.ogre===undefined||!S.dlg||S.dlg.kind!=='faMem')return;S.dlg[t.dataset.fin]=t.value;S._fiRedraw=true;render();});
