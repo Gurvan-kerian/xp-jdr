@@ -518,8 +518,15 @@ const relTaille=(rang,obj)=>{const v=((relP().taille||{})[rang]||{})[obj];return
 const relDiff=(rang,obj)=>{const v=((relP().diff||{})[rang]||{})[obj];return v===''||v==null?null:+v;};
 const relRang=r=>{const p=r.pnj&&S.chars[r.pnj];return p?rangOf(p):(r.rang||'');};
 const relPnjs=c=>Object.values(S.chars).filter(p=>p.type==='PNJ'&&vis(p)&&p.id!==c.id).sort((a,z)=>(a.court||'').localeCompare(z.court||''));
+/* Correctif 26/11/2026 : contacts reliés aux PNJ (rattachement par nom, création du PNJ à la volée) */
+function ctcMatch(nom){const n=nrm(nom);if(!n)return [];return Object.values(S.chars).filter(p=>p.type==='PNJ'&&[p.nom,p.court,p.surnom].some(v=>v&&nrm(v)===n));}
+function ctcPnjOf(x){if(x.pnj&&S.chars[x.pnj])return x.pnj;if(x.noPnj)return null;const m=ctcMatch(x.prec);return m.length===1?m[0].id:null;}
+function ctcNewPnj(nom){const nc=pnMake({nom:nom.trim(),race:HUMAIN,rang:pnjRangs()[0]||'Larbin',vis:'rev'});saveChar(nc);return nc;}
+/* élément de PP « contact » : relié au PNJ du même nom, sinon fiche créée (nom seul) */
+function ctcLinkX(x){if(!x||x.rub!=='C'||!(x.prec||'').trim()||x.pnj)return;const m=ctcMatch(x.prec);if(m.length===1)x.pnj=m[0].id;else if(!m.length)x.pnj=ctcNewPnj(x.prec).id;}
+const pnjPickF=(f,pn,lab)=>`<div class="field"><label for="dk-pnj">${lab||'PNJ (liste de l\'appli)'}</label><select id="dk-pnj" data-dk="pnj"><option value="">— choisir —</option>${pn.map(x=>`<option value="${esc(x.id)}"${f.pnj===x.id?' selected':''}>${esc(x.court||x.nom)}</option>`).join('')}<option value="__new"${f.pnj==='__new'?' selected':''}>+ Créer un nouveau PNJ</option></select></div>${f.pnj==='__new'?fld('nnom','Nom du nouveau PNJ',f.nnom)+'<div class="muted small">Fiche créée avec le nom seul (Humain, rang '+esc(pnjRangs()[0]||'Larbin')+', révélée), à compléter ensuite.</div>':''}`;
 function relsOf(c){const R=(c.rel||[]).filter(r=>r.pnj||r.grp).map(r=>({...r}));
-  for(const a of ppBought(c).filter(a=>a.ppel.rub==='C'))R.push({id:'pp:'+a.id,virt:true,nom:a.ppel.nom+(a.ppel.prec?' ('+a.ppel.prec+')':''),niv:'contact',src:'pp',note:ppBits(a.ppel)});
+  for(const a of ppBought(c).filter(a=>a.ppel.rub==='C')){const pid=ctcPnjOf(a.ppel);R.push({id:'pp:'+a.id,aid:a.id,virt:true,...(pid?{pnj:pid}:{}),nom:a.ppel.prec||a.ppel.nom,niv:'contact',src:'pp',note:pid?[a.ppel.nom,ppBits({...a.ppel,prec:''})].filter(Boolean).join(' · '):ppBits(a.ppel)});}
   for(const f of Object.values(S.chars).filter(f=>f.pj===c.id&&vis(f)))if(!R.some(r=>r.pnj===f.id&&r.niv==='allie'))R.push({id:'feal:'+f.id,pnj:f.id,virt:true,niv:'allie',src:'feal'});
   return R;}
 function relOrgBonus(c,r){const p=r.pnj&&S.chars[r.pnj];if(!p)return 0;const a=(situOf(c).orgs||[]).map(o=>nrm(o.nom)),b=(situOf(p).orgs||[]).map(o=>nrm(o.nom));return a.some(n=>n&&b.includes(n))?(relP().bonusOrg!=null&&relP().bonusOrg!==''?+relP().bonusOrg:1):0;}
@@ -532,7 +539,7 @@ function jaugeBox(c,E,j,head,acts){const full=(j.cases||0)>=j.taille;
       :E&&j.done&&acts.del?`<div class="relbtns"><button type="button" class="btn ghost sm" data-act="${acts.del}" data-id="${esc(acts.id||'')}" data-j="${esc(j.id)}">Retirer</button></div>`:''}</div>`;}
 function relRow(c,r,E){const rk=relRang(r);
   const sub=r.grp?`<span class="srcb j">contact de groupe</span>${r.orig?' · '+esc(r.orig):''}`:r.src==='pp'?srcChip('pp'):r.src==='feal'?srcChip('feal'):'';
-  return `<div class="relr"><div class="relh"><span>${relName(r)}${rk?` <span class="muted small">· ${esc(rk)}</span>`:''}</span><span class="rr"><span class="lvl ${r.niv}">${REL_NIV[r.niv]||''}</span>${E&&!r.virt?`<button type="button" class="ibtn" data-act="${r.grp?'relGrp':'relEd'}" data-id="${esc(r.id)}" aria-label="Modifier">✎</button>`:''}</span></div>${sub||r.note?`<div class="muted small">${sub}${sub&&r.note?' · ':''}${r.note?esc(r.note):''}</div>`:''}</div>`;}
+  return `<div class="relr"><div class="relh"><span>${relName(r)}${rk?` <span class="muted small">· ${esc(rk)}</span>`:''}</span><span class="rr"><span class="lvl ${r.niv}">${REL_NIV[r.niv]||''}</span>${E&&r.src==='pp'?`<button type="button" class="${r.pnj?'ibtn':'addl'}" data-act="relPP" data-id="${esc(r.aid)}" aria-label="Rattacher à un PNJ">${r.pnj?'✎':'Rattacher'}</button>`:''}${E&&!r.virt?`<button type="button" class="ibtn" data-act="${r.grp?'relGrp':'relEd'}" data-id="${esc(r.id)}" aria-label="Modifier">✎</button>`:''}</span></div>${sub||r.note?`<div class="muted small">${sub}${sub&&r.note?' · ':''}${r.note?esc(r.note):''}</div>`:''}</div>`;}
 function viewRelations(c){const R=relsOf(c),E=canEditC(c);let h='';
   const pend=obj=>R.flatMap(r=>(r.jauges||[]).filter(j=>j.obj===obj).map(j=>{const bo=relOrgBonus(c,r),d=j.diff!=null&&j.diff!==''?+j.diff:relDiff(relRang(r),obj);
     return jaugeBox(c,E,{...j,diffShow:d!=null?d-bo:null},`<div class="relh"><span>${relName(r)} <span class="muted small">· ${esc(relRang(r))}</span></span><span class="tagp">en cours ${REL_OBJ[obj][2]}</span></div>${bo?`<div class="muted small">dont même organisation −${bo}</div>`:''}`,{id:r.id,add:'relAddS',del:'relJDel',val:'relVal',valLab:'devient '+REL_OBJ[obj][3].toLowerCase()});})).join('');
@@ -549,18 +556,21 @@ function viewRelations(c){const R=relsOf(c),E=canEditC(c);let h='';
   return h;}
 /* ---------- Journaux : remplacés au lot 2 par l'onglet Chronique (fiches.js, jrView) ---------- */
 /* ---------- Fenêtres et actions des onglets Relations et Situation ---------- */
-const SH_DLG=new Set(['situEd','relEd','relNew','relGrp','relOJ']);
+const SH_DLG=new Set(['situEd','relEd','relNew','relGrp','relOJ','relPP']);
 const dlgHead=(t,sub)=>`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(t)}"><div class="in"><div class="shd"><h2 style="margin:0">${esc(t)}</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>${sub?`<div class="muted small" style="margin-bottom:8px">${sub}</div>`:''}`;
 const fld=(k,l,v,ta)=>`<div class="field"><label for="dk-${k}">${l}</label>${ta?`<textarea id="dk-${k}" rows="${ta}" data-dk="${k}">${esc(v||'')}</textarea>`:`<input id="dk-${k}" type="${['taille','n','diff'].includes(k)?'number':'text'}"${['taille','n','diff'].includes(k)?' min="0" inputmode="numeric"':''} data-dk="${k}" value="${esc(v==null?'':v)}">`}</div>`;
 const segF=(k,v,opts,l)=>`<div class="field"><label>${l}</label><div class="seg" role="group" aria-label="${esc(l)}">${opts.map(([o,t])=>`<button type="button" data-act="dlgSet" data-k="${k}" data-v="${o}" aria-pressed="${v===o}">${t}</button>`).join('')}</div></div>`;
 const dlgFoot=(del,ok)=>`${S.dlg&&S.dlg.err?`<div class="bad small" role="alert">${esc(S.dlg.err)}</div>`:''}<div class="actions" style="margin-top:12px">${del?`<button class="btn ghost" data-act="${del}" style="margin-right:auto">${S.dlg&&S.dlg.conf?'Confirmer le retrait':'Retirer'}</button>`:''}<button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="${ok}">Enregistrer</button></div></div></div>`;
 function shDlgSheet(g){const c=S.chars[g.cid];if(!c)return null;const f=g.f;
   if(g.kind==='situEd'){const L=SITU.find(s=>s[0]===g.k);return dlgHead((g.i?'Modifier : ':'Ajouter : ')+L[2].toLowerCase(),esc(c.court))+fld('nom','Nom',f.nom)+(g.k==='orgs'?fld('role','Rôle dans l\'organisation',f.role):'')+situFField(g.k,f.f)+(g.k==='lieux'?segF('nat',f.nat||'res',[['res','Résidence'],['prop','Propriétaire'],['autre','Autre lieu']],'Nature'):'')+fld('note','Note',f.note,2)+(['familles','orgs'].includes(g.k)?'<div class="muted small">Le lien vers la fiche viendra avec les fiches Organisation et Famille.</div>':'')+dlgFoot(g.i?'situDel':'','situSave');}
-  if(g.kind==='relNew'){const pn=relPnjs(c).filter(p=>!(c.rel||[]).some(r=>r.pnj===p.id&&r.niv===g.niv)),p=f.pnj&&S.chars[f.pnj],rk=p?rangOf(p):'',obj=REL_OBJ[g.niv]?g.niv:null;
-    const miss=obj&&p&&(relTaille(rk,obj)==null||relDiff(rk,obj)==null);
-    return dlgHead('Ajouter : '+REL_NIV[g.niv].toLowerCase(),esc(c.court))+`<div class="field"><label for="dk-pnj">PNJ (liste de l'appli)</label><select id="dk-pnj" data-dk="pnj"><option value="">— choisir —</option>${pn.map(x=>`<option value="${esc(x.id)}"${f.pnj===x.id?' selected':''}>${esc(x.court||x.nom)}</option>`).join('')}</select></div>`
+  if(g.kind==='relPP'){const a=(c.achats||[]).find(x=>x.id===g.aid);if(!a||!a.ppel)return null;const cur=ctcPnjOf(a.ppel);
+    return dlgHead('Contact acheté en PP',esc(c.court)+' · '+esc(a.ppel.nom)+(a.ppel.prec?' : '+esc(a.ppel.prec):''))+pnjPickF(f,relPnjs(c),'PNJ relié')
+      +`${g.err?`<div class="bad small" role="alert">${esc(g.err)}</div>`:''}<div class="actions" style="margin-top:12px">${cur?'<button class="btn ghost" data-act="relPPDet" style="margin-right:auto">Détacher</button>':''}<button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="relPPSave">Enregistrer</button></div></div></div>`;}
+  if(g.kind==='relNew'){const pn=relPnjs(c).filter(p=>!(c.rel||[]).some(r=>r.pnj===p.id&&r.niv===g.niv)),nw=f.pnj==='__new',p=!nw&&f.pnj&&S.chars[f.pnj],rk=p?rangOf(p):nw?(pnjRangs()[0]||'Larbin'):'',obj=REL_OBJ[g.niv]?g.niv:null;
+    const miss=obj&&(p||nw)&&(relTaille(rk,obj)==null||relDiff(rk,obj)==null);
+    return dlgHead('Ajouter : '+REL_NIV[g.niv].toLowerCase(),esc(c.court))+``+pnjPickF(f,pn)
       +(p?`<div class="field"><label>Rang (repris de sa fiche)</label><div class="inp ro">${esc(rk||'—')}</div></div>`:'')+fld('note','Note',f.note,2)
-      +(obj&&p?(miss?`<div class="muted small">Jauge ${REL_OBJ[obj][3].toLowerCase()} pour le rang ${esc(rk)} pas encore réglée dans les Paramètres : saisis-la pour ouvrir une jauge.</div><div style="display:flex;gap:8px"><div style="flex:1">${fld('taille','Jauge (cases)',f.taille)}</div><div style="flex:1">${fld('diff','Difficulté',f.diff)}</div></div>`:`<div class="muted small">Ouvrir une jauge : ${relTaille(rk,obj)} cases, difficulté ${relDiff(rk,obj)} (Paramètres, ${esc(rk)} · ${REL_OBJ[obj][3]}).</div>`):'')
+      +(obj&&(p||nw)?(miss?`<div class="muted small">Jauge ${REL_OBJ[obj][3].toLowerCase()} pour le rang ${esc(rk)} pas encore réglée dans les Paramètres : saisis-la pour ouvrir une jauge.</div><div style="display:flex;gap:8px"><div style="flex:1">${fld('taille','Jauge (cases)',f.taille)}</div><div style="flex:1">${fld('diff','Difficulté',f.diff)}</div></div>`:`<div class="muted small">Ouvrir une jauge : ${relTaille(rk,obj)} cases, difficulté ${relDiff(rk,obj)} (Paramètres, ${esc(rk)} · ${REL_OBJ[obj][3]}).</div>`):'')
       +`${g.err?`<div class="bad small" role="alert">${esc(g.err)}</div>`:''}<div class="actions" style="margin-top:12px"><button class="btn ghost" data-act="closeSheet">Annuler</button>${obj?`<button class="btn" data-act="relNewJ">Ouvrir une jauge</button>`:''}<button class="btn pri" data-act="relNewSave">Enregistrer</button></div></div></div>`;}
   if(g.kind==='relEd'){const r=(c.rel||[]).find(x=>x.id===g.id);if(!r)return null;return dlgHead(REL_NIV[r.niv]||'Relation',esc(r.pnj&&S.chars[r.pnj]?S.chars[r.pnj].court:r.nom||''))+fld('note','Note',f.note,2)+dlgFoot('relDel','relEdSave');}
   if(g.kind==='relGrp')return dlgHead(g.id?'Contact de groupe':'Nouveau contact de groupe',esc(c.court))+fld('nom','Intitulé (ex. Les druides)',f.nom)+fld('orig','Origine (ex. atout Ami des druides)',f.orig)+fld('note','Note',f.note,2)+dlgFoot(g.id?'relDel':'','relGrpSave');
@@ -569,7 +579,7 @@ function shDlgSheet(g){const c=S.chars[g.cid];if(!c)return null;const f=g.f;
 function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
   if(a==='shFold'){S.shFold={...(S.shFold||{}),[d.k]:!shFolded(d.k,d.e==='1')};render();return true;}
   if(a==='dlgSet'&&S.dlg&&S.dlg.f){S.dlg.f[d.k]=d.k==='pub'||d.k==='res'?d.v==='1':d.v;render();return true;}
-  const OPEN=['situEd','relNew','relEd','relGrp','relOJ','relAddS','relOAdd','relVal','relJDel','relOVal','relODel'],SAVE=['situSave','situDel','relNewSave','relNewJ','relEdSave','relDel','relGrpSave','relOSave'];
+  const OPEN=['situEd','relNew','relEd','relGrp','relOJ','relPP','relAddS','relOAdd','relVal','relJDel','relOVal','relODel'],SAVE=['situSave','situDel','relNewSave','relNewJ','relPPSave','relPPDet','relEdSave','relDel','relGrpSave','relOSave'];
   if(!OPEN.includes(a)&&!SAVE.includes(a))return false;
   const cc=OPEN.includes(a)?c:S.chars[S.dlg&&S.dlg.cid];if(!cc||!canEditC(cc))return true;
   const now=today(),g=S.dlg;
@@ -580,8 +590,18 @@ function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
     setC(n=>{const s=n.situ={...(n.situ||{})},L=(s[g.k]||[]).slice(),v={nom,...((g.f.role||'').trim()&&g.k==='orgs'?{role:g.f.role.trim()}:{}),...((g.f.note||'').trim()?{note:g.f.note.trim()}:{}),...(g.k==='lieux'?{nat:g.f.nat||'res',res:(g.f.nat||'res')==='res'}:{}),f:fx?fx.id:undefined};
       const i=L.findIndex(x=>x.id===g.i);if(i>=0)L[i]={...L[i],...v,role:v.role,note:v.note,res:v.res,nat:v.nat,f:v.f};if(!v.f)delete L[i].f;else L.push({id:uid('s'),date:now,...v});s[g.k]=L;});S.dlg=null;toast('Enregistré');}
   else if(a==='situDel'){if(!g.conf){g.conf=true;render();return true;}setC(n=>{const s=n.situ={...(n.situ||{})};s[g.k]=(s[g.k]||[]).filter(x=>x.id!==g.i);});S.dlg=null;}
-  else if(a==='relNew'){S.dlg={kind:'relNew',cid:cc.id,niv:d.niv,f:{pnj:'',note:'',taille:'',diff:''}};}
-  else if(a==='relNewSave'||a==='relNewJ'){const f=g.f,p=f.pnj&&S.chars[f.pnj];if(!p){g.err='Choisis un PNJ dans la liste.';render();return true;}
+  else if(a==='relNew'){S.dlg={kind:'relNew',cid:cc.id,niv:d.niv,f:{pnj:'',nnom:'',note:'',taille:'',diff:''}};}
+  else if(a==='relPP'){const x=(cc.achats||[]).find(y=>y.id===d.id);if(!x||!x.ppel)return true;const cur=ctcPnjOf(x.ppel);S.dlg={kind:'relPP',cid:cc.id,aid:x.id,f:{pnj:cur||(ctcMatch(x.ppel.prec).length?'':(x.ppel.prec?'__new':'')),nnom:x.ppel.prec||''}};}
+  else if(a==='relPPSave'||a==='relPPDet'){const f=g.f;let pid=null;
+    if(a==='relPPSave'){if(f.pnj==='__new'){const nm=(f.nnom||'').trim();if(!nm){g.err='Le nom du nouveau PNJ est obligatoire.';render();return true;}pid=ctcNewPnj(nm).id;}
+      else{if(!f.pnj||!S.chars[f.pnj]){g.err='Choisis un PNJ dans la liste.';render();return true;}pid=f.pnj;}}
+    setC(n=>{const x=(n.achats||[]).find(y=>y.id===g.aid);if(!x||!x.ppel)return;if(pid){x.ppel.pnj=pid;delete x.ppel.noPnj;}else{delete x.ppel.pnj;x.ppel.noPnj=true;}});S.dlg=null;toast(pid?'Contact relié':'Contact détaché');}
+  else if(a==='relNewSave'||a==='relNewJ'){const f=g.f;
+    if(f.pnj==='__new'){const nm=(f.nnom||'').trim();if(!nm){g.err='Le nom du nouveau PNJ est obligatoire.';render();return true;}
+      if(a==='relNewJ'&&g.niv==='allie'){g.err='Un nouveau PNJ n\'est pas encore un contact : enregistre-le directement comme allié, ou ouvre d\'abord une jauge vers contact.';render();return true;}
+      if(a==='relNewJ'){const rk0=pnjRangs()[0]||'Larbin';if(!(relTaille(rk0,g.niv)||parseInt(f.taille,10)>0)){g.err='Indique la taille de la jauge (nombre de cases).';render();return true;}}
+      f.pnj=ctcNewPnj(nm).id;}
+    const p=f.pnj&&S.chars[f.pnj];if(!p){g.err='Choisis un PNJ dans la liste.';render();return true;}
     const R=(cc.rel||[]).slice(),i=R.findIndex(r=>r.pnj===p.id&&r.niv!=='ennemi'||r.pnj===p.id&&g.niv==='ennemi');const note=(f.note||'').trim();
     if(a==='relNewSave'){setC(n=>{const L=(n.rel||[]).slice(),k=L.findIndex(r=>r.pnj===p.id);if(k>=0)L[k]={...L[k],niv:g.niv,...(note?{note}:{})};else L.push({id:uid('r'),pnj:p.id,niv:g.niv,date:now,...(note?{note}:{})});n.rel=L;});S.dlg=null;toast('Enregistré');}
     else{const obj=g.niv,rk=rangOf(p),cur=R.find(r=>r.pnj===p.id);
@@ -831,7 +851,7 @@ function cwValSheet(g){const b=S.brouillons&&S.brouillons[g.bid];if(!b||!isGest(
     <div class="actions"><button class="btn" data-act="closeSheet">Fermer</button><button class="btn" data-act="cwBackDraft">Renvoyer en brouillon</button><button class="btn pri" data-act="cwValOk"${crSendable(b)?'':' disabled'}>Valider la fiche</button></div>`);}
 function cwValidate(g){const b=S.brouillons&&S.brouillons[g.bid];if(!b||!isGest()||!crSendable(b))return;const court=((b.d.ident||{}).court||'').trim();
   let id=slug(court);while(S.chars[id])id=slug(court);
-  const {c,ev}=crBuild(b,{id,xp:b.kind==='feal'?0:g.xp});c.par=b.par||'';c.cree=c.cree||new Date().toISOString();
+  const {c,ev}=crBuild(b,{id,xp:b.kind==='feal'?0:g.xp});c.par=b.par||'';for(const x of (c.achats||[]))if(x.ppel)ctcLinkX(x.ppel); /* correctif 26/11 : contacts reliés aux PNJ */c.cree=c.cree||new Date().toISOString();
   saveChar(c);
   const ow=b.kind==='feal'?'':(b.d.ident||{}).owner;if(ow&&S.players[ow]){const p=clone(S.players[ow]);if(!(p.persos||[]).includes(id)){p.persos=[...(p.persos||[]),id];savePlayer(p);}}
   if(ev)saveEvents([...S.events,ev]);

@@ -710,9 +710,9 @@ function pnSitu(c){const G=isGest(),E=canEditC(c),e=pnEye(c),B=[];
 function pnRel(c){const G=isGest(),E=canEditC(c),e=pnEye(c);let h='';
   /* PJ liés : calculés depuis les Relations des PJ */
   const fp=isFeal(c)&&vis(S.chars[c.pj])?S.chars[c.pj]:null;
-  const P=(fp?[{pj:fp,r:{niv:'feal'}}]:[]).concat(pjIds().map(i=>S.chars[i]).flatMap(pj=>(pj.rel||[]).filter(r=>r.pnj===c.id&&!(fp&&pj.id===fp.id&&r.niv==='allie')).map(r=>({pj,r}))));
+  const P=(fp?[{pj:fp,r:{niv:'feal'}}]:[]).concat(pjIds().map(i=>S.chars[i]).filter(Boolean).flatMap(pj=>(pj.rel||[]).filter(r=>r.pnj===c.id&&!(fp&&pj.id===fp.id&&r.niv==='allie')).concat(relsOf(pj).filter(r=>r.src==='pp'&&r.pnj===c.id)).map(r=>({pj,r}))));
   const pl=P.map(({pj,r})=>{if(r.niv==='feal')return `<div class="srow"><span>Féal de ${lk({t:'perso',id:pj.id},pj.court)}</span></div>`;const J=(r.jauges||[]).filter(j=>!j.done);
-    return `<div class="srow"><span>${lk({t:'perso',id:pj.id},pj.court)} <span class="muted">· ${esc(REL_NIV[r.niv]||r.niv||'')}</span>${J.map(j=>`<span class="d">jauge ${esc(REL_OBJ[j.obj]?REL_OBJ[j.obj][2]:'')} : ${j.cases||0} / ${j.taille}</span>`).join('')}</span></div>`;}).join('');
+    return `<div class="srow"><span>${lk({t:'perso',id:pj.id},pj.court)} <span class="muted">· ${esc(REL_NIV[r.niv]||r.niv||'')}</span>${r.src==='pp'?' <span class="muted small">(PP)</span>':''}${J.map(j=>`<span class="d">jauge ${esc(REL_OBJ[j.obj]?REL_OBJ[j.obj][2]:'')} : ${j.cases||0} / ${j.taille}</span>`).join('')}</span></div>`;}).join('');
   h+=pnBlk('pn-pjl','PJ liés',P.length?String(P.length):'',(pl||'<div class="muted small">Aucun PJ lié.</div>')+'<div class="muted small" style="margin-top:4px">Calculé depuis les Relations des PJ.</div>',{empty:!P.length});
   if(pnBlkSee(c,'autres')){const L=(c.liens||[]).filter(l=>{const p=S.chars[l.pnj];return p&&vis(p);});
     const rows=L.map(l=>{const p=S.chars[l.pnj];return `<div class="srow"><span>${lk({t:'perso',id:p.id},pnName(p))}${l.lab?` <span class="muted">· ${esc(l.lab)}</span>`:''} <span class="muted" title="${l.rec?'Lien réciproque':'Sens unique'}">${l.rec?'⇄':'→'}</span></span>${E?`<button type="button" class="ibtn" data-act="pnLien" data-i="${esc(l.id)}" aria-label="Modifier le lien avec ${esc(pnName(p))}">✎</button>`:''}</div>`;}).join('');

@@ -165,7 +165,7 @@ function ppCartSheet(g,ctx,lab){const c=ctx.c,P=ctx.pfx,cart=g.cart||[],K=ppCart
     const bits=[e.rub==='A'&&it.opt==='p'&&e.fortP!=null?'Fortune '+e.fortP:'',e.rub==='A'&&it.opt==='s'&&e.fortS!=null?'Fortune +'+e.fortS:'',e.rub==='A'&&it.opt==='p'&&e.spec?'spécialité '+e.spec+' offerte':'',k.pool?ppFmt(k.pool)+(e.rub==='C'?' pt de Contact':' pt de langue'):''].filter(Boolean);
     return `<div class="ppln"><div class="pplt"><b>${esc(e.nom)}</b><span class="num">${esc(ppFmt(k.cost))} PP</span><button type="button" class="ibtn" data-act="${P}CDel" data-i="${i}" aria-label="Retirer ${esc(e.nom)} du panier">✕</button></div>
       ${opt}${bits.length?`<div class="muted small">${esc(bits.join(' · '))}</div>`:''}${(e.fx||[]).length?`<div>${ppFxChips({id:it.id})}</div>`:''}${e.prec?`<div class="muted small">${esc(e.prec)}</div>`:''}${warn.map(w=>`<div class="small ppwarn">${esc(w)}</div>`).join('')}
-      <input type="text" data-ppcart="${i}" value="${esc(it.prec||'')}" placeholder="Précision (facultatif)" aria-label="Précision : ${esc(e.nom)}" autocomplete="off"></div>`;}).join('');
+      <input type="text" data-ppcart="${i}" value="${esc(it.prec||'')}" placeholder="${e.rub==='C'?'Nom du PNJ':'Précision (facultatif)'}" aria-label="${e.rub==='C'?'Nom du PNJ':'Précision'} : ${esc(e.nom)}" autocomplete="off"${e.rub==='C'?' list="ctcdl"':''}>${e.rub==='C'?`<div class="muted small">${ctx.crea?'À la validation de la fiche, ':''}relié au PNJ de ce nom ; s'il n'existe pas, sa fiche est créée (nom seul).</div>`:''}</div>`;}).join('')+(K.items.some(k=>k.e.rub==='C')?`<datalist id="ctcdl">${Object.values(S.chars).filter(p=>p.type==='PNJ'&&vis(p)).map(p=>`<option value="${esc(p.court||p.nom)}">`).join('')}</datalist>`:'');
   const f1=ctx.crea?fr:f;
   return sheetW(lab,`<div class="shd" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>Mon panier · ${esc(profLab(ctx.prof,c))}</h2><span class="ppf"><small>Total</small>${esc(ppFmt(K.sum))}</span></div>
     ${lines||'<div class="muted small">Panier vide.</div>'}
@@ -186,7 +186,7 @@ function ppCartBuy(g){const c0=S.chars[g.cid];if(!c0||!canEditC(c0))return;const
   const ctx=ppCtxGame(c0,pr0,g),K=ppCartCalc(ctx,g.cart||[]);if(!K.items.length||ppCartErr(ctx,K).length)return;
   const c=clone(c0),pr=(c.profils||[]).find(x=>x.nom===g.prof),dt=today(),gd=typeof chNow==='function'?chNow():null;c.achats=c.achats||[];c.fortune=c.fortune||{max:15,cur:0};
   let fcur=c.fortune.cur||0;const fmax=c.fortune.max||15;
-  K.items.forEach((k,j)=>{const e=k.e,it=k.it,x=ppCartX(it.id,e,it.opt,g.prof),prec=(it.prec||'').trim(),aid='a'+Date.now().toString(36)+j+Math.floor(Math.random()*1e3);if(prec)x.prec=prec;if(gd)x.debut=gd;
+  K.items.forEach((k,j)=>{const e=k.e,it=k.it,x=ppCartX(it.id,e,it.opt,g.prof),prec=(it.prec||'').trim(),aid='a'+Date.now().toString(36)+j+Math.floor(Math.random()*1e3);if(prec)x.prec=prec;ctcLinkX(x);if(gd)x.debut=gd;
     const oldA=e.rub==='A'&&(it.opt==='p'||it.opt==='s')?c.achats.find(a=>a.ppel&&a.ppel.rub==='A'&&a.ppel.opt===it.opt&&!a.ppel.fin):null;
     const r=ppFortStep(fcur,fmax,x,oldA&&oldA.ppel);fcur=r.cur;
     const a={id:aid,date:dt,label:`PP ${g.prof} - ${ppFmt(k.cost)} - ${e.nom}${x.opt?' ('+PPOPT[x.opt]+')':''}${prec?' : '+prec:''}`,cout:0,key:'pp:'+g.prof,pp:k.cost,ppel:x};
@@ -231,7 +231,7 @@ function ppBuyOk(g){const c0=S.chars[g.cid];if(!c0)return;const c=clone(c0),pr=(
     c.achats.push({id:aid,date:today(),label:`PP ${g.prof} - ${ppFmt(n)} - ${lab}`,cout:0,key:'pp:'+g.prof,pp:n});S.dlg=null;saveChar(c);toast('Achat enregistré');return;}
   const e=ppSelEl(g,c0);if(!e)return;const cost=ppCost(e,g.opt,c0);if(cost>have)return;if(ppPreMiss(e,c0).length&&!(canEdit()&&g.ov))return;
   const opt=e.rub==='A'||(e.cost&&e.cost.k==='hf')?g.opt:(e.cost&&e.cost.k==='tm'&&isExoF(c0)?(g.opt==='t'?'t':'m'):''),prec=(g.prec||'').trim();pr.note=have-cost;
-  const x={id:g.sel==='titre'?'titre:'+g.prof:g.sel,prof:g.prof,rub:e.rub,nom:e.nom,opt};if(e.titre)x.titre=true;if(prec)x.prec=prec;
+  const x={id:g.sel==='titre'?'titre:'+g.prof:g.sel,prof:g.prof,rub:e.rub,nom:e.nom,opt};if(e.titre)x.titre=true;if(prec)x.prec=prec;ctcLinkX(x);
   if(e.rub==='A'){if(opt==='p'&&e.fortP!=null)x.fort=e.fortP;if(opt==='s'&&e.fortS!=null)x.fortS=e.fortS;if(opt==='p'&&e.spec)x.spec=e.spec;}
   const gd=typeof chNow==='function'?chNow():null;if(gd)x.debut=gd;c.fortune=c.fortune||{max:15,cur:0};const f0=c.fortune.cur||0,fd=Math.max(0,Math.min(c.fortune.max||15,f0+ppElFort(x)))-f0;c.fortune.cur=f0+fd; /* recette lot C */
   c.achats.push({id:aid,date:today(),label:`PP ${g.prof} - ${ppFmt(cost)} - ${e.nom}${opt?' ('+PPOPT[opt]+')':''}${prec?' : '+prec:''}`,cout:0,key:'pp:'+g.prof,pp:cost,ppel:x,...(fd?{fortD:fd}:{})});
