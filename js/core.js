@@ -176,7 +176,7 @@ function navLabel(){const g=S.dlg;
   if(S.view==='univers'&&S.uni==='pouvoirs')return 'Pouvoirs et capacités';
   if(S.view==='univers'&&S.uni==='chron')return S.chPage==='fetes'?'Fêtes':'Chronique'; /* lot 3 */
   if(S.view==='univers')return 'Univers';
-  return ({home:'Accueil',gains:'XP',team:'Personnages',planning:'Planning',players:'Joueurs',rules:'Règles',params:'Paramètres'})[S.view]||'';}
+  return ({home:'Accueil',gains:'XP',team:'Personnages',planning:'Planning',players:'Joueurs',rules:'Règles',params:'Paramètres',srch:'Recherche'})[S.view]||'';}
 function navSnap(){const g=S.dlg&&(S.dlg.kind==='cons'||S.dlg.kind==='pl')?{kind:S.dlg.kind,t:S.dlg.t,id:S.dlg.id,nav:S.dlg.nav}:null;
   return {view:S.view,sel:S.sel,shTab:S.shTab,uni:S.uni,sec:S.sec,fi:S.fi,rf:S.rf,rfTab:S.rfTab,rfEd:S.rfEd,jrOpen:S.jrOpen,jrSel:S.jrSel,dlg:g,y:window.scrollY||0,lab:navLabel()};}
 /* Suivre un lien : mémorise l'écran de départ (pour la barre « ‹ Retour ») puis ouvre la cible ; l'étape d'historique est ajoutée par hxTrack */

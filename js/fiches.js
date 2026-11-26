@@ -393,6 +393,7 @@ document.addEventListener('focusout',ev=>{if(ev.target&&ev.target.id==='fiEd')se
 
 /* ---------- Clics ---------- */
 function fiAct(a,d){
+  if(/^sr[A-Z]/.test(a)&&srAct(a,d))return true; /* recherche globale */
   if(/^jr[A-Z]/.test(a))return jrAct(a,d); /* lot 2 : journaux et quêtes */
   if(/^ch[A-Z]/.test(a))return chAct(a,d); /* lot 3 : chronique et calendrier */
   if(/^pn[A-Z]/.test(a))return pnAct(a,d); /* lot 4 : PNJ */
@@ -1650,3 +1651,98 @@ function caParamAct(a,d){if(!canEdit())return true;const P=S.caPd;if(!P)return t
   return true;}
 function caHeadFields(g){const L=fiSort(fiAll().filter(x=>x.genre==='lieu'&&fiSee(x)));
   return `<div class="field"><label for="caLi">Lieu associé</label><select id="caLi" data-fin="lieu"><option value="">— aucun —</option>${L.map(x=>`<option value="${esc(x.id)}"${x.id===g.lieu?' selected':''}>${esc(fiPath(x).filter(fiSee).map(p=>p.nom).concat([x.nom]).join(' › '))}</option>`).join('')}</select><div class="muted small">La carte s'affiche sur la fiche du lieu (bloc « Sur la carte »).</div></div>`;}
+
+/* ---------- Recherche globale (26/11/2026) ----------
+   Loupe dans l'en-tête (et Ctrl + K ou « / » au clavier) → écran « Recherche » (S.view='srch').
+   Cherche dans ce que la personne voit : noms (personnages, fiches, races, pouvoirs et capacités, journaux et quêtes, secrets)
+   et textes (descriptions, « Ce que l'on sait », spécimens, Notes MJ pour la gestion, Portrait des PNJ, journaux, pouvoirs).
+   Sans tenir compte des accents ni des majuscules ; résultats dès 2 lettres. Filtre par genre gardé pendant la session.
+   Recherches récentes et fiches ouvertes depuis la recherche : propres à ce navigateur (localStorage xp.srch). */
+const SR_G=[['perso','Personnages'],['lieu','Lieux'],['org','Organisations'],['famille','Familles'],['objet','Objets'],['bete','Bestiaire'],['carte','Cartes'],['evenement','Chronique'],['jour','Journaux et quêtes'],['race','Races'],['pw','Pouvoirs et capacités'],['secret','Secrets']];
+const SR_LAB=Object.fromEntries(SR_G);
+const cap1=t=>t?t[0].toUpperCase()+t.slice(1):t;
+const srState=()=>S.srch||(S.srch={q:'',g:'all',more:false});
+function srMem(){try{return JSON.parse(localStorage.getItem('xp.srch')||'null')||{q:[],o:[]};}catch(e){return {q:[],o:[]};}}
+function srMemSet(m){try{localStorage.setItem('xp.srch',JSON.stringify(m));}catch(e){}}
+/* Texte lisible : jetons « @ » remplacés par le nom, images retirées */
+const srPlain=s=>String(s||'').replace(FI_TOK,(m,t,id,nom)=>t==='img'?'':(fiTokName(t,id)||nom));
+/* Recherche sans accents, avec correspondance des positions pour surligner le texte d'origine */
+function srIdx(txt,q){let n='',map=[];for(let i=0;i<txt.length;i++){const c=txt[i].normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[’]/g,"'").replace(/\s/g,' ');for(const x of c){n+=x;map.push(i);}}
+  const k=n.indexOf(q);return k<0?null:{a:map[k],b:map[k+q.length-1]+1};}
+const srMark=(txt,r)=>esc(txt.slice(0,r.a))+'<mark>'+esc(txt.slice(r.a,r.b))+'</mark>'+esc(txt.slice(r.b));
+function srExtract(txt,q){txt=srPlain(txt).replace(/\s+/g,' ').trim();const r=srIdx(txt,q);if(!r)return null;
+  const a=Math.max(0,r.a-55),b=Math.min(txt.length,r.b+75);let s=txt.slice(a,b);const ra={a:r.a-a,b:r.b-a};
+  return (a>0?'… ':'')+srMark(s,ra)+(b<txt.length?' …':'');}
+const srQ=q=>q.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ').trim();
+/* Calcul des résultats : {names:[{g,o,nom,sub,img,prep,st}], texts:[{g,o,nom,sub,where,ex}]} */
+function srRun(q0){const q=srQ(q0),N=[],T=[],G=isGest();if(q.length<2)return {N,T};
+  const nm=(g,o,noms,sub,img,prep)=>{const P=noms[0]||'';for(const x of noms.filter(Boolean)){const r=srIdx(x,q);if(r){N.push({g,o,nom:P,hi:x===P?srMark(x,r):esc(P),alt:x===P?'':'« '+srMark(x,r)+' » · ',sub,img,prep,st:r.a===0?0:1});return true;}}return false;};
+  const tx=(g,o,nom,sub,where,txt)=>{const ex=srExtract(txt,q);if(ex)T.push({g,o,nom,sub,where,ex});return !!ex;};
+  for(const c of Object.values(S.chars||{})){if(!vis(c))continue;const o={t:'perso',id:c.id},sub=c.type==='PJ'?'PJ':'PNJ'+(c.race?' · '+c.race:'');
+    nm('perso',o,[c.court||c.nom,c.nom!==c.court?c.nom:'',c.surnom],sub,S.ptr&&S.ptr[c.id]);
+    if(c.type==='PNJ')for(const [k,l] of PN_POR)if(pnBlkSee(c,k)&&tx('perso',o,fiCN(c),sub,'Portrait › '+l,(c.por||{})[k]))break;}
+  for(const f of fiAll()){if(!fiSee(f)||!SR_LAB[f.genre])continue;const o={t:'fiche',id:f.id},ev=f.genre==='evenement',nom=ev&&(f.num||'').trim()?f.num.trim()+' · '+f.nom:f.nom;
+    const sub=(f.type||cap1((FI_G[f.genre]||{}).un||(ev?'événement':f.genre==='carte'?'carte':'fiche')))+(f.parent&&S.fiches[f.parent]&&fiSee(S.fiches[f.parent])?' · '+S.fiches[f.parent].nom:'');
+    nm(f.genre,o,[nom],sub,illOf('fiche',f.id),G&&f.vis!=='rev');
+    const L=[[ev?'Résumé':'Description',fiBlkSee(f,'desc')&&f.desc]];
+    for(const it of f.sait||[])if(fiItSee(f,it))L.push(["Ce que l'on sait",it.txt]);
+    for(const x of f.spec||[])if(fiSpecSee(x))L.push(['Spécimens connus',(x.nom||'')+' : '+(x.txt||'')]);
+    if(f.effet&&fiBlkSee(f,'effet'))L.push(['Effet',f.effet]);
+    if(G&&f.notes)L.push(['Notes MJ',f.notes]);
+    for(const [w,t] of L)if(t&&tx(f.genre,o,nom,sub,w,t))break;}
+  for(const cr of raceCres()){const x=raceRec(cr);if(!raceVisible(cr,x))continue;const o={t:'race',id:cr.id},p=raceNm(x),oth=(x.fem||'').trim()&&x.fem!==p?x.fem:x.sing!==p?x.sing:'';
+    nm('race',o,[p,oth],'Race',illOf('race',cr.id));}
+  for(const [k,M] of [['pw',S.pouvoirs],['cap',S.capacites]])for(const id in M||{}){if(!elSeen(k,id))continue;const e=M[id],o={t:k,id},sub=k==='pw'?'Pouvoir':'Capacité naturelle';
+    nm('pw',o,[e.nom],sub,illOf(k,id));tx('pw',o,e.nom,sub,'Description',e.desc);}
+  for(const J of jrAll()){if(!jrCanRead(J))continue;const h=jrHost(J),o={t:'jour',id:J.id},sub=(J.genre==='quete'?'Quête':'Journal')+(h?' · '+(h.court||h.nom):'');
+    nm('jour',o,[J.nom],sub);if(!tx('jour',o,J.nom,sub,'Description',J.desc))for(const e of J.ent||[])if(tx('jour',{t:'jour',id:J.id,i:e.id},J.nom,sub,'« '+(e.nom||'Entrée')+' »',e.txt))break;}
+  for(const s of S.secrets||[]){const o={t:'secret',n:s.n};if(!lnkOk(o))continue;const lab=secLabel(s,G);nm('secret',o,[lab],'Secret');}
+  N.sort((a,b)=>a.st-b.st||a.nom.localeCompare(b.nom,'fr',{sensitivity:'base'}));
+  const seen=new Set(N.map(x=>x.g+':'+(x.o.id||x.o.n)));
+  return {N,T:T.filter(x=>!seen.has(x.g+':'+(x.o.id||x.o.n))).sort((a,b)=>a.nom.localeCompare(b.nom,'fr',{sensitivity:'base'}))};}
+const SR_IC='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>';
+const srThumb=(img,g)=>`<span class="srth${g==='perso'?' r':''}"${img?'':' aria-hidden="true"'}>${img?`<img src="${img}" alt="">`:''}</span>`;
+function srRow(x){return `<button type="button" class="srrow" ${lnkAttrs(x.o)} data-srch="1">${srThumb(x.img,x.g)}<span class="srtx"><b>${x.hi||esc(x.nom)}</b><small>${x.alt||''}${esc(x.sub||'')}${x.where?' · '+esc(x.where):''}</small>${x.ex?`<span class="srex">${x.ex}</span>`:''}</span>${x.prep?'<span class="srprep">préparée</span>':''}</button>`;}
+function srResults(){const st=srState(),q=srQ(st.q);
+  if(q.length<2){const m=srMem(),rq=m.q||[],ro=(m.o||[]).filter(x=>lnkOk(x.o)).slice(0,5);
+    if(!rq.length&&!ro.length)return `<div class="muted small srhint">Tape au moins 2 lettres. Accents et majuscules sont ignorés.</div>`;
+    return (rq.length?`<div class="lab2 srlab">Recherches récentes</div><div class="srlst">${rq.map(t=>`<div class="srrec"><button type="button" class="srrecb" data-act="srRec" data-v="${esc(t)}">↺ ${esc(t)}</button><button type="button" class="srx" data-act="srRecDel" data-v="${esc(t)}" aria-label="Retirer ${esc(t)}">✕</button></div>`).join('')}</div>`:'')
+      +(ro.length?`<div class="lab2 srlab">Ouverts récemment</div><div class="srlst">${ro.map(x=>`<button type="button" class="srrow" ${lnkAttrs(x.o)}>${srThumb(null,x.o.t==='perso'?'perso':'')}<span class="srtx"><b>${esc(x.n)}</b></span></button>`).join('')}</div>`:'');}
+  const R=srRun(st.q),cnt={};for(const x of [...R.N,...R.T])cnt[x.g]=(cnt[x.g]||0)+1;
+  const tot=R.N.length+R.T.length,G0=st.g!=='all'&&!cnt[st.g]?st.g:null,g=st.g;
+  let h=`<div class="srchips" role="group" aria-label="Chercher dans"><button type="button" class="srchip" data-act="srG" data-v="all" aria-pressed="${g==='all'}">Tout · ${tot}</button>${SR_G.filter(([k])=>cnt[k]||k===G0).map(([k,l])=>`<button type="button" class="srchip" data-act="srG" data-v="${k}" aria-pressed="${g===k}">${l} · ${cnt[k]||0}</button>`).join('')}</div>`;
+  const N=R.N.filter(x=>g==='all'||x.g===g),T=R.T.filter(x=>g==='all'||x.g===g);
+  if(!N.length&&!T.length){const lab=g==='all'?'':SR_LAB[g].toLowerCase();
+    return h+`<div class="srnone"><div class="rs srnt">Aucun résultat${lab?' dans « '+esc(SR_LAB[g])+' »':''}</div><div class="muted">${g!=='all'&&tot?`« ${esc(st.q.trim())} » apparaît ailleurs dans l'univers : ${tot} résultat${tot>1?'s':''}.`:`Rien pour « ${esc(st.q.trim())} » dans ce que tu peux voir.`}</div>${g!=='all'&&tot?'<button type="button" class="btn pri" data-act="srG" data-v="all">Chercher dans tout l\'univers</button>':''}</div>`;}
+  if(N.length){h+=`<div class="rs srsec">Dans les noms · ${N.length}</div><div class="srlst">`;
+    for(const [k,l] of SR_G){const L=N.filter(x=>x.g===k);if(L.length)h+=`<div class="srgh">${l}</div>`+L.map(srRow).join('');}h+='</div>';}
+  if(T.length){const MX=12,V=st.more?T:T.slice(0,MX);h+=`<div class="rs srsec">Dans les textes · ${T.length}</div><div class="srlst">${V.map(srRow).join('')}${T.length>V.length?`<button type="button" class="srmore" data-act="srMore">Voir les ${T.length-V.length} autres</button>`:''}</div>`;}
+  return h;}
+function viewSrch(){const st=srState();
+  return `<div class="srbox">${SR_IC}<label for="srchQ" class="vh">Rechercher</label><input id="srchQ" type="search" autocomplete="off" enterkeyhint="search" placeholder="Rechercher dans l'univers…" value="${esc(st.q)}"><button type="button" class="srx" data-act="srClose" aria-label="Fermer la recherche">✕</button></div>
+    <div id="srchRes">${srResults()}</div>
+    <div class="muted small srhint">Au clavier : Ctrl + K ou « / » ouvre la recherche, Échap la ferme.</div>`;}
+function srPaint(){const r=document.getElementById('srchRes');if(r)r.innerHTML=srResults();}
+function srOpen(){if(S.view==='srch'){const i=document.getElementById('srchQ');if(i)i.focus();return;}
+  srState().more=false;S.dlg=null;S.sheet=null;S.asheet=null;S.confirm=null;S.view='srch';S._force=true;render();window.scrollTo(0,0);
+  requestAnimationFrame(()=>{const i=document.getElementById('srchQ');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}});}
+function srClose(){if(S.view!=='srch')return;if(HX.cur>0&&HX.L[HX.cur-1]&&HX.L[HX.cur-1].view!=='srch'){navBack();return;}navClear();S.view='home';S._force=true;render();}
+function srAct(a,d){const st=srState();
+  if(a==='srOpen'){srOpen();return true;}
+  if(a==='srClose'){srClose();return true;}
+  if(a==='srG'){st.g=d.v||'all';st.more=false;srPaint();return true;}
+  if(a==='srMore'){st.more=true;srPaint();return true;}
+  if(a==='srRec'){st.q=d.v||'';const i=document.getElementById('srchQ');if(i)i.value=st.q;srPaint();return true;}
+  if(a==='srRecDel'){const m=srMem();m.q=(m.q||[]).filter(x=>x!==d.v);srMemSet(m);srPaint();return true;}
+  return false;}
+/* Mémoire : recherche et fiche ouverte depuis les résultats */
+document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.closest('#srchRes [data-act="lnk"]');if(!b||S.view!=='srch')return;
+  const st=srState(),m=srMem(),q=(st.q||'').trim(),d=b.dataset,o={t:d.t};if(d.id!=null)o.id=d.id;if(d.n!=null&&d.t==='secret')o.n=+d.n;if(d.i!=null)o.i=d.i;
+  if(q.length>=2)m.q=[q,...(m.q||[]).filter(x=>nrm(x)!==nrm(q))].slice(0,5);
+  const nom=b.dataset.srch?(b.querySelector('b')||{}).textContent||'':'';if(nom){const k=JSON.stringify(o);m.o=[{o,n:nom},...(m.o||[]).filter(x=>JSON.stringify(x.o)!==k)].slice(0,5);}
+  srMemSet(m);},true);
+document.addEventListener('input',ev=>{if(ev.target&&ev.target.id==='srchQ'){const st=srState();st.q=ev.target.value;st.more=false;srPaint();}});
+document.addEventListener('keydown',ev=>{if(S.gate)return;const t=ev.target,typing=t&&/INPUT|TEXTAREA|SELECT/.test(t.tagName)||(t&&t.isContentEditable);
+  if((ev.key==='k'||ev.key==='K')&&(ev.ctrlKey||ev.metaKey)&&!ev.altKey){ev.preventDefault();srOpen();return;}
+  if(ev.key==='/'&&!typing&&!S.dlg&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();srOpen();return;}
+  if(ev.key==='Escape'&&S.view==='srch'&&!S.dlg){ev.preventDefault();srClose();}});
