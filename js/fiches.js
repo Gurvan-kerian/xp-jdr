@@ -49,7 +49,7 @@ const fiKidsOf=(id,L)=>(L||fiAll()).filter(x=>x.parent===id);
 function fiPath(f){const p=[];let x=f,n=0;while(x&&x.parent&&n++<30){x=S.fiches[x.parent];if(x)p.unshift(x);}return p;}
 function fiDesc(id,L){let n=0;for(const k of fiKidsOf(id,L))n+=1+fiDesc(k.id,L);return n;}
 function fiSave(f,quiet){f=clone(f);f.modif=new Date().toISOString();S.fiches={...S.fiches,[f.id]:f};persist('fiches/'+f.id,f);if(!quiet)render();}
-function fiRemove(id){const f=S.fiches[id];if(!f)return;
+function fiRemove(id){const f=S.fiches[id];if(!f)return;if(typeof caUnlink==='function')caUnlink('fiche',id); /* lot Cartes */
   for(const k of fiKidsOf(id)){const n=clone(k);n.parent=f.parent||'';fiSave(n,true);}
   const m={...S.fiches};delete m[id];S.fiches=m;persistDel('fiches/'+id);
   const ill=illId('fiche',id);if(S.ptr&&S.ptr[ill]){const p={...S.ptr};delete p[ill];S.ptr=p;persistDel('portraits/'+ill);S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});}
@@ -106,13 +106,13 @@ function fiSugList(q){const n=nrm(q),out=[],G=isGest();
   for(const c of Object.values(S.chars))if(vis(c))add('perso',c.id,c.court||c.nom,c.type==='PJ'?'PJ':'PNJ');
   for(const cr of raceCres()){const x=raceRec(cr);if(raceVisible(cr,x))add('race',cr.id,raceNm(x),'Race');}
   for(const s of S.secrets||[]){const r=ROMAN[s.n-1]||s.n,tt=titreVis(s)||(G&&s.titre);add('secret',String(s.n),'Secret '+r+(tt?' - '+s.titre:''),'Secret',G&&!!s.titre&&!titreVis(s));}
-  for(const f of fiAll())if(fiSee(f)&&f.genre!=='agenda')add('fiche',f.id,f.genre==='evenement'?((f.num||'').trim()?f.num.trim()+' ':'')+f.nom:f.nom,f.genre==='evenement'?(f.type||'Événement'):(f.type||(FI_G[f.genre]||{}).un||'fiche'),f.vis!=='rev'); /* lot 3 : événements proposés, agenda exclu */
+  for(const f of fiAll())if(fiSee(f)&&!['agenda','rep','traj'].includes(f.genre))add('fiche',f.id,f.genre==='evenement'?((f.num||'').trim()?f.num.trim()+' ':'')+f.nom:f.nom,f.genre==='evenement'?(f.type||'Événement'):(f.type||(FI_G[f.genre]||{}).un||'fiche'),f.vis!=='rev'); /* lot 3 : événements proposés, agenda exclu */
   return out.sort((a,b)=>a.st-b.st||a.nom.localeCompare(b.nom,'fr',{sensitivity:'base'})).slice(0,8);}
 
 /* ---------- Mentions : liens « @ » et rattachements, filtrés selon ce que la personne peut lire ---------- */
 const FI_MGRP=['Événements','Journaux et quêtes','Fiches','Personnages'];
 function fiMentions(t,id){const out=[];
-  for(const F of fiAll()){if(t==='fiche'&&F.id===id)continue;if(!fiSee(F))continue;const hits=[],ev=F.genre==='evenement'||F.genre==='agenda';
+  for(const F of fiAll()){if(t==='fiche'&&F.id===id)continue;if(!fiSee(F)||F.genre==='rep'||F.genre==='traj')continue;const hits=[],ev=F.genre==='evenement'||F.genre==='agenda';
     if(ev&&t==='perso'&&(F.pj||[]).includes(id))hits.push('PJ impliqué'); /* lot 3 : événements et agenda */
     if(ev&&fiHas(F.lieux,t,id))hits.push('Lieux');
     if(fiHas(F.desc,t,id)&&fiBlkSee(F,'desc'))hits.push(F.genre==='evenement'?'Résumé':F.genre==='agenda'?'Note':'Description');
@@ -147,7 +147,7 @@ function fiUniHome(){const G=isGest(),pl=(n,s,p)=>n+' '+(n>1?p:s);
   return `<h2 style="margin-top:4px">Univers</h2>`
     +grp('Récit',[row('uni','chron','chron','Chronique',chUniSum()),row('uni','secrets','secrets','Secrets',sec,np)]) /* lot 3 */
     +grp('Peuples',[row('uni','creatures','races','Races',rac),row('uni','pouvoirs','pouvoirs','Pouvoirs et capacités',uniPwSum()),row('uni','bete','bete','Bestiaire',cnt('bete')),row('uni','famille','famille','Familles',cnt('famille')),row('uni','org','org','Organisations',cnt('org'))])
-    +grp('Lieux et choses',[row('uni','lieu','lieu','Lieux',cnt('lieu')),row('uni','objet','objet','Objets',cnt('objet'))]);}
+    +grp('Lieux et choses',[row('uni','lieu','lieu','Lieux',cnt('lieu')),row('uni','carte','carte','Cartes',cnt('carte')),row('uni','objet','objet','Objets',cnt('objet'))]);}
 /* lot 3 : résumé de l'entrée Chronique */
 function chUniSum(){if(!S.fichesReady)return 'chargement…';const n=chEvs().length,d=chNow();return (n?n+' événement'+(n>1?'s':''):'aucun événement pour l\'instant')+(d?' · '+chDateTxt(d):'');}
 const fiUniBack=()=>`<button class="back" data-act="uni" data-v="home">${FI_BACK}Univers</button>`;
@@ -168,11 +168,11 @@ function fiListBody(g){const Gm=FI_G[g],L=fiAll().filter(f=>f.genre===g&&fiSee(f
   const line=(f,sub,depth,tog)=>`<div class="firow${f.vis!=='rev'?' prep':''}" style="padding-left:${6+depth*18}px">${tog||'<span class="fitog0"></span>'}<button type="button" class="fili" data-act="fiOpen" data-id="${esc(f.id)}">${th(f)}<span class="fitx"><b>${esc(f.nom)}${tag(f)}</b><small>${esc(sub)}</small></span></button></div>`;
   if(q||ty||!Gm.arbo||(g==='objet'&&S.fiUq)){const R=fiSort(L.filter(f=>(!ty||(f.type||'').trim()===ty)&&(!q||nrm(f.nom).includes(q)||nrm(f.type).includes(q))));
     if(!R.length)return `<div class="card empty">Aucune fiche ne correspond.</div>`;
-    return `<div class="filst">${R.map(f=>{const p=Gm.arbo?fiPath(f).filter(fiSee).map(x=>x.nom).join(' › '):'';return line(f,[f.type,p,fi6Hold(f)].filter(Boolean).join(' · '),0);}).join('')}</div>`;}
+    return `<div class="filst">${R.map(f=>{const p=Gm.arbo?fiPath(f).filter(fiSee).map(x=>x.nom).join(' › '):'';return line(f,f.genre==='carte'?caListSub(f,null)+(p?' · '+p:''):[f.type,p,fi6Hold(f)].filter(Boolean).join(' · '),0);}).join('')}</div>`;}
   const ids0=new Set(L.map(f=>f.id)),roots=fiSort(L.filter(f=>!f.parent||!ids0.has(f.parent)));
   const rec=(f,depth)=>{const K=g==='famille'?faKidOrd(fiKidsOf(f.id,L)):fiSort(fiKidsOf(f.id,L)),n=fiDesc(f.id,L),op=S.fiTree[f.id]!=null?S.fiTree[f.id]:false;
     const tog=K.length?`<button type="button" class="fitog" data-act="fiTree" data-id="${esc(f.id)}" aria-expanded="${op}" aria-label="${op?'Replier':'Déplier'} ${esc(f.nom)}">${op?'⌄':'›'}</button>`:'';
-    return line(f,g==='famille'?faListSub(f,K):[f.type,K.length?n+' contenu'+(n>1?'s':''):'',fi6Hold(f)].filter(Boolean).join(' · '),depth,tog)+(op?K.map(k=>rec(k,depth+1)).join(''):'');};
+    return line(f,g==='famille'?faListSub(f,K):g==='carte'?caListSub(f,K):[f.type,K.length?n+' contenu'+(n>1?'s':''):'',fi6Hold(f)].filter(Boolean).join(' · '),depth,tog)+(op?K.map(k=>rec(k,depth+1)).join(''):'');};
   return `<div class="filst">${roots.map(f=>rec(f,0)).join('')}</div>`;}
 
 /* ---------- La fiche ---------- */
@@ -193,14 +193,16 @@ function fiFicheView(f){
   const img=illOf('fiche',f.id),path=fiPath(f);
   const sub=[f.type?esc(f.type):'',...fi6Sub(f),...(f.genre==='famille'?faSub(f):[]),path.length&&f.genre!=='famille'?path.map(x=>fiSee(x)?lk({t:'fiche',id:x.id},x.nom):`<span class="nolk">${esc(x.nom)}</span>`).join(' › '):''].filter(Boolean).join(' · ');
   h+=`<div class="card fihead"><div class="fihd">${img?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${img}" alt=""></button>`:`<span class="fithumb vide" aria-hidden="true">${FI_SVG(FI_IC[f.genre],26)}</span>`}<div style="flex:1;min-width:0"><h2 class="finm">${esc(f.nom)}</h2>${sub?`<div class="muted small">${sub}</div>`:''}${f.genre==='famille'?faHeadKv(f):''}</div>${f.kanka?kankaBtn(f.kanka,f.nom,'Fiche Kanka : '+f.nom):''}</div>
-    ${ed?`<div style="margin-top:8px"><button type="button" class="edl" data-act="fiHead">${ICON.crayon} ${f.genre==='famille'?'Nom, type, suzerain, devise, race':'Nom, type'+(Gm.arbo?', '+Gm.par.toLowerCase():'')}${f.genre==='objet'?', unique, créateur':''}, image, Kanka</button></div>`:''}</div>`;
+    ${ed?`<div style="margin-top:8px"><button type="button" class="edl" data-act="fiHead">${ICON.crayon} ${f.genre==='famille'?'Nom, type, suzerain, devise, race':'Nom, type'+(Gm.arbo?', '+Gm.par.toLowerCase():'')}${f.genre==='objet'?', unique, créateur':''}${f.genre==='carte'?', lieu associé':''}, image, Kanka</button></div>`:''}</div>`;
+  if(f.genre==='carte')h+=caFicheBlocks(f); /* lot Cartes */
   const T6=fi6Tabs(f);if(T6){h+=T6;if(S.fiTab==='gest')return h+fi6Gest(f);} /* lot 6 : Fief rattaché à un PJ */
   const OT=f.genre==='org'?ogTab():'';if(OT)h+=ogTabsBar(OT); /* lot 5 a : onglets de l'organisation */
   /* Description */
   if((!OT||OT==='pres')&&fiBlkSee(f,'desc')&&((f.desc||'').trim()||ed))
     h+=fiBlk('desc',f.genre==='famille'?'Présentation':'Description','',(f.desc||'').trim()?fiRich(f.desc):'<div class="muted small">Pas encore de description.</div>',{edit:ed?'fiEd':'',ea:' data-b="desc"',hid:G&&!e.desc,eye:G?eyeBtn('fiEye','data-k="desc"',!!e.desc,'Description'):''});
+  if(['lieu','org','objet'].includes(f.genre)&&(!OT||OT==='pres'))h+=caOnMap('fiche',f.id); /* lot Cartes */
   /* Ce que l'on sait : un œil par élément */
-  if((!OT||OT==='pres')&&fiBlkSee(f,'sait')){const A=(f.sait||[]),V=A.filter(it=>fiItSee(f,it)),nr=A.filter(it=>it.rev).length;
+  if((!OT||OT==='pres')&&f.genre!=='carte'&&fiBlkSee(f,'sait')){const A=(f.sait||[]),V=A.filter(it=>fiItSee(f,it)),nr=A.filter(it=>it.rev).length;
     if(V.length||ed){const rows=V.map(it=>`<div class="fiit${it.rev?'':' fihid'}"><div class="fiitx">${fiRich(it.txt)}</div>${ed?`<button type="button" class="fiedi" data-act="fiItem" data-i="${esc(it.id)}" aria-label="Modifier l'élément">${ICON.crayon}</button>`:''}${G?eyeBtn('fiEye',`data-k="item" data-i="${esc(it.id)}"`,!!it.rev,"Élément de « Ce que l'on sait »"):''}</div>`).join('');
       h+=fiBlk('sait',"Ce que l'on sait",G?`${nr} / ${A.length} révélé${nr>1?'s':''}`:String(V.length||''),(rows||'<div class="muted small">Rien pour l\'instant.</div>')+(ed?`<div class="radd"><button class="btn" data-act="fiItem" data-i="">+ Un élément</button></div>`:''),{hid:G&&!e.sait,eye:G?eyeBtn('fiEye','data-k="sait"',!!e.sait,"Ce que l'on sait"):''});}}
   if(f.genre==='bete')h+=fiSpecBlk(f,ed,G); /* lot 8 b : spécimens connus */
@@ -249,6 +251,7 @@ function fiSheet(g){
   if(/^fi6/.test(g.kind))return fi6Sheet(g); /* lot 6 */
   if(/^fiO/.test(g.kind))return ogSheet(g); /* lot 5 a */
   if(/^fa[A-Z]/.test(g.kind))return faSheet(g); /* lot 5 b */
+  if(/^ca[A-Z]/.test(g.kind))return caSheet(g); /* lot Cartes */
   if(g.kind==='fiNew'){const Gm=FI_G[g.genre];if(!Gm||!fiCanNew())return null;
     return fiShell(g,Gm.nv,`<h2>${Gm.nv}</h2>
       <div class="field"><label for="fiNm">Nom</label><input id="fiNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
@@ -261,12 +264,12 @@ function fiSheet(g){
       <div class="field"><label for="fiNm">Nom</label><input id="fiNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
       ${fiTypeField(f.genre,g.type)}
       ${Gm.arbo?`<div class="field"><label for="fiPa">${Gm.par}</label><select id="fiPa" data-fin="parent">${fiParOpts(f.genre,g.parent,f.id)}</select></div>`:''}
-      ${f.genre==='objet'?fi6HeadFields(g):''}${f.genre==='famille'?faHeadFields(g):''}
+      ${f.genre==='objet'?fi6HeadFields(g):''}${f.genre==='famille'?faHeadFields(g):''}${f.genre==='carte'?caHeadFields(g):''}
       <div class="field"><label for="fiKk">Lien Kanka</label><input id="fiKk" type="url" data-fin="kanka" value="${esc(g.kanka)}" placeholder="https://app.kanka.io/…" autocomplete="off"></div>
       <div class="field"><label>Image</label>${illEdit('fiche',f.id,f.nom)}<div class="muted small" style="margin-top:4px">Une vignette carrée et l'image entière en grand (visible d'un clic sur la vignette).</div></div>
       ${g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:''}
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="fiHeadSave"${(g.nom||'').trim()?'':' disabled'}>Enregistrer</button></div>
-      ${canEdit()?`<div class="fidel">${g.confirm?`<div class="muted small">Supprimer définitivement « ${esc(f.nom)} » ? Les liens vers cette fiche deviendront du texte simple${fiKidsOf(f.id).length?' et les fiches contenues remonteront d\'un niveau':''}.</div><div class="actions"><button class="btn ghost" data-act="fiDelNo">Garder</button><button class="btn" style="color:var(--bad)" data-act="fiDelOk">Supprimer</button></div>`:`<button class="btn ghost" style="color:var(--bad)" data-act="fiDel">Supprimer la fiche</button>`}</div>`:''}`);}
+      ${canEdit()?`<div class="fidel">${g.confirm?`<div class="muted small">Supprimer définitivement « ${esc(f.nom)} » ? Les liens vers cette fiche deviendront du texte simple${fiKidsOf(f.id).length?' et les fiches contenues remonteront d\'un niveau':''}.${f.genre==='carte'?' Ses repères et trajets seront supprimés avec elle.':''}</div><div class="actions"><button class="btn ghost" data-act="fiDelNo">Garder</button><button class="btn" style="color:var(--bad)" data-act="fiDelOk">Supprimer</button></div>`:`<button class="btn ghost" style="color:var(--bad)" data-act="fiDel">Supprimer la fiche</button>`}</div>`:''}`);}
   if(g.kind==='fiTxt'){const f=S.fiches[g.fid];if(!f||!fiCanEd(f))return null;if(g.b==='notes'&&!canEdit())return null;
     const it=g.b==='item'&&g.iid?(f.sait||[]).find(x=>x.id===g.iid):null;if(g.b==='item'&&g.iid&&!it)return null;
     const tt=g.b==='desc'?(f.genre==='famille'?'Présentation':'Description'):g.b==='terr'?'Territoires':g.b==='notes'?'Notes MJ':g.b==='effet'?'Effet':g.b==='feerie'?'Situation féerique':g.b==='prat'?'Pratiques':it?"Ce que l'on sait":"Ce que l'on sait : nouvel élément";
@@ -303,9 +306,11 @@ function fiListes(){const g=FI_G[S.fiLv]||S.fiLv==='jour'?S.fiLv:'lieu',T=fiType
 /* ---------- Visionneur d'image plein écran (vignettes de fiche et portraits) ---------- */
 const FI_BIG={};
 function fiBigSave(ill,im){if(!im||!DB||!DB.img||S.visit||writesLocked())return;
-  const w=im.naturalWidth,h=im.naturalHeight,k=Math.min(1,1600/Math.max(w,h)),cv=document.createElement('canvas');cv.width=Math.round(w*k);cv.height=Math.round(h*k);
+  const mf=/^ill-fiche-/.test(ill)&&S.fiches[ill.slice(10)],isMap=!!mf&&mf.genre==='carte'; /* lot Cartes : grande image jusqu'à 2600 px */
+  const w=im.naturalWidth,h=im.naturalHeight,k=Math.min(1,(isMap?2600:1600)/Math.max(w,h)),cv=document.createElement('canvas');cv.width=Math.round(w*k);cv.height=Math.round(h*k);
   const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(im,0,0,cv.width,cv.height);
-  let q=.85,data=cv.toDataURL('image/jpeg',q);while(data.length>900000&&q>.45){q-=.1;data=cv.toDataURL('image/jpeg',q);}
+  let q=.85,data=cv.toDataURL('image/jpeg',q);while(data.length>(isMap?3800000:900000)&&q>.45){q-=.1;data=cv.toDataURL('image/jpeg',q);}
+  if(isMap&&(mf.iw!==cv.width||mf.ih!==cv.height)){const n=clone(mf);n.iw=cv.width;n.ih=cv.height;delete CA_V[mf.id];fiSave(n,true);}
   FI_BIG[ill]=data;DB.img.set(ill,data).catch(e=>{console.error(e);toast("Grande image non enregistrée (script SQL du lot 1 à installer)");});}
 function fiBigDel(ill){delete FI_BIG[ill];if(DB&&DB.img&&!S.visit&&!writesLocked())DB.img.del(ill).catch(()=>{});}
 let FI_VW=null;
@@ -406,6 +411,7 @@ function fiAct(a,d){
   if(/^fi6[A-Z]/.test(a))return fi6Act(a,d); /* lot 6 */
   if(/^fiO[A-Z]/.test(a)||(a==='situEd'&&(d.k==='orgs'||d.k==='titres')))return ogAct(a,d); /* lot 5 a */
   if(/^fa[A-Z]/.test(a))return faAct(a,d); /* lot 5 b */
+  if(/^ca[A-Z]/.test(a))return caAct(a,d); /* lot Cartes */
   if(!/^fi[A-Z]/.test(a))return false;
   if(S.visit)return true;
   const f=S.fi&&S.fiches[S.fi];
@@ -422,12 +428,13 @@ function fiAct(a,d){
     else if(d.k==='item'){const it=(n.sait||[]).find(x=>x.id===d.i);if(!it)return true;open=!it.rev;if(!open&&!canEdit())return true;it.rev=open;}
     else if(d.k==='spec'){const it=(n.spec||[]).find(x=>x.id===d.i);if(!it)return true;open=!it.rev;if(!open&&!canEdit())return true;it.rev=open;}
     else return true;fiSave(n);return true;}
-  if(a==='fiHead'){if(!fiCanEd(f))return true;fiOpenDlg({kind:'fiHead',id:f.id,nom:f.nom,type:f.type||'',parent:f.parent||'',kanka:f.kanka||'',uniq:!!f.uniq,creaId:(f.crea||{}).id||'',creaNom:(f.crea||{}).id?'':((f.crea||{}).nom||''),devise:f.devise||'',race:f.race||'',speci:f.speci||'',suzT:f.suzT||''});render();return true;}
+  if(a==='fiHead'){if(!fiCanEd(f))return true;fiOpenDlg({kind:'fiHead',id:f.id,nom:f.nom,type:f.type||'',parent:f.parent||'',kanka:f.kanka||'',uniq:!!f.uniq,creaId:(f.crea||{}).id||'',creaNom:(f.crea||{}).id?'':((f.crea||{}).nom||''),devise:f.devise||'',race:f.race||'',speci:f.speci||'',suzT:f.suzT||'',lieu:f.lieu||''});render();return true;}
   if(a==='fiHeadSave'){const g=S.dlg,x=g&&S.fiches[g.id];if(!x||!fiCanEd(x))return true;const nom=(g.nom||'').trim(),kk=(g.kanka||'').trim();
     if(!nom)return true;if(kk&&!/^https?:\/\//.test(kk)){g.err='Le lien Kanka doit commencer par https://';S._fiRedraw=true;render();return true;}
     const n=clone(x);n.nom=nom;n.type=(g.type||'').trim();n.kanka=kk;if(x.genre==='objet')fi6HeadApply(n,g);
     if(FI_G[x.genre].arbo){const p=g.parent&&S.fiches[g.parent];n.parent=p&&p.id!==x.id&&!fiPath(p).some(q=>q.id===x.id)?p.id:'';}
     if(x.genre==='famille')faHeadApply(n,g); /* lot 5 b */
+    if(x.genre==='carte'){const l=g.lieu&&S.fiches[g.lieu];n.lieu=l&&l.genre==='lieu'?l.id:'';} /* lot Cartes */
     S.dlg=null;fiSave(n);setTimeout(()=>toast('Fiche enregistrée'),0);return true;}
   if(a==='fiDel'){if(S.dlg&&S.dlg.kind==='fiHead'&&canEdit()){S.dlg.confirm=true;S._fiRedraw=true;render();}return true;}
   if(a==='fiDelNo'){if(S.dlg){S.dlg.confirm=false;S._fiRedraw=true;render();}return true;}
@@ -720,7 +727,7 @@ function pnSheetBody(c,s,id){const tab=shTabOf(c);let h=shTabsBar(c,tab);
   if(tab==='prog'){h+=`<div class="xpbar"><div class="xpd"><b class="num">${s.dispo}</b><span>XP dispo</span></div><div class="xpo"><span><b class="num">${s.prevu}</b> prévu</span><span class="${s.manque?'bad':''}"><b class="num">${s.manque}</b> manque</span></div><div class="xpm">${s.gains} gagnés · ${s.spent} dépensés</div></div>`;
     h+=cBlk('pn-der','Valeurs dérivées','',`<div class="fgrid">${derived(c,'m').map(([n,v])=>`<div class="fr"><span>${esc(n)}</span><b class="num">${v}</b></div>`).join('')}</div>`);
     return h+viewProg(c,s,id);}
-  if(tab==='situ')h+=pnSitu(c);else if(tab==='rel')h+=pnRel(c);else h+=pnPortrait(c);
+  if(tab==='situ')h+=pnSitu(c)+caOnMap('perso',c.id);else if(tab==='rel')h+=pnRel(c);else h+=pnPortrait(c); /* lot Cartes : Sur la carte */
   const M=fiMentions('perso',c.id);
   h+=pnBlk('pn-ment','Mentions',M.length?String(M.length):'',fiMentionsHtml(M),{empty:!M.length});
   return h;}
@@ -884,7 +891,7 @@ function fi6Blocks(f){const G=isGest(),ed=fiCanEd(f),e=fiEyeOf(f),eye=(k,l)=>G?e
     if(fiBlkSee(f,'orgs')){const O=f.orgs||[];if(O.length||ed)h+=fiBlk('orgs','Organisations et familles',O.length?String(O.length):'',(O.map(x=>`<div class="srow"><span>${fi6Ref(x.f,x.nom)}${x.note?`<span class="d">${esc(x.note)}</span>`:''}</span>${ed?`<button type="button" class="ibtn" data-act="fi6Org" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">✎</button>`:''}</div>`).join('')||none('Aucune pour l\'instant.'))+add('fi6Org','Organisation ou famille'),{hid:G&&!e.orgs,eye:eye('orgs','Organisations et familles')});}
     if(fiBlkSee(f,'obj')){const O=fiSort(fiAll().filter(o=>o.genre==='objet'&&fiSee(o)&&fiBlkSee(o,'det')&&o.lieu&&o.lieu.f===f.id));
       if(O.length||ed)h+=fiBlk('obj','Objets présents'+fi6Calc(),O.length?String(O.length):'',O.map(o=>`<div class="srow"><span>${lk({t:'fiche',id:o.id},o.nom)}${o.type?` <span class="muted">· ${esc(o.type)}</span>`:''}</span></div>`).join('')+(O.length?'':none('Aucun objet.'))+'<div class="muted small" style="margin-top:4px">Objets dont l\'emplacement est ce lieu (à indiquer sur la fiche de l\'objet).</div>',{hid:G&&!e.obj,eye:eye('obj','Objets présents')});}
-    if(fiBlkSee(f,'carte')){const src=illOf('carte',f.id);if(src||ed)h+=fiBlk('carte','Carte','',(src?`<div class="fibigw">${bigImg(illId('carte',f.id),src,'Carte : '+f.nom)}</div>`:none('Pas de carte.'))+(ed?`<div style="margin-top:6px">${illEdit('carte',f.id,'Carte : '+f.nom)}</div>`:''),{hid:G&&!e.carte,eye:eye('carte','Carte')});}}
+    if(fiBlkSee(f,'carte')&&!caLieuHasMap(f.id)){const src=illOf('carte',f.id);if(src||ed)h+=fiBlk('carte','Carte','',(src?`<div class="fibigw">${bigImg(illId('carte',f.id),src,'Carte : '+f.nom)}</div>`:none('Pas de carte.'))+(ed?`<div style="margin-top:6px">${illEdit('carte',f.id,'Carte : '+f.nom)}</div>`:''),{hid:G&&!e.carte,eye:eye('carte','Carte')});}}
   if(f.genre==='objet'){
     if(fiBlkSee(f,'effet')&&((f.effet||'').trim()||ed))h+=fiBlk('effet','Effet','',(f.effet||'').trim()?fiRich(f.effet):none('Effet non renseigné.'),{edit:ed?'fiEd':'',ea:' data-b="effet"',hid:G&&!e.effet,eye:eye('effet','Effet')});
     if(fiBlkSee(f,'carac')){const C=f.carac||{},R=[['prix','Prix'],['taille','Taille'],['poids','Poids']].filter(([k])=>(C[k]||'').trim());
@@ -1349,3 +1356,297 @@ function faAct(a,d){const f=S.fi&&S.fiches[S.fi],g=S.dlg;if(S.visit)return true;
     ogSetSitu(c.id,'familles',base&&base.id,v);S.dlg=null;render();setTimeout(()=>toast('Membre enregistré'),0);return true;}
   return true;}
 document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.ogre===undefined||!S.dlg||S.dlg.kind!=='faMem')return;S.dlg[t.dataset.fin]=t.value;S._fiRedraw=true;render();});
+
+/* ---------- Lot Cartes interactives (26/11/2026) ----------
+   Collection « fiches » :
+   - carte : genre 'carte', image ill-fiche-<id> (vignette + grande image ≤ 2600 px), iw/ih (taille de l'image), parent (carte mère),
+     lieu (fiche Lieu associée), ech {ax,ay,bx,by,l,u} (segment étalon en fractions de l'image, longueur, unité m|km|lieue) ;
+   - rep (repère) : carte, x, y (fractions 0-1), nom, cat, cib {s:'fiche'|'perso'|'carte', id} (absent = libre), note, vis, par ;
+   - traj (trajet) : carte, pts [[x,y]…], nom, coul, note, vis, par.
+   Réglages : meta/cartes {cats:[{id,nom,coul}], moy:[{id,nom,v}]}.
+   Principe du 25/11 : visible = modifiable (repères et trajets supprimés par qui les voit, Visiteur exclu) ; œil (préparer) : gestion ; échelle et Paramètres : gestion en mode édition. */
+FI_G.carte={pl:'Cartes',un:'carte',nv:'Nouvelle carte',cnt:n=>n+' carte'+(n>1?'s':''),arbo:true,par:'Carte mère',sub:'sous-carte',tl:'Types de carte'};
+FI_IC.carte='<path d="M3 6.5l6-3 6 3 6-3v14l-6 3-6-3-6 3z"/><path d="M9 3.5v14M15 6.5v14"/>';
+const CA_SVG={lieu:FI_IC.lieu,pnj:FI_IC.perso,org:FI_IC.org,evenement:'<path d="M12 3.5l2.5 5.3 5.8.7-4.3 4 1.1 5.8L12 16.4l-5.1 2.9 1.1-5.8-4.3-4 5.8-.7z"/>',objet:FI_IC.objet,carte:FI_IC.carte,libre:'<circle cx="12" cy="12" r="4"/>'};
+const CA_TY=[['lieu','Lieu'],['pnj','PNJ'],['org','Organisation'],['evenement','Événement'],['objet','Objet'],['carte','Sous-carte'],['libre','Libre']];
+const CA_CATS0=[{id:'pub',nom:'Lieu public',coul:'#2f5f9e'},{id:'dem',nom:'Demeure',coul:'#7a4a12'},{id:'fee',nom:'Féerie',coul:'#6b3fa0'},{id:'dan',nom:'Danger',coul:'#b23a2a'},{id:'jou',nom:'Repère de joueur',coul:'#c26a00'}];
+const CA_MOY0=[{id:'pied',nom:'À pied',v:5},{id:'cheval',nom:'À cheval',v:12},{id:'fiacre',nom:'Fiacre',v:15},{id:'auto',nom:'Automobile',v:25}];
+const CA_COUL=['#1d6b66','#2f5f9e','#c26a00','#b23a2a','#2a2017','#6b3fa0','#7a4a12','#4d7a2a'];
+const CA_UNIT={m:['mètres',1],km:['kilomètres',1000],lieue:['lieues',4000]};
+['caRep','caTraj','caEch','caPlace'].forEach(k=>FI_DLG.add(k));FI_ED.add('caRep');
+S.caMode=null;S.caTmp=null;S.caSel=null;S.caHid={};S.caQ='';S.caFull=false;S.caFocus=null;S.caPre=null;S.caPd=null;
+S.fiFold={...(S.fiFold||{}),caon0:true};const CA_V={};let CA_BUSY=false,CA_PEND=false;
+const caCfg=()=>({cats:(S.caCfg&&S.caCfg.cats&&S.caCfg.cats.length?S.caCfg.cats:CA_CATS0),moy:(S.caCfg&&Array.isArray(S.caCfg.moy)?S.caCfg.moy:CA_MOY0)});
+const caCat=id=>{const C=caCfg().cats;return C.find(c=>c.id===id)||C[0]||{id:'',nom:'',coul:'#666'};};
+const caIW=c=>(c&&c.iw)||1000,caIH=c=>(c&&c.ih)||1000;
+/* ---------- Visibilité et droits ---------- */
+const caIsMap=f=>!!f&&f.genre==='carte';
+function caCibO(r){const b=r&&r.cib;if(!b||!b.id)return null;return b.s==='perso'?{t:'perso',id:b.id}:{t:'fiche',id:b.id};}
+function caCibTy(r){const b=r&&r.cib;if(!b||!b.id)return 'libre';if(b.s==='perso')return 'pnj';if(b.s==='carte')return 'carte';const f=S.fiches[b.id];return f?f.genre:'libre';}
+function caRepSee(r){if(!r||!fiSee(r))return false;const c=S.fiches[r.carte];if(!c||!fiSee(c))return false;const o=caCibO(r);return !o||isGest()||lnkOk(o);}
+const caTrSee=t=>!!t&&fiSee(t)&&fiSee(S.fiches[t.carte]);
+const caReps=cid=>fiSort(fiAll().filter(x=>x.genre==='rep'&&x.carte===cid&&caRepSee(x)));
+const caTrajs=cid=>fiSort(fiAll().filter(x=>x.genre==='traj'&&x.carte===cid&&caTrSee(x)));
+const caCanEd=x=>fiCanEd(x);
+const caCibNom=r=>{const o=caCibO(r);if(!o)return r.nom;return o.t==='perso'?fiCN(S.chars[o.id]):((S.fiches[o.id]||{}).nom||r.nom);};
+/* ---------- Distances et durées ---------- */
+function caMpp(c){const e=c&&c.ech;if(!e||!(+e.l>0))return null;const px=Math.hypot((e.bx-e.ax)*caIW(c),(e.by-e.ay)*caIH(c));if(!px)return null;return (+e.l)*((CA_UNIT[e.u]||CA_UNIT.m)[1])/px;}
+function caLen(c,P){const k=caMpp(c);if(!k||!P||P.length<2)return null;let s=0;for(let i=1;i<P.length;i++)s+=Math.hypot((P[i][0]-P[i-1][0])*caIW(c),(P[i][1]-P[i-1][1])*caIH(c));return s*k;}
+const caDist=m=>m==null?'':m<1000?Math.max(10,Math.round(m/10)*10)+' m':(Math.round(m/100)/10).toLocaleString('fr-FR')+' km';
+function caDur(m,v){if(m==null||!(+v>0))return '';const n=Math.max(1,Math.round(m/1000/(+v)*60));return n<60?n+' min':Math.floor(n/60)+' h'+(n%60?' '+String(n%60).padStart(2,'0'):'');}
+const caDurs=m=>caCfg().moy.filter(x=>+x.v>0).map(x=>[x.nom,x.v,caDur(m,x.v)]);
+/* ---------- Pastille d'un repère ---------- */
+const caPinSvg=(ty,sz)=>`<svg width="${sz||15}" height="${sz||15}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CA_SVG[ty]||CA_SVG.libre}</svg>`;
+const caDot=(r,cls)=>`<span class="capin ${cls||'mini'}${r.vis!=='rev'?' prep':''}" style="background:${esc(caCat(r.cat).coul)}" aria-hidden="true">${caPinSvg(caCibTy(r),12)}</span>`;
+const caTyLab=ty=>(CA_TY.find(x=>x[0]===ty)||[,''])[1];
+/* ---------- Liste des cartes (sous-titre) et accueil d'Univers ---------- */
+function caListSub(f,K){const n=fiAll().filter(x=>x.genre==='rep'&&x.carte===f.id&&caRepSee(x)).length,t=fiAll().filter(x=>x.genre==='traj'&&x.carte===f.id&&caTrSee(x)).length;
+  return [f.type,K&&K.length?K.length+' sous-carte'+(K.length>1?'s':''):'',n+' repère'+(n>1?'s':''),t?t+' trajet'+(t>1?'s':''):'',caMpp(f)?'échelle':'sans échelle'].filter(Boolean).join(' · ');}
+/* ---------- Vue de la carte ---------- */
+function caFit(c){const W=Math.min(880,window.innerWidth||390)-(S.caFull?0:26),H=S.caFull?(window.innerHeight||700)-120:Math.round(Math.min(560,Math.max(300,(window.innerHeight||700)*.58)));
+  const z=Math.min(W/caIW(c),H/caIH(c));return {W,H,z,x:(W-caIW(c)*z)/2,y:(H-caIH(c)*z)/2};}
+function caView(c){let v=CA_V[c.id];const F=caFit(c);if(!v||v.full!==S.caFull){v=CA_V[c.id]={z:F.z,x:F.x,y:F.y,full:S.caFull,min:F.z*.8};}
+  if(S.caFocus&&S.caFocus.cid===c.id){const z=Math.max(F.z*2.5,v.z);v.z=Math.min(z,4);v.x=F.W/2-S.caFocus.x*caIW(c)*v.z;v.y=F.H/2-S.caFocus.y*caIH(c)*v.z;S.caSel=S.caFocus.rid||S.caSel;S.caFocus=null;}
+  return {v,F};}
+function caBar(c,z){const mpp=caMpp(c);if(!mpp)return '';const m=110/z*mpp,p=Math.pow(10,Math.floor(Math.log10(m))),n=[1,2,5,10].map(k=>k*p).filter(k=>k<=m).pop()||p,px=n/mpp*z;return `<div class="cabar" aria-hidden="true"><span style="width:${Math.round(px)}px"></span>${caDist(n)}</div>`;}
+function caMapHtml(c){const {v,F}=caView(c),iw=caIW(c),ih=caIH(c),ill=illId('fiche',c.id),src=illOf('fiche',c.id),M=S.caMode&&S.caTmp&&S.caTmp.cid===c.id?S.caMode:null,T=S.caTmp||{};
+  const R=caReps(c.id).filter(r=>!S.caHid[r.cat||caCfg().cats[0].id]),L=caTrajs(c.id),sel=R.find(r=>r.id===S.caSel);
+  const pl=(P,col,cls,dash)=>P.length>1?`<polyline points="${P.map(p=>(p[0]*iw).toFixed(1)+','+(p[1]*ih).toFixed(1)).join(' ')}" fill="none" stroke="${esc(col)}" stroke-width="${cls?3:4}" stroke-linecap="round" stroke-linejoin="round"${dash?' stroke-dasharray="8 6"':''} vector-effect="non-scaling-stroke"/>`:'';
+  let svg=L.filter(t=>!(M==='traj'&&T.tid===t.id)).map(t=>pl(t.pts||[],t.coul||'#1d6b66','',true)).join('');
+  if(M==='traj'||M==='regle'||M==='ech')svg+=pl(T.pts||[],M==='ech'?'#8a4d12':M==='regle'?'#2a2017':(T.coul||'#1d6b66'),'x',M==='regle');
+  const e=c.ech;if(canEdit()&&e&&M!=='ech'&&S.caEchSee)svg+=pl([[e.ax,e.ay],[e.bx,e.by]],'#8a4d12','x');
+  const pts=(M==='traj'||M==='regle'||M==='ech')?(T.pts||[]).map((p,i)=>`<span class="capt${M==='ech'?' ech':''}" style="left:${(p[0]*iw).toFixed(1)}px;top:${(p[1]*ih).toFixed(1)}px">${M==='ech'?'AB'[i]||'':M==='traj'?i+1:''}</span>`).join(''):'';
+  const pins=R.map(r=>`<button type="button" class="capin${r.id===S.caSel?' on':''}${r.vis!=='rev'?' prep':''}" data-capin="${esc(r.id)}" style="left:${(r.x*iw).toFixed(1)}px;top:${(r.y*ih).toFixed(1)}px;background:${esc(caCat(r.cat).coul)}" aria-label="${esc(r.nom)}">${caPinSvg(caCibTy(r))}</button>`).join('');
+  const bub=sel&&!M?caBubble(c,sel):'';
+  const bar=caBar(c,v.z);
+  const img=src?`<img class="caimg" src="${bigSrc(ill,src)}" data-big="${esc(ill)}" alt="" draggable="false" style="width:${iw}px;height:${ih}px">`:`<div class="caimg vide" style="width:${iw}px;height:${ih}px"></div>`;
+  return `<div class="camap${S.caFull?' full':''}${M?' mode':''}" id="caMap" data-cid="${esc(c.id)}" style="height:${F.H}px" role="application" aria-label="Carte ${esc(c.nom)} : glisser pour se déplacer, molette ou deux doigts pour zoomer">
+    <div class="cain" style="width:${iw}px;height:${ih}px;transform:translate(${v.x}px,${v.y}px) scale(${v.z});--k:${(1/v.z).toFixed(4)}">${img}<svg class="casvg" width="${iw}" height="${ih}" viewBox="0 0 ${iw} ${ih}" aria-hidden="true">${svg}</svg>${pins}${pts}${bub}</div>
+    ${src?'':`<div class="caempty muted small">Pas encore d'image${fiCanEd(c)?' : ✎ ci-dessus pour en ajouter une':''}.</div>`}
+    <div class="cactl"><button type="button" class="ibtn" data-act="caZoom" data-v="1" aria-label="Zoomer">+</button><button type="button" class="ibtn" data-act="caZoom" data-v="-1" aria-label="Dézoomer">−</button><button type="button" class="ibtn" data-act="caFull" aria-label="${S.caFull?'Quitter le plein écran':'Plein écran'}">${S.caFull?'✕':'⛶'}</button></div>${bar}</div>`;}
+function caBubble(c,r){const ty=caCibTy(r),o=caCibO(r),cat=caCat(r.cat),ed=caCanEd(r);
+  return `<div class="cabub" style="left:${(r.x*caIW(c)).toFixed(1)}px;top:${(r.y*caIH(c)).toFixed(1)}px"><div class="cabin">
+    <div class="cabh"><b>${esc(r.nom)}</b><button type="button" class="cabx" data-act="caSel" data-id="" aria-label="Fermer">✕</button></div>
+    <div class="muted small">${esc(caTyLab(ty))} · <span class="cadotc" style="background:${esc(cat.coul)}"></span>${esc(cat.nom)}${r.vis!=='rev'?' · <i>préparé</i>':''}</div>
+    ${(r.note||'').trim()?`<div class="small" style="margin-top:4px">${fiRich(r.note)}</div>`:''}
+    <div class="cabact">${o?(ty==='carte'?`<button type="button" class="btn" data-act="caGo" data-id="${esc(o.id)}">Ouvrir la sous-carte</button>`:lk(o,caCibNom(r))):''}${ed?`<button type="button" class="ibtn" data-act="caRepEd" data-id="${esc(r.id)}" aria-label="Modifier ${esc(r.nom)}">✎</button><button type="button" class="ibtn" data-act="caMove" data-id="${esc(r.id)}" aria-label="Déplacer ${esc(r.nom)}" title="Déplacer">✥</button>`:''}</div></div></div>`;}
+/* Bandeau des modes (pose d'un repère, trajet, règle, échelle) */
+function caModeBar(c){const M=S.caMode,T=S.caTmp||{};if(!M||T.cid!==c.id)return '';
+  const ann=`<button type="button" class="btn" data-act="caCancel">Annuler</button>`;
+  if(M==='rep')return `<div class="caban"><span><b>Nouveau repère</b> · touche la carte à l'endroit voulu.</span>${ann}</div>`;
+  if(M==='move')return `<div class="caban"><span><b>Déplacer « ${esc((S.fiches[T.rid]||{}).nom||'')} »</b> · touche le nouvel emplacement.</span>${ann}</div>`;
+  if(M==='ech')return `<div class="caban"><span><b>Échelle</b> · touche les deux extrémités d'une distance connue (A puis B).</span>${ann}</div>`;
+  const m=caLen(c,T.pts),mpp=caMpp(c);
+  if(M==='regle')return `<div class="caban"><span><b>Règle</b> · ${(T.pts||[]).length<2?'touche deux points.':mpp?`<b class="num">${caDist(m)}</b>${caDurs(m)[0]?' · '+esc(caDurs(m)[0][0].toLowerCase())+' '+caDurs(m)[0][2]:''}`:'carte sans échelle : distance inconnue.'}</span><button type="button" class="btn" data-act="caCancel">✕ Fermer</button></div>`;
+  return `<div class="caban"><span><b>Tracé en cours</b> · touche la carte pour ajouter un point.</span>${ann}</div>`;}
+function caTrPanel(c){const T=S.caTmp||{};if(S.caMode!=='traj'||T.cid!==c.id)return '';const n=(T.pts||[]).length,m=caLen(c,T.pts),mpp=caMpp(c);
+  return `<div class="card catrp"><div class="catrh"><span class="muted small">${n} point${n>1?'s':''}</span><b class="num">${mpp?(m!=null?caDist(m):'—'):'<span class="muted small">carte sans échelle</span>'}</b></div>
+    ${mpp&&m!=null?caDurs(m).map(([nm,vv,d])=>`<div class="srow"><span>${esc(nm)} <span class="muted small">(${esc(String(vv))} km/h)</span></span><b>${d}</b></div>`).join(''):''}
+    <div class="actions" style="justify-content:flex-start"><button type="button" class="btn" data-act="caUndo"${n?'':' disabled'}>↶ Dernier point</button><button type="button" class="btn pri" data-act="caTrEnd"${n>1?'':' disabled'}>Terminer</button></div></div>`;}
+function caFicheBlocks(f){if(!caIsMap(f))return '';const ed=fiCanEd(f),N=fiCanNew(),C=caCfg().cats,R=caReps(f.id),L=caTrajs(f.id),mpp=caMpp(f);
+  let h=caModeBar(f)+caMapHtml(f)+caTrPanel(f);
+  if(!S.caMode)h+=`<div class="catool">${N?`<button type="button" class="btn pri" data-act="caAdd">+ Repère</button><button type="button" class="btn" data-act="caTrNew">Trajet</button>`:''}<button type="button" class="btn" data-act="caRegle">Règle</button>${canEdit()?`<button type="button" class="btn" data-act="caEchGo">Échelle${mpp?' ✓':''}</button>`:''}</div>`;
+  h+=`<div class="chips cachips" role="group" aria-label="Catégories affichées">${C.map(c=>`<button type="button" class="chip" data-act="caCatTog" data-id="${esc(c.id)}" aria-pressed="${!S.caHid[c.id]}"><span class="cadotc" style="background:${esc(c.coul)}"></span>${esc(c.nom)}</button>`).join('')}</div>`;
+  h+=`<div class="fisrch"><input type="search" data-caq="1" value="${esc(S.caQ)}" placeholder="Rechercher un repère ou un trajet" aria-label="Rechercher un repère ou un trajet" autocomplete="off"></div><div id="caRes">${caLists(f)}</div>`;
+  return h;}
+function caLists(f){const q=nrm(S.caQ),R=caReps(f.id).filter(r=>!q||nrm(r.nom).includes(q)||nrm(caCibNom(r)).includes(q)),L=caTrajs(f.id).filter(t=>!q||nrm(t.nom).includes(q));
+  const who=x=>{const p=x.par&&S.players[x.par];return p?' · '+esc(p.nom):'';};
+  const rr=r=>{const ty=caCibTy(r),o=caCibO(r);return `<div class="srow carow${r.vis!=='rev'?' fihid':''}">${caDot(r)}<button type="button" class="cali" data-act="caSel" data-id="${esc(r.id)}"><b>${esc(r.nom)}</b><small>${esc(caTyLab(ty))}${o&&caCibNom(r)!==r.nom?' · '+esc(caCibNom(r)):''} · ${esc(caCat(r.cat).nom)}${who(r)}${r.vis!=='rev'?' · préparé':''}</small></button>${o&&ty!=='carte'?lk(o,'Fiche'):''}</div>`;};
+  const tr=t=>{const m=caLen(f,t.pts),D=m!=null?caDurs(m):[],best=D.length?D[D.length-1]:null;
+    return `<div class="srow carow${t.vis!=='rev'?' fihid':''}"><svg width="24" height="10" aria-hidden="true"><line x1="1" y1="5" x2="23" y2="5" stroke="${esc(t.coul||'#1d6b66')}" stroke-width="3" stroke-dasharray="5 3"/></svg><button type="button" class="cali" data-act="caTrSel" data-id="${esc(t.id)}"><b>${esc(t.nom)}</b><small>${m!=null?caDist(m)+(D.length?' · '+esc(D[0][0].toLowerCase())+' '+D[0][2]+(best&&best!==D[0]?' · '+esc(best[0].toLowerCase())+' '+best[2]:''):''):'distance inconnue (carte sans échelle)'}${(t.note||'').trim()?' · '+esc(t.note):''}${who(t)}</small></button>${caCanEd(t)?`<button type="button" class="ibtn" data-act="caTrEd" data-id="${esc(t.id)}" aria-label="Modifier ${esc(t.nom)}">✎</button>`:''}</div>`;};
+  return fiBlk('carep','Repères',String(R.length),R.length?R.map(rr).join(''):'<div class="muted small">Aucun repère'+(q?' ne correspond':'')+'.</div>')
+    +fiBlk('catraj','Trajets',String(L.length),L.length?L.map(tr).join(''):'<div class="muted small">Aucun trajet'+(q?' ne correspond':'')+'.</div>');}
+/* ---------- « Sur la carte » : fiches visées par un repère (et cartes d'un lieu) ---------- */
+function caThumb(c,x,y){const iw=caIW(c),ih=caIH(c),src=illOf('fiche',c.id),ill=illId('fiche',c.id),s=Math.max(.35,260/Math.max(iw,ih)*1.6);
+  return `<span class="cathumb" aria-hidden="true">${src?`<img src="${bigSrc(ill,src)}" data-big="${esc(ill)}" alt="" style="width:${(iw*s).toFixed(0)}px;height:${(ih*s).toFixed(0)}px;left:calc(50% - ${(x*iw*s).toFixed(0)}px);top:calc(50% - ${(y*ih*s).toFixed(0)}px)">`:''}</span>`;}
+function caOnMap(t,id){const R=fiAll().filter(r=>r.genre==='rep'&&r.cib&&r.cib.id===id&&(t==='perso'?r.cib.s==='perso':r.cib.s!=='perso')&&caRepSee(r));
+  const own=t==='fiche'?fiSort(fiAll().filter(c=>caIsMap(c)&&c.lieu===id&&fiSee(c))):[];
+  const anyMap=fiAll().some(c=>caIsMap(c)&&fiSee(c)),N=fiCanNew()&&anyMap&&(t!=='fiche'||['lieu','org','objet','evenement'].includes((S.fiches[id]||{}).genre));
+  if(!R.length&&!own.length&&!N)return '';
+  const rows=own.map(c=>`<div class="caon"><button type="button" class="caonb" data-act="caGo" data-id="${esc(c.id)}" aria-label="Ouvrir la carte ${esc(c.nom)}">${caThumb(c,.5,.5)}</button><div class="srow"><span>${lk({t:'fiche',id:c.id},c.nom)} <span class="muted small">· carte de ce lieu</span></span><button type="button" class="btn" data-act="caGo" data-id="${esc(c.id)}">Ouvrir la carte</button></div></div>`).join('')
+    +R.map(r=>{const c=S.fiches[r.carte];return `<div class="caon"><button type="button" class="caonb" data-act="caGo" data-id="${esc(c.id)}" data-rid="${esc(r.id)}" aria-label="Ouvrir ${esc(c.nom)} sur ce repère">${caThumb(c,r.x,r.y)}<span class="capin" style="background:${esc(caCat(r.cat).coul)}">${caPinSvg(caCibTy(r))}</span></button><div class="srow"><span>${lk({t:'fiche',id:c.id},c.nom)} <span class="muted small">· ${esc(caCat(r.cat).nom)}</span></span><button type="button" class="btn" data-act="caGo" data-id="${esc(c.id)}" data-rid="${esc(r.id)}">Ouvrir la carte</button></div></div>`;}).join('');
+  const n=R.length+own.length;
+  return fiBlk(n?'caon':'caon0','Sur la carte'+fi6Calc(),n?String(n):'',(rows||'<div class="muted small">Pas encore placé sur une carte.</div>')+(N?`<div class="radd"><button class="btn" data-act="caPlace" data-t="${t}" data-id="${esc(id)}">+ Placer sur une carte</button></div>`:''),{});}
+const caLieuHasMap=id=>fiAll().some(c=>caIsMap(c)&&c.lieu===id&&fiSee(c));
+/* ---------- Fenêtres ---------- */
+function caCibOpts(ty,cur,cid){let L=[];
+  if(ty==='pnj')L=Object.values(S.chars||{}).filter(c=>c.type==='PNJ'&&vis(c)).map(c=>[c.id,fiCN(c)]);
+  else if(ty==='carte')L=fiAll().filter(x=>caIsMap(x)&&fiSee(x)&&x.id!==cid).map(x=>[x.id,fiPath(x).filter(fiSee).map(p=>p.nom).concat([x.nom]).join(' › ')]);
+  else L=fiAll().filter(x=>x.genre===ty&&fiSee(x)).map(x=>[x.id,ty==='evenement'&&(x.num||'').trim()?x.num.trim()+' '+x.nom:x.nom]);
+  L.sort((a,b)=>a[1].localeCompare(b[1],'fr',{sensitivity:'base'}));
+  const canNew=['lieu','org','objet','pnj'].includes(ty);
+  return `<option value="">— choisir —</option>${canNew?`<option value="__new"${cur==='__new'?' selected':''}>＋ Créer une fiche du nom du repère</option>`:''}`+L.map(([v,t])=>`<option value="${esc(v)}"${v===cur?' selected':''}>${esc(t)}</option>`).join('');}
+function caSheet(g){
+  if(g.kind==='caRep'){const c=S.fiches[g.cid];if(!c)return null;const r=g.id&&S.fiches[g.id];if(g.id&&(!r||!caCanEd(r)))return null;if(!g.id&&!fiCanNew())return null;
+    const C=caCfg().cats;
+    return fiShell(g,r?'Repère':'Nouveau repère',`<div><h2>${r?'Repère':'Nouveau repère'}</h2><div class="muted small">${esc(c.nom)}</div></div>
+      <div class="field"><span class="lab2">Rattacher à</span><div class="catys">${CA_TY.map(([k,l])=>`<button type="button" class="caty" data-act="caTy" data-v="${k}" aria-pressed="${g.ty===k}">${FI_SVG(CA_SVG[k],18)}<span>${l}</span></button>`).join('')}</div></div>
+      ${g.ty!=='libre'?`<div class="field"><label for="caCib">${esc(caTyLab(g.ty))}</label><select id="caCib" data-fin="cid2">${caCibOpts(g.ty,g.cid2,c.id)}</select></div>`:''}
+      <div class="field"><label for="caNm">Nom affiché sur la carte</label><input id="caNm" type="text" data-fin="nom" value="${esc(g.nom||'')}" autocomplete="off">${g.ty!=='libre'?'<div class="muted small">Vide : le nom de la fiche.</div>':''}</div>
+      <div class="field"><span class="lab2">Catégorie</span><div class="cachips2">${C.map(x=>`<button type="button" class="chip" data-act="caCatPick" data-id="${esc(x.id)}" aria-pressed="${g.cat===x.id}"><span class="cadotc" style="background:${esc(x.coul)}"></span>${esc(x.nom)}</button>`).join('')}<button type="button" class="chip add" data-act="caCatNew" aria-pressed="${!!g.nc}">＋ Nouvelle catégorie</button></div>
+        ${g.nc?`<div class="canc"><input type="text" data-fin="ncn" value="${esc(g.ncn||'')}" placeholder="Nom de la catégorie" aria-label="Nom de la nouvelle catégorie" autocomplete="off"><input type="color" data-fin="ncc" value="${esc(g.ncc||'#4d7a2a')}" aria-label="Couleur de la nouvelle catégorie"></div>`:''}</div>
+      <div class="field"><span class="lab2">Note</span><div class="fiedw"><div id="fiEd" class="fied" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Note du repère" spellcheck="true">${fiEdHtml(g.txt||'')}</div><div id="fiSug" class="fisug" role="listbox" hidden></div></div><div class="muted small">Tape <b>@</b> pour lier une fiche.</div></div>
+      ${isGest()?`<div class="field"><span class="lab2">Visibilité</span><div class="seg" role="group" aria-label="Visibilité">${[['prep','Préparé'],['rev','Visible']].map(([v,l])=>`<button type="button" data-act="caVis" data-v="${v}" aria-pressed="${g.vis===v}">${l}</button>`).join('')}</div></div>`:'<div class="muted small">Le repère sera visible par toute la table.</div>'}
+      ${g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:''}
+      <div class="actions">${r?(g.confirm?`<button class="btn" style="color:var(--bad);margin-right:auto" data-act="caRepDelOk">Confirmer la suppression</button>`:`<button class="btn ghost" style="color:var(--bad);margin-right:auto" data-act="caRepDel">Supprimer</button>`):''}<button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="caRepSave">Enregistrer</button></div>`);}
+  if(g.kind==='caTraj'){const c=S.fiches[g.cid];if(!c)return null;const t=g.id&&S.fiches[g.id];if(g.id&&(!t||!caCanEd(t)))return null;if(!g.id&&!fiCanNew())return null;
+    const m=caLen(c,g.pts);
+    return fiShell(g,'Trajet',`<div><h2>${t?'Trajet':'Enregistrer le trajet'}</h2><div class="muted small">${esc(c.nom)} · ${(g.pts||[]).length} points${m!=null?' · '+caDist(m):''}</div></div>
+      <div class="field"><label for="caTn">Nom</label><input id="caTn" type="text" data-fin="nom" value="${esc(g.nom||'')}" autocomplete="off"></div>
+      <div class="field"><span class="lab2">Couleur</span><div class="casw">${CA_COUL.map(k=>`<button type="button" class="caswb" data-act="caCoul" data-v="${k}" style="background:${k}" aria-pressed="${g.coul===k}" aria-label="Couleur ${k}"></button>`).join('')}</div></div>
+      <div class="field"><label for="caTt">Note</label><input id="caTt" type="text" data-fin="note" value="${esc(g.note||'')}" autocomplete="off"></div>
+      ${isGest()?`<div class="field"><span class="lab2">Visibilité</span><div class="seg" role="group" aria-label="Visibilité">${[['prep','Préparé'],['rev','Visible']].map(([v,l])=>`<button type="button" data-act="caVis" data-v="${v}" aria-pressed="${g.vis===v}">${l}</button>`).join('')}</div></div>`:''}
+      ${g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:''}
+      <div class="actions">${t?(g.confirm?`<button class="btn" style="color:var(--bad);margin-right:auto" data-act="caTrDelOk">Confirmer la suppression</button>`:`<button class="btn ghost" style="color:var(--bad);margin-right:auto" data-act="caTrDel">Supprimer</button>`):''}<button class="btn" data-act="caTrRedo">${t?'Retracer':'Reprendre le tracé'}</button><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="caTrSave">Enregistrer</button></div>`);}
+  if(g.kind==='caEch'){const c=S.fiches[g.cid];if(!c||!canEdit())return null;
+    return fiShell(g,'Échelle',`<div><h2>Échelle de ${esc(c.nom)}</h2><div class="muted small">Réglée une fois : elle sert à toutes les distances et durées de la carte.</div></div>
+      <div style="display:flex;gap:8px;align-items:flex-end"><div class="field" style="flex:1"><label for="caEl">Longueur de A à B</label><input id="caEl" type="number" min="0" step="any" data-fin="l" value="${esc(g.l||'')}"></div>
+      <div class="field" style="width:130px"><label for="caEu">Unité</label><select id="caEu" data-fin="u">${Object.entries(CA_UNIT).map(([k,[l]])=>`<option value="${k}"${g.u===k?' selected':''}>${l}</option>`).join('')}</select></div></div>
+      <div class="muted small">Une lieue = 4 km.</div>
+      ${g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:''}
+      <div class="actions">${c.ech?`<button class="btn ghost" style="color:var(--bad);margin-right:auto" data-act="caEchDel">Sans échelle</button>`:''}<button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="caEchSave">Enregistrer</button></div>`);}
+  if(g.kind==='caPlace'){const L=fiSort(fiAll().filter(c=>caIsMap(c)&&fiSee(c)));
+    return fiShell(g,'Placer sur une carte',`<div><h2>Placer sur une carte</h2><div class="muted small">${esc(g.nom||'')}</div></div>
+      <div class="field"><label for="caPc">Carte</label><select id="caPc" data-fin="carte"><option value="">— choisir —</option>${L.map(c=>`<option value="${esc(c.id)}"${g.carte===c.id?' selected':''}>${esc(fiPath(c).filter(fiSee).map(p=>p.nom).concat([c.nom]).join(' › '))}</option>`).join('')}</select></div>
+      <div class="muted small">La carte s'ouvre : touche l'endroit voulu pour poser le repère.</div>
+      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="caPlaceGo">Continuer</button></div>`);}
+  return null;}
+/* ---------- Actions ---------- */
+function caGo(cid,rid){const c=S.fiches[cid];if(!c||!fiSee(c))return;const r=rid&&S.fiches[rid];S.caMode=null;S.caTmp=null;S.caSel=null;S.caQ='';
+  if(r)S.caFocus={cid,x:r.x,y:r.y,rid:r.id};
+  if(S.fi===cid&&S.view==='univers'){render();return;}navGo({t:'fiche',id:cid});render();}
+function caStart(m,c,o){S.caMode=m;S.caTmp={cid:c.id,pts:[],...(o||{})};S.caSel=null;render();}
+function caZoomBy(c,k,px,py){const v=CA_V[c.id];if(!v)return;const el=document.getElementById('caMap');const W=el?el.clientWidth:caFit(c).W,H=el?el.clientHeight:caFit(c).H;
+  if(px==null){px=W/2;py=H/2;}const z=Math.max(v.min||.05,Math.min(6,v.z*k)),f=z/v.z;v.x=px-(px-v.x)*f;v.y=py-(py-v.y)*f;v.z=z;caPaint(c);}
+function caPaint(c){const el=document.getElementById('caMap'),v=CA_V[c.id];if(!el||!v)return;const i=el.querySelector('.cain');if(i){i.style.transform=`translate(${v.x}px,${v.y}px) scale(${v.z})`;i.style.setProperty('--k',(1/v.z).toFixed(4));}
+  const b=el.querySelector('.cabar');if(b)b.outerHTML=caBar(c,v.z);}
+function caClick(c,fx,fy){if(fx<0||fy<0||fx>1||fy>1)return;const M=S.caMode,T=S.caTmp;
+  if(!M||!T||T.cid!==c.id){if(S.caSel){S.caSel=null;render();}return;}
+  if(M==='rep'){S.caMode=null;S.caTmp=null;caRepOpen(c,null,fx,fy,T.pre);return;}
+  if(M==='move'){const r=S.fiches[T.rid];S.caMode=null;S.caTmp=null;if(r&&caCanEd(r)){const n=clone(r);n.x=fx;n.y=fy;S.caSel=r.id;fiSave(n);}else render();return;}
+  if(M==='regle'){if((T.pts||[]).length>=2)T.pts=[];T.pts.push([fx,fy]);render();return;}
+  if(M==='ech'){T.pts.push([fx,fy]);if(T.pts.length>=2){const e=c.ech&&caMpp(c)?c.ech:null;fiOpenDlg({kind:'caEch',cid:c.id,pts:T.pts.slice(0,2),l:e?String(e.l):'',u:e?e.u:'m'});}render();return;}
+  if(M==='traj'){T.pts.push([fx,fy]);render();return;}}
+function caRepOpen(c,r,x,y,pre){
+  if(r)fiOpenDlg({kind:'caRep',cid:c.id,id:r.id,ty:caCibTy(r),cid2:(r.cib||{}).id||'',nom:r.nom,cat:r.cat||caCfg().cats[0].id,txt:r.note||'',vis:r.vis||'rev'});
+  else{const ty=pre?pre.ty:'lieu',cat=isGest()?caCfg().cats[0].id:(caCfg().cats.find(x=>x.id==='jou')||caCfg().cats[0]).id;
+    fiOpenDlg({kind:'caRep',cid:c.id,id:'',x,y,ty,cid2:pre?pre.id:'',nom:'',cat,txt:'',vis:'rev'});}
+  render();}
+function caAct(a,d){if(/^caPd/.test(a))return caParamAct(a,d);const f=S.fi&&S.fiches[S.fi],c=caIsMap(f)?f:null,g=S.dlg;
+  if(a==='caGo'){caGo(d.id,d.rid);return true;}
+  if(a==='caSel'){S.caSel=d.id||null;const r=d.id&&S.fiches[d.id];if(r&&c&&d.id&&CA_V[c.id]){const v=CA_V[c.id],el=document.getElementById('caMap');if(v&&el){const sx=r.x*caIW(c)*v.z+v.x,sy=r.y*caIH(c)*v.z+v.y;if(sx<40||sy<80||sx>el.clientWidth-40||sy>el.clientHeight-20){v.x=el.clientWidth/2-r.x*caIW(c)*v.z;v.y=el.clientHeight*.6-r.y*caIH(c)*v.z;}}if(el)el.scrollIntoView({block:'nearest'});}render();return true;}
+  if(a==='caTrSel'){const t=S.fiches[d.id];if(t&&c&&(t.pts||[]).length){const xs=t.pts.map(p=>p[0]),ys=t.pts.map(p=>p[1]);S.caFocus={cid:c.id,x:(Math.min(...xs)+Math.max(...xs))/2,y:(Math.min(...ys)+Math.max(...ys))/2};const el=document.getElementById('caMap');if(el)el.scrollIntoView({block:'nearest'});}render();return true;}
+  if(a==='caZoom'){if(c)caZoomBy(c,+d.v>0?1.4:1/1.4);return true;}
+  if(a==='caFull'){S.caFull=!S.caFull;document.body.classList.toggle('cafull',S.caFull);render();return true;}
+  if(a==='caCatTog'){S.caHid={...S.caHid,[d.id]:!S.caHid[d.id]};render();return true;}
+  if(a==='caRegle'){if(c)caStart('regle',c);return true;}
+  if(a==='caCancel'){S.caMode=null;S.caTmp=null;render();return true;}
+  if(S.visit)return true;
+  if(a==='caAdd'){if(c&&fiCanNew())caStart('rep',c);return true;}
+  if(a==='caTrNew'){if(c&&fiCanNew())caStart('traj',c,{coul:CA_COUL[0]});return true;}
+  if(a==='caEchGo'){if(c&&canEdit())caStart('ech',c);return true;}
+  if(a==='caMove'){const r=S.fiches[d.id];if(c&&r&&caCanEd(r))caStart('move',c,{rid:r.id});return true;}
+  if(a==='caUndo'){if(S.caTmp){S.caTmp.pts.pop();render();}return true;}
+  if(a==='caTrEnd'){const T=S.caTmp;if(!c||!T||(T.pts||[]).length<2)return true;const t=T.tid&&S.fiches[T.tid];S.caMode=null;S.caTmp=null;
+    fiOpenDlg({kind:'caTraj',cid:c.id,id:t?t.id:'',pts:T.pts,nom:t?t.nom:'',coul:t?t.coul:(T.coul||CA_COUL[0]),note:t?t.note||'':'',vis:t?t.vis:'rev'});render();return true;}
+  if(a==='caTrEd'){const t=S.fiches[d.id];if(!c||!t||!caCanEd(t))return true;fiOpenDlg({kind:'caTraj',cid:c.id,id:t.id,pts:t.pts||[],nom:t.nom,coul:t.coul||CA_COUL[0],note:t.note||'',vis:t.vis||'rev'});render();return true;}
+  if(a==='caTrRedo'){if(!g||g.kind!=='caTraj')return true;const cc=S.fiches[g.cid];S.dlg=null;S.caMode='traj';S.caTmp={cid:g.cid,pts:(g.pts||[]).slice(),tid:g.id||'',coul:g.coul};if(cc&&S.fi!==cc.id)caGo(cc.id);else render();return true;}
+  if(a==='caRepEd'){const r=S.fiches[d.id];if(c&&r&&caCanEd(r))caRepOpen(c,r);return true;}
+  if(a==='caPlace'){if(!fiCanNew())return true;const o=d.t==='perso'?S.chars[d.id]:S.fiches[d.id];if(!o)return true;
+    const ty=d.t==='perso'?'pnj':o.genre;fiOpenDlg({kind:'caPlace',t:d.t,id:d.id,ty,nom:d.t==='perso'?fiCN(o):o.nom,carte:''});render();return true;}
+  if(a==='caPlaceGo'){if(!g||g.kind!=='caPlace'||!g.carte)return true;const cc=S.fiches[g.carte];if(!cc)return true;const pre={ty:g.ty,id:g.id};S.dlg=null;
+    S.caMode='rep';S.caTmp={cid:cc.id,pts:[],pre};S.caSel=null;S.caQ='';navGo({t:'fiche',id:cc.id});render();return true;}
+  /* fenêtres */
+  if(!g)return true;
+  if(a==='caTy'){g.ty=d.v;g.cid2='';S._fiRedraw=true;render();return true;}
+  if(a==='caVis'){g.vis=d.v==='prep'?'prep':'rev';S._fiRedraw=true;render();return true;}
+  if(a==='caCoul'){g.coul=d.v;S._fiRedraw=true;render();return true;}
+  if(a==='caCatPick'){g.cat=d.id;g.nc=false;S._fiRedraw=true;render();return true;}
+  if(a==='caCatNew'){g.nc=!g.nc;S._fiRedraw=true;render();return true;}
+  if(a==='caRepDel'||a==='caTrDel'){g.confirm=true;S._fiRedraw=true;render();return true;}
+  if(a==='caRepDelOk'||a==='caTrDelOk'){const x=S.fiches[g.id];if(!x||!caCanEd(x))return true;S.dlg=null;S.caSel=null;fiRemove(x.id);render();setTimeout(()=>toast(a==='caRepDelOk'?'Repère supprimé':'Trajet supprimé'),0);return true;}
+  if(a==='caRepSave'){if(g.kind!=='caRep')return true;const cc=S.fiches[g.cid];if(!cc)return true;const ex=g.id&&S.fiches[g.id];if(ex&&!caCanEd(ex))return true;
+    const err=t=>{g.err=t;S._fiRedraw=true;render();return true;};
+    const ed=document.getElementById('fiEd'),txt=ed?fiSer(ed):(g.txt||'');let nom=(g.nom||'').trim(),cib=null;
+    if(g.ty!=='libre'){if(!g.cid2)return err('Choisis la fiche à rattacher, ou « Libre ».');
+      if(g.cid2==='__new'){if(!nom)return err('Écris le nom du repère : la fiche prendra ce nom.');
+        if(g.ty==='pnj'){const nc=ctcNewPnj(nom);cib={s:'perso',id:nc.id};}
+        else{const now=new Date().toISOString(),nf={id:fiRid('f-'),genre:g.ty,nom,type:'',parent:'',kanka:'',vis:'rev',eye:Object.fromEntries(['desc','sait'].concat(g.ty==='org'?FI6_EYE.org||[]:[]).map(k=>[k,true])),desc:'',sait:[],notes:'',par:ME||'',cree:now,modif:now};fiSave(nf,true);cib={s:'fiche',id:nf.id};}}
+      else cib={s:g.ty==='pnj'?'perso':g.ty==='carte'?'carte':'fiche',id:g.cid2};
+      if(!nom)nom=caCibNom({cib,nom:''});}
+    if(!nom)return err('Le nom est obligatoire pour un repère libre.');
+    let cat=g.cat;if(g.nc){const cn=(g.ncn||'').trim();if(!cn)return err('Donne un nom à la nouvelle catégorie.');const C=caCfg();const same=C.cats.find(x=>nrm(x.nom)===nrm(cn));
+      if(same)cat=same.id;else{cat=uid('cat');caCfgSave({...C,cats:[...C.cats,{id:cat,nom:cn,coul:g.ncc||'#4d7a2a'}]});}}
+    const now=new Date().toISOString(),n=ex?clone(ex):{id:fiRid('r-'),genre:'rep',carte:cc.id,x:g.x,y:g.y,par:ME||'',cree:now};
+    n.nom=nom;n.cat=cat;n.note=txt;if(cib)n.cib=cib;else delete n.cib;n.vis=isGest()?(g.vis==='prep'?'prep':'rev'):(ex?ex.vis:'rev');
+    FI_AT=null;S.dlg=null;S.caSel=n.id;fiSave(n);setTimeout(()=>toast(ex?'Repère enregistré':'Repère posé'),0);return true;}
+  if(a==='caTrSave'){if(g.kind!=='caTraj')return true;const cc=S.fiches[g.cid];if(!cc)return true;const ex=g.id&&S.fiches[g.id];if(ex&&!caCanEd(ex))return true;const nom=(g.nom||'').trim();
+    if(!nom){g.err='Donne un nom au trajet.';S._fiRedraw=true;render();return true;}
+    const now=new Date().toISOString(),n=ex?clone(ex):{id:fiRid('t-'),genre:'traj',carte:cc.id,par:ME||'',cree:now};
+    n.nom=nom;n.pts=(g.pts||[]).map(p=>[+(+p[0]).toFixed(5),+(+p[1]).toFixed(5)]);n.coul=g.coul||CA_COUL[0];n.note=(g.note||'').trim();n.vis=isGest()?(g.vis==='prep'?'prep':'rev'):(ex?ex.vis:'rev');
+    S.dlg=null;fiSave(n);setTimeout(()=>toast('Trajet enregistré'),0);return true;}
+  if(a==='caEchSave'){if(g.kind!=='caEch'||!canEdit())return true;const cc=S.fiches[g.cid],l=parseFloat(String(g.l||'').replace(',','.'));if(!cc)return true;
+    if(!(l>0)){g.err='Indique une longueur.';S._fiRedraw=true;render();return true;}const P=g.pts||[];if(P.length<2)return true;
+    const n=clone(cc);n.ech={ax:+P[0][0].toFixed(5),ay:+P[0][1].toFixed(5),bx:+P[1][0].toFixed(5),by:+P[1][1].toFixed(5),l,u:CA_UNIT[g.u]?g.u:'m'};
+    S.dlg=null;S.caMode=null;S.caTmp=null;fiSave(n);setTimeout(()=>toast('Échelle enregistrée'),0);return true;}
+  if(a==='caEchDel'){if(g.kind!=='caEch'||!canEdit())return true;const cc=S.fiches[g.cid];if(!cc)return true;const n=clone(cc);delete n.ech;S.dlg=null;S.caMode=null;S.caTmp=null;fiSave(n);return true;}
+  return true;}
+function caCfgSave(n){S.caCfg=n;persist('meta/cartes',n);}
+/* Suppressions : repères et trajets d'une carte supprimés avec elle ; repères visant une fiche supprimée devenus libres */
+function caUnlink(t,id){const f=t==='fiche'?S.fiches[id]:null;
+  if(f&&caIsMap(f))for(const x of fiAll())if((x.genre==='rep'||x.genre==='traj')&&x.carte===id){const m={...S.fiches};delete m[x.id];S.fiches=m;persistDel('fiches/'+x.id);}
+  for(const r of fiAll())if(r.genre==='rep'&&r.cib&&r.cib.id===id&&(t==='perso')===(r.cib.s==='perso')){const n=clone(r);n.nom=n.nom||caCibNom(r);delete n.cib;fiSave(n,true);}}
+/* ---------- Gestes sur la carte ---------- */
+const CA_G={pts:new Map(),pin:null,moved:false,d0:0,z0:1,mid:null,lp:null,t0:0};
+function caFromEv(el,ev){const c=S.fiches[el.dataset.cid],v=c&&CA_V[c.id];if(!v)return null;const b=el.getBoundingClientRect();return {c,v,px:ev.clientX-b.left,py:ev.clientY-b.top,fx:(ev.clientX-b.left-v.x)/v.z/caIW(c),fy:(ev.clientY-b.top-v.y)/v.z/caIH(c)};}
+function caEnd(){CA_BUSY=false;if(CA_PEND){CA_PEND=false;render();}}
+document.addEventListener('pointerdown',ev=>{const el=ev.target.closest&&ev.target.closest('#caMap');if(!el||ev.target.closest('.cactl,.cabub'))return;
+  const p=caFromEv(el,ev);if(!p)return;CA_BUSY=true;el.setPointerCapture&&el.setPointerCapture(ev.pointerId);
+  CA_G.pts.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});if(CA_G.pts.size===1){CA_G.moved=false;CA_G.s0={x:ev.clientX,y:ev.clientY};}CA_G.t0=Date.now();
+  const pin=ev.target.closest('[data-capin]');CA_G.pin=pin?pin.dataset.capin:null;
+  if(CA_G.pts.size===2){const [a,b]=[...CA_G.pts.values()];CA_G.d0=Math.hypot(a.x-b.x,a.y-b.y);CA_G.z0=p.v.z;CA_G.moved=true;clearTimeout(CA_G.lp);return;}
+  clearTimeout(CA_G.lp);if(!S.caMode&&!CA_G.pin&&fiCanNew()&&!S.visit){const fx=p.fx,fy=p.fy,c=p.c;CA_G.lp=setTimeout(()=>{if(CA_G.moved||CA_G.pts.size!==1)return;CA_G.moved=true;CA_G.pts.clear();caEnd();if(navigator.vibrate)try{navigator.vibrate(30);}catch(e){}caRepOpen(c,null,fx,fy);},650);}
+  if(ev.pointerType==='mouse')ev.preventDefault();});
+document.addEventListener('pointermove',ev=>{if(!CA_G.pts.has(ev.pointerId))return;const el=document.getElementById('caMap');if(!el)return;const p=caFromEv(el,ev);if(!p)return;
+  const prev=CA_G.pts.get(ev.pointerId);CA_G.pts.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+  if(CA_G.pts.size===2){const [a,b]=[...CA_G.pts.values()],dd=Math.hypot(a.x-b.x,a.y-b.y),bb=el.getBoundingClientRect();if(CA_G.d0)caZoomBy(p.c,CA_G.z0*dd/CA_G.d0/p.v.z,(a.x+b.x)/2-bb.left,(a.y+b.y)/2-bb.top);return;}
+  const dx=ev.clientX-prev.x,dy=ev.clientY-prev.y;
+  if(!CA_G.moved){const s0=CA_G.s0||{x:prev.x,y:prev.y};if(Math.hypot(ev.clientX-s0.x,ev.clientY-s0.y)<6){CA_G.pts.set(ev.pointerId,prev);return;}CA_G.moved=true;clearTimeout(CA_G.lp);}
+  p.v.x+=dx;p.v.y+=dy;caPaint(p.c);});
+function caUp(ev){if(!CA_G.pts.has(ev.pointerId))return;const el=document.getElementById('caMap');const p=el&&caFromEv(el,ev);CA_G.pts.delete(ev.pointerId);clearTimeout(CA_G.lp);
+  if(CA_G.pts.size)return;CA_G.s0=null;const moved=CA_G.moved,pin=CA_G.pin;CA_G.pin=null;CA_BUSY=false;
+  if(!moved&&p&&ev.type==='pointerup'){CA_PEND=false;/* après le « click » qui suit (sinon il tomberait sur le fond de la fenêtre ouverte) */setTimeout(()=>{if(pin&&!S.caMode){S.caSel=S.caSel===pin?null:pin;render();return;}caClick(p.c,p.fx,p.fy);},0);return;}
+  caEnd();}
+document.addEventListener('pointerup',caUp);document.addEventListener('pointercancel',caUp);
+document.addEventListener('wheel',ev=>{const el=ev.target.closest&&ev.target.closest('#caMap');if(!el)return;const p=caFromEv(el,ev);if(!p)return;ev.preventDefault();caZoomBy(p.c,ev.deltaY<0?1.15:1/1.15,p.px,p.py);},{passive:false});
+document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset)return;
+  if(t.dataset.caq!==undefined){S.caQ=t.value;const f=S.fi&&S.fiches[S.fi],r=document.getElementById('caRes');if(r&&caIsMap(f))r.innerHTML=caLists(f);return;}
+  if(t.dataset.cap!==undefined&&S.caPd){caPdInput(t);}});
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&S.caFull&&!S.dlg){S.caFull=false;document.body.classList.remove('cafull');render();}});
+/* ---------- Paramètres › Règles › Cartes ---------- */
+function caParams(){const G=canEdit();if(!S.caPd)S.caPd=clone(caCfg());const P=S.caPd,used={};for(const r of fiAll())if(r.genre==='rep'){const k=r.cat||caCfg().cats[0].id;used[k]=(used[k]||0)+1;}
+  const cats=P.cats.map((c,i)=>`<div class="srow capr"><input type="color" data-cap="coul" data-i="${i}" value="${esc(c.coul)}" aria-label="Couleur de ${esc(c.nom)}"${G?'':' disabled'}><input type="text" data-cap="nom" data-i="${i}" value="${esc(c.nom)}" aria-label="Nom de la catégorie"${G?'':' disabled'}><span class="muted small">${used[c.id]||0}</span>${G?`<button type="button" class="ibtn" data-act="caPdUp" data-k="cats" data-i="${i}" aria-label="Monter ${esc(c.nom)}"${i?'':' disabled'}>↑</button><select data-cap="into" data-i="${i}" aria-label="Fusionner ${esc(c.nom)} dans"><option value="">${used[c.id]?'Fusionner…':'Supprimer…'}</option>${used[c.id]?P.cats.filter(x=>x.id!==c.id).map(x=>`<option value="${esc(x.id)}">dans ${esc(x.nom)}</option>`).join(''):'<option value="__del">Supprimer</option>'}</select>`:''}</div>`).join('');
+  const moy=P.moy.map((m,i)=>`<div class="srow capr"><input type="text" data-cap="mnom" data-i="${i}" value="${esc(m.nom)}" aria-label="Moyen de déplacement"${G?'':' disabled'}><input type="number" min="0" step="any" data-cap="v" data-i="${i}" value="${esc(String(m.v))}" aria-label="Vitesse de ${esc(m.nom)} en km/h" style="width:80px"${G?'':' disabled'}><span class="muted small">km/h</span>${G?`<button type="button" class="ibtn" data-act="caPdUp" data-k="moy" data-i="${i}" aria-label="Monter ${esc(m.nom)}"${i?'':' disabled'}>↑</button><button type="button" class="ibtn" data-act="caPdDel" data-i="${i}" aria-label="Retirer ${esc(m.nom)}">✕</button>`:''}</div>`).join('');
+  return `${G?'':'<div class="rolock">Lecture seule : réservé à la gestion, en mode édition.</div>'}
+    ${cBlk('ca-cat','Catégories de repère',String(P.cats.length),cats+(G?`<div class="radd"><button class="btn" data-act="caPdAdd" data-k="cats">+ Catégorie</button></div>`:'')+'<div class="muted small" style="margin-top:6px">La couleur de la pastille vient de la catégorie. Les joueurs peuvent créer une catégorie en posant un repère. Une catégorie utilisée ne se supprime qu\'en la fusionnant dans une autre.</div>')}
+    ${cBlk('ca-pic','Pictogrammes','fixes',`<div class="capics">${CA_TY.map(([k,l])=>`<span>${FI_SVG(CA_SVG[k],20)}<small>${l}</small></span>`).join('')}</div><div class="muted small">Le picto suit le type de la fiche rattachée.</div>`)}
+    ${cBlk('ca-moy','Moyens de déplacement',String(P.moy.length),moy+(G?`<div class="radd"><button class="btn" data-act="caPdAdd" data-k="moy">+ Moyen de déplacement</button></div>`:'')+'<div class="muted small" style="margin-top:6px">Durée d\'un trajet = distance ÷ vitesse (sans relief ni arrêts). Le premier de la liste sert à la règle.</div>')}
+    ${G?`<div class="actions" style="margin-top:10px"><button class="btn" data-act="caPdReset">Annuler les changements</button><button class="btn pri" data-act="caPdSave">Enregistrer</button></div>`:''}`;}
+function caPdInput(t){const P=S.caPd,i=+t.dataset.i,k=t.dataset.cap;if(!P)return;
+  if(k==='coul'||k==='nom'){if(P.cats[i])P.cats[i][k]=t.value;}else if(k==='mnom'){if(P.moy[i])P.moy[i].nom=t.value;}else if(k==='v'){if(P.moy[i])P.moy[i].v=parseFloat(String(t.value).replace(',','.'))||0;}}
+document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.cap!=='into'||!S.caPd||!canEdit())return;const P=S.caPd,i=+t.dataset.i,c=P.cats[i];if(!c||!t.value)return;
+  if(t.value!=='__del'){P.merge=(P.merge||[]).concat([[c.id,t.value]]);}P.cats.splice(i,1);render();});
+function caParamAct(a,d){if(!canEdit())return true;const P=S.caPd;if(!P)return true;
+  if(a==='caPdAdd'){if(d.k==='cats')P.cats.push({id:uid('cat'),nom:'Nouvelle catégorie',coul:'#4d7a2a'});else P.moy.push({id:uid('m'),nom:'Nouveau moyen',v:10});render();return true;}
+  if(a==='caPdUp'){const L=P[d.k],i=+d.i;if(L&&i>0){[L[i-1],L[i]]=[L[i],L[i-1]];}render();return true;}
+  if(a==='caPdDel'){P.moy.splice(+d.i,1);render();return true;}
+  if(a==='caPdReset'){S.caPd=null;render();return true;}
+  if(a==='caPdSave'){const M=P.merge||[],ok=new Set(P.cats.map(c=>c.id));
+    const to=id=>{let x=id,n=0;while(!ok.has(x)&&n++<20){const m=M.find(y=>y[0]===x);if(!m)break;x=m[1];}return ok.has(x)?x:(P.cats[0]||{}).id;};
+    if(!P.cats.length){toast('Il faut au moins une catégorie');return true;}
+    for(const r of fiAll())if(r.genre==='rep'&&r.cat&&!ok.has(r.cat)){const n=clone(r);n.cat=to(r.cat);fiSave(n,true);}
+    caCfgSave({cats:P.cats.map(c=>({id:c.id,nom:(c.nom||'').trim()||'Sans nom',coul:c.coul})),moy:P.moy.filter(m=>(m.nom||'').trim()).map(m=>({id:m.id,nom:m.nom.trim(),v:+m.v||0}))});
+    S.caPd=null;render();setTimeout(()=>toast('Réglages des cartes enregistrés'),0);return true;}
+  return true;}
+function caHeadFields(g){const L=fiSort(fiAll().filter(x=>x.genre==='lieu'&&fiSee(x)));
+  return `<div class="field"><label for="caLi">Lieu associé</label><select id="caLi" data-fin="lieu"><option value="">— aucun —</option>${L.map(x=>`<option value="${esc(x.id)}"${x.id===g.lieu?' selected':''}>${esc(fiPath(x).filter(fiSee).map(p=>p.nom).concat([x.nom]).join(' › '))}</option>`).join('')}</select><div class="muted small">La carte s'affiche sur la fiche du lieu (bloc « Sur la carte »).</div></div>`;}

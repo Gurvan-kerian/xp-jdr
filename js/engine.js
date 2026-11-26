@@ -381,7 +381,7 @@ function fxSync(c0){if(!c0||!c0.fx)return c0;const want={};for(const e of fxOf(c
 /* ---------- Paramètres (écran Paramètres, droits de gestion) ----------
    meta/params = {versions:[{date, v:{...}}]} ; la version active est la plus récente dont la date d'effet est passée. */
 /* Paramètres (23/11/2026) : accueil en liste groupée, 7 entrées */
-const PARAM_HOME=[['Règles',[['creation','Création'],['progression','Progression des PJ'],['pnj','PNJ et relations'],['table','XP de groupe']]],['Référentiel',[['profils','Profils'],['listes','Listes de valeurs']]],['Administration',[['donnees','Données']]]];
+const PARAM_HOME=[['Règles',[['creation','Création'],['progression','Progression des PJ'],['pnj','PNJ et relations'],['table','XP de groupe'],['cartes','Cartes']]],['Référentiel',[['profils','Profils'],['listes','Listes de valeurs']]],['Administration',[['donnees','Données']]]];
 const PARAM_TABS=PARAM_HOME.flatMap(g=>g[1]);
 const PARAM_DEF={
  couts:[['feerie','Féerie : (niveau suivant) ×',5],['masque','Masque : (niveau suivant) ×',4],['carac','Caractéristique : (niveau suivant) ×',4],['carac12','Caractéristique : passage de 1 à 2',12],['comp','Compétence : (niveau suivant) ×',3],['fut','Compétence futile : (niveau suivant) ×',1],['fortune','Fortune : (niveau suivant) ×',2],['atout','Atout féerique',8],['spec','Spécialité',8],['specFut','Spécialité futile',2],['mauvaiseMain','Mauvaise main',12],['prof','Profil de PNJ : (niveau suivant) ×',12]],

@@ -191,7 +191,9 @@ function renderSheet0(){
   root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(r.nom)}"><div class="in"><div><h2>${esc(r.nom)}</h2><div class="muted small">${esc(c.court)}</div></div>${body}${fix}<div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;
 }
 function render(){
-  if(S.gate)return; /* écran du code : rien ne doit le remplacer */
+  if(S.gate)return;
+  if(typeof CA_BUSY!=='undefined'&&CA_BUSY&&Date.now()-CA_G.t0<4000){CA_PEND=true;return;} /* lot Cartes : pas de redessin pendant un geste sur la carte */
+  if(S.caFull&&!(S.view==='univers'&&S.fi&&S.fiches[S.fi]&&S.fiches[S.fi].genre==='carte')){S.caFull=false;document.body.classList.remove('cafull');} /* écran du code : rien ne doit le remplacer */
   const cur=k=>S.view===k||(k==='team'&&(S.view==='sheet'||S.view==='crea'));
   if(S.edit&&(!isGest()||S.visit)){S.edit=false;S.rfEd=false;S.edQuit=false;}
   if(S.view==='params'&&!canEdit())S.view='home'; /* lot 4 bis : Paramètres seulement en mode édition */

@@ -99,8 +99,9 @@ function socleInput(t,type){if(t.dataset.kkfile!==undefined){if(type==='change')
 const KK_G={lieu:{un:'lieu',pl:'lieux',Pl:'Lieux'},pnj:{un:'PNJ',pl:'PNJ',Pl:'PNJ'},
   objet:{un:'objet',pl:'objets',Pl:'Objets'},bete:{un:'créature',pl:'créatures',Pl:'Créatures'},evenement:{un:'événement',pl:'événements',Pl:'Événements'},
   journal:{un:'journal ou quête',pl:'journaux et quêtes',Pl:'Journaux et quêtes'},
-  org:{un:'organisation',pl:'organisations',Pl:'Organisations',f:true},famille:{un:'famille',pl:'familles',Pl:'Familles',f:true}}; /* lot 8 b : objets, créatures, événements, journaux et quêtes ; lot 5 a : organisations ; lot 5 b : familles */
-const KK_FI=new Set(['lieu','objet','bete','evenement','org','famille']); /* genres rangés dans « fiches » */
+  org:{un:'organisation',pl:'organisations',Pl:'Organisations',f:true},famille:{un:'famille',pl:'familles',Pl:'Familles',f:true},
+  carte:{un:'carte',pl:'cartes',Pl:'Cartes',f:true},rep:{un:'repère',pl:'repères',Pl:'Repères des cartes'}}; /* lot Cartes */ /* lot 8 b : objets, créatures, événements, journaux et quêtes ; lot 5 a : organisations ; lot 5 b : familles */
+const KK_FI=new Set(['lieu','objet','bete','evenement','org','famille','carte','rep']); /* genres rangés dans « fiches » */
 const KK_F={lieu:['nom','type','parent','kanka','desc','fief','notes'],
   pnj:['nom','court','surnom','race','genre','ageLib','statut','kanka','por.role','por.fm','situ.titres','situ.familles','situ.orgs','situ.lieux','situ.poss'],
   objet:['nom','type','parent','kanka','desc','effet','crea','carac','det','lieu','uniq'],
@@ -108,12 +109,13 @@ const KK_F={lieu:['nom','type','parent','kanka','desc','fief','notes'],
   evenement:['num','nom','type','debut','duree','pj','lieux','kanka','desc'],
   journal:['nom','type','perso','parts','statut','pub','desc','kanka'],
   org:['nom','type','parent','kanka','desc','sait','prat','rangs','titres','rel','mbx'],
-  famille:['nom','type','parent','suzT','kanka','desc','devise','race','speci','terr','vasx','mbx']};
+  famille:['nom','type','parent','suzT','kanka','desc','devise','race','speci','terr','vasx','mbx'],
+  carte:['nom','type','parent','lieu','kanka','desc','iw','ih','ech'],rep:['nom','carte','x','y','cat','cib','note']};
 const KK_LAB={nom:'nom',type:'type',parent:'lieu parent',kanka:'lien Kanka',desc:'description',fief:'situation féerique',notes:'notes MJ',court:'nom court',surnom:'surnom',race:'race',genre:'genre',ageLib:'âge',statut:'statut',
   'por.role':'rôle','por.fm':'forme masquée','situ.titres':'titres','situ.familles':'familles','situ.orgs':'organisations','situ.lieux':'résidence et lieux','situ.poss':'possessions',
   effet:'effet',crea:'créateur',carac:'caractéristiques',det:'détenteurs',lieu:'emplacement',uniq:'unique',spec:'spécimens connus',num:'numéro',debut:'début',duree:'durée',pj:'PJ',lieux:'lieux',
   perso:'personnage',parts:'participants',statut:'statut',pub:'lecture',ent:'entrées',
-  sait:"ce que l'on sait",prat:'pratiques',rangs:'rangs internes',titres:'titres cumulables',rel:'relations',mbx:'membres en texte',suzT:'suzerain en texte',devise:'devise',speci:'spécificité',terr:'territoires',vasx:'vassales sans fiche'};
+  sait:"ce que l'on sait",prat:'pratiques',rangs:'rangs internes',titres:'titres cumulables',rel:'relations',mbx:'membres en texte',suzT:'suzerain en texte',devise:'devise',speci:'spécificité',terr:'territoires',vasx:'vassales sans fiche',iw:'largeur de l\'image',ih:'hauteur de l\'image',ech:'échelle',carte:'carte',x:'position',y:'position',cat:'catégorie',cib:'fiche rattachée',note:'note'};
 function kkHash(v){const s=stable(v===undefined||kkEmpty(v)?null:v);let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36);}
 const kkGet=(o,p)=>p.split('.').reduce((x,k)=>x==null?undefined:x[k],o);
 function kkSet(o,p,v){const k=p.split('.');let x=o;for(let i=0;i<k.length-1;i++){x[k[i]]=Object.assign({},x[k[i]]||{});x=x[k[i]];}x[k[k.length-1]]=clone(v);}
@@ -157,7 +159,7 @@ function kkCard(){const R=(S.kkImp||{});
   return `<div class="card kkcard"><h3 class="rs" style="margin-top:0">Import Kanka</h3>
     <div class="small">Crée ou met à jour des fiches à partir d'un fichier préparé depuis Kanka. Chaque fiche garde son lien Kanka : relancer un import ne crée pas de doublon, et ce qui a été modifié dans l'appli depuis est gardé.</div>
     <div class="lab2" style="margin-top:10px">Ordre conseillé</div>
-    <div class="kkord">${Object.keys(KK_G).map((g,i)=>`<div class="srow"><span>${i+1}. ${KK_G[g].Pl}</span>${last(g)}</div>`).join('')}<div class="srow muted"><span>Cartes</span><span>à venir</span></div></div>
+    <div class="kkord">${Object.keys(KK_G).map((g,i)=>`<div class="srow"><span>${i+1}. ${KK_G[g].Pl}</span>${last(g)}</div>`).join('')}</div>
     ${S.visit||writesLocked()?'<div class="muted small">Import impossible en lecture seule.</div>':`<label class="btn pri kkpick">Choisir un fichier d'import (.json)<input type="file" accept=".json,application/json" data-kkfile hidden></label>`}
     ${Object.keys(R).filter(g=>KK_G[g]).length?`<div class="actions" style="justify-content:flex-start">${Object.keys(KK_G).filter(g=>R[g]).map(g=>`<button type="button" class="lnk" data-act="kkRep" data-g="${g}">Compte rendu : ${KK_G[g].pl} ›</button>`).join('')}</div>`:''}
     <div class="kkwarn small">Avant un import : faire une sauvegarde (export Supabase). Les fiches importées sont révélées : visibles de toute la table.</div></div>`;}
@@ -202,7 +204,7 @@ function kkRepView(r,fin){if(!r)return '';const G=KK_G[r.genre]||KK_G.lieu;
   h+=`<div class="kkdone"><b>${r.nNew} ${r.nNew>1?G.pl+(G.f?' créées':' créés'):G.un+(G.f?' créée':' créé')}</b>${r.nMaj?` · ${r.nMaj} mis à jour`:''}${r.nPj?` · ${r.nPj} identité${r.nPj>1?'s':''} masquée${r.nPj>1?'s':''}`:''}${r.nMem?` · ${r.nMem} Situation${r.nMem>1?'s':''} complétée${r.nMem>1?'s':''}`:''} · ${r.imgOk} image${r.imgOk>1?'s':''} sur ${r.imgOk+(r.imgKo||[]).length} · ${fmtDate(r.date)}${r.by&&S.players[r.by]?' · '+esc(S.players[r.by].nom):''}</div>`;
   const ko=r.imgKo||[],er=r.err||[];
   if(ko.length||er.length)h+=`<div class="card"><h3 class="rs" style="margin-top:0">À reprendre</h3>${er.length?`<div class="kkinf"><b class="num kkko">${er.length}</b><span>enregistrement${er.length>1?'s':''} refusé${er.length>1?'s':''} : ${er.map(esc).join(', ')}. Relancer le même fichier.</span></div>`:''}${ko.length?`<div class="kkinf"><b class="num kkko">${ko.length}</b><span>image${ko.length>1?'s':''} non enregistrée${ko.length>1?'s':''} : ${ko.map(x=>esc(x.nom)+' ('+esc(x.lab)+')').join(', ')}. À ajouter à la main, ou relancer avec un nouveau fichier.</span></div>`:''}</div>`;
-  const kkO=id=>KK_FI.has(r.genre)?(S.fiches[id]&&{o:{t:'fiche',id},n:S.fiches[id].nom}):r.genre==='journal'?(S.jour&&S.jour[id]&&{o:{t:'jour',id},n:S.jour[id].nom}):(S.chars[id]&&{o:{t:'perso',id},n:S.chars[id].court||S.chars[id].nom});
+  const kkO=id=>KK_FI.has(r.genre)?(S.fiches[id]&&(S.fiches[id].genre==='rep'?{o:{t:'fiche',id:S.fiches[id].carte},n:S.fiches[id].nom}:{o:{t:'fiche',id},n:S.fiches[id].nom})):r.genre==='journal'?(S.jour&&S.jour[id]&&{o:{t:'jour',id},n:S.jour[id].nom}):(S.chars[id]&&{o:{t:'perso',id},n:S.chars[id].court||S.chars[id].nom});
   const L=(r.cree||[]).map(kkO).filter(Boolean);
   if(L.length)h+=`<details class="card kkdet"${L.length<=12?' open':''}><summary class="lab2">Fiches créées · ${L.length}</summary>${L.map(x=>`<div class="srow">${lk(x.o,x.n)}</div>`).join('')}</details>`;
   h+=`<div class="actions kkact"><button class="btn" data-act="kkClose">${fin?'Importer un autre fichier':'Retour'}</button><button class="btn pri" data-act="kkSee" data-g="${r.genre}">${r.genre==='journal'?'Voir les journaux de '+esc((S.chars[(((S.jour||{})[(r.cree||[])[0]])||{}).perso]||{}).court||'Kerian'):'Voir les '+G.pl}</button></div>`;
@@ -212,7 +214,8 @@ function kkAct(a,d){if(!isGest())return true;
   if(a==='kkClose'){if(S.kk&&S.kk.step==='run')return true;S.kk=null;window.scrollTo(0,0);return true;}
   if(a==='kkRep'){const r=(S.kkImp||{})[d.g];if(r)S.kk={step:'rep',rep:r};window.scrollTo(0,0);return true;}
   if(a==='kkSee'){const r=(S.kk&&S.kk.rep)||(S.kkImp||{})[d.g]||{};S.kk=null;navClear();
-    if(d.g==='lieu'||d.g==='objet'||d.g==='bete'||d.g==='org'||d.g==='famille'){S.view='univers';S.uni=d.g;S.fi=null;}
+    if(d.g==='carte'||d.g==='rep'){S.view='univers';S.uni='carte';S.fi=null;}
+    else if(d.g==='lieu'||d.g==='objet'||d.g==='bete'||d.g==='org'||d.g==='famille'){S.view='univers';S.uni=d.g;S.fi=null;}
     else if(d.g==='evenement'){S.view='univers';S.uni='chron';S.fi=null;}
     else if(d.g==='journal'){const j=(S.jour||{})[(r.cree||[])[0]],pc=j&&S.chars[j.perso]?j.perso:'kerian';S.view='sheet';S.sel=pc;S.shTab='jour';S.jrSel='j';}
     else{S.view='team';S.teamSel='pnj';}window.scrollTo(0,0);return true;}

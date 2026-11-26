@@ -191,6 +191,7 @@ function chEvView(f){const G=isGest(),ed=chCanEv();
     <div class="chkv">${P?`<span>PJ</span><div>${P}</div>`:''}${(f.lieux||'').trim()?`<span>Lieux</span><div>${fiInline(f.lieux)}</div>`:''}</div>
     ${ed?`<div style="margin-top:8px"><button type="button" class="edl" data-act="chEvEd">${ICON.crayon} Numéro, titre, type, dates, PJ, lieux</button></div>`:''}</div>`;
   h+=fiBlk('ev-desc','Résumé','',(f.desc||'').trim()?fiRich(f.desc):'<div class="muted small">Pas encore de résumé.</div>',{edit:ed?'chTxt':'',ea:' data-b="desc"'});
+  h+=caOnMap('fiche',f.id); /* lot Cartes */
   const S2=chSessOf(f.id);
   h+=fiBlk('ev-xp','Séances et XP',S2.length?String(S2.length):'',S2.length?S2.map(e=>{const by={};for(const en of e.entries||[]){const c=S.chars[en.perso];if(!c||c.type!=='PJ'||!vis(c)||!en.montant)continue;by[c.id]=(by[c.id]||0)+en.montant;}
     const xp=orderPJ(Object.keys(by)).map(id=>esc(S.chars[id].court)+' <b class="xpn">+'+by[id]+'</b>').join(' · ');

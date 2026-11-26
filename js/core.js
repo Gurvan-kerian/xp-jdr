@@ -46,7 +46,7 @@ function setSync(st,msg){S.sync=st;const el=document.getElementById('sync');if(!
 function saveChar(c){c=fxSync(c);S.chars[c.id]=c;render();persist('chars/'+c.id,c);}
 function savePlayer(p){S.players[p.id]=p;render();persist('players/'+p.id,p);}
 function saveEvents(ev){S.events=ev;render();persist('gains/all',{events:ev});}
-function removeChar(id){
+function removeChar(id){if(typeof caUnlink==='function')caUnlink('perso',id); /* lot Cartes */
   delete S.chars[id];persistDel('chars/'+id);
   for(const p of Object.values(S.players))if((p.persos||[]).includes(id)){const q=clone(p);q.persos=q.persos.filter(x=>x!==id);S.players[q.id]=q;persist('players/'+q.id,q);}
   const ev=S.events.map(e=>({...e,entries:e.entries.filter(en=>en.perso!==id)})).filter(e=>e.entries.length);

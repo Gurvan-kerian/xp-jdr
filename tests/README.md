@@ -27,3 +27,6 @@ Installation : `npm install` puis `npx playwright install chromium`, puis `npm t
 
 - `lot8b.test.js` (26/11/2026) : import Kanka des objets, créatures, événements, journaux et quêtes (aperçu, import, relance sans doublon, fusion des entrées de journal), Bestiaire › Spécimens connus (œil, ajout et retrait par un joueur, Mentions), image et lien Kanka de l'événement. Sans navigateur.
   `node tests/lot8b.test.js docs.json import-objets.json import-creatures.json import-evenements.json import-journaux.json`
+
+- `cartes.test.js` (26/11/2026) : lot Cartes interactives. Sans argument, données inventées : distances et durées, visibilité (carte, repère préparé, cible cachée), droits (joueur, Visiteur), pose / modification / déplacement / suppression des repères, trajets, règle, échelle, nouvelle catégorie, « Sur la carte », Paramètres › Cartes, suppressions en cascade ; dans le navigateur : glisser, molette, bulle, pose au clic, tracé, plein écran. Avec l'export et les fichiers d'import : aperçu, import simulé (cartes puis repères), relance, tour des écrans.
+  `node tests/cartes.test.js docs.json import-cartes.json import-reperes.json` (`SHOTS=dossier` pour des captures)
