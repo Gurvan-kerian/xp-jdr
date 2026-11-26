@@ -102,10 +102,11 @@ const KK_G={lieu:{un:'lieu',pl:'lieux',Pl:'Lieux'},pnj:{un:'PNJ',pl:'PNJ',Pl:'PN
   org:{un:'organisation',pl:'organisations',Pl:'Organisations',f:true},famille:{un:'famille',pl:'familles',Pl:'Familles',f:true},
   carte:{un:'carte',pl:'cartes',Pl:'Cartes',f:true},rep:{un:'repère',pl:'repères',Pl:'Repères des cartes'},
   pw:{un:'pouvoir',pl:'pouvoirs',Pl:'Pouvoirs'},cap:{un:'capacité naturelle',pl:'capacités naturelles',Pl:'Capacités naturelles',f:true},
-  art:{un:'art obscur',pl:'arts obscurs',Pl:'Arts obscurs'}}; /* arts obscurs (26/11) */ /* import des pouvoirs et capacités (26/11) */ /* lot Cartes */ /* lot 8 b : objets, créatures, événements, journaux et quêtes ; lot 5 a : organisations ; lot 5 b : familles */
-const KK_FI=new Set(['lieu','objet','bete','evenement','org','famille','carte','rep','art']); /* genres rangés dans « fiches » */
+  art:{un:'art obscur',pl:'arts obscurs',Pl:'Arts obscurs'},
+  chrono:{un:'chronologie',pl:'chronologies',Pl:'Chronologies',f:true},regle:{un:'règle en images',pl:'règles en images',Pl:'Règles en images',f:true}}; /* import Kanka fin (26/11) */ /* arts obscurs (26/11) */ /* import des pouvoirs et capacités (26/11) */ /* lot Cartes */ /* lot 8 b : objets, créatures, événements, journaux et quêtes ; lot 5 a : organisations ; lot 5 b : familles */
+const KK_FI=new Set(['lieu','objet','bete','evenement','org','famille','carte','rep','art','chrono','regle']); /* genres rangés dans « fiches » */
 const KK_F={lieu:['nom','type','parent','kanka','desc','fief','notes'],
-  pnj:['nom','court','surnom','race','genre','ageLib','statut','kanka','por.role','por.fm','situ.titres','situ.familles','situ.orgs','situ.lieux','situ.poss'],
+  pnj:['nom','court','surnom','race','genre','ageLib','statut','kanka','por.role','por.fm','situ.titres','situ.familles','situ.orgs','situ.lieux','situ.poss','pnpw','eye.pw'],
   objet:['nom','type','parent','kanka','desc','effet','crea','carac','det','lieu','uniq'],
   bete:['nom','type','kanka','desc','spec'],
   evenement:['num','nom','type','debut','duree','pj','lieux','kanka','desc'],
@@ -114,7 +115,8 @@ const KK_F={lieu:['nom','type','parent','kanka','desc','fief','notes'],
   famille:['nom','type','parent','suzT','kanka','desc','devise','race','speci','terr','vasx','mbx'],
   carte:['nom','type','parent','lieu','kanka','desc','iw','ih','ech'],rep:['nom','carte','x','y','cat','cib','note'],
   pw:['nom','type','act','cib','dur','por','res','zon','desc','kanka'],cap:['nom','type','act','cib','dur','por','res','zon','desc','kanka'],
-  art:['nom','type','kanka','desc','comp','org','pre','max','cSort','nReq','niv']};
+  art:['nom','type','kanka','desc','comp','org','pre','max','cSort','nReq','niv'],
+  chrono:['nom','type','kanka','desc','eres','els'],regle:['nom','kanka','imgs','ord']};
 const KK_EL=new Set(['pw','cap']); /* genres rangés dans meta/pouvoirs et meta/capacites */
 const KK_LABEL={comp:'compétence cachée',org:'organisation liée',pre:'prérequis',max:'rang maximum',cSort:'coût d\'un sort',nReq:'sorts requis',niv:'noms des niveaux',act:'activation',cib:'cible',dur:'durée',por:'portée',res:'résistance',zon:'zone'};
 const kkLab=(g,p)=>((KK_EL.has(g)||g==='art')&&KK_LABEL[p])||KK_LAB[p]||p;
@@ -122,7 +124,7 @@ const KK_LAB={nom:'nom',type:'type',parent:'lieu parent',kanka:'lien Kanka',desc
   'por.role':'rôle','por.fm':'forme masquée','situ.titres':'titres','situ.familles':'familles','situ.orgs':'organisations','situ.lieux':'résidence et lieux','situ.poss':'possessions',
   effet:'effet',crea:'créateur',carac:'caractéristiques',det:'détenteurs',lieu:'emplacement',uniq:'unique',spec:'spécimens connus',num:'numéro',debut:'début',duree:'durée',pj:'PJ',lieux:'lieux',
   perso:'personnage',parts:'participants',statut:'statut',pub:'lecture',ent:'entrées',
-  sait:"ce que l'on sait",prat:'pratiques',rangs:'rangs internes',titres:'titres cumulables',rel:'relations',mbx:'membres en texte',suzT:'suzerain en texte',devise:'devise',speci:'spécificité',terr:'territoires',vasx:'vassales sans fiche',iw:'largeur de l\'image',ih:'hauteur de l\'image',ech:'échelle',carte:'carte',x:'position',y:'position',cat:'catégorie',cib:'fiche rattachée',note:'note'};
+  sait:"ce que l'on sait",prat:'pratiques',rangs:'rangs internes',titres:'titres cumulables',rel:'relations',mbx:'membres en texte',suzT:'suzerain en texte',devise:'devise',speci:'spécificité',terr:'territoires',vasx:'vassales sans fiche',iw:'largeur de l\'image',ih:'hauteur de l\'image',ech:'échelle',carte:'carte',x:'position',y:'position',cat:'catégorie',cib:'fiche rattachée',note:'note',pnpw:'pouvoirs et capacités','eye.pw':'visibilité des pouvoirs',eres:'ères',els:'éléments',imgs:'images',ord:'ordre'};
 function kkHash(v){const s=stable(v===undefined||kkEmpty(v)?null:v);let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36);}
 const kkGet=(o,p)=>p.split('.').reduce((x,k)=>x==null?undefined:x[k],o);
 function kkSet(o,p,v){const k=p.split('.');let x=o;for(let i=0;i<k.length-1;i++){x[k[i]]=Object.assign({},x[k[i]]||{});x=x[k[i]];}x[k[k.length-1]]=clone(v);}
@@ -225,6 +227,8 @@ function kkAct(a,d){if(!isGest())return true;
     if(d.g==='carte'||d.g==='rep'){S.view='univers';S.uni='carte';S.fi=null;}
     else if(d.g==='lieu'||d.g==='objet'||d.g==='bete'||d.g==='org'||d.g==='famille'||d.g==='art'){S.view='univers';S.uni=d.g;S.fi=null;}
     else if(d.g==='evenement'){S.view='univers';S.uni='chron';S.fi=null;}
+    else if(d.g==='chrono'){S.view='univers';S.uni='chrono';S.fi=null;}
+    else if(d.g==='regle'){S.view='rules';S.rgTab='img';S.rgNote=null;}
     else if(KK_EL.has(d.g)){S.view='univers';S.uni='pouvoirs';S.pcat=d.g;S.fi=null;}
     else if(d.g==='journal'){const j=(S.jour||{})[(r.cree||[])[0]],pc=j&&S.chars[j.perso]?j.perso:'kerian';S.view='sheet';S.sel=pc;S.shTab='jour';S.jrSel='j';}
     else{S.view='team';S.teamSel='pnj';}window.scrollTo(0,0);return true;}
@@ -242,7 +246,7 @@ async function kkRun(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g],P=K.plan.filter(x
         if(m.big)await DB.img.set(m.k,m.big),FI_BIG[m.k]=m.big;
         if(m.th&&m.m!=='big'){await DB.doc('portraits/'+m.k).set({img:m.th,t:Date.now()});S.ptr={...(S.ptr||{}),[m.k]:m.th};ptr=true;}
         done.push(m.k);rep.imgOk++;}
-      catch(e){rep.imgKo.push({nom:it.data.nom||it.id,lab:m.k.startsWith('ill-txt-')?'image du texte':m.k.startsWith('ill-carte-')?'carte':m.k.startsWith('ill-spec-')?'image du spécimen':g==='pnj'?'portrait':'image'});}
+      catch(e){rep.imgKo.push({nom:it.data.nom||it.id,lab:m.k.startsWith('ill-txt-')?'image du texte':m.k.startsWith('ill-carte-')?'carte':m.k.startsWith('ill-spec-')?'image du spécimen':m.k.startsWith('ill-rg-')?'image de la règle':g==='pnj'?'portrait':'image'});}
       K.prog.i++;tick();}
     if(x.act!=='new'&&x.act!=='maj'&&!done.length)continue;
     let o;

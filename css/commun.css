@@ -592,3 +592,20 @@ body.cafull{overflow:hidden}
 .srnt{font-size:22px}
 .srhint{margin-top:12px}
 .srbox input,.srbox input:focus{border:0!important;background:transparent!important;box-shadow:none!important;outline:0}
+/* ---------- Import Kanka fin (26/11/2026) : règles en images, chronologies, pouvoirs des PNJ ---------- */
+.rgtabs{margin:0 0 12px}.rgtabs button{padding:9px 4px;font-weight:600}.rgtabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.rgli .rgth{width:56px;height:56px;flex:none;border-radius:8px;border:1px solid var(--line);background:var(--surface2);overflow:hidden;display:block}.rgli .rgth img{width:100%;height:100%;object-fit:cover;display:block}
+.rggrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}
+.rgcell{display:flex;flex-direction:column;gap:4px}.rgimg{padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface2);aspect-ratio:3/4;cursor:zoom-in}.rgimg img{width:100%;height:100%;object-fit:cover;display:block}
+.rgtools{display:flex;gap:4px;justify-content:center}.rgtools .ibtn{min-width:32px;height:32px}.rgtools .rgko{color:var(--bad);font-size:12px;padding:0 6px}
+.ctera{--ctc:#6b6258}.ctera .rbh{border-left:6px solid var(--ctc)}
+.ctc-violet{--ctc:#6b4f86}.ctc-laiton{--ctc:#8a6420}.ctc-brique{--ctc:#9a3d2e}.ctc-vert{--ctc:#1d6b66}.ctc-bleu{--ctc:#2f5a96}.ctc-gris{--ctc:#6b6258}
+:root[data-theme="dark"] .ctc-violet{--ctc:#b9a0d6}:root[data-theme="dark"] .ctc-laiton{--ctc:#d9b46a}:root[data-theme="dark"] .ctc-brique{--ctc:#e39383}:root[data-theme="dark"] .ctc-vert{--ctc:#6fbcb5}:root[data-theme="dark"] .ctc-bleu{--ctc:#8db0e6}:root[data-theme="dark"] .ctc-gris{--ctc:#b5aca2}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ctc-violet{--ctc:#b9a0d6}:root:not([data-theme="light"]) .ctc-laiton{--ctc:#d9b46a}:root:not([data-theme="light"]) .ctc-brique{--ctc:#e39383}:root:not([data-theme="light"]) .ctc-vert{--ctc:#6fbcb5}:root:not([data-theme="light"]) .ctc-bleu{--ctc:#8db0e6}:root:not([data-theme="light"]) .ctc-gris{--ctc:#b5aca2}}
+.ctel{display:flex;align-items:flex-start;gap:8px;border-top:1px solid var(--surface2);padding:8px 0}.ctel:first-child{border-top:0}
+.ctdot{width:10px;height:10px;border-radius:5px;background:var(--ctc);flex:none;margin-top:6px}.ctbd{flex:1;min-width:0}.ctel.fihid .ctbd{color:var(--muted)}
+.ctt{display:flex;align-items:flex-start;gap:6px;width:100%;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit}.ctt .ctx{flex:1;min-width:0}.ctt .ctd{display:block;font-size:12px;font-weight:700;color:var(--ctc)}.ctt .chev{color:var(--muted);flex:none;padding:0 4px}
+.ctall{margin:0 0 8px}.ctsh{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:10px 0 4px;padding-top:8px;border-top:1px solid var(--line)}
+.ctses{display:flex;align-items:center;gap:8px;padding:4px 0}.ctses .chsq{width:38px;min-height:26px;border-radius:7px}.ctses .ctsn{flex:1;min-width:0}
+.ctcols{display:flex;gap:8px;flex-wrap:wrap}.ctcol{width:40px;height:40px;border-radius:20px;border:2px solid var(--line);background:var(--surface);padding:0;display:flex;align-items:center;justify-content:center}.ctcol span{width:24px;height:24px;border-radius:12px;background:var(--ctc)}.ctcol[aria-pressed="true"]{border-color:var(--fg)}
+.pnpwl{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.pnpwl .rchip{display:inline-flex;align-items:center;gap:4px}.pnpwl .ibtn{min-width:28px;height:28px}

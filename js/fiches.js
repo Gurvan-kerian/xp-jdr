@@ -106,7 +106,7 @@ function fiSugList(q){const n=nrm(q),out=[],G=isGest();
   for(const c of Object.values(S.chars))if(vis(c))add('perso',c.id,c.court||c.nom,c.type==='PJ'?'PJ':'PNJ');
   for(const cr of raceCres()){const x=raceRec(cr);if(raceVisible(cr,x))add('race',cr.id,raceNm(x),'Race');}
   for(const s of S.secrets||[]){const r=ROMAN[s.n-1]||s.n,tt=titreVis(s)||(G&&s.titre);add('secret',String(s.n),'Secret '+r+(tt?' - '+s.titre:''),'Secret',G&&!!s.titre&&!titreVis(s));}
-  for(const f of fiAll())if(fiSee(f)&&!['agenda','rep','traj'].includes(f.genre))add('fiche',f.id,f.genre==='evenement'?((f.num||'').trim()?f.num.trim()+' ':'')+f.nom:f.nom,f.genre==='evenement'?(f.type||'Événement'):(f.type||(FI_G[f.genre]||{}).un||'fiche'),f.vis!=='rev'); /* lot 3 : événements proposés, agenda exclu */
+  for(const f of fiAll())if(fiSee(f)&&!['agenda','rep','traj','regle'].includes(f.genre))add('fiche',f.id,f.genre==='evenement'?((f.num||'').trim()?f.num.trim()+' ':'')+f.nom:f.nom,f.genre==='evenement'?(f.type||'Événement'):(f.type||(FI_G[f.genre]||{}).un||'fiche'),f.vis!=='rev'); /* lot 3 : événements proposés, agenda exclu */
   return out.sort((a,b)=>a.st-b.st||a.nom.localeCompare(b.nom,'fr',{sensitivity:'base'})).slice(0,8);}
 
 /* ---------- Mentions : liens « @ » et rattachements, filtrés selon ce que la personne peut lire ---------- */
@@ -118,6 +118,7 @@ function fiMentions(t,id){const out=[];
     if(fiHas(F.desc,t,id)&&fiBlkSee(F,'desc'))hits.push(F.genre==='evenement'?'Résumé':F.genre==='agenda'?'Note':'Description');
     if((F.sait||[]).some(it=>fiHas(it.txt,t,id)&&fiItSee(F,it)))hits.push("Ce que l'on sait");
     if((F.spec||[]).some(x=>fiHas(x.txt,t,id)&&fiSpecSee(x)))hits.push('Spécimens connus'); /* lot 8 b */
+    if((F.els||[]).some(x=>fiHas(x.txt,t,id)&&ctElSee(x)))hits.push('Chronologie'); /* chronologies */
     if(isGest()&&fiHas(F.notes,t,id))hits.push('Notes MJ');
     if(t==='fiche'&&F.parent===id)hits.push((FI_G[F.genre]||{}).sub||'fiche contenue');
     if(F.genre==='objet'&&fiBlkSee(F,'det')){if(t==='fiche'&&F.lieu&&F.lieu.f===id)hits.push('emplacement');if(t==='perso'&&(F.det||[]).some(x=>x.id===id))hits.push('détenteur');} /* lot 6 */
@@ -145,7 +146,7 @@ function fiUniHome(){const G=isGest(),pl=(n,s,p)=>n+' '+(n>1?p:s);
   const row=(act,v,ic,l,sum,bdg)=>`<button type="button" class="pli" data-act="${act}" data-v="${v}"><span class="pic">${FI_SVG(FI_IC[ic])}</span><span class="ptx"><b>${l}${bdg?` <span class="bdg" aria-label="${bdg} en attente">${bdg}</span>`:''}</b><small>${esc(sum)}</small></span><span aria-hidden="true" class="pch">›</span></button>`;
   const grp=(t,rows)=>`<div class="pgrp">${t}</div><div class="plst">${rows.join('')}</div>`;
   return `<h2 style="margin-top:4px">Univers</h2>`
-    +grp('Récit',[row('uni','chron','chron','Chronique',chUniSum()),row('uni','secrets','secrets','Secrets',sec,np)]) /* lot 3 */
+    +grp('Récit',[row('uni','chron','chron','Chronique',chUniSum()),row('uni','chrono','chrono','Chronologies',cnt('chrono')),row('uni','secrets','secrets','Secrets',sec,np)]) /* lot 3 */
     +grp('Peuples',[row('uni','creatures','races','Races',rac),row('uni','pouvoirs','pouvoirs','Pouvoirs et capacités',uniPwSum()),row('uni','art','art','Arts obscurs',cnt('art')),row('uni','bete','bete','Bestiaire',cnt('bete')),row('uni','famille','famille','Familles',cnt('famille')),row('uni','org','org','Organisations',cnt('org'))])
     +grp('Lieux et choses',[row('uni','lieu','lieu','Lieux',cnt('lieu')),row('uni','carte','carte','Cartes',cnt('carte')),row('uni','objet','objet','Objets',cnt('objet'))]);}
 /* lot 3 : résumé de l'entrée Chronique */
@@ -202,11 +203,12 @@ function fiFicheView(f){
     h+=fiBlk('desc',f.genre==='famille'?'Présentation':'Description','',(f.desc||'').trim()?fiRich(f.desc):'<div class="muted small">Pas encore de description.</div>',{edit:ed?'fiEd':'',ea:' data-b="desc"',hid:G&&!e.desc,eye:G?eyeBtn('fiEye','data-k="desc"',!!e.desc,'Description'):''});
   if(['lieu','org','objet'].includes(f.genre)&&(!OT||OT==='pres'))h+=caOnMap('fiche',f.id); /* lot Cartes */
   /* Ce que l'on sait : un œil par élément */
-  if((!OT||OT==='pres')&&f.genre!=='carte'&&fiBlkSee(f,'sait')){const A=(f.sait||[]),V=A.filter(it=>fiItSee(f,it)),nr=A.filter(it=>it.rev).length;
+  if((!OT||OT==='pres')&&f.genre!=='carte'&&f.genre!=='chrono'&&fiBlkSee(f,'sait')){const A=(f.sait||[]),V=A.filter(it=>fiItSee(f,it)),nr=A.filter(it=>it.rev).length;
     if(V.length||ed){const rows=V.map(it=>`<div class="fiit${it.rev?'':' fihid'}"><div class="fiitx">${fiRich(it.txt)}</div>${ed?`<button type="button" class="fiedi" data-act="fiItem" data-i="${esc(it.id)}" aria-label="Modifier l'élément">${ICON.crayon}</button>`:''}${G?eyeBtn('fiEye',`data-k="item" data-i="${esc(it.id)}"`,!!it.rev,"Élément de « Ce que l'on sait »"):''}</div>`).join('');
       h+=fiBlk('sait',"Ce que l'on sait",G?`${nr} / ${A.length} révélé${nr>1?'s':''}`:String(V.length||''),(rows||'<div class="muted small">Rien pour l\'instant.</div>')+(ed?`<div class="radd"><button class="btn" data-act="fiItem" data-i="">+ Un élément</button></div>`:''),{hid:G&&!e.sait,eye:G?eyeBtn('fiEye','data-k="sait"',!!e.sait,"Ce que l'on sait"):''});}}
   if(f.genre==='bete')h+=fiSpecBlk(f,ed,G); /* lot 8 b : spécimens connus */
   if(f.genre==='art')h+=aoBlocks(f,ed,G); /* arts obscurs */
+  if(f.genre==='chrono')h+=ctBlocks(f,ed,G); /* chronologies */
   h+=fi6Blocks(f); /* lot 6 : blocs propres aux lieux et objets */
   if(OT)h+=ogBlocks(f,OT); /* lot 5 a */
   if(f.genre==='famille')h+=faBlocks(f); /* lot 5 b */
@@ -247,6 +249,8 @@ function fiTypeField(g,val){const T=fiTypes(g,isGest()),v=(val||'').trim(),known
   return `<div class="field"><label for="fiTy">Type</label><input id="fiTy" type="text" list="fiTyL" data-fin="type" value="${esc(val||'')}" autocomplete="off"><datalist id="fiTyL">${T.map(t=>`<option value="${esc(t[0])}">`).join('')}</datalist><div class="muted small" id="fiTyN"${known?' hidden':''}>Nouveau type : il s'ajoutera à la liste de valeurs.</div></div>`;}
 function fiSheet(g){
   if(/^ao[A-Z]/.test(g.kind))return aoSheet(g); /* arts obscurs */
+  if(/^ct[A-Z]/.test(g.kind))return ctSheet(g); /* chronologies */
+  if(/^rg[A-Z]/.test(g.kind))return rgSheet(g); /* règles en images */
   if(/^jr/.test(g.kind))return jrSheet(g); /* lot 2 */
   if(/^ch/.test(g.kind))return chSheet(g); /* lot 3 */
   if(/^pn/.test(g.kind))return pnSheet(g); /* lot 4 */
@@ -316,14 +320,14 @@ function fiBigSave(ill,im){if(!im||!DB||!DB.img||S.visit||writesLocked())return;
   FI_BIG[ill]=data;DB.img.set(ill,data).catch(e=>{console.error(e);toast("Grande image non enregistrée (script SQL du lot 1 à installer)");});}
 function fiBigDel(ill){delete FI_BIG[ill];if(DB&&DB.img&&!S.visit&&!writesLocked())DB.img.del(ill).catch(()=>{});}
 let FI_VW=null;
-function fiViewer(src,big,title){fiViewerClose();if(!src)return;
+function fiViewer(src,big,title,nav){const prev0=FI_VW&&FI_VW.prev;fiViewerClose(true);if(!src)return;
   const el=document.createElement('div');el.id='fiVw';el.className='fivw';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label',title||'Image agrandie');
-  el.innerHTML=`<div class="fivwh"><span class="fivwt">${esc(title||'')}</span><button type="button" class="fivwx" data-vw="x" aria-label="Fermer">✕</button></div><div class="fivws"><img alt="${esc(title||'')}" src="${src}" draggable="false"></div><div class="fivwz"><button type="button" data-vw="-" aria-label="Dézoomer">−</button><span data-vw="p">100 %</span><button type="button" data-vw="+" aria-label="Zoomer">+</button></div>`;
+  el.innerHTML=`<div class="fivwh"><span class="fivwt">${esc(title||'')}</span><button type="button" class="fivwx" data-vw="x" aria-label="Fermer">✕</button></div><div class="fivws"><img alt="${esc(title||'')}" src="${src}" draggable="false"></div><div class="fivwz">${nav?`<button type="button" data-vw="prev" aria-label="Image précédente"${nav.i>0?'':' disabled'}>‹</button>`:''}<button type="button" data-vw="-" aria-label="Dézoomer">−</button><span data-vw="p">100 %</span><button type="button" data-vw="+" aria-label="Zoomer">+</button>${nav?`<button type="button" data-vw="next" aria-label="Image suivante"${nav.i<nav.L.length-1?'':' disabled'}>›</button>`:''}</div>`;
   document.body.appendChild(el);const img=el.querySelector('img');
-  FI_VW={el,img,z:1,x:0,y:0,pts:new Map(),d0:0,z0:1,last:0,prev:document.activeElement};
+  FI_VW={el,img,z:1,x:0,y:0,pts:new Map(),d0:0,z0:1,last:0,prev:nav&&prev0?prev0:document.activeElement,nav};
   const paint=()=>{const v=FI_VW;if(!v)return;img.style.transform=`translate(${v.x}px,${v.y}px) scale(${v.z})`;el.querySelector('[data-vw="p"]').textContent=Math.round(v.z*100)+' %';};
   const zoom=(z)=>{const v=FI_VW;v.z=Math.max(1,Math.min(8,z));if(v.z===1){v.x=0;v.y=0;}paint();};
-  el.addEventListener('click',ev=>{const b=ev.target.closest('[data-vw]');if(!b){if(ev.target===el)fiViewerClose();return;}const k=b.dataset.vw;if(k==='x')fiViewerClose();else if(k==='+')zoom(FI_VW.z*1.4);else if(k==='-')zoom(FI_VW.z/1.4);});
+  el.addEventListener('click',ev=>{const b=ev.target.closest('[data-vw]');if(!b){if(ev.target===el)fiViewerClose();return;}const k=b.dataset.vw;if((k==='prev'||k==='next')&&nav){const j=nav.i+(k==='prev'?-1:1),o=nav.L[j];if(o&&S.ptr&&S.ptr[o.k])fiViewer(S.ptr[o.k],o.k,o.lab,{L:nav.L,i:j});return;}if(k==='x')fiViewerClose();else if(k==='+')zoom(FI_VW.z*1.4);else if(k==='-')zoom(FI_VW.z/1.4);});
   const st=el.querySelector('.fivws');
   st.addEventListener('wheel',ev=>{ev.preventDefault();zoom(FI_VW.z*(ev.deltaY<0?1.15:1/1.15));},{passive:false});
   st.addEventListener('dblclick',()=>zoom(1));
@@ -336,7 +340,7 @@ function fiViewer(src,big,title){fiViewerClose();if(!src)return;
   const up=ev=>{if(FI_VW)FI_VW.pts.delete(ev.pointerId);};st.addEventListener('pointerup',up);st.addEventListener('pointercancel',up);
   el.querySelector('.fivwx').focus();
   if(big){if(FI_BIG[big])img.src=FI_BIG[big];else if(DB&&DB.img)DB.img.get(big).then(d=>{if(d&&typeof d==='string'){FI_BIG[big]=d;if(FI_VW&&FI_VW.img===img)img.src=d;}}).catch(()=>{});}}
-function fiViewerClose(){if(!FI_VW)return;const p=FI_VW.prev;FI_VW.el.remove();FI_VW=null;if(p&&p.focus)try{p.focus();}catch(e){}}
+function fiViewerClose(keep){if(!FI_VW)return;const p=FI_VW.prev;FI_VW.el.remove();FI_VW=null;if(!keep&&p&&p.focus)try{p.focus();}catch(e){}}
 /* Lot 2 bis (24/11/2026) : image entière sur les fiches Personnage, Race, Pouvoir, Capacité.
    La grande image (table images) est chargée à la demande ; en attendant, ou si elle n'existe pas (image d'avant le lot), la vignette. */
 const FI_ASK=new Set();
@@ -373,6 +377,7 @@ function fiAtPick(i){const x=FI_AT&&FI_AT.items[i],ed=document.getElementById('f
 document.addEventListener('mousedown',ev=>{if(ev.target.closest&&ev.target.closest('.fisugi'))ev.preventDefault();});
 document.addEventListener('keydown',ev=>{
   if(FI_VW&&ev.key==='Escape'){ev.preventDefault();fiViewerClose();return;}
+  if(FI_VW&&FI_VW.nav&&(ev.key==='ArrowLeft'||ev.key==='ArrowRight')){const b=FI_VW.el.querySelector(`[data-vw="${ev.key==='ArrowLeft'?'prev':'next'}"]`);if(b&&!b.disabled){ev.preventDefault();b.click();}return;}
   const t=ev.target;if(!t||t.id!=='fiEd')return;
   if(FI_AT&&FI_AT.items.length&&['ArrowDown','ArrowUp','Enter','Tab'].includes(ev.key)){ev.preventDefault();
     if(ev.key==='ArrowDown'){FI_AT.sel=(FI_AT.sel+1)%FI_AT.items.length;fiAtPaint();}else if(ev.key==='ArrowUp'){FI_AT.sel=(FI_AT.sel-1+FI_AT.items.length)%FI_AT.items.length;fiAtPaint();}else fiAtPick(FI_AT.sel);return;}
@@ -397,6 +402,8 @@ document.addEventListener('focusout',ev=>{if(ev.target&&ev.target.id==='fiEd')se
 function fiAct(a,d){
   if(/^sr[A-Z]/.test(a)&&srAct(a,d))return true; /* recherche globale */
   if(/^ao[A-Z]/.test(a)){if(AO_PACT.has(a)){aoParamAct(a,d);render();return true;}if(aoAct(a,d))return true;} /* arts obscurs */
+  if(/^ct[A-Z]/.test(a))return ctAct(a,d); /* chronologies */
+  if(/^rg[A-Z]/.test(a))return rgAct(a,d); /* règles en images */
   if(/^jr[A-Z]/.test(a))return jrAct(a,d); /* lot 2 : journaux et quêtes */
   if(/^ch[A-Z]/.test(a))return chAct(a,d); /* lot 3 : chronique et calendrier */
   if(/^pn[A-Z]/.test(a))return pnAct(a,d); /* lot 4 : PNJ */
@@ -666,7 +673,7 @@ document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||!/^
    Féal (PNJ rattaché à un PJ) : toujours révélé, sans œil, onglet Progression. Droits : canEditC (vues.js). */
 const PN_POR=[['role','Rôle'],['app','Apparence'],['car','Caractère'],['fm','Forme masquée']];
 const PN_SIT=[['titres','Titres'],['familles','Familles'],['orgs','Organisations'],['lieux','Résidence et lieux'],['poss','Possessions']];
-const PN_EYE0={role:true,app:true,car:true,fm:true,titres:true,familles:true,orgs:true,lieux:true,poss:true};
+const PN_EYE0={role:true,app:true,car:true,fm:true,pw:true,titres:true,familles:true,orgs:true,lieux:true,poss:true};
 const pnEye=c=>(c&&c.eye)||PN_EYE0;
 const pnBlkSee=(c,k)=>!!c&&vis(c)&&(isGest()||isFeal(c)||!!pnEye(c)[k]);
 const pnMain=c=>c&&c.alias&&S.chars[c.alias]&&S.chars[c.alias].type==='PNJ'?S.chars[c.alias]:null;
@@ -724,7 +731,7 @@ function pnSheetHead(c){const G=isGest(),fe=isFeal(c);
   const kv=[['Race',c.race?raceLk(c)+(pnFeal(c)?' · féal':''):''],['Titre',tit?esc(tit):''],['Famille',fam?esc(fam):''],['Rang',esc(rangOf(c))],['Âge',age?esc(age):''],['Statut',esc(STATUTS[c.statut||'actif']||'')]].filter(x=>x[1]);
   h+=`<div class="card pnhead"><div class="shhd">${med}<div style="flex:1;min-width:0"><div class="shname"><span>${esc(c.nom||c.court)}</span>${kankaBtn(c.kanka,c.nom||c.court,'Fiche Kanka de '+pnName(c))}</div>${(c.surnom||'').trim()?`<div class="shsur">« ${esc(c.surnom.trim())} »</div>`:''}${fe?`<div class="small pnfeal">Féal de ${lk({t:'perso',id:c.pj},pnName(S.chars[c.pj]))}</div>`:''}<div class="pnkv">${kv.map(([a,b])=>`<span>${a}</span><b>${b}</b>`).join('')}</div></div></div>${canEditC(c)?`<div style="margin-top:8px"><button type="button" class="edl" data-act="pcOpen" data-id="${esc(c.id)}">${ICON.crayon} En-tête</button></div>`:''}</div>`;
   return h;}
-const pnVisKeys=c=>(c.alias?['idr']:[]).concat(PN_POR.filter(([k])=>k!=='fm'||pnHasFm(c)).map(x=>x[0]),PN_SIT.map(x=>x[0]),['autres']);
+const pnVisKeys=c=>(c.alias?['idr']:[]).concat(PN_POR.filter(([k])=>k!=='fm'||pnHasFm(c)).map(x=>x[0]),['pw'],PN_SIT.map(x=>x[0]),['autres']);
 
 /* ---------- Fiche PNJ : onglets ---------- */
 function pnSheetBody(c,s,id){const tab=shTabOf(c);let h=shTabsBar(c,tab);
@@ -744,6 +751,7 @@ function pnPortrait(c){const G=isGest(),E=canEditC(c),e=pnEye(c);let h='';
   const B=[];
   for(const [k,l] of PN_POR){if(k==='fm'&&!pnHasFm(c))continue;if(!pnBlkSee(c,k))continue;const t=((c.por||{})[k]||'').trim();if(!t&&!E&&!G)continue;
     B.push({e:!t,h:pnBlk('pn-'+k,l,'',t?fiRich(t):'<div class="muted small">Pas encore renseigné.</div>',{empty:!t,edit:E?'pnTxt':'',ea:` data-b="${k}"`,hid:G&&!isFeal(c)&&!e[k],eye:pnEyeB(c,k,l)})});}
+  const PB=pnPwBlk(c,E,G,e);if(PB)B.push(PB); /* pouvoirs et capacités (import Kanka fin) */
   h+=shOrder(B);
   if(!h&&!G)h=`<div class="card"><span class="muted small">Rien de connu pour l'instant.</span></div>`;
   return h;}
@@ -771,6 +779,7 @@ const pnSel=(k,v,L,lab)=>`<div class="field"><label for="pn-${k}">${lab}</label>
 const pnSeg=(k,v,L,lab)=>`<div class="field"><label>${lab}</label><div class="seg" role="group" aria-label="${esc(lab)}">${L.map(([o,t])=>`<button type="button" data-act="pnSet" data-k="${k}" data-v="${o}" aria-pressed="${v===o}">${t}</button>`).join('')}</div></div>`;
 const pnErr=g=>g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:'';
 function pnSheet(g){
+  if(g.kind==='pnPw')return pnPwSheet(g); /* pouvoirs et capacités */
   if(g.kind==='pnTxt'){const c=S.chars[g.cid];if(!c||!canEditC(c))return null;const tt=(PN_POR.find(x=>x[0]===g.b)||[,''])[1];
     return fiShell(g,'Modifier : '+tt,`<div><h2>Modifier : ${esc(tt)}</h2><div class="muted small">${esc(pnName(c))}</div></div>
       <div class="fiedw"><div id="fiEd" class="fied" contenteditable="true" role="textbox" aria-multiline="true" aria-label="${esc(tt)}" spellcheck="true">${fiEdHtml(g.txt)}</div><div id="fiSug" class="fisug" role="listbox" hidden></div></div>
@@ -816,6 +825,9 @@ function pnAct(a,d){
     if(d.k==='fiche'){open=!pnRev(n);if(!open&&!canEdit())return true;n.vis=open?'rev':'prep';}
     else{const e={...pnEye(n)};open=!e[d.k];if(!open&&!canEdit())return true;e[d.k]=open;n.eye=e;}
     pnSaveC(n);setTimeout(()=>toast(open?'Visible par toute la table':'Caché aux joueurs'),0);return true;}
+  if(a==='pnPw'){if(!c||!canEditC(c))return true;const P=pnPwOf(c);fiOpenDlg({kind:'pnPw',cid:c.id,pw:P.pw.slice(),cap:P.cap.slice()});render();return true;}
+  if(a==='pnPwX'&&g&&g.kind==='pnPw'){if(d.t==='pw'||d.t==='cap')g[d.t]=g[d.t].filter(x=>x!==d.id);S._fiRedraw=true;render();return true;}
+  if(a==='pnPwSave'&&g&&g.kind==='pnPw'){const x=S.chars[g.cid];if(!x||!canEditC(x))return true;const n=clone(x);if(g.pw.length||g.cap.length)n.pnpw={pw:g.pw.slice(),cap:g.cap.slice()};else delete n.pnpw;S.dlg=null;pnSaveC(n);setTimeout(()=>toast('Enregistré'),0);return true;}
   if(a==='pnTxt'){if(!c||!canEditC(c))return true;fiOpenDlg({kind:'pnTxt',cid:c.id,b:d.b,txt:(c.por||{})[d.b]||''});render();return true;}
   if(a==='pnTxtSave'){const x=g&&S.chars[g.cid];if(!x||!canEditC(x))return true;const ed=document.getElementById('fiEd'),txt=ed?fiSer(ed):(g.txt||'');
     const n=clone(x);n.por={...(n.por||{}),[g.b]:txt};FI_AT=null;S.dlg=null;pnSaveC(n);return true;}
@@ -857,7 +869,7 @@ document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dat
    - lieu : fief {feerie}, orgs [{id, f?, nom, note}] ; carte = image ill-carte-<id>. */
 const FI6_EYE={lieu:['fief','pers','orgs','obj','carte'],objet:['effet','carac','det']};
 const fiIsFief=f=>!!f&&f.genre==='lieu'&&nrm(f.type)==='fief';
-const fiEyeKeys=f=>['desc','sait'].concat((FI6_EYE[f&&f.genre]||[]).filter(k=>k!=='fief'||fiIsFief(f)));
+const fiEyeKeys=f=>(f&&f.genre==='chrono'?['desc']:['desc','sait']).concat((FI6_EYE[f&&f.genre]||[]).filter(k=>k!=='fief'||fiIsFief(f)));
 const fiCN=c=>c?(c.type==='PNJ'&&typeof pnName==='function'?pnName(c):(c.court||c.nom||'?')):'?';
 const SITU_NAT={res:'résidence',prop:'propriétaire',autre:'autre lieu'};
 const situNat=e=>e.nat||(e.res?'res':'autre');
@@ -1661,7 +1673,7 @@ function caHeadFields(g){const L=fiSort(fiAll().filter(x=>x.genre==='lieu'&&fiSe
    et textes (descriptions, « Ce que l'on sait », spécimens, Notes MJ pour la gestion, Portrait des PNJ, journaux, pouvoirs).
    Sans tenir compte des accents ni des majuscules ; résultats dès 2 lettres. Filtre par genre gardé pendant la session.
    Recherches récentes et fiches ouvertes depuis la recherche : propres à ce navigateur (localStorage xp.srch). */
-const SR_G=[['perso','Personnages'],['lieu','Lieux'],['org','Organisations'],['famille','Familles'],['objet','Objets'],['bete','Bestiaire'],['carte','Cartes'],['evenement','Chronique'],['jour','Journaux et quêtes'],['race','Races'],['pw','Pouvoirs et capacités'],['art','Arts obscurs'],['secret','Secrets']];
+const SR_G=[['perso','Personnages'],['lieu','Lieux'],['org','Organisations'],['famille','Familles'],['objet','Objets'],['bete','Bestiaire'],['carte','Cartes'],['evenement','Chronique'],['chrono','Chronologies'],['jour','Journaux et quêtes'],['race','Races'],['pw','Pouvoirs et capacités'],['art','Arts obscurs'],['secret','Secrets']];
 const SR_LAB=Object.fromEntries(SR_G);
 const cap1=t=>t?t[0].toUpperCase()+t.slice(1):t;
 const srState=()=>S.srch||(S.srch={q:'',g:'all',more:false});
@@ -1690,6 +1702,7 @@ function srRun(q0){const q=srQ(q0),N=[],T=[],G=isGest();if(q.length<2)return {N,
     const L=[[ev?'Résumé':'Description',fiBlkSee(f,'desc')&&f.desc]];
     for(const it of f.sait||[])if(fiItSee(f,it))L.push(["Ce que l'on sait",it.txt]);
     for(const x of f.spec||[])if(fiSpecSee(x))L.push(['Spécimens connus',(x.nom||'')+' : '+(x.txt||'')]);
+    for(const x of f.els||[])if(ctElSee(x))L.push(['Chronologie',(x.nom||'')+' : '+(x.txt||'')]); /* chronologies */
     if(f.effet&&fiBlkSee(f,'effet'))L.push(['Effet',f.effet]);
     if(G&&f.notes)L.push(['Notes MJ',f.notes]);
     for(const [w,t] of L)if(t&&tx(f.genre,o,nom,sub,w,t))break;}
@@ -1908,3 +1921,154 @@ document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset||t.da
   if(k==='pt'){P.pre[i].t=t.value;P.pre[i].n='';P.pre[i].sp='';S._force=true;render();return;}
   if(k==='pn')P.pre[i].n=t.value;else if(k==='pr')P.pre[i].r=t.value;else if(k==='psp')P.pre[i].sp=t.value;else if(k==='niv')P.niv[i]=t.value;else P[k]=t.value;});
 document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.aop==='pt'&&S.aoPd){S._force=true;render();}});
+
+/* ---------- Règles en images (26/11/2026, import Kanka fin) ----------
+   Collection « fiches », genre « regle » : {id, genre:'regle', nom, ord, imgs:[uid], kanka, vis:'rev'}.
+   Image uid : vignette portraits/ill-rg-<id>-<uid>, grande image table images (même clé).
+   Affichage : imgs dans l'ordre, puis les images de la note absentes de imgs (ajoutées à la main).
+   Lecture pour tous ; gestion en mode édition : notes (créer, renommer, supprimer) et images (ajouter, ordre, retirer). */
+const rgPre=f=>'ill-rg-'+f.id+'-';
+const rgNotes=()=>fiAll().filter(f=>f.genre==='regle').sort((a,b)=>((+a.ord||0)-(+b.ord||0))||(a.nom||'').localeCompare(b.nom||'','fr',{sensitivity:'base'}));
+function rgImgs(f){const P=S.ptr||{},pre=rgPre(f),L=(f.imgs||[]).map(u=>pre+u).filter(k=>P[k]),seen=new Set(L);
+  return L.concat(Object.keys(P).filter(k=>k.startsWith(pre)&&!seen.has(k)).sort());}
+const rgNb=n=>n+' image'+(n>1?'s':'');
+function rgPane(){const E=canEdit(),f=S.rgNote&&S.fiches[S.rgNote];
+  if(f&&f.genre==='regle')return rgNoteView(f);S.rgNote=null;
+  const L=rgNotes();let h='';
+  if(!S.fichesReady)return `<div class="card empty">Chargement…</div>`;
+  h+=L.length?`<div class="plst rglst">${L.map(n=>{const K=rgImgs(n),im=K.length&&S.ptr[K[0]];
+    return `<button type="button" class="pli rgli" data-act="rgOpen" data-id="${esc(n.id)}"><span class="rgth">${im?`<img src="${im}" alt="">`:''}</span><span class="ptx"><b>${esc(n.nom)}</b><small>${rgNb(K.length)}</small></span><span aria-hidden="true" class="pch">›</span></button>`;}).join('')}</div>`
+    :`<div class="card empty">Aucune règle en images pour l'instant.${E?' Crée la première avec le bouton ci-dessous.':''}</div>`;
+  if(E)h+=`<div class="radd"><button class="btn" data-act="rgNoteEd" data-id="">+ Une note</button></div>`;
+  return h;}
+function rgNoteView(f){const E=canEdit(),K=rgImgs(f);
+  let h=`<button class="back" data-act="rgBack">${FI_BACK}Règles en images</button><h2 style="margin-top:2px">${esc(f.nom)}</h2><div class="muted small">${rgNb(K.length)}${K.length?' · toucher pour agrandir':''}</div>`;
+  if(E)h+=`<div style="margin:8px 0"><button type="button" class="edl" data-act="rgNoteEd" data-id="${esc(f.id)}">${ICON.crayon} Renommer, supprimer</button></div>`;
+  h+=K.length?`<div class="rggrid">${K.map((k,i)=>`<div class="rgcell"><button type="button" class="rgimg" data-act="rgView" data-id="${esc(f.id)}" data-i="${i}" aria-label="Agrandir l'image ${i+1} sur ${K.length}"><img src="${S.ptr[k]}" alt=""></button>${E?`<div class="rgtools"><button type="button" class="ibtn" data-act="rgMv" data-k="${esc(k)}" data-v="-1" aria-label="Avancer l'image ${i+1}"${i?'':' disabled'}>‹</button><button type="button" class="ibtn" data-act="rgMv" data-k="${esc(k)}" data-v="1" aria-label="Reculer l'image ${i+1}"${i<K.length-1?'':' disabled'}>›</button>${S.confirm==='rgd:'+k?`<button type="button" class="ibtn rgko" data-act="rgDelOk" data-k="${esc(k)}" aria-label="Confirmer le retrait de l'image ${i+1}">Retirer ?</button>`:`<button type="button" class="ibtn" data-act="rgDel" data-k="${esc(k)}" aria-label="Retirer l'image ${i+1}">✕</button>`}</div>`:''}</div>`).join('')}</div>`
+    :'<div class="card empty">Aucune image pour l\'instant.</div>';
+  if(E)h+=`<div class="radd"><label class="btn" style="cursor:pointer">+ Ajouter une image<input type="file" accept="image/*" data-ptrfile="${esc(rgPre(f)+fiRid('u'))}" data-plab="${esc(f.nom)}" hidden></label></div><div class="muted small">Mode édition : la vignette se recadre, l'image entière reste visible en grand.</div>`;
+  return h;}
+function rgSave(f,K){const n=clone(f),pre=rgPre(f);n.imgs=K.map(k=>k.slice(pre.length));fiSave(n);}
+function rgSheet(g){if(g.kind!=='rgNote'||!canEdit())return null;const f=g.id&&S.fiches[g.id];
+  return fiShell(g,f?'Note : '+f.nom:'Nouvelle note',`<h2>${f?esc(f.nom):'Nouvelle note'}</h2>
+    <div class="field"><label for="rgNm">Titre</label><input id="rgNm" type="text" data-fin="nom" value="${esc(g.nom||'')}" autocomplete="off"></div>
+    <div class="field"><label for="rgOr">Ordre dans la liste</label><input id="rgOr" type="number" data-fin="ord" value="${esc(String(g.ord||''))}"></div>
+    ${g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:''}
+    <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="rgNoteSave">${f?'Enregistrer':'Créer'}</button></div>
+    ${f?`<div class="fidel">${g.confirm?`<div class="muted small">Supprimer « ${esc(f.nom)} » et ses ${rgNb(rgImgs(f).length)} ?</div><div class="actions"><button class="btn ghost" data-act="rgNoteNo">Garder</button><button class="btn" style="color:var(--bad)" data-act="rgNoteDelOk">Supprimer</button></div>`:`<button class="btn ghost" style="color:var(--bad)" data-act="rgNoteDel">Supprimer la note</button>`}</div>`:''}`);}
+function rgAct(a,d){const g=S.dlg;
+  if(a==='rgTab'){S.rgTab=d.v==='img'?'img':'';S.rgNote=null;S.confirm=null;window.scrollTo(0,0);render();return true;}
+  if(a==='rgOpen'){const f=S.fiches[d.id];if(!f||f.genre!=='regle')return true;S.rgTab='img';S.rgNote=f.id;S.confirm=null;window.scrollTo(0,0);render();return true;}
+  if(a==='rgBack'){S.rgNote=null;S.confirm=null;window.scrollTo(0,0);render();return true;}
+  if(a==='rgView'){const f=S.fiches[d.id];if(!f)return true;const K=rgImgs(f),L=K.map((k,i)=>({k,lab:f.nom+' · '+(i+1)+' / '+K.length})),i=+d.i||0;if(!L[i])return true;fiViewer(S.ptr[L[i].k],L[i].k,L[i].lab,{L,i});return true;}
+  if(!canEdit())return true;
+  if(a==='rgNoteEd'){const f=d.id&&S.fiches[d.id];fiOpenDlg({kind:'rgNote',id:f?f.id:'',nom:f?f.nom:'',ord:f?(f.ord||''):(rgNotes().length+1)});render();return true;}
+  if(a==='rgNoteSave'&&g&&g.kind==='rgNote'){const nom=(g.nom||'').trim();if(!nom){g.err='Le titre est obligatoire.';S._fiRedraw=true;render();return true;}
+    const now=new Date().toISOString(),f=g.id&&S.fiches[g.id],n=f?clone(f):{id:fiRid('f-'),genre:'regle',nom:'',ord:0,imgs:[],kanka:'',vis:'rev',par:ME||'',cree:now};
+    n.nom=nom;n.ord=+g.ord||0;S.dlg=null;if(!f){S.rgTab='img';S.rgNote=n.id;}fiSave(n);setTimeout(()=>toast('Enregistré'),0);return true;}
+  if(a==='rgNoteDel'&&g){g.confirm=true;S._fiRedraw=true;render();return true;}
+  if(a==='rgNoteNo'&&g){g.confirm=false;S._fiRedraw=true;render();return true;}
+  if(a==='rgNoteDelOk'&&g&&g.kind==='rgNote'){const f=S.fiches[g.id];if(!f)return true;let p=false;
+    for(const k of rgImgs(f)){fiBigDel(k);if(S.ptr&&S.ptr[k]){const m={...S.ptr};delete m[k];S.ptr=m;persistDel('portraits/'+k);p=true;}}
+    if(p){S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});}
+    const m={...S.fiches};delete m[f.id];S.fiches=m;persistDel('fiches/'+f.id);S.dlg=null;S.rgNote=null;render();setTimeout(()=>toast('Note supprimée'),0);return true;}
+  const f=S.rgNote&&S.fiches[S.rgNote];if(!f)return true;const K=rgImgs(f),i=K.indexOf(d.k);
+  if(a==='rgMv'){const j=i+(+d.v||0);if(i<0||j<0||j>=K.length)return true;[K[i],K[j]]=[K[j],K[i]];rgSave(f,K);return true;}
+  if(a==='rgDel'){S.confirm='rgd:'+d.k;render();return true;}
+  if(a==='rgDelOk'){if(i<0)return true;S.confirm=null;fiBigDel(d.k);const m={...S.ptr};delete m[d.k];S.ptr=m;persistDel('portraits/'+d.k);S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});K.splice(i,1);rgSave(f,K);return true;}
+  return true;}
+FI_DLG.add('rgNote');
+
+/* ---------- Chronologies (26/11/2026, import Kanka fin) ----------
+   Fiche genre « chrono » (règle des fiches) : desc, eres:[{id, nom, deb, fin, col, seances}], els:[{id, era, nom, date, an, txt, rev, cree, par}].
+   Frise : ères triées par début, éléments triés par année de tri ; un œil par élément (élément ajouté par la gestion = préparé).
+   Ères : gestion en mode édition. Séances de la Chronique : Scénarios et Interscénarios visibles, datés à partir du début de l'ère. */
+FI_G.chrono={pl:'Chronologies',un:'chronologie',nv:'Nouvelle chronologie',cnt:n=>n+' chronologie'+(n>1?'s':''),tl:'Types de chronologie'};
+FI_IC.chrono='<path d="M4 12h16"/><circle cx="7" cy="12" r="2"/><circle cx="13" cy="12" r="2"/><path d="M19 9v6"/><path d="M7 5v3M13 16v3"/>';
+const CT_COL=[['violet','Violet'],['laiton','Laiton'],['brique','Brique'],['vert','Vert'],['bleu','Bleu'],['gris','Gris']];
+const ctElSee=x=>!!x&&(isGest()||!!x.rev);
+const ctEras=f=>((f&&f.eres)||[]).slice().sort((a,b)=>(+a.deb||0)-(+b.deb||0));
+const ctEra=(f,id)=>((f&&f.eres)||[]).find(e=>e.id===id)||null;
+const ctEls=(f,eid)=>((f&&f.els)||[]).filter(x=>x.era===eid).sort((a,b)=>((a.an===''||a.an==null?1e9:+a.an)-(b.an===''||b.an==null?1e9:+b.an))||((+a.pos||0)-(+b.pos||0))||(a.nom||'').localeCompare(b.nom||'','fr'));
+const ctYr=v=>v===''||v==null||isNaN(+v)?'':String(+v);
+const ctSpan=e=>{const a=ctYr(e.deb),b=ctYr(e.fin);return a&&b?a+' – '+b:a?'depuis '+a:b?"jusqu'à "+b:'';};
+function ctSeances(e){const a=+e.deb,b=e.fin===''||e.fin==null?null:+e.fin;
+  return chEvs().filter(f=>fiSee(f)&&(f.type==='Scénario'||f.type==='Interscénario')&&chOk(f.debut)&&(isNaN(a)||f.debut.a>=a)&&(b==null||isNaN(b)||f.debut.a<b))
+    .sort((x,y)=>chKey(x.debut)-chKey(y.debut)||String(chNumOf(x)).localeCompare(String(chNumOf(y)),'fr',{numeric:true}));}
+function ctBlocks(f,ed,G){const E=canEdit(),R=ctEras(f),op=S.ctOpen||{};let h='';
+  const ids=(f.els||[]).filter(ctElSee).filter(x=>(x.txt||'').trim()).map(x=>x.id);
+  if(ids.length)h+=`<div class="chips ctall"><button type="button" class="chip" data-act="ctAll" data-v="1" aria-pressed="${ids.every(i=>op[i])}">Tout déplier</button><button type="button" class="chip" data-act="ctAll" data-v="0" aria-pressed="${!ids.some(i=>op[i])}">Tout replier</button></div>`;
+  for(const e of R){const V=ctEls(f,e.id).filter(ctElSee),k='ct-'+e.id,fold=fiFolded(k),col=e.col||'gris',SE=e.seances?ctSeances(e):[];
+    const sum=[ctSpan(e),V.length?V.length+' élément'+(V.length>1?'s':''):'',SE.length?SE.length+' séance'+(SE.length>1?'s':''):''].filter(Boolean).join(' · ');
+    const rows=V.map(x=>{const has=!!(x.txt||'').trim(),o=has&&op[x.id];
+      return `<div class="ctel${x.rev?'':' fihid'}"><span class="ctdot" aria-hidden="true"></span><div class="ctbd">${has?`<button type="button" class="ctt" data-act="ctTog" data-i="${esc(x.id)}" aria-expanded="${!!o}">`:'<div class="ctt">'}<span class="ctx">${(x.date||'').trim()?`<span class="ctd">${esc(x.date)}</span>`:''}<b>${esc(x.nom)}</b></span>${has?`<span class="chev" aria-hidden="true">${o?'⌄':'›'}</span></button>`:'</div>'}${o?fiRich(x.txt):''}</div>${ed?`<button type="button" class="fiedi" data-act="ctEl" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">${ICON.crayon}</button>`:''}${G?eyeBtn('ctEye',`data-i="${esc(x.id)}"`,!!x.rev,'Élément '+x.nom):''}</div>`;}).join('');
+    const ses=SE.length?`<div class="ctsh">Séances de la Chronique</div>`+SE.map(s=>{const n=chNumOf(s),d=s.debut;return `<div class="ctses"><span class="chsq ${CH_TCL[s.type]||'in'}">${esc(n||'—')}</span><span class="ctsn">${lk({t:'fiche',id:s.id},s.nom)}</span><span class="muted small">${esc(chRangeShort(d,s.duree))}</span></div>`;}).join(''):'';
+    const body=(rows||(ses?'':'<div class="muted small">Aucun élément.</div>'))+ses+(ed?`<div class="radd"><button class="btn" data-act="ctEl" data-i="" data-e="${esc(e.id)}">+ Un élément</button></div>`:'');
+    h+=`<section class="rblk ctera ctc-${esc(col)}"><div class="rbh"><button type="button" class="rbt" data-act="fiFold" data-k="${esc(k)}" aria-expanded="${!fold}" aria-controls="fb-${esc(k)}"><span class="tt"><span class="t">${esc(e.nom)}</span>${sum?`<span class="n">${esc(sum)}</span>`:''}</span><span class="chev" aria-hidden="true">${fold?'›':'⌄'}</span></button>${E?`<button type="button" class="edl" data-act="ctEra" data-i="${esc(e.id)}">${ICON.crayon} Ère</button>`:''}</div>${fold?'':`<div class="rbb" id="fb-${esc(k)}">${body}</div>`}</section>`;}
+  if(!R.length)h+=`<div class="card empty">Aucune ère pour l'instant.</div>`;
+  if(E)h+=`<div class="radd"><button class="btn" data-act="ctEra" data-i="">+ Une ère</button></div>`;
+  return h;}
+function ctSheet(g){const f=S.fiches[g.fid];if(!f)return null;
+  if(g.kind==='ctEl'){if(!fiCanEd(f))return null;const it=g.iid?(f.els||[]).find(x=>x.id===g.iid):null;if(g.iid&&!it)return null;const R=ctEras(f);
+    return fiShell(g,it?'Élément':'Nouvel élément',`<div><h2>${it?'Modifier l\'élément':'Nouvel élément'}</h2><div class="muted small">${esc(f.nom)}</div></div>
+      <div class="field"><label for="ctNm">Titre</label><input id="ctNm" type="text" data-fin="nom" value="${esc(g.nom||'')}" autocomplete="off"></div>
+      <div class="frow"><div class="field"><label for="ctDt">Date affichée</label><input id="ctDt" type="text" data-fin="date" value="${esc(g.date||'')}" placeholder="ex. 1795 - 1813" autocomplete="off"></div><div class="field"><label for="ctAn">Année de tri</label><input id="ctAn" type="number" data-fin="an" value="${esc(String(g.an==null?'':g.an))}"></div></div>
+      <div class="field"><label for="ctEr">Ère</label><select id="ctEr" data-fin="era">${R.map(e=>`<option value="${esc(e.id)}"${e.id===g.era?' selected':''}>${esc(e.nom)}${ctSpan(e)?' ('+esc(ctSpan(e))+')':''}</option>`).join('')}</select></div>
+      <div class="field"><label>Texte</label><div class="fiedw"><div id="fiEd" class="fied" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texte de l'élément" spellcheck="true">${fiEdHtml(g.txt)}</div><div id="fiSug" class="fisug" role="listbox" hidden></div></div></div>
+      <div class="muted small">Tape <b>@</b> pour lier une fiche. L'année de tri range l'élément dans son ère.${it?'':isGest()?' L\'élément sera préparé (œil fermé).':' L\'élément sera visible par toute la table.'}</div>
+      ${g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:''}
+      <div class="actions">${it?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="ctElDelOk">Confirmer le retrait</button>`:`<button class="btn ghost" data-act="ctElDel">Retirer</button>`):''}<button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="ctElSave">Enregistrer</button></div>`);}
+  if(g.kind==='ctEra'){if(!canEdit())return null;const e=g.eid?ctEra(f,g.eid):null;if(g.eid&&!e)return null;const n=e?ctEls(f,e.id).length:0;
+    return fiShell(g,e?'Ère':'Nouvelle ère',`<div><h2>${e?esc(e.nom):'Nouvelle ère'}</h2><div class="muted small">${esc(f.nom)}</div></div>
+      <div class="field"><label for="ctEn">Nom</label><input id="ctEn" type="text" data-fin="nom" value="${esc(g.nom||'')}" autocomplete="off"></div>
+      <div class="frow"><div class="field"><label for="ctEd">Début (année)</label><input id="ctEd" type="number" data-fin="deb" value="${esc(String(g.deb==null?'':g.deb))}"></div><div class="field"><label for="ctEf">Fin (vide : en cours)</label><input id="ctEf" type="number" data-fin="fin" value="${esc(String(g.fin==null?'':g.fin))}"></div></div>
+      <div class="field"><label>Couleur</label><div class="ctcols" role="group" aria-label="Couleur de l'ère">${CT_COL.map(([v,l])=>`<button type="button" class="ctcol ctc-${v}" data-act="ctCol" data-v="${v}" aria-pressed="${g.col===v}" aria-label="${l}"><span aria-hidden="true"></span></button>`).join('')}</div></div>
+      <label class="kkrad"><input type="checkbox" data-fin="seances"${g.seances?' checked':''}> Afficher les séances de la Chronique (Scénarios et Interscénarios datés dans l'ère)</label>
+      ${g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:''}
+      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="ctEraSave">Enregistrer</button></div>
+      ${e?`<div class="fidel">${n?`<div class="muted small">Suppression possible quand l'ère est vide (${n} élément${n>1?'s':''}).</div>`:g.confirm?`<div class="actions"><button class="btn ghost" data-act="ctEraNo">Garder</button><button class="btn" style="color:var(--bad)" data-act="ctEraDelOk">Supprimer l'ère</button></div>`:`<button class="btn ghost" style="color:var(--bad)" data-act="ctEraDel">Supprimer l'ère</button>`}</div>`:''}`);}
+  return null;}
+function ctAct(a,d){const g=S.dlg,f=S.fi&&S.fiches[S.fi];
+  if(a==='ctTog'){S.ctOpen={...(S.ctOpen||{}),[d.i]:!(S.ctOpen||{})[d.i]};render();return true;}
+  if(a==='ctAll'){const o={...(S.ctOpen||{})};for(const x of (f&&f.els)||[])o[x.id]=d.v==='1';S.ctOpen=o;render();return true;}
+  if(S.visit)return true;
+  if(a==='ctEye'){if(!f||!isGest())return true;const n=clone(f),x=(n.els||[]).find(y=>y.id===d.i);if(!x)return true;const open=!x.rev;if(!open&&!canEdit())return true;x.rev=open;fiSave(n);return true;}
+  if(a==='ctEl'){if(!f||!fiCanEd(f))return true;const it=d.i?(f.els||[]).find(x=>x.id===d.i):null;if(d.i&&!it)return true;const R=ctEras(f);if(!R.length)return true;
+    fiOpenDlg({kind:'ctEl',fid:f.id,iid:it?it.id:'',nom:it?it.nom:'',date:it?(it.date||''):'',an:it?(it.an==null?'':it.an):'',era:it?it.era:(d.e||R[0].id),txt:it?(it.txt||''):''});render();return true;}
+  if(a==='ctElDel'&&g&&g.kind==='ctEl'){g.confirm=true;S._fiRedraw=true;render();return true;}
+  if(a==='ctElDelOk'&&g&&g.kind==='ctEl'){const x=S.fiches[g.fid];if(!x||!fiCanEd(x))return true;const n=clone(x);n.els=(n.els||[]).filter(y=>y.id!==g.iid);FI_AT=null;S.dlg=null;fiSave(n);return true;}
+  if(a==='ctElSave'&&g&&g.kind==='ctEl'){const x=S.fiches[g.fid];if(!x||!fiCanEd(x))return true;const nom=(g.nom||'').trim();if(!nom){g.err='Le titre est obligatoire.';S._fiRedraw=true;render();return true;}
+    if(!ctEra(x,g.era)){g.err='Choisis une ère.';S._fiRedraw=true;render();return true;}
+    const ed=document.getElementById('fiEd'),txt=ed?fiSer(ed):(g.txt||''),n=clone(x),an=ctYr(g.an);n.els=n.els||[];const it=g.iid&&n.els.find(y=>y.id===g.iid);
+    const v={nom,date:(g.date||'').trim(),an:an===''?'':+an,era:g.era,txt};
+    if(it)Object.assign(it,v);else n.els.push({id:fiRid('e'),...v,rev:!isGest(),cree:new Date().toISOString(),par:ME||''});
+    FI_AT=null;S.dlg=null;fiSave(n);return true;}
+  if(!canEdit())return true;
+  if(a==='ctEra'){if(!f)return true;const e=d.i?ctEra(f,d.i):null;if(d.i&&!e)return true;const R=ctEras(f),last=R[R.length-1];
+    fiOpenDlg({kind:'ctEra',fid:f.id,eid:e?e.id:'',nom:e?e.nom:'',deb:e?ctYr(e.deb):(last?ctYr(last.fin):''),fin:e?ctYr(e.fin):'',col:e?(e.col||'gris'):CT_COL[R.length%CT_COL.length][0],seances:e?!!e.seances:false});render();return true;}
+  if(a==='ctCol'&&g&&g.kind==='ctEra'){g.col=d.v;S._fiRedraw=true;render();return true;}
+  if(a==='ctEraDel'&&g){g.confirm=true;S._fiRedraw=true;render();return true;}
+  if(a==='ctEraNo'&&g){g.confirm=false;S._fiRedraw=true;render();return true;}
+  if(a==='ctEraDelOk'&&g&&g.kind==='ctEra'){const x=S.fiches[g.fid];if(!x||ctEls(x,g.eid).length)return true;const n=clone(x);n.eres=(n.eres||[]).filter(e=>e.id!==g.eid);S.dlg=null;fiSave(n);return true;}
+  if(a==='ctEraSave'&&g&&g.kind==='ctEra'){const x=S.fiches[g.fid];if(!x)return true;const nom=(g.nom||'').trim();if(!nom){g.err='Le nom est obligatoire.';S._fiRedraw=true;render();return true;}
+    const n=clone(x),v={nom,deb:ctYr(g.deb)===''?'':+g.deb,fin:ctYr(g.fin)===''?'':+g.fin,col:g.col||'gris',seances:!!g.seances};n.eres=n.eres||[];const e=g.eid&&n.eres.find(y=>y.id===g.eid);
+    if(e)Object.assign(e,v);else n.eres.push({id:fiRid('r'),...v});S.dlg=null;fiSave(n);return true;}
+  return true;}
+['ctEl','ctEra'].forEach(k=>FI_DLG.add(k));FI_ED.add('ctEl');
+
+/* ---------- PNJ : bloc « Pouvoirs et capacités » (26/11/2026, import Kanka fin) ----------
+   c.pnpw = {pw:[id de pouvoir], cap:[id de capacité]} ; œil eye.pw ; modification : canEditC. */
+const pnPwOf=c=>({pw:((c&&c.pnpw&&c.pnpw.pw)||[]).filter(id=>S.pouvoirs&&S.pouvoirs[id]),cap:((c&&c.pnpw&&c.pnpw.cap)||[]).filter(id=>S.capacites&&S.capacites[id])});
+function pnPwBlk(c,E,G,e){if(!pnBlkSee(c,'pw'))return null;const P=pnPwOf(c),n=P.pw.length+P.cap.length;if(!n&&!E&&!G)return null;if(!n&&isFeal(c)&&!E)return null;
+  const row=(t,id)=>{const M=t==='pw'?S.pouvoirs:S.capacites;return `<div class="srow"><span>${lk({t,id},M[id].nom)}</span><span class="muted small">${t==='pw'?'Pouvoir':'Capacité naturelle'}</span></div>`;};
+  return {e:!n,h:pnBlk('pn-pw','Pouvoirs et capacités',n?String(n):'',(P.pw.map(id=>row('pw',id)).concat(P.cap.map(id=>row('cap',id))).join('')||'<div class="muted small">Aucun pouvoir ni capacité renseigné.</div>'),{empty:!n,edit:E?'pnPw':'',hid:G&&!isFeal(c)&&!e.pw,eye:pnEyeB(c,'pw','Pouvoirs et capacités')})};}
+function pnPwSheet(g){const c=S.chars[g.cid];if(!c||!canEditC(c))return null;const P=S.pouvoirs||{},C=S.capacites||{};
+  const srt=(M,L)=>Object.keys(M).filter(id=>!L.includes(id)).sort((a,b)=>(M[a].nom||'').localeCompare(M[b].nom||'','fr'));
+  const chip=(t,id)=>{const M=t==='pw'?P:C;return M[id]?`<span class="rchip">${esc(M[id].nom)} <small class="muted">· ${t==='pw'?'pouvoir':'capacité'}</small><button type="button" class="ibtn" data-act="pnPwX" data-t="${t}" data-id="${esc(id)}" aria-label="Retirer ${esc(M[id].nom)}">✕</button></span>`:'';};
+  return fiShell(g,'Pouvoirs et capacités',`<div><h2>Pouvoirs et capacités</h2><div class="muted small">${esc(pnName(c))}</div></div>
+    <div class="fxl pnpwl">${g.pw.map(id=>chip('pw',id)).join('')}${g.cap.map(id=>chip('cap',id)).join('')||''}${!g.pw.length&&!g.cap.length?'<span class="muted small">Aucun pour l\'instant.</span>':''}</div>
+    <div class="field"><label for="pnPwA">Ajouter</label><select id="pnPwA" data-pnpwadd="1"><option value="">— choisir —</option><optgroup label="Pouvoirs">${srt(P,g.pw).map(id=>`<option value="pw:${esc(id)}">${esc(P[id].nom)}</option>`).join('')}</optgroup><optgroup label="Capacités naturelles">${srt(C,g.cap).map(id=>`<option value="cap:${esc(id)}">${esc(C[id].nom)}</option>`).join('')}</optgroup></select></div>
+    <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pnPwSave">Enregistrer</button></div>`);}
+FI_DLG.add('pnPw');
+document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.pnpwadd===undefined)return;const g=S.dlg;if(!g||g.kind!=='pnPw'||!t.value)return;
+  const [k,id]=[t.value.slice(0,t.value.indexOf(':')),t.value.slice(t.value.indexOf(':')+1)];if((k==='pw'||k==='cap')&&!g[k].includes(id))g[k].push(id);S._fiRedraw=true;render();});
