@@ -503,7 +503,7 @@ function situRows(c,k){const E=canEditC(c);return (situOf(c)[k]||[]).map(e=>`<di
 function viewSituation(c){let h='';const E=canEditC(c),add=(k,l)=>E?`<button type="button" class="addl" data-act="situEd" data-k="${k}">+ ${l}</button>`:'';
   if(c.type==='PJ'){const f=lv(c,'fortune'),F=FORTUNE[f];h+=`<div class="fortl"><span>Fortune${F?` · <b>${esc(F[0])}</b> <span class="muted small">(${esc(F[1])})</span>`:''}</span><b class="num">${f}</b></div>`;}
   const B=[],A=ppLinesOf(c,'A');B.push({e:!A.length,h:cBlk('act','Activités',A.length?String(A.length):'',A.join('')||shNone,'',!A.length)});
-  for(const [k,l,al] of SITU){let rows=situRows(c,k);
+  for(const [k,l,al] of SITU){let rows=k==='orgs'||k==='titres'?ogSitRows(c,k):situRows(c,k); /* lot 5 a : organisations et titres reliés */
     if(k==='titres')rows=ppLinesOf(c,'T').concat(rows);
     if(k==='poss')rows=ppLinesOf(c,'E').concat(situObjRows(c),rows); /* lot 6 : objets dont il est détenteur */
     B.push({e:!rows.length,h:cBlk(k,l,rows.length?String(rows.length):'',rows.join('')||shNone,add(k,al),!rows.length)});}
@@ -529,7 +529,9 @@ function relsOf(c){const R=(c.rel||[]).filter(r=>r.pnj||r.grp).map(r=>({...r}));
   for(const a of ppBought(c).filter(a=>a.ppel.rub==='C')){const pid=ctcPnjOf(a.ppel);R.push({id:'pp:'+a.id,aid:a.id,virt:true,...(pid?{pnj:pid}:{}),nom:a.ppel.prec||a.ppel.nom,niv:'contact',src:'pp',note:pid?[a.ppel.nom,ppBits({...a.ppel,prec:''})].filter(Boolean).join(' · '):ppBits(a.ppel)});}
   for(const f of Object.values(S.chars).filter(f=>f.pj===c.id&&vis(f)))if(!R.some(r=>r.pnj===f.id&&r.niv==='allie'))R.push({id:'feal:'+f.id,pnj:f.id,virt:true,niv:'allie',src:'feal'});
   return R;}
-function relOrgBonus(c,r){const p=r.pnj&&S.chars[r.pnj];if(!p)return 0;const a=(situOf(c).orgs||[]).map(o=>nrm(o.nom)),b=(situOf(p).orgs||[]).map(o=>nrm(o.nom));return a.some(n=>n&&b.includes(n))?(relP().bonusOrg!=null&&relP().bonusOrg!==''?+relP().bonusOrg:1):0;}
+/* lot 5 a : organisation commune comparée par fiche (sinon par nom), titres compris */
+const relOrgName=(c,r)=>{const p=r.pnj&&S.chars[r.pnj];return p?ogCommon(c,p):'';};
+function relOrgBonus(c,r){return relOrgName(c,r)?(relP().bonusOrg!=null&&relP().bonusOrg!==''?+relP().bonusOrg:1):0;}
 const relName=r=>{const p=r.pnj&&S.chars[r.pnj];return p&&vis(p)?lk({t:'perso',id:p.id},p.court||p.nom):`<b>${esc(r.nom||(p&&(p.court||p.nom))||'?')}</b>`;};
 const pbar=(f,n)=>`<span class="pbar" role="img" aria-label="${f} succès sur ${n}"><i style="width:${n?Math.min(100,Math.round(100*f/n)):0}%"></i></span>`;
 function jaugeBox(c,E,j,head,acts){const full=(j.cases||0)>=j.taille;
@@ -542,7 +544,7 @@ function relRow(c,r,E){const rk=relRang(r);
   return `<div class="relr"><div class="relh"><span>${relName(r)}${rk?` <span class="muted small">· ${esc(rk)}</span>`:''}</span><span class="rr"><span class="lvl ${r.niv}">${REL_NIV[r.niv]||''}</span>${E&&r.src==='pp'?`<button type="button" class="${r.pnj?'ibtn':'addl'}" data-act="relPP" data-id="${esc(r.aid)}" aria-label="Rattacher à un PNJ">${r.pnj?'✎':'Rattacher'}</button>`:''}${E&&!r.virt?`<button type="button" class="ibtn" data-act="${r.grp?'relGrp':'relEd'}" data-id="${esc(r.id)}" aria-label="Modifier">✎</button>`:''}</span></div>${sub||r.note?`<div class="muted small">${sub}${sub&&r.note?' · ':''}${r.note?esc(r.note):''}</div>`:''}</div>`;}
 function viewRelations(c){const R=relsOf(c),E=canEditC(c);let h='';
   const pend=obj=>R.flatMap(r=>(r.jauges||[]).filter(j=>j.obj===obj).map(j=>{const bo=relOrgBonus(c,r),d=j.diff!=null&&j.diff!==''?+j.diff:relDiff(relRang(r),obj);
-    return jaugeBox(c,E,{...j,diffShow:d!=null?d-bo:null},`<div class="relh"><span>${relName(r)} <span class="muted small">· ${esc(relRang(r))}</span></span><span class="tagp">en cours ${REL_OBJ[obj][2]}</span></div>${bo?`<div class="muted small">dont même organisation −${bo}</div>`:''}`,{id:r.id,add:'relAddS',del:'relJDel',val:'relVal',valLab:'devient '+REL_OBJ[obj][3].toLowerCase()});})).join('');
+    return jaugeBox(c,E,{...j,diffShow:d!=null?d-bo:null},`<div class="relh"><span>${relName(r)} <span class="muted small">· ${esc(relRang(r))}</span></span><span class="tagp">en cours ${REL_OBJ[obj][2]}</span></div>${bo?`<div class="muted small">dont même organisation −${bo} (${esc(relOrgName(c,r))})</div>`:''}`,{id:r.id,add:'relAddS',del:'relJDel',val:'relVal',valLab:'devient '+REL_OBJ[obj][3].toLowerCase()});})).join('');
   const sec=(k,t,niv,obj,btns)=>{const L=R.filter(r=>r.niv===niv),P=obj?pend(obj):'',n=L.length;
     const em=!n&&!P;return {e:em,h:cBlk('rel-'+k,t,(n?String(n):'')+(P?(n?' + ':'')+'jauge en cours':''),(L.map(r=>relRow(c,r,E)).join('')||(P?'':shNone))+P,E?`<div class="relbtns">${btns}</div>`:'',em)};};
   const B=[];
@@ -588,7 +590,7 @@ function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
   else if(a==='situSave'){if(situSaveF(cc,g)){S.dlg=null;toast('Enregistré');render();return true;} /* lot 6 : objet ou lieu choisi dans Possessions */
     const fx=g.f.f&&S.fiches[g.f.f]&&situFk[g.k]?S.fiches[g.f.f]:null,nom=(g.f.nom||'').trim()||(fx?fx.nom:'');if(!nom){g.err='Le nom est obligatoire.';render();return true;}
     setC(n=>{const s=n.situ={...(n.situ||{})},L=(s[g.k]||[]).slice(),v={nom,...((g.f.role||'').trim()&&g.k==='orgs'?{role:g.f.role.trim()}:{}),...((g.f.note||'').trim()?{note:g.f.note.trim()}:{}),...(g.k==='lieux'?{nat:g.f.nat||'res',res:(g.f.nat||'res')==='res'}:{}),f:fx?fx.id:undefined};
-      const i=L.findIndex(x=>x.id===g.i);if(i>=0)L[i]={...L[i],...v,role:v.role,note:v.note,res:v.res,nat:v.nat,f:v.f};if(!v.f)delete L[i].f;else L.push({id:uid('s'),date:now,...v});s[g.k]=L;});S.dlg=null;toast('Enregistré');}
+      const i=L.findIndex(x=>x.id===g.i);if(i>=0){L[i]={...L[i],...v,role:v.role,note:v.note,res:v.res,nat:v.nat,f:v.f};if(!v.f)delete L[i].f;}else{const nv={id:uid('s'),date:now,...v};if(!nv.f)delete nv.f;L.push(nv);}s[g.k]=L;}); /* lot 5 a : ajout sans fiche corrigé */S.dlg=null;toast('Enregistré');}
   else if(a==='situDel'){if(!g.conf){g.conf=true;render();return true;}setC(n=>{const s=n.situ={...(n.situ||{})};s[g.k]=(s[g.k]||[]).filter(x=>x.id!==g.i);});S.dlg=null;}
   else if(a==='relNew'){S.dlg={kind:'relNew',cid:cc.id,niv:d.niv,f:{pnj:'',nnom:'',note:'',taille:'',diff:''}};}
   else if(a==='relPP'){const x=(cc.achats||[]).find(y=>y.id===d.id);if(!x||!x.ppel)return true;const cur=ctcPnjOf(x.ppel);S.dlg={kind:'relPP',cid:cc.id,aid:x.id,f:{pnj:cur||(ctcMatch(x.ppel.prec).length?'':(x.ppel.prec?'__new':'')),nnom:x.ppel.prec||''}};}
