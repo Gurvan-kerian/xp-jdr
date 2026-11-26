@@ -142,7 +142,7 @@ const DBGR=process.env.DBG;
       if(impPath&&me===MES[0]){const F=JSON.parse(fs.readFileSync(impPath,'utf8'));
         await page.evaluate(F=>{S.view='params';S.ptab='donnees';S.kk={step:'apercu',F,nomF:'import-familles.json',mode:'maj'};kkPlan();render();kkRun();},F);
         await page.waitForFunction(()=>S.kk&&S.kk.step==='fin',null,{timeout:120000});const rep=await page.evaluate(()=>JSON.stringify(S.kk.rep));
-        ok(/"nNew":22/.test(rep)&&/"nMem":39/.test(rep)&&/"imgOk":18/.test(rep)&&/"err":\[\]/.test(rep),'import complet simulé : 22 fiches, 39 Situations, 18 blasons'+(DBGR?' '+rep:''));
+        ok(rep.includes('"nNew":'+F.items.length+',')&&/"nMem":39/.test(rep)&&/"imgOk":18/.test(rep)&&/"err":\[\]/.test(rep),'import complet simulé : '+F.items.length+' fiches, 39 Situations, 18 blasons'+(DBGR?' '+rep:''));
         FI2=db.rows.filter(r=>r.coll==='fiches'&&r.data.genre==='famille').map(r=>r.id);
         const k=await page.evaluate(()=>JSON.stringify((S.chars.kerian.situ||{}).familles));ok(/Aldébard Trieste/.test(k)&&!/"nom":"Aldébard"/.test(k),'Kerian : branche seule après import');
         await page.evaluate(()=>{S.view='sheet';S.sel='kerian';S.shTab='situ';render();});ok(/par sa branche/.test(await txt(page)),'Situation de Kerian : Aldébard par sa branche');
