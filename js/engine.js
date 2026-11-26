@@ -11,7 +11,7 @@ const STARS=30;
 const LABEL={feerie:'Féerie',masque:'Masque',fortune:'Fortune',atout:'Atouts féeriques',spec:'Spécialités'};
 const STAGES=[{nom:'Profond',feerie:7,carac:6,comp:6,atout:4},{nom:'Légendaire',feerie:8,carac:7,comp:7,atout:5}];
 let PALIER_MAX=7; /* seules les compétences dont le niveau max est ≥ 7 comptent pour Profond et Légendaire */
-function lvlCost(kind,l){if(kind==='atout'||kind==='spec')return RULES[kind];if(kind==='carac'&&l===2)return RULES.carac12;return l*RULES[kind];}
+function lvlCost(kind,l){if(kind==='art')return l*RULES.comp; /* arts obscurs : comme une compétence */if(kind==='atout'||kind==='spec')return RULES[kind];if(kind==='carac'&&l===2)return RULES.carac12;return l*RULES[kind];}
 function cum(kind,from,to){let s=0;for(let l=from+1;l<=to;l++)s+=lvlCost(kind,l);return s;}
 function ref(c,key){
   const i=key.indexOf(':'),k=i<0?key:key.slice(0,i),n=i<0?'':key.slice(i+1);
@@ -20,6 +20,7 @@ function ref(c,key){
   if(k==='comp'){for(const p of c.profils||[])for(const x of p.comps||[])if(x.nom===n)return{kind:'comp',nom:n,o:x,max:maxFor(c,'comp',n,x)};return null;}
   if(k==='fut'){const x=(c.futiles||[]).find(f=>f.nom===n);return x?{kind:'fut',nom:n,o:x,max:maxFor(c,'fut',n,x)}:null;}
   if(k==='prof'){const x=(c.profils||[]).find(f=>f.nom===n);return x?{kind:'prof',nom:n,o:x,max:maxFor(c,'prof',n,x)}:null;}
+  if(k==='art'){const o=c.arts&&c.arts[n],f=typeof S!=='undefined'&&S.fiches&&S.fiches[n];return o&&f?{kind:'art',nom:f.nom,o,max:+f.max||7}:null;} /* arts obscurs */
   return null;
 }
 function lv(c,key){const r=ref(c,key);return r?(r.o.cur||0):0;}
@@ -267,6 +268,7 @@ function undoLevel(c,key){const a=lastBuy(c,key);if(!a)return null;const n=clone
 function undo(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(!a||!canUndo(n,a))return n;ref(n,a.key).o.cur=a.from;n.achats=n.achats.filter(x=>x.id!==id);return ppSync(c,n);}
 
 function cancelAchat(c,id){const n=clone(c),a=(n.achats||[]).find(x=>x.id===id);if(!a)return{c:n,reverted:false};let rev=false;if(a.key){const r=ref(n,a.key);if(r&&(r.kind==='atout'||r.kind==='spec')){if((r.o.cur||0)>0){r.o.cur=r.o.cur-1;rev=true;}}else if(r&&(r.o.cur||0)===a.to){r.o.cur=a.from;rev=true;}}if(a.key==='spec'&&Array.isArray(n.specs))n.specs=n.specs.filter(x=>x.achat!==id);
+  if((a.key||'').startsWith('aosort:')){const [,aid,sid]=a.key.split(':'),o=n.arts&&n.arts[aid];if(o){o.sorts=(o.sorts||[]).filter(x=>x!==sid);rev=true;}} /* arts obscurs : sort annulé */
   if(a.key==='atout'&&Array.isArray(n.atouts)){const e=n.atouts.find(x=>x.achat===id);if(e){revokeTyp(n,e);n.atouts=n.atouts.filter(x=>x!==e);}}
   if(a.ppel&&Array.isArray(n.specs)){const k=n.specs.length;n.specs=n.specs.filter(x=>x.ppa!==id);if(n.specs.length<k&&n.spec)n.spec.cur=Math.max(0,(n.spec.cur||0)-(k-n.specs.length));}
   if((a.key||'').startsWith('pp:')){const p=(n.profils||[]).find(x=>x.nom===a.key.slice(3));if(p){const v=p.note==null||p.note===''?0:+p.note;if(!isNaN(v))p.note=v+(+a.pp||0);}rev=true;}
@@ -381,7 +383,7 @@ function fxSync(c0){if(!c0||!c0.fx)return c0;const want={};for(const e of fxOf(c
 /* ---------- Paramètres (écran Paramètres, droits de gestion) ----------
    meta/params = {versions:[{date, v:{...}}]} ; la version active est la plus récente dont la date d'effet est passée. */
 /* Paramètres (23/11/2026) : accueil en liste groupée, 7 entrées */
-const PARAM_HOME=[['Règles',[['creation','Création'],['progression','Progression des PJ'],['pnj','PNJ et relations'],['table','XP de groupe'],['cartes','Cartes']]],['Référentiel',[['profils','Profils'],['listes','Listes de valeurs']]],['Administration',[['donnees','Données']]]];
+const PARAM_HOME=[['Règles',[['creation','Création'],['progression','Progression des PJ'],['pnj','PNJ et relations'],['table','XP de groupe'],['cartes','Cartes']]],['Référentiel',[['profils','Profils'],['arts','Arts obscurs'],['listes','Listes de valeurs']]],['Administration',[['donnees','Données']]]];
 const PARAM_TABS=PARAM_HOME.flatMap(g=>g[1]);
 const PARAM_DEF={
  couts:[['feerie','Féerie : (niveau suivant) ×',5],['masque','Masque : (niveau suivant) ×',4],['carac','Caractéristique : (niveau suivant) ×',4],['carac12','Caractéristique : passage de 1 à 2',12],['comp','Compétence : (niveau suivant) ×',3],['fut','Compétence futile : (niveau suivant) ×',1],['fortune','Fortune : (niveau suivant) ×',2],['atout','Atout féerique',8],['spec','Spécialité',8],['specFut','Spécialité futile',2],['mauvaiseMain','Mauvaise main',12],['prof','Profil de PNJ : (niveau suivant) ×',12]],

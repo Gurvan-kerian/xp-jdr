@@ -62,12 +62,14 @@ function bar(cur,max,plan){const p=max?Math.min(100,Math.round(100*cur/max)):0;r
 function itemRow(c,key,dispo){
   const r=ref(c,key);if(!r)return '';const cur=r.o.cur||0,max=r.max,to=(c.plan||{})[key];
   const planned=!!to&&to>cur,atMax=max!=null&&cur>=max;
-  const k=atMax?0:lvlCost(r.kind,cur+1),can=!atMax&&k<=dispo;
+  const gt=!atMax&&r.kind==='art'&&typeof aoGate==='function'?aoGate(c,key,cur+1):''; /* arts obscurs : sorts requis */
+  const k=atMax?0:lvlCost(r.kind,cur+1),can=!atMax&&k<=dispo&&!gt;
   const acc=isAcc(c,key); /* onglet Progression : l'accrue s'affiche toujours (la forme ne joue que dans « Fiche complète ») */
   const lvTxt=max!=null?`${cur+(acc?1:0)}<small>/${max+(acc?1:0)}</small>`:`${cur}`;
   const tail=atMax?`<span class="pill plan" style="grid-column:2/4;justify-self:end">★ max</span>`:
     `<button class="heart${planned?' on':''}" data-act="heart" data-key="${esc(key)}" aria-pressed="${planned}" aria-label="Prévoir un niveau de ${esc(r.nom)}">${planned?'♥':'♡'}</button><button class="plus${can?' ok':''}" data-act="quick" data-key="${esc(key)}"${can?'':' disabled'} aria-label="Acheter un niveau de ${esc(r.nom)} pour ${k} XP">+<small>${k}</small></button>`;
   let sub='';
+  if(gt)sub=`<span class="nsub bad">${esc(gt)}</span>`;
   if(r.kind==='fortune'&&FORTUNE[cur])sub=`<span class="nsub">${esc(FORTUNE[cur][0])}</span>`;
   if(r.kind==='spec'){const ta=specToAttach(c);if(ta)sub=`<span class="nsub bad">${ta} à rattacher</span>`;}
   const pwk=r.kind==='feerie'&&c.type==='PJ'&&!isHum(c)&&!!c.race;

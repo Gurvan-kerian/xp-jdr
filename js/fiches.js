@@ -146,7 +146,7 @@ function fiUniHome(){const G=isGest(),pl=(n,s,p)=>n+' '+(n>1?p:s);
   const grp=(t,rows)=>`<div class="pgrp">${t}</div><div class="plst">${rows.join('')}</div>`;
   return `<h2 style="margin-top:4px">Univers</h2>`
     +grp('Récit',[row('uni','chron','chron','Chronique',chUniSum()),row('uni','secrets','secrets','Secrets',sec,np)]) /* lot 3 */
-    +grp('Peuples',[row('uni','creatures','races','Races',rac),row('uni','pouvoirs','pouvoirs','Pouvoirs et capacités',uniPwSum()),row('uni','bete','bete','Bestiaire',cnt('bete')),row('uni','famille','famille','Familles',cnt('famille')),row('uni','org','org','Organisations',cnt('org'))])
+    +grp('Peuples',[row('uni','creatures','races','Races',rac),row('uni','pouvoirs','pouvoirs','Pouvoirs et capacités',uniPwSum()),row('uni','art','art','Arts obscurs',cnt('art')),row('uni','bete','bete','Bestiaire',cnt('bete')),row('uni','famille','famille','Familles',cnt('famille')),row('uni','org','org','Organisations',cnt('org'))])
     +grp('Lieux et choses',[row('uni','lieu','lieu','Lieux',cnt('lieu')),row('uni','carte','carte','Cartes',cnt('carte')),row('uni','objet','objet','Objets',cnt('objet'))]);}
 /* lot 3 : résumé de l'entrée Chronique */
 function chUniSum(){if(!S.fichesReady)return 'chargement…';const n=chEvs().length,d=chNow();return (n?n+' événement'+(n>1?'s':''):'aucun événement pour l\'instant')+(d?' · '+chDateTxt(d):'');}
@@ -159,7 +159,7 @@ function fiListView(g){const Gm=FI_G[g],T=fiTypes(g);if(S.fiTy&&!T.some(t=>t[0]=
   h+=`<div class="fisrch"><input type="search" data-fiq="1" value="${esc(S.fiQ)}" placeholder="Rechercher (nom, type)" aria-label="Rechercher dans les ${Gm.pl.toLowerCase()}" autocomplete="off"></div>`;
   if(T.length)h+=`<div class="chips fichips">${[['','Tous']].concat(T.map(t=>[t[0],t[0]])).map(([v,l])=>`<button class="chip" data-act="fiTy" data-v="${esc(v)}" aria-pressed="${(S.fiTy||'')===v}">${esc(l)}</button>`).join('')}${g==='objet'?`<button class="chip" data-act="fi6Uq" aria-pressed="${!!S.fiUq}">Uniques</button>`:''}</div>`;
   h+=`<div id="fiRes">${fiListBody(g)}</div>`;
-  if(fiCanNew())h+=`<button class="btn pri cta" data-act="fiNew" data-g="${g}">+ ${Gm.nv}</button>`;
+  if(fiCanNew()&&(g!=='art'||canEdit()))h+=`<button class="btn pri cta" data-act="fiNew" data-g="${g}">+ ${Gm.nv}</button>`;
   return h;}
 function fiListBody(g){const Gm=FI_G[g],L=fiAll().filter(f=>f.genre===g&&fiSee(f)&&!(g==='objet'&&S.fiUq&&!f.uniq)),q=nrm(S.fiQ),ty=S.fiTy||'';
   if(!L.length)return `<div class="card empty">Aucune fiche pour l'instant.${fiCanNew()?' Crée la première avec le bouton ci-dessous.':''}</div>`;
@@ -191,7 +191,7 @@ function fiFicheView(f){
   if(G){if(f.vis!=='rev')h+=`<div class="fivis prep"><span class="fivi" aria-hidden="true">${EYE_C}</span><span class="fivt"><b>Fiche préparée</b> · invisible des joueurs</span><button class="btn pri" data-act="fiReveal">Révéler</button></div>`;
     else{const K=fiEyeKeys(f),n=K.filter(k=>e[k]).length;h+=`<div class="fivis">${eyeBtn('fiEye','data-k="fiche"',true,'Fiche '+f.nom)}<span class="fivt"><b>Fiche révélée</b> · ${n} bloc${n>1?'s':''} sur ${K.length} visible${n>1?'s':''}</span></div>`;}}
   const img=illOf('fiche',f.id),path=fiPath(f);
-  const sub=[f.type?esc(f.type):'',...fi6Sub(f),...(f.genre==='famille'?faSub(f):[]),path.length&&f.genre!=='famille'?path.map(x=>fiSee(x)?lk({t:'fiche',id:x.id},x.nom):`<span class="nolk">${esc(x.nom)}</span>`).join(' › '):''].filter(Boolean).join(' · ');
+  const sub=[f.type?esc(f.type):'',...fi6Sub(f),...(f.genre==='famille'?faSub(f):[]),...(f.genre==='art'?aoSub(f):[]),path.length&&f.genre!=='famille'?path.map(x=>fiSee(x)?lk({t:'fiche',id:x.id},x.nom):`<span class="nolk">${esc(x.nom)}</span>`).join(' › '):''].filter(Boolean).join(' · ');
   h+=`<div class="card fihead"><div class="fihd">${img?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${img}" alt=""></button>`:`<span class="fithumb vide" aria-hidden="true">${FI_SVG(FI_IC[f.genre],26)}</span>`}<div style="flex:1;min-width:0"><h2 class="finm">${esc(f.nom)}</h2>${sub?`<div class="muted small">${sub}</div>`:''}${f.genre==='famille'?faHeadKv(f):''}</div>${f.kanka?kankaBtn(f.kanka,f.nom,'Fiche Kanka : '+f.nom):''}</div>
     ${ed?`<div style="margin-top:8px"><button type="button" class="edl" data-act="fiHead">${ICON.crayon} ${f.genre==='famille'?'Nom, type, suzerain, devise, race':'Nom, type'+(Gm.arbo?', '+Gm.par.toLowerCase():'')}${f.genre==='objet'?', unique, créateur':''}${f.genre==='carte'?', lieu associé':''}, image, Kanka</button></div>`:''}</div>`;
   if(f.genre==='carte')h+=caFicheBlocks(f); /* lot Cartes */
@@ -206,6 +206,7 @@ function fiFicheView(f){
     if(V.length||ed){const rows=V.map(it=>`<div class="fiit${it.rev?'':' fihid'}"><div class="fiitx">${fiRich(it.txt)}</div>${ed?`<button type="button" class="fiedi" data-act="fiItem" data-i="${esc(it.id)}" aria-label="Modifier l'élément">${ICON.crayon}</button>`:''}${G?eyeBtn('fiEye',`data-k="item" data-i="${esc(it.id)}"`,!!it.rev,"Élément de « Ce que l'on sait »"):''}</div>`).join('');
       h+=fiBlk('sait',"Ce que l'on sait",G?`${nr} / ${A.length} révélé${nr>1?'s':''}`:String(V.length||''),(rows||'<div class="muted small">Rien pour l\'instant.</div>')+(ed?`<div class="radd"><button class="btn" data-act="fiItem" data-i="">+ Un élément</button></div>`:''),{hid:G&&!e.sait,eye:G?eyeBtn('fiEye','data-k="sait"',!!e.sait,"Ce que l'on sait"):''});}}
   if(f.genre==='bete')h+=fiSpecBlk(f,ed,G); /* lot 8 b : spécimens connus */
+  if(f.genre==='art')h+=aoBlocks(f,ed,G); /* arts obscurs */
   h+=fi6Blocks(f); /* lot 6 : blocs propres aux lieux et objets */
   if(OT)h+=ogBlocks(f,OT); /* lot 5 a */
   if(f.genre==='famille')h+=faBlocks(f); /* lot 5 b */
@@ -245,6 +246,7 @@ function fiParOpts(g,cur,self){const L=fiSort(fiAll().filter(x=>x.genre===g&&fiS
 function fiTypeField(g,val){const T=fiTypes(g,isGest()),v=(val||'').trim(),known=!v||T.some(t=>t[0]===v);
   return `<div class="field"><label for="fiTy">Type</label><input id="fiTy" type="text" list="fiTyL" data-fin="type" value="${esc(val||'')}" autocomplete="off"><datalist id="fiTyL">${T.map(t=>`<option value="${esc(t[0])}">`).join('')}</datalist><div class="muted small" id="fiTyN"${known?' hidden':''}>Nouveau type : il s'ajoutera à la liste de valeurs.</div></div>`;}
 function fiSheet(g){
+  if(/^ao[A-Z]/.test(g.kind))return aoSheet(g); /* arts obscurs */
   if(/^jr/.test(g.kind))return jrSheet(g); /* lot 2 */
   if(/^ch/.test(g.kind))return chSheet(g); /* lot 3 */
   if(/^pn/.test(g.kind))return pnSheet(g); /* lot 4 */
@@ -394,6 +396,7 @@ document.addEventListener('focusout',ev=>{if(ev.target&&ev.target.id==='fiEd')se
 /* ---------- Clics ---------- */
 function fiAct(a,d){
   if(/^sr[A-Z]/.test(a)&&srAct(a,d))return true; /* recherche globale */
+  if(/^ao[A-Z]/.test(a)){if(AO_PACT.has(a)){aoParamAct(a,d);render();return true;}if(aoAct(a,d))return true;} /* arts obscurs */
   if(/^jr[A-Z]/.test(a))return jrAct(a,d); /* lot 2 : journaux et quêtes */
   if(/^ch[A-Z]/.test(a))return chAct(a,d); /* lot 3 : chronique et calendrier */
   if(/^pn[A-Z]/.test(a))return pnAct(a,d); /* lot 4 : PNJ */
@@ -416,7 +419,7 @@ function fiAct(a,d){
   if(!/^fi[A-Z]/.test(a))return false;
   if(S.visit)return true;
   const f=S.fi&&S.fiches[S.fi];
-  if(a==='fiNew'){if(!fiCanNew()||!FI_G[d.g])return true;const cur=f&&f.genre===d.g?f.id:'';fiOpenDlg({kind:'fiNew',genre:d.g,nom:'',type:'',parent:FI_G[d.g].arbo?cur:'',vis:canEdit()?'prep':'rev'});render();return true;}
+  if(a==='fiNew'){if(!fiCanNew()||!FI_G[d.g]||(d.g==='art'&&!canEdit()))return true;const cur=f&&f.genre===d.g?f.id:'';fiOpenDlg({kind:'fiNew',genre:d.g,nom:'',type:'',parent:FI_G[d.g].arbo?cur:'',vis:canEdit()?'prep':'rev'});render();return true;}
   if(a==='fiVis'){if(S.dlg&&S.dlg.kind==='fiNew'&&canEdit()){S.dlg.vis=d.v==='rev'?'rev':'prep';S._fiRedraw=true;render();}return true;}
   if(a==='fiCreate'){const g=S.dlg;if(!g||g.kind!=='fiNew'||!fiCanNew())return true;const nom=(g.nom||'').trim();if(!nom)return true;
     const gest=canEdit(),rev=gest?g.vis==='rev':true,now=new Date().toISOString();
@@ -1658,7 +1661,7 @@ function caHeadFields(g){const L=fiSort(fiAll().filter(x=>x.genre==='lieu'&&fiSe
    et textes (descriptions, « Ce que l'on sait », spécimens, Notes MJ pour la gestion, Portrait des PNJ, journaux, pouvoirs).
    Sans tenir compte des accents ni des majuscules ; résultats dès 2 lettres. Filtre par genre gardé pendant la session.
    Recherches récentes et fiches ouvertes depuis la recherche : propres à ce navigateur (localStorage xp.srch). */
-const SR_G=[['perso','Personnages'],['lieu','Lieux'],['org','Organisations'],['famille','Familles'],['objet','Objets'],['bete','Bestiaire'],['carte','Cartes'],['evenement','Chronique'],['jour','Journaux et quêtes'],['race','Races'],['pw','Pouvoirs et capacités'],['secret','Secrets']];
+const SR_G=[['perso','Personnages'],['lieu','Lieux'],['org','Organisations'],['famille','Familles'],['objet','Objets'],['bete','Bestiaire'],['carte','Cartes'],['evenement','Chronique'],['jour','Journaux et quêtes'],['race','Races'],['pw','Pouvoirs et capacités'],['art','Arts obscurs'],['secret','Secrets']];
 const SR_LAB=Object.fromEntries(SR_G);
 const cap1=t=>t?t[0].toUpperCase()+t.slice(1):t;
 const srState=()=>S.srch||(S.srch={q:'',g:'all',more:false});
@@ -1694,6 +1697,7 @@ function srRun(q0){const q=srQ(q0),N=[],T=[],G=isGest();if(q.length<2)return {N,
     nm('race',o,[p,oth],'Race',illOf('race',cr.id));}
   for(const [k,M] of [['pw',S.pouvoirs],['cap',S.capacites]])for(const id in M||{}){if(!elSeen(k,id))continue;const e=M[id],o={t:k,id},sub=k==='pw'?'Pouvoir':'Capacité naturelle';
     nm('pw',o,[e.nom],sub,illOf(k,id));tx('pw',o,e.nom,sub,'Description',e.desc);}
+  for(const f of fiAll())if(f.genre==='art'&&fiBlkSee(f,'sorts'))for(const x of aoSorts(f))nm('art',{t:'fiche',id:f.id},[x.nom],'Sort · '+f.nom); /* arts obscurs */
   for(const J of jrAll()){if(!jrCanRead(J))continue;const h=jrHost(J),o={t:'jour',id:J.id},sub=(J.genre==='quete'?'Quête':'Journal')+(h?' · '+(h.court||h.nom):'');
     nm('jour',o,[J.nom],sub);if(!tx('jour',o,J.nom,sub,'Description',J.desc))for(const e of J.ent||[])if(tx('jour',{t:'jour',id:J.id,i:e.id},J.nom,sub,'« '+(e.nom||'Entrée')+' »',e.txt))break;}
   for(const s of S.secrets||[]){const o={t:'secret',n:s.n};if(!lnkOk(o))continue;const lab=secLabel(s,G);nm('secret',o,[lab],'Secret');}
@@ -1746,3 +1750,161 @@ document.addEventListener('keydown',ev=>{if(S.gate)return;const t=ev.target,typi
   if((ev.key==='k'||ev.key==='K')&&(ev.ctrlKey||ev.metaKey)&&!ev.altKey){ev.preventDefault();srOpen();return;}
   if(ev.key==='/'&&!typing&&!S.dlg&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();srOpen();return;}
   if(ev.key==='Escape'&&S.view==='srch'&&!S.dlg){ev.preventDefault();srClose();}});
+
+/* ---------- Arts obscurs (26/11/2026) ----------
+   Fiche genre « art » (règle des fiches) : description, prérequis, niveaux, sorts par niveau, pratiquants ; organisation liée (org).
+   Réglages (Paramètres › Référentiel › Arts obscurs, gestion) : comp (compétence cachée, false pour le Spiritisme), org, pre:[{t,n,r,sp}],
+   max (rang maximum, 7), cSort (XP par sort, 5), nReq (sorts du niveau inférieur pour monter, 2), niv:[4 noms propres].
+   Sorts dans la fiche : sorts:[{id,nom,niv(1-4),type,act,cib,dur,por,res,zon,desc,fx}] ; illustration ill-sort-<id>.
+   Personnage : c.arts = {<id de l'art>:{cur,d,sorts:[id]}} ; rang acheté comme une compétence (clé « art:<id> »), sort = achat « aosort:<art>:<sort> ».
+   Onglet Progrès : section invisible tant qu'aucun art n'est débloqué ; le MJ (gestion) débloque quand les prérequis sont atteints. */
+const AO_NIV=['Apprenti','Adepte','Maître','Grand maître'];
+const AO_PACT=new Set(['aoTab','aoPComp','aoPAdd','aoPDel','aoPReset','aoPSave']);
+const AO_RG=['1-2','3-4','5-6','7'];
+FI_G.art={pl:'Arts obscurs',un:'art obscur',nv:'Nouvel art obscur',cnt:n=>n+' art'+(n>1?'s':'')+' obscur'+(n>1?'s':''),tl:"Types d'art"};
+FI_IC.art='<path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7a5 5 0 1 0 5 5"/><circle cx="12" cy="12" r="1.5"/><path d="M17 3l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/>';
+FI6_EYE.art=['pre','niv','sorts','prat'];
+const aoComp=f=>!!f&&f.genre==='art'&&f.comp!==false;
+const aoArts=()=>fiSort(fiAll().filter(f=>f.genre==='art'));
+const aoNivOf=r=>r<=0?0:r<=2?1:r<=4?2:r<=6?3:4;
+const aoNivName=(f,i)=>i<1?'':((f&&f.niv&&f.niv[i-1])||'').trim()||AO_NIV[i-1];
+const aoNivLab=(f,i)=>{const p=aoNivName(f,i);return p===AO_NIV[i-1]?p:p+' · '+AO_NIV[i-1];};
+const aoMax=f=>+(f&&f.max)||7,aoCSort=f=>f&&f.cSort!=null&&f.cSort!==''?+f.cSort:5,aoReq=f=>f&&f.nReq!=null&&f.nReq!==''?+f.nReq:2;
+const aoSorts=f=>(f&&f.sorts)||[];
+const aoSortOf=(f,id)=>aoSorts(f).find(x=>x.id===id)||null;
+const aoOwn=(c,id)=>(c&&c.arts&&c.arts[id])||null;
+const aoKnown=(c,id)=>((aoOwn(c,id)||{}).sorts)||[];
+/* Montée de niveau (rangs 3, 5, 7) : il faut nReq sorts du niveau inférieur ; renvoie le motif du refus ou '' */
+function aoGate(c,key,to){const id=key.slice(4),f=S.fiches&&S.fiches[id];if(!f)return 'art inconnu';const n1=aoNivOf(to),n0=aoNivOf(to-1);if(n0<1||n1<=n0)return '';
+  const k=aoKnown(c,id).map(s=>aoSortOf(f,s)).filter(x=>x&&+x.niv===n0).length,q=aoReq(f);return k>=q?'':`${q} sorts ${aoNivName(f,n0)} requis (${k}/${q})`;}
+/* Prérequis : compétence (rang, spécialité), caractéristique, race, autre art */
+const AO_PT=[['comp','Compétence'],['carac','Caractéristique'],['race','Race'],['art','Art obscur']];
+function aoPreLab(p){if(p.t==='race')return 'Race '+(p.n||'?');if(p.t==='art'){const a=S.fiches[p.n];return (a?a.nom:'Art')+' '+(+p.r||0);}return (p.n||'?')+' '+(+p.r||0)+(p.sp?' (spécialité '+p.sp+')':'');}
+function aoPreOne(c,p){if(p.t==='race')return nrm(c.race||'')===nrm(p.n||'');
+  if(p.t==='art')return ((aoOwn(c,p.n)||{}).cur||0)>=(+p.r||0);
+  if(p.t==='carac')return lv(c,'carac:'+p.n)>=(+p.r||0);
+  const v=Math.max(lv(c,'comp:'+p.n),lv(c,'fut:'+p.n));if(v<(+p.r||0))return false;
+  return !p.sp||specsOf(c).some(s=>nrm(s.nom)===nrm(p.sp));}
+const aoPreOk=(c,f)=>(f.pre||[]).every(p=>aoPreOne(c,p));
+const aoUnlockable=c=>c&&c.type==='PJ'?aoArts().filter(f=>aoComp(f)&&!aoOwn(c,f.id)&&(f.pre||[]).length&&aoPreOk(c,f)):[];
+/* ---------- Onglet Progrès : section « Arts obscurs » (entre Capacités féeriques et Ressources générales) ---------- */
+function aoProgBlock(c,s,ir){if(!c||c.type!=='PJ')return '';const U=Object.keys(c.arts||{}).map(id=>S.fiches[id]).filter(f=>f&&f.genre==='art'),G=isGest()&&!S.visit,L=G?aoUnlockable(c):[];
+  if(!U.length&&!L.length)return '';const ed=canEditC(c),OB=!!S.onlyBuy;let h='';
+  for(const f of U){const o=aoOwn(c,f.id),cur=o.cur||0,nv=aoNivOf(cur),K=aoKnown(c,f.id).map(id=>aoSortOf(f,id)).filter(Boolean),row=ir('art:'+f.id);
+    const avail=aoSorts(f).filter(x=>+x.niv>=1&&+x.niv<=Math.max(1,nv)&&!aoKnown(c,f.id).includes(x.id)),k=aoCSort(f),canL=ed&&nv>=1&&avail.length&&k<=s.dispo;
+    if(OB&&!row&&!canL)continue;
+    const nxt=cur<aoMax(f)?cur+1:0,gt=nxt?aoGate(c,'art:'+f.id,nxt):'';
+    let b=row;
+    if(nxt)b+=`<div class="muted small" style="padding-top:6px">Rang ${nxt}${aoNivOf(nxt)!==nv?` (<b>${esc(aoNivLab(f,aoNivOf(nxt)))}</b>)`:''} : <b class="num">${lvlCost('art',nxt)} XP</b>${gt?` · <span class="bad">${esc(gt)}</span>`:aoNivOf(nxt)!==nv&&nv>=1?` · sorts ${esc(aoNivName(f,nv))} ✓`:''}</div>`;
+    b+=`<div class="spx" style="margin-top:6px">${K.map(x=>`<div class="ln acqd"><span><button type="button" class="lk" data-act="aoSortOpen" data-f="${esc(f.id)}" data-s="${esc(x.id)}">${esc(x.nom)}</button><small>${esc(aoNivName(f,+x.niv))}</small></span><span class="muted small">connu</span></div>`).join('')}
+      ${nv>=1?`<div class="ln${canL?' dispo':''}"><span>Apprendre un sort<small>${avail.length?avail.length+' sort'+(avail.length>1?'s':'')+' accessible'+(avail.length>1?'s':''):'aucun sort accessible pour l\'instant'}</small></span>${ed?`<button class="bb" data-act="aoLearn" data-id="${esc(c.id)}" data-f="${esc(f.id)}"${canL?'':' disabled'} aria-label="Apprendre un sort pour ${k} XP">+ ${k}</button>`:''}</div>`:`<div class="ln"><span class="muted small">Les sorts s'apprennent à partir du rang 1.</span></div>`}</div>`;
+    if(G&&canEdit()&&!cur&&!K.length)b+=`<div class="actions" style="justify-content:flex-start;margin-top:6px"><button class="lnk-bad" data-act="aoLock" data-id="${esc(c.id)}" data-f="${esc(f.id)}">Retirer l'art</button></div>`;
+    h+=`<div class="card" style="margin-bottom:10px"><div class="prof-head"><b>${lk({t:'fiche',id:f.id},f.nom)}</b><span style="display:flex;gap:6px;align-items:center"><span class="pill acc">${nv?esc(aoNivLab(f,nv)):'débloqué'}</span><span class="pill">Sorts ${K.length}</span></span></div>${b}</div>`;}
+  for(const f of L)h+=`<div class="card aounl" style="margin-bottom:10px"><div class="row2"><span><span class="pill plan">MJ</span> <b>${esc(f.nom)}</b> : prérequis atteints</span><button class="btn pri" data-act="aoUnlock" data-id="${esc(c.id)}" data-f="${esc(f.id)}">Débloquer</button></div><div class="muted small" style="margin-top:4px">Visible de la gestion seulement. La compétence apparaît au rang 0 ; le joueur achète ensuite les rangs.</div></div>`;
+  return h?`<h2>Arts obscurs</h2>`+h:'';}
+/* ---------- Fiche d'art : sous-titre et blocs ---------- */
+function aoSub(f){const o=f.org&&S.fiches[f.org];return [aoComp(f)?'compétence cachée':'sans compétence',o?(fiSee(o)?lk({t:'fiche',id:o.id},o.nom):''):''].filter(Boolean);}
+function aoBlocks(f,ed,G){if(!aoComp(f))return '';const e=fiEyeOf(f),E=canEdit();let h='';
+  if(fiBlkSee(f,'pre')){const P=f.pre||[];h+=fiBlk('aopre','Prérequis',String(P.length||''),(P.length?P.map(p=>`<div class="fiml">${esc(aoPreLab(p))}</div>`).join(''):'<div class="muted small">Aucun prérequis saisi.</div>')+`<div class="muted small" style="margin-top:6px">Un PJ qui remplit les prérequis peut être débloqué par le MJ (onglet Progrès).${E?' Réglage : Paramètres › Référentiel › Arts obscurs.':''}</div>`,{hid:G&&!e.pre,eye:G?eyeBtn('fiEye','data-k="pre"',!!e.pre,'Prérequis'):''});}
+  if(fiBlkSee(f,'niv'))h+=fiBlk('aoniv','Niveaux','',[1,2,3,4].map(i=>`<div class="srow"><span><span class="pill">${AO_RG[i-1]}</span> <b>${esc(aoNivName(f,i))}</b>${aoNivName(f,i)!==AO_NIV[i-1]?` <span class="muted small">${AO_NIV[i-1]}</span>`:''}</span></div>`).join('')+`<div class="muted small" style="margin-top:6px">Passer au niveau suivant : ${aoReq(f)} sorts du niveau en dessous. Rang maximum : ${aoMax(f)}.</div>`,{edit:ed?'aoNiv':'',hid:G&&!e.niv,eye:G?eyeBtn('fiEye','data-k="niv"',!!e.niv,'Niveaux'):''});
+  if(fiBlkSee(f,'sorts')){const S0=aoSorts(f);let b='';
+    for(let i=1;i<=4;i++){const L=S0.filter(x=>+x.niv===i).sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));b+=`<div class="fimg">${esc(aoNivLab(f,i))} · rangs ${AO_RG[i-1]}</div>`+(L.map(x=>`<div class="lrw">${illOf('sort',x.id)?illThumb('sort',x.id,32):`<span class="illslot" style="width:32px;height:32px"></span>`}<button class="lrow" data-act="aoSortOpen" data-f="${esc(f.id)}" data-s="${esc(x.id)}"><span class="lm"><span class="lt">${esc(x.nom)}</span><span class="ls">${esc([x.type==='actif'?'Actif':x.type==='passif'?'Passif':'',x.act].filter(Boolean).join(' · '))}</span></span><span class="muted small">${aoCSort(f)} XP</span></button></div>`).join('')||'<div class="muted small">Aucun sort.</div>');}
+    if(E)b+=`<div class="radd"><button class="btn" data-act="aoSortEd" data-f="${esc(f.id)}" data-s="">+ Sort</button></div>`;
+    h+=fiBlk('aosorts','Sorts',String(S0.length||''),b,{hid:G&&!e.sorts,eye:G?eyeBtn('fiEye','data-k="sorts"',!!e.sorts,'Sorts'):''});}
+  if(fiBlkSee(f,'prat')){const P=Object.values(S.chars||{}).filter(c=>vis(c)&&aoOwn(c,f.id)).sort((a,b)=>fiCN(a).localeCompare(fiCN(b),'fr'));
+    h+=fiBlk('aoprat','Pratiquants',String(P.length||''),P.length?P.map(c=>{const o=aoOwn(c,f.id),nv=aoNivOf(o.cur||0);return `<div class="fiml">${lk({t:'perso',id:c.id},fiCN(c))}<span class="muted small"> · rang ${o.cur||0}${nv?' · '+esc(aoNivName(f,nv)):''} · ${aoKnown(c,f.id).length} sort${aoKnown(c,f.id).length>1?'s':''}</span></div>`;}).join(''):'<div class="muted small">Aucun personnage n\'a débloqué cet art.</div>',{hid:G&&!e.prat,eye:G?eyeBtn('fiEye','data-k="prat"',!!e.prat,'Pratiquants'):''});}
+  return h;}
+/* ---------- Fenêtres : sort (consultation, édition), noms des niveaux, apprendre un sort ---------- */
+['aoSortV','aoSortEd','aoNiv','aoLearn'].forEach(k=>FI_DLG.add(k));
+const AO_RL=[['act','Mise en œuvre'],['cib','Cible'],['dur','Durée'],['por','Portée'],['zon',"Zone d'effet"],['res','Résistance']];
+function aoSheet(g){const f=S.fiches[g.f];if(!f)return null;
+  if(g.kind==='aoSortV'){const x=aoSortOf(f,g.s);if(!x)return null;const R=AO_RL.filter(([k])=>(x[k]||'').trim()),who=Object.values(S.chars||{}).filter(c=>vis(c)&&aoKnown(c,f.id).includes(x.id));
+    return fiShell(g,x.nom,`<div class="shd"><h2 class="rhd" style="margin:0"><span>${esc(x.nom)}</span></h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>
+      ${illOf('sort',x.id)?`<div class="fibigw">${bigImg(illId('sort',x.id),illOf('sort',x.id),x.nom)}</div>`:''}
+      <div class="tg3"><span>${esc(f.nom)}</span><span>${esc(aoNivLab(f,+x.niv||1))}</span>${x.type?`<span>${x.type==='actif'?'Actif':'Passif'}</span>`:''}<span>${aoCSort(f)} XP</span></div>
+      ${x.desc?`<div class="small" style="white-space:pre-line">${esc(x.desc)}</div>`:''}
+      ${R.length?`<div class="rg2">${R.map(([k,l])=>`<div><small>${l}</small>${esc(x[k])}</div>`).join('')}</div>`:''}
+      ${(x.fx||[]).length?`<div class="lab2">Effets</div><div class="fxl">${x.fx.map(e=>fxChip(e)).join('')}</div>`:''}
+      <div class="lab2">Connu par</div><div class="small">${who.length?who.map(c=>lk({t:'perso',id:c.id},fiCN(c))).join(', '):'<span class="muted">personne pour l\'instant</span>'}</div>
+      <div class="actions" style="margin-top:12px">${canEdit()?`<button class="btn" data-act="aoSortEd" data-f="${esc(f.id)}" data-s="${esc(x.id)}">${ICON.crayon} Modifier</button>`:''}<button class="btn pri" data-act="closeSheet">Fermer</button></div>`);}
+  if(g.kind==='aoSortEd'){const req='<span style="color:var(--bad)">*</span>',arm=S.confirm==='aosd:'+g.s,used=g.s&&Object.values(S.chars||{}).some(c=>aoKnown(c,f.id).includes(g.s));
+    return fiShell(g,'Sort',`<div class="shd"><h2>${g.s?'Modifier le sort':'Nouveau sort'}</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div><div class="muted small">${esc(f.nom)}</div>
+      <div class="field"><label for="aoN">Nom ${req}</label><input id="aoN" type="text" data-aoe="nom" value="${esc(g.nom)}"></div>
+      <div class="field"><label>Niveau ${req}</label><div class="seg" role="group">${[1,2,3,4].map(i=>`<button data-act="aoSeg" data-k="niv" data-v="${i}" aria-pressed="${+g.niv===i}">${esc(aoNivName(f,i))}</button>`).join('')}</div></div>
+      <div class="field"><label>Type</label><div class="seg" role="group">${[['actif','Actif'],['passif','Passif']].map(([v,l])=>`<button data-act="aoSeg" data-k="type" data-v="${v}" aria-pressed="${g.type===v}">${l}</button>`).join('')}</div></div>
+      <div class="field"><label>Illustration <span class="muted small">(facultatif)</span></label>${illEdit('sort',g.s,g.nom)}</div>
+      <div class="field"><label for="aoD">Description</label><textarea id="aoD" data-aoe="desc" rows="3">${esc(g.desc)}</textarea></div>
+      <div class="lab2">Règles <span class="muted small" style="text-transform:none;letter-spacing:0">(facultatives)</span></div><div class="elrg">${AO_RL.map(([k,l])=>`<label><span>${l}</span><input type="text" data-aoe="${k}" value="${esc(g[k]||'')}" aria-label="${l}"></label>`).join('')}</div>
+      <div class="lab2">Effets</div>${fxBox('dlg',g)}
+      ${g.err?`<div class="pinerr" role="alert">${esc(g.err)}</div>`:''}
+      <div class="actions" style="margin-top:10px"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="aoSortSave">Enregistrer</button></div>
+      ${g.s?`<div class="danger2"><span>Zone sensible</span>${used?'<span class="muted small">Suppression impossible : sort connu d\'un personnage</span>':arm?'<button class="lnk-bad" data-act="aoSortDelOk">Confirmer la suppression</button>':'<button class="lnk-bad" data-act="aoSortDel">Supprimer le sort</button>'}</div>`:''}`);}
+  if(g.kind==='aoNiv')return fiShell(g,'Noms des niveaux',`<div class="shd"><h2>Noms des niveaux</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div><div class="muted small">${esc(f.nom)} · laisser vide pour le nom commun</div>
+      ${[1,2,3,4].map(i=>`<div class="field"><label for="aoNv${i}">${AO_NIV[i-1]} <span class="muted small">(rangs ${AO_RG[i-1]})</span></label><input id="aoNv${i}" type="text" data-aoe="n${i}" value="${esc(g['n'+i]||'')}" placeholder="${AO_NIV[i-1]}"></div>`).join('')}
+      <div class="actions" style="margin-top:10px"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="aoNivSave">Enregistrer</button></div>`);
+  if(g.kind==='aoLearn'){const c=S.chars[g.c];if(!c)return null;const nv=aoNivOf((aoOwn(c,f.id)||{}).cur||0),L=aoSorts(f).filter(x=>+x.niv>=1&&+x.niv<=Math.max(1,nv)&&!aoKnown(c,f.id).includes(x.id)).sort((a,b)=>a.niv-b.niv||a.nom.localeCompare(b.nom,'fr')),k=aoCSort(f),dispo=summary(c,S.events).dispo;
+    return fiShell(g,'Apprendre un sort',`<div class="shd"><h2>Apprendre un sort</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div><div class="muted small">${esc(fiCN(c))} · ${esc(f.nom)} · ${k} XP le sort · ${dispo} XP disponibles</div>
+      ${L.map(x=>`<label class="kkrad"><input type="radio" name="aoL" data-act="aoPick" data-s="${esc(x.id)}"${g.pick===x.id?' checked':''}> <b>${esc(x.nom)}</b> <span class="muted small">· ${esc(aoNivName(f,+x.niv))}${x.act?' · '+esc(x.act):''}</span></label>`).join('')||'<div class="muted small">Aucun sort accessible.</div>'}
+      <div class="actions" style="margin-top:10px"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="aoLearnOk"${g.pick&&k<=dispo?'':' disabled'}>Apprendre · ${k} XP</button></div>`);}
+  return null;}
+function aoAct(a,d){const g=S.dlg;
+  if(a==='aoSortOpen'){const f=S.fiches[d.f];if(!f||!aoSortOf(f,d.s))return true;fiOpenDlg({kind:'aoSortV',f:d.f,s:d.s});render();return true;}
+  if(a==='aoSortEd'){if(!canEdit())return true;const f=S.fiches[d.f];if(!f)return true;const x=d.s?aoSortOf(f,d.s):null;S.confirm=null;
+    fiOpenDlg({kind:'aoSortEd',f:d.f,s:x?x.id:'',nom:x?x.nom:'',niv:x?+x.niv:1,type:x?x.type||'':'',desc:x?x.desc||'':'',fx:clone((x&&x.fx)||[]),fxEd:null,...Object.fromEntries(AO_RL.map(([k])=>[k,x?x[k]||'':'']))});render();return true;}
+  if(a==='aoSeg'&&g&&g.kind==='aoSortEd'){g[d.k]=d.k==='niv'?+d.v:(g[d.k]===d.v?'':d.v);S._fiRedraw=true;render();return true;}
+  if(a==='aoSortSave'&&g&&g.kind==='aoSortEd'){const f=S.fiches[g.f],nom=(g.nom||'').trim();if(!f||!canEdit())return true;
+    if(!nom){g.err='Le nom est obligatoire.';S._fiRedraw=true;render();return true;}
+    if(aoSorts(f).some(x=>x.id!==g.s&&nrm(x.nom)===nrm(nom))){g.err='Un autre sort de cet art porte déjà ce nom.';S._fiRedraw=true;render();return true;}
+    const n=clone(f),id=g.s||fiRid('so-'),x={id,nom,niv:+g.niv||1,type:g.type||'',desc:(g.desc||'').trim(),fx:clone(g.fx||[]),...Object.fromEntries(AO_RL.map(([k])=>[k,(g[k]||'').trim()]))};
+    n.sorts=g.s?aoSorts(n).map(y=>y.id===id?{...y,...x}:y):[...aoSorts(n),x];fiSave(n,true);S.dlg=null;fiOpenDlg({kind:'aoSortV',f:g.f,s:id});render();toast('Enregistré');return true;}
+  if(a==='aoSortDel'&&g){S.confirm='aosd:'+g.s;S._fiRedraw=true;render();return true;}
+  if(a==='aoSortDelOk'&&g&&g.kind==='aoSortEd'){const f=S.fiches[g.f];if(!f||!canEdit())return true;if(Object.values(S.chars||{}).some(c=>aoKnown(c,f.id).includes(g.s)))return true;
+    const n=clone(f);n.sorts=aoSorts(n).filter(x=>x.id!==g.s);fiSave(n,true);S.dlg=null;S.confirm=null;render();return true;}
+  if(a==='aoNiv'){const f=S.fi&&S.fiches[S.fi];if(!f||!fiCanEd(f))return true;fiOpenDlg({kind:'aoNiv',f:f.id,n1:(f.niv||[])[0]||'',n2:(f.niv||[])[1]||'',n3:(f.niv||[])[2]||'',n4:(f.niv||[])[3]||''});render();return true;}
+  if(a==='aoNivSave'&&g&&g.kind==='aoNiv'){const f=S.fiches[g.f];if(!f||!fiCanEd(f))return true;const n=clone(f);n.niv=[1,2,3,4].map(i=>(g['n'+i]||'').trim());fiSave(n,true);S.dlg=null;render();toast('Enregistré');return true;}
+  if(a==='aoUnlock'){const c0=S.chars[d.id],f=S.fiches[d.f];if(!c0||!f||!isGest()||S.visit||aoOwn(c0,f.id))return true;const c=clone(c0);c.arts={...(c.arts||{}),[f.id]:{cur:0,d:today(),sorts:[]}};saveChar(c);toast(f.nom+' débloqué');return true;}
+  if(a==='aoLock'){const c0=S.chars[d.id],o=aoOwn(c0,d.f);if(!o||!canEdit()||(o.cur||0)||(o.sorts||[]).length)return true;const c=clone(c0);delete c.arts[d.f];saveChar(c);return true;}
+  if(a==='aoLearn'){const c=S.chars[d.id];if(!c||!canEditC(c))return true;fiOpenDlg({kind:'aoLearn',c:d.id,f:d.f,pick:''});render();return true;}
+  if(a==='aoPick'&&g&&g.kind==='aoLearn'){g.pick=d.s;S._fiRedraw=true;render();return true;}
+  if(a==='aoLearnOk'&&g&&g.kind==='aoLearn'){const c0=S.chars[g.c],f=S.fiches[g.f],x=f&&aoSortOf(f,g.pick);if(!c0||!x||!canEditC(c0))return true;const o0=aoOwn(c0,f.id);if(!o0||o0.sorts.includes(x.id))return true;
+    const k=aoCSort(f);if(k>summary(c0,S.events).dispo)return true;
+    const c=clone(c0),o=c.arts[f.id];o.sorts=[...(o.sorts||[]),x.id];c.achats=c.achats||[];c.achats.push({id:'a'+Date.now().toString(36)+Math.floor(Math.random()*1e3),date:today(),label:`${f.nom} · sort « ${x.nom} »`,cout:k,key:'aosort:'+f.id+':'+x.id});
+    S.dlg=null;saveChar(c);toast('Sort appris');return true;}
+  return false;}
+document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.aoe===undefined)return;const g=S.dlg;if(g&&/^ao/.test(g.kind))g[t.dataset.aoe]=t.value;});
+/* ---------- Paramètres › Référentiel › Arts obscurs ---------- */
+function aoParams(){const G=canEdit(),L=aoArts();if(!L.length)return `<div class="card"><div class="muted">Aucun art obscur : crée d'abord les fiches (Univers › Arts obscurs) ou importe-les depuis Kanka.</div></div>`;
+  const cur=L.find(f=>f.id===S.aoTab)||L.find(aoComp)||L[0];S.aoTab=cur.id;
+  if(!S.aoPd||S.aoPd.id!==cur.id)S.aoPd={id:cur.id,comp:cur.comp!==false,org:cur.org||'',pre:clone(cur.pre||[]),max:aoMax(cur),cSort:aoCSort(cur),nReq:aoReq(cur),niv:[0,1,2,3].map(i=>(cur.niv||[])[i]||'')};
+  const P=S.aoPd,dis=G?'':' disabled',orgs=fiSort(fiAll().filter(x=>x.genre==='org'));
+  const inp=(k,v,lab,ty)=>`<label class="aopf"><span>${lab}</span><input type="${ty||'number'}" data-aop="${k}" value="${esc(String(v))}"${dis}></label>`;
+  let h=`${G?'':'<div class="rolock">Lecture seule : réservé à la gestion, en mode édition.</div>'}<div class="chips" style="margin-bottom:10px">${L.map(f=>`<button class="chip" data-act="aoTab" data-v="${esc(f.id)}" aria-pressed="${f.id===cur.id}">${esc(f.nom)}</button>`).join('')}</div>`;
+  h+=cBlk('ao-g','Art',esc(cur.nom),`<div class="optrow2"><span><b>Compétence cachée</b><br><span class="muted small">non : art descriptif seulement (Spiritisme)</span></span><button class="tgb" data-act="aoPComp" role="switch" aria-checked="${P.comp}"${dis} aria-label="Compétence cachée"><span class="tg${P.comp?' on':''}"></span></button></div>
+    <label class="aopf"><span>Organisation liée</span><select data-aop="org"${dis}><option value="">— aucune —</option>${orgs.map(o=>`<option value="${esc(o.id)}"${o.id===P.org?' selected':''}>${esc(o.nom)}</option>`).join('')}</select></label>`);
+  if(P.comp){
+    h+=cBlk('ao-p','Prérequis',String(P.pre.length),P.pre.map((p,i)=>`<div class="aopr"><select data-aop="pt" data-i="${i}" aria-label="Sorte de prérequis"${dis}>${AO_PT.map(([v,l])=>`<option value="${v}"${p.t===v?' selected':''}>${l}</option>`).join('')}</select>
+      ${p.t==='art'?`<select data-aop="pn" data-i="${i}" aria-label="Art"${dis}><option value="">—</option>${L.filter(x=>x.id!==cur.id&&aoComp(x)).map(x=>`<option value="${esc(x.id)}"${x.id===p.n?' selected':''}>${esc(x.nom)}</option>`).join('')}</select>`
+        :p.t==='carac'?`<select data-aop="pn" data-i="${i}" aria-label="Caractéristique"${dis}><option value="">—</option>${CARACS.map(x=>`<option${x===p.n?' selected':''}>${esc(x)}</option>`).join('')}</select>`
+        :p.t==='race'?`<input type="text" data-aop="pn" data-i="${i}" value="${esc(p.n||'')}" placeholder="Race" aria-label="Race"${dis}>`
+        :`<select data-aop="pn" data-i="${i}" aria-label="Compétence"${dis}><option value="">—</option>${COMPS_ALL.map(x=>`<option${x===p.n?' selected':''}>${esc(x)}</option>`).join('')}</select>`}
+      ${p.t!=='race'?`<input type="number" min="0" max="12" data-aop="pr" data-i="${i}" value="${esc(String(p.r||''))}" placeholder="rang" aria-label="Rang minimum" style="width:64px"${dis}>`:''}
+      ${p.t==='comp'?`<input type="text" data-aop="psp" data-i="${i}" value="${esc(p.sp||'')}" placeholder="spécialité (facultatif)" aria-label="Spécialité exigée"${dis}>`:''}
+      ${G?`<button class="ibtn" data-act="aoPDel" data-i="${i}" aria-label="Retirer le prérequis">✕</button>`:''}</div>`).join('')+(G?`<div class="radd"><button class="btn" data-act="aoPAdd">+ Prérequis</button></div>`:'')+'<div class="muted small" style="margin-top:6px">Compétence (rang minimum, spécialité facultative), caractéristique, race, autre art obscur.</div>');
+    h+=cBlk('ao-c','Compétence et sorts','',`<div class="aopg">${inp('max',P.max,'Rang maximum')}${inp('cSort',P.cSort,'Coût d\'un sort (XP)')}${inp('nReq',P.nReq,'Sorts requis pour monter')}</div><div class="muted small">Coût d'un rang : comme une compétence (${RULES.comp} × rang). Sorts requis : du niveau inférieur, pour atteindre les rangs 3, 5 et 7.</div>`);
+    h+=cBlk('ao-n','Niveaux','noms propres',[0,1,2,3].map(i=>`<label class="aopf"><span>${AO_NIV[i]} · rangs ${AO_RG[i]}</span><input type="text" data-aop="niv" data-i="${i}" value="${esc(P.niv[i])}" placeholder="${AO_NIV[i]}"${dis}></label>`).join(''));}
+  if(G)h+=`<div class="actions"><button class="btn ghost" data-act="aoPReset">Annuler</button><button class="btn pri" data-act="aoPSave">Enregistrer</button></div>`;
+  return h;}
+function aoParamAct(a,d){
+  if(a==='aoTab'){S.aoTab=d.v;S.aoPd=null;return true;}
+  if(!canEdit()||!S.aoPd)return true;const P=S.aoPd;
+  if(a==='aoPComp')P.comp=!P.comp;
+  else if(a==='aoPAdd')P.pre.push({t:'comp',n:'',r:1,sp:''});
+  else if(a==='aoPDel')P.pre.splice(+d.i,1);
+  else if(a==='aoPReset')S.aoPd=null;
+  else if(a==='aoPSave'){const f=S.fiches[P.id];if(!f)return true;const n=clone(f);n.comp=!!P.comp;n.org=P.org||'';n.pre=P.pre.filter(p=>(p.n||'').trim()).map(p=>({t:p.t,n:(p.n||'').trim(),r:+p.r||0,sp:p.t==='comp'?(p.sp||'').trim():''}));
+    n.max=Math.max(1,Math.min(12,+P.max||7));n.cSort=Math.max(0,+P.cSort||0);n.nReq=Math.max(0,+P.nReq||0);n.niv=P.niv.map(x=>(x||'').trim());fiSave(n,true);S.aoPd=null;setTimeout(()=>toast('Enregistré'),0);}
+  return true;}
+document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.aop===undefined||!S.aoPd)return;const P=S.aoPd,k=t.dataset.aop,i=+t.dataset.i;
+  if(k==='pt'){P.pre[i].t=t.value;P.pre[i].n='';P.pre[i].sp='';S._force=true;render();return;}
+  if(k==='pn')P.pre[i].n=t.value;else if(k==='pr')P.pre[i].r=t.value;else if(k==='psp')P.pre[i].sp=t.value;else if(k==='niv')P.niv[i]=t.value;else P[k]=t.value;});
+document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.aop==='pt'&&S.aoPd){S._force=true;render();}});

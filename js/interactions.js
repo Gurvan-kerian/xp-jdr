@@ -158,7 +158,7 @@ document.addEventListener('click',ev=>{
   else if(a==='nameAdd'){const k=S.nameForm.kind,nom=S.nameForm.nom.trim(),c0=S.chars[S.sel];if(!k||!nom||!c0)return;const c=clone(c0);if(k==='atout'&&c.atout.max!=null&&(c.atout.cur||0)>=c.atout.max)return;c.noms=c.noms||{atout:[],spec:[]};c.noms[k]=c.noms[k]||[];c.noms[k].push(nom);c[k].cur=(c[k].cur||0)+1;S.nameForm.nom='';saveChar(c);return;}
   else if(a==='nameDel'){const c=clone(S.chars[S.sel]),k=d.kind;if(!c.noms||!c.noms[k])return;c.noms[k].splice(+d.i,1);c[k].cur=Math.max(0,(c[k].cur||0)-1);saveChar(c);return;}
   else if(a==='heart'){const c=clone(S.chars[S.sel]),r=ref(c,d.key);if(!r)return;const cu=r.o.cur||0;c.plan=c.plan||{};if((c.plan[d.key]||0)>cu)delete c.plan[d.key];else if(r.max==null||cu<r.max)c.plan[d.key]=cu+1;saveChar(c);return;}
-  else if(a==='quick'){const c=S.chars[S.sel],r=c&&ref(c,d.key);if(!r)return;const cu=r.o.cur||0;if(r.max!=null&&cu>=r.max)return;if(lvlCost(r.kind,cu+1)>summary(c,S.events).dispo)return;S.dlg={kind:'b',id:c.id,key:d.key,from:cu,nom:''};}
+  else if(a==='quick'){const c=S.chars[S.sel],r=c&&ref(c,d.key);if(!r)return;const cu=r.o.cur||0;if(r.max!=null&&cu>=r.max)return;if(r.kind==='art'&&aoGate(c,d.key,cu+1))return;if(lvlCost(r.kind,cu+1)>summary(c,S.events).dispo)return;S.dlg={kind:'b',id:c.id,key:d.key,from:cu,nom:''};}
   else if(a==='undoLvl'){const u=undoLevel(cur(),S.sheet.key);S.sheet=null;if(u)saveChar(u.c);return;}
   else if(a==='step'){S.sheet.to+= +d.d;}
   else if(a==='specToggle'){S.specOpen=S.specOpen||{};const k=S.sel+'|'+d.key;S.specOpen[k]=!S.specOpen[k];}

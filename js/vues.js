@@ -45,7 +45,7 @@ const DER_ICO={'PdV':'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 1
 'Base tir':'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/>'};
 const derIco=n=>`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${DER_ICO[n]||''}</svg>`;
 /* « Achetable maintenant » : la ligne peut-elle être achetée avec le dispo ? */
-function canBuyKey(c,key,dispo){const r=ref(c,key);if(!r)return false;const cu=r.o.cur||0;if(r.max!=null&&cu>=r.max)return false;return lvlCost(r.kind,cu+1)<=dispo;}
+function canBuyKey(c,key,dispo){const r=ref(c,key);if(!r)return false;const cu=r.o.cur||0;if(r.max!=null&&cu>=r.max)return false;if(r.kind==='art'&&aoGate(c,key,cu+1))return false;return lvlCost(r.kind,cu+1)<=dispo;}
 const GSHORT={'Féerie':'Féerie','Une caractéristique':'Caract.','Une compétence':'Comp.','Atouts féeriques':'Atouts'};
 function goalBlock(c,s){const p=rangInfo(c);if(!p)return '';const open=!!(S.goalOpen&&S.goalOpen[c.id]);
   if(p.done)return `<div class="goal done"><b>Rang Légendaire</b> · atteint</div>`;
@@ -90,6 +90,7 @@ function viewProg(c,s,id){let h='';
   if(c.type==='PJ'){
     const fe=ir('feerie');
     h+=card('Capacités féeriques',fe+(fe?pwSection(c):'')+ir('masque')+(OB?'':staticRow('Tricherie',tricherie(c),'calculée'))+ir('atout'));
+    h+=aoProgBlock(c,s,ir); /* arts obscurs : invisible tant qu'aucun art n'est débloqué */
     const fo=ir('fortune');
     h+=card('Ressources générales',fo?fo+(()=>{const src=fxIntSrc(c,'fortune').concat(ppFortSrc(c));return src.length?`<div class="muted small fxnote">Fortune : dont ${src.map(esc).join(', ')}</div>`:'';})():'');
   }
