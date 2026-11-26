@@ -1045,10 +1045,10 @@ function ogMembers(o,all){const M=new Map(),L=[],G=isGest(),hid=new Set(o.mhid||
   const rank=(m,r)=>{const i=ogRIx(o,r);if(r&&i>=0&&i<m.rix){m.rix=i;m.rk=r;}};
   for(const c of Object.values(S.chars||{})){if(!vis(c))continue;const s=c.situ||{};
     if(fi6CSee(c,'orgs'))for(const e of s.orgs||[]){if(e.f!==o.id)continue;const m=add(c.id,{c});m.line=e;const r=ogLineR(o,e);rank(m,r);
-      const role=(e.role||'').trim();if(role&&!(r&&!e.rang))m.roles.push(role); /* rôle qui n'est que le nom du rang : non répété */
+      const role=(e.role||'').trim();if(role&&!(r&&(!e.rang||ogRFind(o,role)===r)))m.roles.push(role); /* rôle qui n'est que le nom du rang : non répété */
       if(e.sup&&(e.sup.id||e.sup.nom))m.sups.push({...e.sup});}
     if(o.titres&&fi6CSee(c,'titres'))for(const x of ogTitles(c))if(x.o.id===o.id){const m=add(c.id,{c});m.tits.push(x);rank(m,x.r);if(x.t.suz&&(x.t.suz.id||x.t.suz.nom))m.sups.push({...x.t.suz,tit:x});}}
-  for(const x of o.mbx||[]){const m=add('x:'+x.id,{x});const r=ogRById(o,x.rang)||ogRFind(o,x.role);rank(m,r);const role=(x.role||'').trim();if(role&&!(r&&!x.rang))m.roles.push(role);if(x.sup&&(x.sup.id||x.sup.nom))m.sups.push({...x.sup});}
+  for(const x of o.mbx||[]){const m=add('x:'+x.id,{x});const r=ogRById(o,x.rang)||ogRFind(o,x.role);rank(m,r);const role=(x.role||'').trim();if(role&&!(r&&(!x.rang||ogRFind(o,role)===r)))m.roles.push(role);if(x.sup&&(x.sup.id||x.sup.nom))m.sups.push({...x.sup});}
   const nm=m=>m.c?fiCN(m.c):m.x.nom;
   return L.filter(m=>all||G||!m.hid).sort((a,b)=>a.rix-b.rix||nm(a).localeCompare(nm(b),'fr',{sensitivity:'base'}));}
 const ogMN=m=>m.c?fiCN(m.c):m.x.nom;
@@ -1107,7 +1107,7 @@ function ogSitRows(c,k){const E=canEditC(c),btn=e=>E?`<button type="button" clas
   if(k==='titres'){const T=ogTitles(c).filter(x=>!x.t.pp),ids=new Set(T.map(x=>x.t.id));
     return T.map(x=>`<div class="srow"><span><b>${esc(ogRL(x.r,c))}</b>${x.t.dom&&ogDomN(x.t.dom)?' de '+ogDomH(x.t.dom):''}${x.t.suz&&ogPersN(x.t.suz)?` <span class="muted">· sous ${ogPers(x.t.suz)}</span>`:''}${ogTOrgs().length>1?` <span class="muted">· ${fi6Ref(x.o.id)}</span>`:''}${x.t.note?`<span class="d">${esc(x.t.note)}</span>`:''}</span>${srcChip('jeu')}${btn(x.t)}</div>`)
       .concat(((c.situ||{}).titres||[]).filter(e=>!ids.has(e.id)).map(e=>`<div class="srow"><span><b>${esc(e.nom)}</b>${e.note?`<span class="d">${esc(e.note)}</span>`:''}</span>${srcChip('jeu')}${btn(e)}</div>`));}
-  const L=(c.situ||{}).orgs||[],rows=L.map(e=>{const o=e.f&&S.fiches[e.f],r=o&&ogLineR(o,e),role=(e.role||'').trim(),showRole=role&&!(r&&!e.rang);
+  const L=(c.situ||{}).orgs||[],rows=L.map(e=>{const o=e.f&&S.fiches[e.f],r=o&&ogLineR(o,e),role=(e.role||'').trim(),showRole=role&&!(r&&(!e.rang||ogRFind(o,role)===r));
     return `<div class="srow"><span>${situNm(e)}${r?` <span class="muted">· ${esc(ogRL(r,c))}</span>`:''}${showRole?` <span class="muted">· ${esc(role)}</span>`:''}${e.sup&&ogPersN(e.sup)?` <span class="muted">· sous ${ogPers(e.sup)}</span>`:''}${e.note?`<span class="d">${esc(e.note)}</span>`:''}</span>${srcChip('jeu')}${btn(e)}</div>`;});
   const T=ogTitles(c),seen=new Set(L.map(e=>e.f).filter(Boolean));
   for(const o of [...new Set(T.map(x=>x.o))])if(!seen.has(o.id)&&fiSee(o)){const x=T.find(y=>y.o===o);rows.push(`<div class="srow"><span>${fi6Ref(o.id)} <span class="muted">· ${esc(ogRL(x.r,c))} (par ses titres)</span></span></div>`);}

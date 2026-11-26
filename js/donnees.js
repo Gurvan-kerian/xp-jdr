@@ -98,18 +98,21 @@ function socleInput(t,type){if(t.dataset.kkfile!==undefined){if(type==='change')
    Compte rendu : meta/imports, dernier import par genre. */
 const KK_G={lieu:{un:'lieu',pl:'lieux',Pl:'Lieux'},pnj:{un:'PNJ',pl:'PNJ',Pl:'PNJ'},
   objet:{un:'objet',pl:'objets',Pl:'Objets'},bete:{un:'créature',pl:'créatures',Pl:'Créatures'},evenement:{un:'événement',pl:'événements',Pl:'Événements'},
-  journal:{un:'journal ou quête',pl:'journaux et quêtes',Pl:'Journaux et quêtes'}}; /* lot 8 b : objets, créatures, événements, journaux et quêtes */
-const KK_FI=new Set(['lieu','objet','bete','evenement']); /* genres rangés dans « fiches » */
+  journal:{un:'journal ou quête',pl:'journaux et quêtes',Pl:'Journaux et quêtes'},
+  org:{un:'organisation',pl:'organisations',Pl:'Organisations',f:true}}; /* lot 8 b : objets, créatures, événements, journaux et quêtes ; lot 5 a : organisations */
+const KK_FI=new Set(['lieu','objet','bete','evenement','org']); /* genres rangés dans « fiches » */
 const KK_F={lieu:['nom','type','parent','kanka','desc','fief','notes'],
   pnj:['nom','court','surnom','race','genre','ageLib','statut','kanka','por.role','por.fm','situ.titres','situ.familles','situ.orgs','situ.lieux','situ.poss'],
   objet:['nom','type','parent','kanka','desc','effet','crea','carac','det','lieu','uniq'],
   bete:['nom','type','kanka','desc','spec'],
   evenement:['num','nom','type','debut','duree','pj','lieux','kanka','desc'],
-  journal:['nom','type','perso','parts','statut','pub','desc','kanka']};
+  journal:['nom','type','perso','parts','statut','pub','desc','kanka'],
+  org:['nom','type','parent','kanka','desc','sait','prat','rangs','titres','rel','mbx']};
 const KK_LAB={nom:'nom',type:'type',parent:'lieu parent',kanka:'lien Kanka',desc:'description',fief:'situation féerique',notes:'notes MJ',court:'nom court',surnom:'surnom',race:'race',genre:'genre',ageLib:'âge',statut:'statut',
   'por.role':'rôle','por.fm':'forme masquée','situ.titres':'titres','situ.familles':'familles','situ.orgs':'organisations','situ.lieux':'résidence et lieux','situ.poss':'possessions',
   effet:'effet',crea:'créateur',carac:'caractéristiques',det:'détenteurs',lieu:'emplacement',uniq:'unique',spec:'spécimens connus',num:'numéro',debut:'début',duree:'durée',pj:'PJ',lieux:'lieux',
-  perso:'personnage',parts:'participants',statut:'statut',pub:'lecture',ent:'entrées'};
+  perso:'personnage',parts:'participants',statut:'statut',pub:'lecture',ent:'entrées',
+  sait:"ce que l'on sait",prat:'pratiques',rangs:'rangs internes',titres:'titres cumulables',rel:'relations',mbx:'membres en texte'};
 function kkHash(v){const s=stable(v===undefined||kkEmpty(v)?null:v);let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36);}
 const kkGet=(o,p)=>p.split('.').reduce((x,k)=>x==null?undefined:x[k],o);
 function kkSet(o,p,v){const k=p.split('.');let x=o;for(let i=0;i<k.length-1;i++){x[k[i]]=Object.assign({},x[k[i]]||{});x=x[k[i]];}x[k[k.length-1]]=clone(v);}
@@ -141,7 +144,7 @@ function kkPlan(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g];
     if(g==='journal'&&kkEntNew(ex,it).length)up.push('ent');
     return {it,ex,act:up.length?'maj':'same',up,keep,imgTodo,imgKo};});
   const pj=(F.pj||[]).filter(x=>S.chars[x.id]&&!(S.chars[x.id].idm||'').trim()&&x.idm);
-  K.pj=pj;}
+  K.pj=pj;K.mem=g==='org'?kkOrgMem(F,true):null;}
 function kkImgDone(ex,m){if(!ex)return false;if(m.m!=='big'&&S.ptr&&S.ptr[m.k])return true;return !!(ex.kk&&(ex.kk.img||[]).includes(m.k));}
 /* Liens vers des fiches absentes de l'appli et du fichier : affichés en texte jusqu'à leur import */
 function kkLinksOut(){const K=S.kk,F=K.F,ids=new Set(F.items.map(i=>i.id));let n=0;
@@ -153,7 +156,7 @@ function kkCard(){const R=(S.kkImp||{});
   return `<div class="card kkcard"><h3 class="rs" style="margin-top:0">Import Kanka</h3>
     <div class="small">Crée ou met à jour des fiches à partir d'un fichier préparé depuis Kanka. Chaque fiche garde son lien Kanka : relancer un import ne crée pas de doublon, et ce qui a été modifié dans l'appli depuis est gardé.</div>
     <div class="lab2" style="margin-top:10px">Ordre conseillé</div>
-    <div class="kkord">${Object.keys(KK_G).map((g,i)=>`<div class="srow"><span>${i+1}. ${KK_G[g].Pl}</span>${last(g)}</div>`).join('')}<div class="srow muted"><span>Familles, organisations, cartes</span><span>à venir</span></div></div>
+    <div class="kkord">${Object.keys(KK_G).map((g,i)=>`<div class="srow"><span>${i+1}. ${KK_G[g].Pl}</span>${last(g)}</div>`).join('')}<div class="srow muted"><span>Familles, cartes</span><span>à venir</span></div></div>
     ${S.visit||writesLocked()?'<div class="muted small">Import impossible en lecture seule.</div>':`<label class="btn pri kkpick">Choisir un fichier d'import (.json)<input type="file" accept=".json,application/json" data-kkfile hidden></label>`}
     ${Object.keys(R).filter(g=>KK_G[g]).length?`<div class="actions" style="justify-content:flex-start">${Object.keys(KK_G).filter(g=>R[g]).map(g=>`<button type="button" class="lnk" data-act="kkRep" data-g="${g}">Compte rendu : ${KK_G[g].pl} ›</button>`).join('')}</div>`:''}
     <div class="kkwarn small">Avant un import : faire une sauvegarde (export Supabase). Les fiches importées sont révélées : visibles de toute la table.</div></div>`;}
@@ -165,13 +168,15 @@ function kkView(){const K=S.kk;
   if(K.step==='fin')return kkRepView(K.rep,true);
   if(K.step==='rep')return kkRepView(K.rep,false);
   const F=K.F,g=F.genre,G=KK_G[g],P=K.plan,n=a=>P.filter(x=>x.act===a).length;
-  const nImg=P.reduce((s,x)=>s+x.imgTodo.length,0),nKo=P.reduce((s,x)=>s+x.imgKo.length,0),nOut=kkLinksOut(),todo=n('new')+n('maj')+(K.pj||[]).length;
+  const nImg=P.reduce((s,x)=>s+x.imgTodo.length,0),nKo=P.reduce((s,x)=>s+x.imgKo.length,0),nOut=kkLinksOut(),todo=n('new')+n('maj')+(K.pj||[]).length+((K.mem&&K.mem.n)||0);
   let h=`<div class="kkhd"><button type="button" class="back" data-act="kkClose">✕ Annuler</button><h2 class="rs" style="margin:0">Aperçu de l'import</h2></div>`;
   h+=`<div class="muted small">Fichier <b>${esc(K.nomF||'')}</b> · préparé le ${fmtDate(F.date||'')} · ${esc(G.Pl)}</div>`;
   h+=`<div class="kknums"><div><b class="num kkok">${n('new')}</b><span>à créer</span></div><div><b class="num">${n('maj')}</b><span>à mettre à jour</span></div><div><b class="num">${n('same')+n('ign')+(F.ignores||[]).length}</b><span>à jour ou ignorées</span></div></div>`;
   const inf=[];if(nImg)inf.push([nImg,`image${nImg>1?'s':''} à enregistrer${nKo?` (dont ${nKo} absente${nKo>1?'s':''} du fichier)`:''}.`]);
   if(nOut)inf.push([nOut,`lien${nOut>1?'s':''} vers des fiches pas encore dans l'appli : affiché${nOut>1?'s':''} en texte, ${nOut>1?'ils deviendront des liens':'il deviendra un lien'} à leur import.`]);
   if((F.ignores||[]).length)inf.push([F.ignores.length,`ignoré${F.ignores.length>1?'s':''} : ${F.ignores.map(x=>x.nom+(x.pq?' ('+x.pq+')':'')).join(', ')}.`]);
+  if(K.mem&&K.mem.n)inf.push([K.mem.n,`personnage${K.mem.n>1?'s':''} dont la Situation sera complétée (organisations reliées, rang, rôle, supérieur${K.mem.t?` ; ${K.mem.t} titre${K.mem.t>1?'s':''} de la Monarchie`:''}). Ce qui a été saisi dans l'appli est gardé.`]);
+  if(K.mem&&K.mem.ko.length)inf.push([K.mem.ko.length,`appartenance${K.mem.ko.length>1?'s':''} ignorée${K.mem.ko.length>1?'s':''} (personnage absent de l'appli).`]);
   if((K.pj||[]).length)inf.push([K.pj.length,`identité${K.pj.length>1?'s':''} masquée${K.pj.length>1?'s':''} de PJ à renseigner : ${K.pj.map(x=>esc(x.idm)+' ('+esc(S.chars[x.id].court)+')').join(', ')}.`]);
   h+=`<div class="card"><h3 class="rs" style="margin-top:0">À savoir avant de valider</h3>${inf.map(([a,b])=>`<div class="kkinf"><b class="num">${a}</b><span>${b}</span></div>`).join('')}${(F.infos||[]).map(t=>`<div class="kkinf"><b>·</b><span>${esc(t)}</span></div>`).join('')}</div>`;
   if(P.some(x=>x.ex))h+=`<div class="card"><div class="lab2">Fiches déjà dans l'appli</div>
@@ -180,7 +185,7 @@ function kkView(){const K=S.kk;
   const st=x=>x.act==='new'?'<span class="kkst kkok">nouveau</span>':x.act==='maj'?`<span class="kkst">mise à jour · ${x.up.map(p=>KK_LAB[p]||p).join(', ')}${x.keep.length?` <span class="muted">(gardé : ${x.keep.map(p=>KK_LAB[p]||p).join(', ')})</span>`:''}</span>`:x.act==='same'?'<span class="kkst muted">à jour</span>':`<span class="kkst muted">ignoré · ${esc(x.why||'')}</span>`;
   const row=(x,dep)=>`<div class="srow kkrow" style="padding-left:${6+dep*16}px"><span>${x.it.data.num?esc(x.it.data.num)+' ':''}${esc(x.it.data.nom||'')}${x.it.data.type?` <span class="muted">· ${esc(x.it.data.type)}</span>`:''}${x.imgKo.length?` <span class="kkko small">· ${x.imgKo.length} image${x.imgKo.length>1?'s':''} absente${x.imgKo.length>1?'s':''}</span>`:''}</span>${st(x)}</div>`;
   let det='';
-  if(g==='lieu'||g==='objet'){const by={};for(const x of P)(by[x.it.data.parent||'']=by[x.it.data.parent||'']||[]).push(x);const ids=new Set(P.map(x=>x.it.id));
+  if(g==='lieu'||g==='objet'||g==='org'){const by={};for(const x of P)(by[x.it.data.parent||'']=by[x.it.data.parent||'']||[]).push(x);const ids=new Set(P.map(x=>x.it.id));
     const walk=(pid,dep)=>(by[pid]||[]).sort((a,b)=>(a.it.data.nom||'').localeCompare(b.it.data.nom||'','fr')).map(x=>row(x,dep)+walk(x.it.id,dep+1)).join('');
     det=walk('',0)+P.filter(x=>x.it.data.parent&&!ids.has(x.it.data.parent)).map(x=>row(x,0)).join('');}
   else det=P.slice().sort((a,b)=>(a.it.data.nom||'').localeCompare(b.it.data.nom||'','fr',{sensitivity:'base'})).map(x=>row(x,0)).join('')+(F.ignores||[]).map(x=>`<div class="srow kkrow"><span>${esc(x.nom)}</span><span class="kkst muted">ignoré · ${esc(x.pq||'')}</span></div>`).join('');
@@ -193,7 +198,7 @@ function kkRunView(){const K=S.kk,p=K.prog,pc=(a,b)=>b?Math.round(a*100/b):100;
     <div class="kkwarn small">Garde cet écran ouvert jusqu'à la fin. Si l'import est interrompu, relance le même fichier : ce qui est déjà fait est reconnu.</div>`;}
 function kkRepView(r,fin){if(!r)return '';const G=KK_G[r.genre]||KK_G.lieu;
   let h=`<div class="kkhd"><button type="button" class="back" data-act="kkClose">‹ Données</button><h2 class="rs" style="margin:0">${fin?'Import terminé':'Compte rendu · '+G.Pl}</h2></div>`;
-  h+=`<div class="kkdone"><b>${r.nNew} ${r.nNew>1?G.pl+' créés':G.un+' créé'}</b>${r.nMaj?` · ${r.nMaj} mis à jour`:''}${r.nPj?` · ${r.nPj} identité${r.nPj>1?'s':''} masquée${r.nPj>1?'s':''}`:''} · ${r.imgOk} image${r.imgOk>1?'s':''} sur ${r.imgOk+(r.imgKo||[]).length} · ${fmtDate(r.date)}${r.by&&S.players[r.by]?' · '+esc(S.players[r.by].nom):''}</div>`;
+  h+=`<div class="kkdone"><b>${r.nNew} ${r.nNew>1?G.pl+(G.f?' créées':' créés'):G.un+(G.f?' créée':' créé')}</b>${r.nMaj?` · ${r.nMaj} mis à jour`:''}${r.nPj?` · ${r.nPj} identité${r.nPj>1?'s':''} masquée${r.nPj>1?'s':''}`:''}${r.nMem?` · ${r.nMem} Situation${r.nMem>1?'s':''} complétée${r.nMem>1?'s':''}`:''} · ${r.imgOk} image${r.imgOk>1?'s':''} sur ${r.imgOk+(r.imgKo||[]).length} · ${fmtDate(r.date)}${r.by&&S.players[r.by]?' · '+esc(S.players[r.by].nom):''}</div>`;
   const ko=r.imgKo||[],er=r.err||[];
   if(ko.length||er.length)h+=`<div class="card"><h3 class="rs" style="margin-top:0">À reprendre</h3>${er.length?`<div class="kkinf"><b class="num kkko">${er.length}</b><span>enregistrement${er.length>1?'s':''} refusé${er.length>1?'s':''} : ${er.map(esc).join(', ')}. Relancer le même fichier.</span></div>`:''}${ko.length?`<div class="kkinf"><b class="num kkko">${ko.length}</b><span>image${ko.length>1?'s':''} non enregistrée${ko.length>1?'s':''} : ${ko.map(x=>esc(x.nom)+' ('+esc(x.lab)+')').join(', ')}. À ajouter à la main, ou relancer avec un nouveau fichier.</span></div>`:''}</div>`;
   const kkO=id=>KK_FI.has(r.genre)?(S.fiches[id]&&{o:{t:'fiche',id},n:S.fiches[id].nom}):r.genre==='journal'?(S.jour&&S.jour[id]&&{o:{t:'jour',id},n:S.jour[id].nom}):(S.chars[id]&&{o:{t:'perso',id},n:S.chars[id].court||S.chars[id].nom});
@@ -206,15 +211,15 @@ function kkAct(a,d){if(!isGest())return true;
   if(a==='kkClose'){if(S.kk&&S.kk.step==='run')return true;S.kk=null;window.scrollTo(0,0);return true;}
   if(a==='kkRep'){const r=(S.kkImp||{})[d.g];if(r)S.kk={step:'rep',rep:r};window.scrollTo(0,0);return true;}
   if(a==='kkSee'){const r=(S.kk&&S.kk.rep)||(S.kkImp||{})[d.g]||{};S.kk=null;navClear();
-    if(d.g==='lieu'||d.g==='objet'||d.g==='bete'){S.view='univers';S.uni=d.g;S.fi=null;}
+    if(d.g==='lieu'||d.g==='objet'||d.g==='bete'||d.g==='org'){S.view='univers';S.uni=d.g;S.fi=null;}
     else if(d.g==='evenement'){S.view='univers';S.uni='chron';S.fi=null;}
     else if(d.g==='journal'){const j=(S.jour||{})[(r.cree||[])[0]],pc=j&&S.chars[j.perso]?j.perso:'kerian';S.view='sheet';S.sel=pc;S.shTab='jour';S.jrSel='j';}
     else{S.view='team';S.teamSel='pnj';}window.scrollTo(0,0);return true;}
   if(a==='kkGo'){if(!S.kk||S.kk.step!=='apercu'||S.visit||writesLocked()||!DB)return true;kkRun();return true;}
   return true;}
-async function kkRun(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g],P=K.plan.filter(x=>x.act==='new'||x.act==='maj'||x.imgTodo.length);
+async function kkRun(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g],P=K.plan.filter(x=>x.act==='new'||x.act==='maj'||x.imgTodo.length);if(g==='org')K.mem=kkOrgMem(F,true);
   const now=new Date().toISOString(),rep={genre:g,date:today(),by:ME||'',nNew:0,nMaj:0,nPj:0,imgOk:0,imgKo:[],err:[],cree:[]};
-  K.step='run';K.prog={f:0,nf:P.filter(x=>x.act==='new'||x.act==='maj').length+(K.pj||[]).length,i:0,ni:P.reduce((s,x)=>s+x.imgTodo.length,0)};render();
+  K.step='run';K.prog={f:0,nf:P.filter(x=>x.act==='new'||x.act==='maj').length+(K.pj||[]).length+((K.mem&&K.mem.n)||0),i:0,ni:P.reduce((s,x)=>s+x.imgTodo.length,0)};render();
   let ptr=false;const tick=()=>{if(S.view==='params'&&S.ptab==='donnees')render();};
   for(const x of P){const it=x.it,ex=x.ex?kkFind(g,it):null;
     /* images d'abord : la fiche note celles qui sont enregistrées */
@@ -228,7 +233,7 @@ async function kkRun(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g],P=K.plan.filter(x
       K.prog.i++;tick();}
     if(x.act!=='new'&&x.act!=='maj'&&!done.length)continue;
     let o;
-    if(!ex){o=KK_FI.has(g)?{id:it.id,genre:g,nom:'',type:'',parent:'',kanka:'',vis:'rev',eye:{desc:true,sait:true,fief:true,pers:true,orgs:true,obj:true,carte:true,effet:true,carac:true,det:true},desc:'',sait:[],notes:'',par:ME||'',cree:now}
+    if(!ex){o=KK_FI.has(g)?{id:it.id,genre:g,nom:'',type:'',parent:'',kanka:'',vis:'rev',eye:{desc:true,sait:true,fief:true,pers:true,orgs:true,obj:true,carte:true,effet:true,carac:true,det:true,rangs:true,prat:true,mem:true,lieux:true,rel:true},desc:'',sait:[],notes:'',par:ME||'',cree:now}
         :g==='journal'?{id:it.id,genre:it.data.genre==='quete'?'quete':'journal',nom:'',type:'',perso:'',parts:[],pub:true,desc:'',ent:[],jaugesFinies:[],par:ME||'',cree:now}
         :Object.assign(newChar(it.id,it.data.court||it.data.nom,it.data.nom,'PNJ'),{vis:'rev',eye:{...PN_EYE0,autres:true},par:ME||'',cree:now});
       for(const p of FL){const v=kkGet(it.data,p);if(v!==undefined)kkSet(o,p,v);}
@@ -245,7 +250,32 @@ async function kkRun(){const K=S.kk,F=K.F,g=F.genre,FL=KK_F[g],P=K.plan.filter(x
       if(!ex){rep.nNew++;rep.cree.push(o.id);}else if(x.act==='maj')rep.nMaj++;}
     catch(e){console.error(e);rep.err.push(it.data.nom||it.id);}
     if(x.act==='new'||x.act==='maj')K.prog.f++;tick();}
+  if(g==='org'&&F.membres){const M=kkOrgMem(F,false);for(const n of M.save){try{await DB.doc('chars/'+n.id).set(n);S.chars={...S.chars,[n.id]:n};rep.nMem=(rep.nMem||0)+1;}catch(e){rep.err.push(n.court||n.id);}K.prog.f++;tick();}}
   for(const x of K.pj||[]){const c=S.chars[x.id];if(c&&!(c.idm||'').trim()){const n=clone(c);n.idm=x.idm;try{await DB.doc('chars/'+n.id).set(n);S.chars={...S.chars,[n.id]:n};rep.nPj++;}catch(e){rep.err.push(c.court);}}K.prog.f++;tick();}
   if(ptr){S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});}
   const R={...(S.kkImp||{}),[g]:rep};S.kkImp=R;persist('meta/imports',R);
   K.step='fin';K.rep=rep;render();setTimeout(()=>toast('Import terminé'),0);}
+/* Lot 5 a : import des organisations — appartenances versées dans la Situation des personnages.
+   F.membres : [{c (personnage), o (organisation), rang?, tit? (titre de la Monarchie), role?, sup? (personnage), fem? (titre au féminin)}].
+   Ligne d'organisation : reliée par fiche ou par nom, complétée seulement là où elle est vide. Titre : ancienne ligne en texte du même rang
+   complétée (domaine repris du texte « … de X »), sinon titre ajouté ; la ligne d'organisation qui ne disait que le rang est retirée.
+   Genre « f » posé si vide et titre au féminin. Renvoie {n, t, ko, save:[personnages modifiés]}. */
+function kkOrgMem(F,dry){const it={},out={n:0,t:0,ko:[],save:[]};for(const x of F.items||[])it[x.id]=x.data;const by={};
+  for(const d of F.membres||[]){if(!S.chars[d.c]){out.ko.push(d);continue;}(by[d.c]=by[d.c]||[]).push(d);}
+  const oN=id=>(S.fiches[id]&&S.fiches[id].nom)||(it[id]&&it[id].nom)||'',oR=id=>({rangs:(S.fiches[id]&&S.fiches[id].rangs)||(it[id]&&it[id].rangs)||[]});
+  for(const [cid,L] of Object.entries(by)){const c=S.chars[cid],n=clone(c),s=n.situ={...(n.situ||{})};s.orgs=(s.orgs||[]).map(e=>({...e}));s.titres=(s.titres||[]).map(e=>({...e}));let nt=0;
+    for(const d of L){const nom=oN(d.o),R=oR(d.o),same=e=>e.f===d.o||(!e.f&&nrm(e.nom)===nrm(nom));
+      if(d.fem&&!n.genre)n.genre='f';
+      if(d.tit){const r=R.rangs.find(x=>x.id===d.rang);if(!r)continue;
+        s.orgs=s.orgs.filter(e=>!(same(e)&&(!(e.role||'').trim()||ogRFind(R,e.role)===r))); /* la ligne qui ne disait que le rang */
+        if(s.titres.some(t=>t.f===d.o&&t.rang===d.rang))continue;
+        const old=s.titres.find(t=>!t.f&&!t.rang&&ogRFind(R,t.nom)===r);
+        if(old){old.f=d.o;old.rang=d.rang;if(d.sup&&!old.suz)old.suz={id:d.sup};const m=String(old.nom||'').match(/\sd(?:e |')(.+)$/i);if(m&&!old.dom){const l=fiAll().find(x=>x.genre==='lieu'&&nrm(x.nom)===nrm(m[1]));old.dom=l?{f:l.id,nom:l.nom}:{nom:m[1].trim()};}}
+        else s.titres.push({id:uid('s'),date:today(),nom:n.genre==='f'&&r.f?r.f:r.m,f:d.o,rang:d.rang,...(d.sup?{suz:{id:d.sup}}:{})});nt++;continue;}
+      const e=s.orgs.find(same);
+      if(e){e.f=d.o;e.nom=nom;if(d.rang&&!e.rang)e.rang=d.rang;if(d.role&&(!(e.role||'').trim()||(d.raw&&e.role===d.raw)))e.role=d.role; /* rôle harmonisé si inchangé depuis Kanka */
+        if(e.rang&&e.role&&(ogRFind(R,e.role)||{}).id===e.rang)delete e.role;if(d.sup&&!e.sup)e.sup={id:d.sup};}
+      else s.orgs.push({id:uid('s'),date:today(),nom,f:d.o,...(d.rang?{rang:d.rang}:{}),...(d.role?{role:d.role}:{}),...(d.sup?{sup:{id:d.sup}}:{})});}
+    if(!s.titres.length)delete s.titres;if(!s.orgs.length)delete s.orgs;if(!c.situ&&!Object.keys(s).length)delete n.situ;
+    if(stableJ(n)!==stableJ(c)){out.n++;out.t+=nt;if(!dry)out.save.push(n);}}
+  return out;}
