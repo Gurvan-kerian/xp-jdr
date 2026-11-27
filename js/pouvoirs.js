@@ -32,9 +32,11 @@ const pwCharsUsing=id=>Object.values(S.chars).filter(c=>(c.pw||[]).some(o=>o.id=
 /* Usages d'un élément par les races : {cr, nom de la race, vid (sous-type retenu), e (entrée de capacité enregistrée)} */
 function elUses(k,id){const out=[];
   if(k==='pw'){for(const u of pwUses(id)){const r=S.races&&S.races[u.cr.id];out.push({cr:u.cr,nom:u.x.sing,vid:(r&&!isLegacyRace(r)&&(r.pwv||[])[u.i])||'',vnom:u.q,i:u.i});}return out;}
+  const accId=capIdByName(S.capacites||{},ACC_CAP); /* races qui proposent une caractéristique accrue au choix définitif */
   for(const cr of raceCres()){const r=S.races&&S.races[cr.id];if(!r||r.hum||isLegacyRace(r))continue;const nom=raceRec(cr).sing;
     (r.cap||[]).forEach((e,j)=>{if(e&&e.id===id)out.push({cr,nom,vid:e.v||'',e,j});});
-    (r.choix||[]).forEach(c=>{if(c[0]==='cap'&&c[1]===id)out.push({cr,nom,vid:c[2]||'',choix:true});});}
+    (r.choix||[]).forEach(c=>{if(c[0]==='cap'&&c[1]===id)out.push({cr,nom,vid:c[2]||'',choix:true});});
+    if(id===accId&&(r.choix||[]).some(c=>c[0]==='acc'))out.push({cr,nom,vid:'',choix:true});}
   return out;}
 const elRaceNames=L=>[...new Set(L.map(u=>u.nom))];
 /* Races qui doivent préciser le sous-type et ne l'ont pas fait */

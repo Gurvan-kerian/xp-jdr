@@ -166,6 +166,9 @@ const lnkAttrs=o=>`data-act="lnk" data-t="${o.t}"${o.id!=null?` data-id="${esc(o
 const lk=(o,label)=>lnkOk(o)?`<button type="button" class="lk" ${lnkAttrs(o)}>${esc(label)}</button>`:`<span class="nolk">${esc(label)}</span>`;
 const lkRace=(c,label)=>{const cr=crBySing(c&&c.race);return cr?lk({t:'race',id:cr.id},label):esc(label);};
 const lkCap=(nom,label)=>{const id=capIdByName(S.capacites||{},nom);return id?lk({t:'cap',id},label||nom):esc(label||nom);};
+/* Caractéristique accrue (Compléments Kanka, 27/11) : chaque variante renvoie à la fiche de capacité « Caractéristique accrue » */
+const ACC_CAP='Caractéristique accrue';
+const accLk=n=>lkCap(ACC_CAP,n+' '+accW(n));
 /* Libellé de l'écran courant, pour le chemin de la barre « ‹ Retour » */
 function navLabel(){const g=S.dlg;
   if(g&&g.kind==='cons'){const e=((g.t==='pw'?S.pouvoirs:S.capacites)||{})[g.id];return e?e.nom:'';}

@@ -203,7 +203,7 @@ function refRead(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr
     else if(I.length)h+=rBlk('inf','Informations complémentaires',String(I.length),I.map(i=>`<div class="fi"><b>${esc(i.lab||'')}</b>${i.cache?' <span class="tag2">masquée</span>':''}<div class="s">${esc(i.txt||'')}</div></div>`).join(''));
     h+=rBlk('pcs','Personnages de cette race',String(pc.length),pc.length?pc.map(c=>`<div class="lkr"><span>${lk({t:'perso',id:c.id},c.court)}</span><span class="muted small">${c.type}${c.type==='PJ'&&owners(c).length?' · '+esc(owners(c).map(p=>p.nom).join(', ')):''}${c.cache?' · masqué':''}</span></div>`).join(''):none);}
   else if(tab==='nat'){
-    const ch=(x.choix||[]).length?`<div class="sub2">Choix définitif (une seule option)</div><div style="display:flex;flex-wrap:wrap;gap:6px">${x.choix.map(o=>`<span class="rchip${o[0]==='acc'?' grp':''}">${o[0]==='acc'?'<b>accrue</b> '+esc(choixFull(o)):capLk([o[1],'',o[2]])}</span>`).join('')}</div>`:'';
+    const ch=(x.choix||[]).length?`<div class="sub2">Choix définitif (une seule option)</div><div style="display:flex;flex-wrap:wrap;gap:6px">${x.choix.map(o=>`<span class="rchip${o[0]==='acc'?' grp':''}">${o[0]==='acc'?accLk(o[1]):capLk([o[1],'',o[2]])}</span>`).join('')}</div>`:'';
     const nb=k=>String(((x[k]||[]).filter(a=>a&&a[0])).length);
     h+=rBlk('av','Avantages',nb('av'),vis('av')?items(x.av,'av','p'):seal,{edit:'av',eye:eyeK('av','Avantages féeriques')});
     h+=rBlk('dv','Désavantages',nb('dv'),vis('dv')?items(x.dv,'dv','n'):seal,{edit:'dv',eye:eyeK('dv','Désavantages féeriques')});
