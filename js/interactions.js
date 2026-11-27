@@ -190,7 +190,7 @@ document.addEventListener('click',ev=>{
     const n=buy(c,g.key,g.from+1,today(),named?nm:undefined),A=n.achats[n.achats.length-1];A.cout=0;A.gain=true;A.label='Gain en jeu · '+A.label;if((g.motif||'').trim())A.motif=g.motif.trim();A.sessionId=g.sess;S.dlg=null;saveChar(n);return;}
   else if(a==='ptab'){S.ptab=d.v||'';S.psaved=false;S.relpD=null;S.relpDirty=false;window.scrollTo(0,0);}
   else if(a==='pcat'){S.pcat=d.v;}
-  else if(a==='pSave'){if(!isGest())return;const g=S.pd;if(!g||!g.date)return;const v={...g.v};for(const t in PARAM_DEF)for(const [k] of PARAM_DEF[t])if(k!=='ppBareme'&&v[k]!=='')v[k]=+v[k];v.pnj=(v.pnj||[]).filter(r=>(r.nom||'').trim()).map(r=>({nom:r.nom.trim(),car:r.car===''?'':+r.car,prof:r.prof===''?'':+r.prof}));
+  else if(a==='pSave'){if(!isGest())return;const g=S.pd;if(!g||!g.date)return;const v={...g.v};delete v.ppBareme;delete v.fmStart; /* anciennes clés (nettoyage du 27/11) */for(const t in PARAM_DEF)for(const [k] of PARAM_DEF[t])if(v[k]!=='')v[k]=+v[k];v.pnj=(v.pnj||[]).filter(r=>(r.nom||'').trim()).map(r=>({nom:r.nom.trim(),car:r.car===''?'':+r.car,prof:r.prof===''?'':+r.prof}));
     const L=((S.params&&S.params.versions)||[]).filter(x=>x.date!==g.date);L.push({date:g.date,v});S.params={versions:L};persist('meta/params',S.params);applyParams();S.pd=null;S.psaved=true;}
   else if(a==='pDef'){if(!isGest())return;pDraft().v=paramDefaults();S.psaved=false;}
   else if(a==='pnjAdd'){if(!isGest())return;pDraft().v.pnj=[...(S.pd.v.pnj||[]),{nom:'',car:'',prof:''}];}

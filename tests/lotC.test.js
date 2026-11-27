@@ -156,7 +156,10 @@ ok(r(`(()=>{const ctx=ppCtxGame(K4,K4.profils.find(p=>p.nom==='Gentleman'),{prof
     await click(page,'.cwfoot .btn.pri');await click(page,'.cwfoot .btn.pri');
     await page.goBack();await page.waitForTimeout(250);ok(await page.evaluate(()=>S.view==='crea'&&S.cwStep===2),'retour du téléphone : étape précédente');
     await page.evaluate(()=>{S.cwStep=4;render();});
-    for(let i=0;i<2;i++){await click(page,'[data-act="cwInc"][data-f="car"][data-k="Agilité"][data-dv="1"]');await page.waitForTimeout(200);}
+    /* stabilisé (27/11) : un clic pendant un nouveau rendu pouvait se perdre ; on attend chaque +1 et on reclique au besoin */
+    const carU=()=>page.evaluate(()=>cwB()?crCarUsed(cwB().d,crX(cwB().d)):-1);
+    for(let i=0;i<2;i++)for(let t=0;t<4&&await carU()<i+1;t++){await click(page,'[data-act="cwInc"][data-f="car"][data-k="Agilité"][data-dv="1"]');await page.waitForFunction(n=>cwB()&&crCarUsed(cwB().d,crX(cwB().d))>=n,i+1,{timeout:1500}).catch(()=>{});}
+    await page.waitForFunction(()=>/8 points à répartir/.test((document.querySelector('.cwst')||{}).textContent||''),null,{timeout:3000}).catch(()=>{});
     ok(await page.evaluate(()=>crCarUsed(cwB().d,crX(cwB().d))===2&&/8 points à répartir/.test(document.querySelector('.cwst').textContent)),'caractéristiques : + / − et compteur');
     await page.evaluate(()=>{S.cwStep=6;render();});ok(await page.evaluate(()=>/profils/.test(document.querySelector('.cwbody').textContent)),'compétences : demande d\'abord les profils');
     await page.evaluate(()=>{S.cwStep=9;render();});ok(await page.evaluate(()=>document.querySelector('[data-act="cwSend"]').disabled),'récapitulatif : envoi bloqué tant qu\'il manque des étapes');

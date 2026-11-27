@@ -289,7 +289,7 @@ function newChar(id,court,nom,type){
   const base={id,court,nom:nom||court,type,statut:'actif',carac:caracs,spec:{cur:0},plan:{},achats:[]};
   base.fx=true; /* moteur de bonus actif pour les personnages créés à partir de l'étape 5 */
   if(type==='PNJ'){base.profils=PROFILS.map(n=>({nom:n,max:6,cur:0,subs:[]}));return base;}
-  base.feerie={max:8,cur:+(PRM.feStart??PRM.fmStart??3)};base.masque={max:9,cur:+(PRM.maStart??PRM.fmStart??4)};base.creation=true;base.fortune={max:15,cur:0};base.atout={max:8,cur:0};
+  base.feerie={max:8,cur:+(PRM.feStart??3)};base.masque={max:9,cur:+(PRM.maStart??4)};base.creation=true;base.fortune={max:15,cur:0};base.atout={max:8,cur:0};
   base.profils=PROFILS.map(n=>({nom:n,max:6,note:null,comps:PROFCOMPS[n].map(x=>({nom:x,max:6,cur:0}))}));base.futiles=[];
   return base;
 }

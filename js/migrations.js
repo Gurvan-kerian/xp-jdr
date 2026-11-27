@@ -103,10 +103,10 @@ function snapshotDocs(){const D={};
   for(const id in S.chars)D['chars/'+id]=S.chars[id];for(const id in S.players)D['players/'+id]=S.players[id];
   D['meta/races']={byId:S.races||{}};D['meta/pouvoirs']={byId:S.pouvoirs||{}};if(S.capacites)D['meta/capacites']={byId:S.capacites};
   if(S.secretsDoc)D['meta/secrets']=S.secretsDoc;if(S.params&&(S.params.versions||[]).length)D['meta/params']=S.params;
-  for(const id in S.jour||{})D['journaux/'+id]=S.jour[id];
+  for(const id in S.jour||{})D['journaux/'+id]=S.jour[id];for(const id in S.brouillons||{})D['brouillons/'+id]=S.brouillons[id];
   D['gains/all']={events:S.events||[]};if(S.schema)D['meta/schema']=S.schema;if(S.signalDoc)D['meta/signalements']=S.signalDoc;return D;}
 /* Toutes les données nécessaires sont-elles chargées ? Calcule l'état de la version. */
-function schemaCheck(){const ok=S.ready&&S.racesReady&&S.pouvoirsReady&&S.creaturesReady&&S.secretsReady&&S.paramsReady&&S.schemaReady&&S.capReady&&S.eventsReady&&S.playersReady&&S.jourReady;
+function schemaCheck(){const ok=S.ready&&S.racesReady&&S.pouvoirsReady&&S.creaturesReady&&S.secretsReady&&S.paramsReady&&S.schemaReady&&S.capReady&&S.eventsReady&&S.playersReady&&S.jourReady&&S.brouillonsReady;
   if(!ok)return;S.schemaV=(S.schema&&S.schema.v)||0;S.migPending=S.schemaV<SCHEMA_V;S.migAhead=S.schemaV>SCHEMA_V;}
 const canMigrate=()=>isGest()||(S.playersReady&&gestCount()===0);
 async function runMigration(){if(!S.migPending||S.migRunning||!DB||!canMigrate())return;
