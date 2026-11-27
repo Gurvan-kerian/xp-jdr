@@ -71,7 +71,7 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
 
       console.log('2. Achat avec contributions');
       await page.click('[data-act="fgBuy"][data-k="car:inf"]');await wait(page);let s=await sheet(page);
-      ok(/Monter Influence/.test(s)&&/Kerian/.test(s)&&/Sloan/.test(s)&&/Théodule/.test(s),'fenêtre : contributions de tous les PJ (gestion)');
+      ok(/Monter Influence/.test(s)&&/Kerian/.test(s)&&/Sloan/.test(s)&&!/Théodule/.test(s),'fenêtre : contributions des seuls PJ liés au fief (gestion)');
       ok(await page.$eval('#sheetRoot [data-act="fgBuyOk"]',b=>b.disabled),'validation bloquée tant qu\'il manque des XP');
       await fill(page,'#fgc-kerian',10);await fill(page,'#fgc-sloan',10);await wait(page,100);
       ok(!(await page.$eval('#sheetRoot [data-act="fgBuyOk"]',b=>b.disabled))&&/= 20 \/ 20 XP ✓/.test(await sheet(page)),'total 0 + 20 = 20');
@@ -87,9 +87,9 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
 
       console.log('4. Ressource achetée');
       await gest(page,'vda');await page.click('[data-act="fgBuy"][data-k="res"]');await wait(page);
-      await fill(page,'#fgRn','Salons bourgeois');await fill(page,'#fgRf','+2 interactions bourgeoises');await fill(page,'#fgc-theo',16);await wait(page,100);
+      await fill(page,'#fgRn','Salons bourgeois');await fill(page,'#fgRf','+2 interactions bourgeoises');ok(await page.$('#fgc-theo')===null,'PJ non lié : pas de contribution');await fill(page,'#fgc-kerian',16);await wait(page,100);
       await page.click('#sheetRoot [data-act="fgBuyOk"]');await wait(page,400);f=db.get('fiches/vda');
-      ok(f.gest.res.length===2&&f.gest.res[1].nom==='Salons bourgeois'&&db.get('chars/theo').achats.some(a=>a.cout===16&&a.grp),'ressource créée, payée par Théodule');
+      ok(f.gest.res.length===2&&f.gest.res[1].nom==='Salons bourgeois'&&db.get('chars/kerian').achats.some(a=>a.cout===16&&a.grp),'ressource créée, payée par Kerian');
 
       console.log('5. Mode édition');
       await page.evaluate(()=>{S.edit=true;});t=await gest(page,'vda');ok(/Modifier la gestion/.test(t)&&/Ajouter une ressource \(sans XP\)/.test(t),'boutons du mode édition');
