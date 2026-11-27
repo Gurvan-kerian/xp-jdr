@@ -196,7 +196,7 @@ function fiFicheView(f){
   h+=`<div class="card fihead"><div class="fihd">${img?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${img}" alt=""></button>`:`<span class="fithumb vide" aria-hidden="true">${FI_SVG(FI_IC[f.genre],26)}</span>`}<div style="flex:1;min-width:0"><h2 class="finm">${esc(f.nom)}</h2>${sub?`<div class="muted small">${sub}</div>`:''}${f.genre==='famille'?faHeadKv(f):''}</div>${f.kanka?kankaBtn(f.kanka,f.nom,'Fiche Kanka : '+f.nom):''}</div>
     ${ed?`<div style="margin-top:8px"><button type="button" class="edl" data-act="fiHead">${ICON.crayon} ${f.genre==='famille'?'Nom, type, suzerain, devise, race':'Nom, type'+(Gm.arbo?', '+Gm.par.toLowerCase():'')}${f.genre==='objet'?', unique, créateur':''}${f.genre==='carte'?', lieu associé':''}, image, Kanka</button></div>`:''}</div>`;
   if(f.genre==='carte')h+=caFicheBlocks(f); /* lot Cartes */
-  const T6=fi6Tabs(f);if(T6){h+=T6;if(S.fiTab==='gest')return h+fi6Gest(f);} /* lot 6 : Fief rattaché à un PJ */
+  const T6=fi6Tabs(f);if(T6){h+=T6;if(S.fiTab==='gest')return h+(typeof fgView==='function'?fgView(f):fi6Gest(f));} /* lot 6 : Fief rattaché à un PJ */
   const OT=f.genre==='org'?ogTab():'';if(OT)h+=ogTabsBar(OT); /* lot 5 a : onglets de l'organisation */
   /* Description */
   if((!OT||OT==='pres')&&fiBlkSee(f,'desc')&&((f.desc||'').trim()||ed))
@@ -258,6 +258,7 @@ function fiSheet(g){
   if(/^fiO/.test(g.kind))return ogSheet(g); /* lot 5 a */
   if(/^fa[A-Z]/.test(g.kind))return faSheet(g); /* lot 5 b */
   if(/^ca[A-Z]/.test(g.kind))return caSheet(g); /* lot Cartes */
+  if(/^fg[A-Z]/.test(g.kind))return fgSheet(g); /* lot 7 : fiefs */
   if(g.kind==='fiNew'){const Gm=FI_G[g.genre];if(!Gm||!fiCanNew())return null;
     return fiShell(g,Gm.nv,`<h2>${Gm.nv}</h2>
       <div class="field"><label for="fiNm">Nom</label><input id="fiNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
@@ -403,6 +404,7 @@ function fiAct(a,d){
   if(/^sr[A-Z]/.test(a)&&srAct(a,d))return true; /* recherche globale */
   if(/^ao[A-Z]/.test(a)){if(AO_PACT.has(a)){aoParamAct(a,d);render();return true;}if(aoAct(a,d))return true;} /* arts obscurs */
   if(/^ct[A-Z]/.test(a))return ctAct(a,d); /* chronologies */
+  if(/^fg[A-Z]/.test(a)&&typeof fgAct==='function')return fgAct(a,d); /* lot 7 : fiefs */
   if(/^rg[A-Z]/.test(a))return rgAct(a,d); /* règles en images */
   if(/^jr[A-Z]/.test(a))return jrAct(a,d); /* lot 2 : journaux et quêtes */
   if(/^ch[A-Z]/.test(a))return chAct(a,d); /* lot 3 : chronique et calendrier */

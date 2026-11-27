@@ -321,7 +321,7 @@ document.addEventListener('click',ev=>{
       if(g.nom==='PNJ'){const L=pnjOf(c),to=L.length===1?L[0].id:g.pnj;const pn=S.chars[to];if(!pn||pn.pj!==c.id){render();return;}
         const ev={id:'g'+Date.now().toString(36)+'-x',date:today(),titre:'Transfert de '+c.court,type:'Autre',entries:[{perso:pn.id,nature:'Transfert',montant:p}]};
         A.label='Dépense · PNJ → '+pn.court;A.xfer=ev.id;saveChar(n);saveEvents([...S.events,ev]);return;}
-      if(g.nom==='Domaine'){A.label='Dépense · Fief (transfert)';A.dom=true;}
+      if(g.nom==='Domaine'){A.label='Dépense · Fief (transfert)';A.dom=true;const fx=typeof fgDefOf==='function'?(g.fief&&fgFiefsOf(c).includes(g.fief)?g.fief:fgDefOf(c)):null;if(fx)A.fief=fx;} /* lot 7 : fief crédité */
       saveChar(n);return;}
     if(g.kind==='u'){const c=S.chars[g.id],l=c&&lastAutre(c,g.nom),u=c&&undoAutre(c,g.nom);if(u){saveChar(u.c);if(l&&l.xfer)saveEvents(S.events.filter(e=>e.id!==l.xfer));}else render();return;}
     if(g.kind==='b'){const c=S.chars[g.id],r=c&&ref(c,g.key),nm=(g.nom||'').trim(),named=r&&(r.kind==='atout'||r.kind==='spec');if(r&&(!named||nm)&&(r.o.cur||0)===g.from&&lvlCost(r.kind,g.from+1)<=summary(c,S.events).dispo&&(r.max==null||g.from<r.max))saveChar(buy(c,g.key,g.from+1,today(),named?nm:undefined));else render();return;}if(g.kind==='c')removeChar(g.id);else if(g.kind==='p')removePlayer(g.id);else if(g.kind==='g')saveEvents(S.events.filter(e=>e.id!==g.id));return;}
@@ -403,6 +403,7 @@ document.addEventListener('change',ev=>{
   else if(t.dataset.her){S.heritage={score:t.value,delta:S.heritage.delta};persist('meta/heritage',S.heritage);render();}
   else if(t.dataset.note!==undefined){const c=clone(S.chars[S.sel]);const p=c.profils.find(x=>x.nom===t.dataset.note);const v=t.value.trim();p.note=v===''?null:(isNaN(+v)?v:+v);saveChar(c);}
   else if(t.dataset.k==='nature'){S.form.lines[+t.dataset.l].persos=null;render();}
+  else if(t.dataset.k==='fief'&&t.dataset.l!==undefined){S.form.lines[+t.dataset.l].fief=t.value;render();} /* lot 7 */
   else if(t.dataset.me&&!pinOn()){ME=t.value||null;try{if(ME)localStorage.setItem('xp.me',ME);else localStorage.removeItem('xp.me');}catch(e){}render();}
   else if(t.dataset.owner){if(S.dlg&&S.dlg.kind==='pc'){S.dlg.own=t.value||'';render();}}
   else if(t.dataset.pf){if(!canEditP(S.players[t.dataset.pid])||(t.dataset.pf==='role'&&(!isGest()||lastMJ(S.players[t.dataset.pid]))))return;const p=clone(S.players[t.dataset.pid]);p[t.dataset.pf]=t.dataset.pf==='nom'?(t.value.trim()||p.nom):t.value;savePlayer(p);}

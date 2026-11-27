@@ -629,3 +629,15 @@ body.cafull{overflow:hidden}
 .txtab td:first-child{color:var(--muted)}
 .txtab .txav{color:var(--bad);text-decoration:line-through}
 .txtab .txap{color:var(--good)}
+/* Lot 7 — Fief géré (fiefs.js) */
+.fgxp{position:static}
+.fgtr{display:flex;gap:8px;flex-wrap:wrap}
+.fgtrait{padding:5px 14px;border-radius:999px;border:1px solid var(--accent);color:var(--accent);font-weight:600}
+.fgres{padding:10px 12px;border-radius:10px;background:var(--surface2);box-shadow:inset 3px 0 0 var(--brass);margin-bottom:8px;display:flex;flex-direction:column;gap:3px}
+.fgresh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.fgfx{color:var(--good);font-weight:600}
+.pill.fgin{background:var(--good-soft);color:var(--good)}
+.fggrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.fgpop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 10px;font-size:14px}
+.fgpl input[type=text]{min-width:0}
+.fgrow .rmain{grid-template-columns:minmax(0,1.8fr) minmax(36px,.8fr) auto}
