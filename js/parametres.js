@@ -14,7 +14,7 @@ function viewParamHome(g){const v=g.v,d=pVerDate(),nP=Object.keys(S.pouvoirs||{}
 function viewParams(){if(!S.paramsReady)return `<h2 style="margin-top:4px">Paramètres</h2><div class="card empty">Chargement…</div>`;
   const tab=S.ptab||'',G=isGest(),g=pDraft();
   if(!tab||!PARAM_TABS.some(t=>t[0]===tab))return viewParamHome(g);
-  let h=`<div style="margin:4px 0 6px"><button class="btn ghost" data-act="ptab" data-v="">‹ Paramètres</button></div><h2 style="margin-top:4px">${(PARAM_TABS.find(t=>t[0]===tab)||[,''])[1]}</h2>`;
+  let h=`${crumb(['Paramètres','data-act="ptab" data-v=""'],[''])}<h2 style="margin-top:4px">${(PARAM_TABS.find(t=>t[0]===tab)||[,''])[1]}</h2>`;
   if(tab==='donnees')return h+viewDonnees();
   if(tab==='listes')return h+fiListes();
   if(tab==='cartes')return h+caParams(); /* lot Cartes */
@@ -113,7 +113,7 @@ function ppBuySheet(g){const c=S.chars[g.cid],pr=c&&(c.profils||[]).find(x=>x.no
   let h=`<div class="shd" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>${esc(profLab(g.prof,c))}</h2><span class="ppf" aria-label="PP disponibles"><small>PP</small>${esc(ppFmt(have))}</span></div>
   <div class="muted small">${esc(c.court)} dépense ses PP ${esc(profLab(g.prof,c))} dans ce tableau uniquement.</div>`;
   if(rk>=4){const got=bought[tid],ok=!got&&sum>=PPT_PTS&&have>=PPT_COST;h+=`<div class="card ptc"><div class="prof-head"><b>${ICON.medaille||''} ${esc(P.titre.nom)}</b>${got?'<span class="pill acc">acquis</span>':`<button class="btn${ok?' pri':''}" data-act="ppTitre"${ok?'':' disabled'}>${PPT_COST} PP</button>`}</div><div class="muted small">${sum} / ${PPT_PTS} points de compétences · ${esc(ppFmt(have))} / ${PPT_COST} PP${P.titre.desc?' · '+esc(P.titre.desc):''}</div></div>`;}
-  h+=`<div class="field"><input type="search" data-ppb="q" value="${esc(g.q||'')}" placeholder="Rechercher dans le tableau…" aria-label="Rechercher dans le tableau"></div>${pfSeg('ppRub',g.rub,[['all','Tout'],...PP_RUB.map(r=>[r[0],r[2]])])}`;
+  h+=`<div class="field"><input type="search" data-ppb="q" value="${esc(g.q||'')}" placeholder="Rechercher dans le tableau…" aria-label="Rechercher dans le tableau"></div><div class="field" style="display:flex;align-items:center;gap:8px"><label for="pprub" style="margin:0">Catégorie</label><select id="pprub" data-pprub="1" style="flex:1">${[['all','Tout'],...PP_RUB.map(r=>[r[0],r[2]])].map(([v,l])=>`<option value="${v}"${g.rub===v?' selected':''}>${esc(l)}</option>`).join('')}</select></div>`; /* UX1 : menu au lieu des boutons */
   /* Recette lot C : panier (cases à cocher, bandeau « Valider »), éléments trop chers grisés, filtre « Achetables » actif par défaut */
   const ctx=ppCtxGame(c,pr,g);h+=ppCartList(g,ctx,ppRows(c,g.prof));
   h+=`<button class="ppi oth" data-act="ppOther"><span>+ Autre achat <small>· saisie libre : intitulé et coût</small></span></button>

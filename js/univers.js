@@ -1,6 +1,8 @@
 /* La belle appli — Univers : secrets et créatures */
 /* ---------- Univers › Secrets ---------- */
 const ICON={
+  maison:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg>',
+  corbeille:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
   sablier:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14M5 21h14"/><path d="M6.5 3c0 4.5 2.2 6.6 4.4 8.3.6.4.6 1 0 1.4C8.7 14.4 6.5 16.5 6.5 21M17.5 3c0 4.5-2.2 6.6-4.4 8.3-.6.4-.6 1 0 1.4 2.2 1.7 4.4 3.8 4.4 8.3"/><path d="M9.2 19.2c.9-1.6 1.9-2.4 2.8-2.4s1.9.8 2.8 2.4z"/></svg>', /* lot 3 : date du jeu */
   crayon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
   ref:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/><path d="M12 13h6M12 16h6"/></svg>',
@@ -42,6 +44,7 @@ const secById=n=>S.secrets.find(s=>s.n===n);
 function viewUnivers(){
   /* Lot 1 (23/11/2026) : accueil de l'Univers en liste groupée ; les genres de fiche ont leur liste et leur fiche */
   if(!S.uni||S.uni==='home')return fiUniHome();
+  if(S.uni==='pnj')return fiUniBack()+pnListView(); /* UX1 : PNJ dans l'Univers */
   if(FI_G[S.uni])return fiUniView();
   if(S.uni==='chron'||S.uni==='evenement'||S.uni==='agenda')return chUniView(); /* lot 3 */
   if(S.uni==='pouvoirs')return fiUniBack()+`<h2 style="margin-top:2px">Pouvoirs et capacités</h2>`+viewUniPw(); /* lot 2 bis */
@@ -65,7 +68,7 @@ function viewSecretList(){
 }
 function viewSecret(s){
   const [vf,vt]=secCount(s,'vm');
-  let h=`<button class="back" data-act="secBack"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Tous les secrets</button>`;
+  let h=crumb(CR_UNI,['Secrets','data-act="secBack"'],['Secret '+ROMAN[s.n-1]]);
   h+=`<div class="sechead" id="seck-titre"><div><div class="rn">SECRET ${ROMAN[s.n-1]}</div><h2>${titreVis(s)||(isGest()&&s.titre)?esc(s.titre):'<span class="muted">Titre à découvrir</span>'}</h2></div><span class="pts num">${secPts(s)} XP</span></div>`;
   const tEye=isGest()&&s.titre?eyeBtn('eye',`data-t="sec" data-n="${s.n}" data-k="titre" data-i="0"`,!s.titreHid,'Titre du secret'):'';
   h+=titreVis(s)||(isGest()&&s.titre)?`<div class="fwrap${s.titreHid?' hid':''}"><${canEdit()?'button':'div'} class="found" style="padding-top:2px"${canEdit()?' data-act="secEntry" data-k="titre" data-i="0"':''}><span class="muted small">${s.titreHid?'Titre préparé, caché · +'+(s.titrePts||1)+' XP au dévoilement':'Titre découvert · +'+(s.titrePts||1)+' XP'}</span></${canEdit()?'button':'div'}>${tEye}</div>`:`<div class="muted small">Le titre n'est pas encore connu (+1 XP).</div>`;

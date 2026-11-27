@@ -63,9 +63,9 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
     console.log('1. Onglet Gestion');
     {const {page,errs,ctx}=await open(browser,base,db,'lorenzo');let t=await gest(page,'vda');
       ok(/0\s*XP du fief/i.test(t)&&/4\s*reçus/.test(t)&&/4\s*dépensés/.test(t),'bandeau : solde 0, 4 reçus, 4 dépensés');
-      const T=t.toUpperCase();let at=0;const ord=['\nTRAITS\n','\nCARACTÉRISTIQUES\n','\nPOPULATION ET TERRITOIRE\n','\nRESSOURCES\n','\nHISTORIQUE DU FIEF\n'].map(x=>{const i=T.indexOf(x,at);at=i<0?at:i;return i;});ok(ord.every((x,i)=>x>=0&&(!i||x>ord[i-1])),'blocs dans l\'ordre Traits, Caractéristiques, Population, Ressources, Historique');
+      const T=t.toUpperCase();let at=0;const ord=['\nTRAITS\n','\nCARACTÉRISTIQUES\n','\nPOPULATION ET TERRITOIRE\n','\nRESSOURCES\n','\nHISTORIQUE\n'].map(x=>{const i=T.indexOf(x,at);at=i<0?at:i;return i;});ok(ord.every((x,i)=>x>=0&&(!i||x>ord[i-1])),'blocs dans l\'ordre Traits, Caractéristiques, Population, Ressources, Historique');
       ok(/Naturel/.test(t)&&/Bourgeois/.test(t),'traits');ok(/Influence/.test(t)&&/Féerie/.test(t)&&!/Diplomatie/.test(t),'noms de la feuille de fief');
-      ok(/15 à 25 fées conscientes · modificateur 0/.test(t)&&/Petite ville/.test(t),'population et taille');
+      ok(/15 à 25.*· 0/.test(t)&&/Petite ville/.test(t),'population et taille'); /* UX1 */
       ok(/Transfert · Kerian/.test(t)&&/Transfert · Sloan/.test(t)&&/Dépenses antérieures/.test(t),'historique : transferts et dépenses antérieures');
       ok(await page.$('[data-act="fgBuy"][data-k="car:inf"] small')!==null&&/20/.test(await page.$eval('[data-act="fgBuy"][data-k="car:inf"]',e=>e.innerText)),'Influence 4 → 5 : 20 XP');
 
@@ -74,7 +74,7 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
       ok(/Monter Influence/.test(s)&&/Kerian/.test(s)&&/Sloan/.test(s)&&!/Théodule/.test(s),'fenêtre : contributions des seuls PJ liés au fief (gestion)');
       ok(await page.$eval('#sheetRoot [data-act="fgBuyOk"]',b=>b.disabled),'validation bloquée tant qu\'il manque des XP');
       await fill(page,'#fgc-kerian',10);await fill(page,'#fgc-sloan',10);await wait(page,100);
-      ok(!(await page.$eval('#sheetRoot [data-act="fgBuyOk"]',b=>b.disabled))&&/= 20 \/ 20 XP ✓/.test(await sheet(page)),'total 0 + 20 = 20');
+      ok(!(await page.$eval('#sheetRoot [data-act="fgBuyOk"]',b=>b.disabled))&&/20 \/ 20 XP ✓/.test(await sheet(page)),'total 0 + 20 = 20');
       await page.click('#sheetRoot [data-act="fgBuyOk"]');await wait(page,400);
       let f=db.get('fiches/vda'),k=db.get('chars/kerian');
       ok(f.gest.car.inf===5&&f.gest.hist.length===2&&f.gest.hist[1].cout===20,'fief : Influence 5, achat de 20 XP');
@@ -92,11 +92,11 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
       ok(f.gest.res.length===2&&f.gest.res[1].nom==='Salons bourgeois'&&db.get('chars/kerian').achats.some(a=>a.cout===16&&a.grp),'ressource créée, payée par Kerian');
 
       console.log('5. Mode édition');
-      await page.evaluate(()=>{S.edit=true;});t=await gest(page,'vda');ok(/Modifier la gestion/.test(t)&&/Ajouter une ressource \(sans XP\)/.test(t),'boutons du mode édition');
+      await page.evaluate(()=>{S.edit=true;});t=await gest(page,'vda');ok(!!(await page.$('[data-act="fgEd"]'))&&/Ajouter sans XP/.test(t),'boutons du mode édition'); /* UX1 */
       await page.click('[data-act="fgEd"]');await wait(page);await fill(page,'#fge-sou',11);await wait(page,100);ok(/de 0 à 10/.test(await sheet(page)),'score > 10 refusé');
       await fill(page,'#fge-sou',5);await fill(page,'#fge-tr1','Mondain');await page.selectOption('#fge-e','Prospère');await page.dispatchEvent('#fge-e','input');await page.click('#sheetRoot [data-act="fgEdOk"]');await wait(page,400);
       f=db.get('fiches/vda');ok(f.gest.car.sou===5&&f.gest.traits[1]==='Mondain'&&f.gest.eco==='Prospère','saisie libre enregistrée');
-      await page.click('[data-act="fgRes"][data-rid="r1"]');await wait(page);await page.click('#sheetRoot [data-act="fgResDel"]');await wait(page);await page.click('#sheetRoot [data-act="fgResDel"]');await wait(page,400);
+      await page.click('[data-act="fgRo"][data-rid="r1"]');await wait(page);await page.click('[data-act="fgRes"][data-rid="r1"]');await wait(page);await page.click('#sheetRoot [data-act="fgResDel"]');await wait(page);await page.click('#sheetRoot [data-act="fgResDel"]');await wait(page,400);
       ok(!db.get('fiches/vda').gest.res.some(r=>r.id==='r1'),'ressource supprimée (sans XP)');
 
       console.log('6. Règles › Gestion de fief');
@@ -106,10 +106,10 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
       t=await gest(page,'vda');ok(/\+\s*25/.test(await page.$eval('[data-act="fgBuy"][data-k="car:inf"]',e=>e.innerText.replace(/\s+/g,' '))),'coût recalculé : 5 × 5 = 25');
 
       console.log('7. Nature « Fief » dans une session');
-      await page.evaluate(()=>{S.edit=false;S.view='gains';S.curSess='s1';S._force=true;render();});await wait(page);
+      await page.evaluate(()=>{S.edit=false;S.view='gains';S.xpSess='s1';S._force=true;render();});await wait(page);await page.click('[data-act="xpAddOpen"]');await wait(page); /* UX1 : fenêtre « + XP » */
       ok(await page.$eval('#gn0',s=>[...s.options].some(o=>o.value==='Fief')),'nature « Fief » proposée');
       await page.selectOption('#gn0','Fief');await page.dispatchEvent('#gn0','input');await page.dispatchEvent('#gn0','change');await wait(page);
-      t=await txt(page);ok(/XP au fief/i.test(t)&&/Créditée directement à Ville D'Avray/.test(t)&&!(await page.$('#gf0')),'un seul fief : choisi d\'office, pas de liste');
+      t=await sheet(page);ok(/XP au fief/i.test(t)&&/Créditée directement à Ville D'Avray/.test(t)&&!(await page.$('#gf0')),'un seul fief : choisi d\'office, pas de liste');
       await fill(page,'#gm0',3);await page.click('[data-act="sessAdd"]');await wait(page,400);
       const ev=db.get('gains/all').events.find(e=>e.id==='s1');ok(ev.entries.some(e=>e.perso==='fief:vda'&&e.nature==='Fief'&&e.montant===3),'entrée de session versée au fief');
       t=await txt(page);ok(/Fief\s*\+3/.test(t),'journal de la session : ligne Fief');
@@ -128,6 +128,6 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
       ok(!!(await page.$('[data-act="fgBuy"]:not([disabled])'))&&!(await page.$('[data-act="fgEd"]')),'joueuse d\'un détenteur : achat, pas d\'édition');
       await page.click('[data-act="fgBuy"][data-k="car:org"]');await wait(page);const s=await sheet(page);ok(/Sloan/.test(s)&&!/Kerian/.test(s.split('Contributions')[1]||''),'contributions : ses PJ seulement');
       await ctx.close();
-      const B=await open(browser,base,db,'bob');await gest(B.page,'vda');ok(!(await B.page.$('[data-act="fgBuy"]:not([disabled])')),'joueur sans PJ détenteur : lecture seule');await B.ctx.close();}
+      const B=await open(browser,base,db,'bob');await gest(B.page,'vda');ok(!!(await B.page.$('[data-act="fgBuy"]:not([disabled])')),'joueur sans PJ détenteur : achat ouvert (droits UX1 : visible = modifiable)');await B.ctx.close();}
   }}catch(e){fails++;console.log('  ✗ exception : '+(e&&e.stack||e));}
   await browser.close();srv.close();console.log(fails?`\n${fails} échec(s)`:'\nTout est vert.');process.exit(fails?1:0);})();

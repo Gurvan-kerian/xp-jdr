@@ -29,9 +29,9 @@ if(!docsPath){const app=loadApp(ROOT,['config','engine','modele','migrations','c
   ok(r(`ids().includes('hector')&&!ids().includes('armand')&&!relPnjs(S.chars.kerian).some(p=>p.id==='armand')`),'joueur : PNJ préparé absent des listes et des Relations');
   ok(r(`canEditC(S.chars.hector)&&canEditC(S.chars.ismael)&&canEditC(S.chars.kerian)`),'joueur : modifie un PNJ révélé, le féal de son PJ et son PJ');
   r(`ME='lorenzo';S.edit=false;`);
-  ok(r(`vis(S.chars.armand)&&!canEditC(S.chars.hector)&&canEditC(S.chars.ismael)`),'gestion hors mode édition : voit le PNJ préparé ; PNJ en lecture, féal modifiable (actions de jeu)');
+  ok(r(`vis(S.chars.armand)&&canEditC(S.chars.hector)&&canEditC(S.chars.ismael)`),'gestion hors mode édition : voit le PNJ préparé ; visible = modifiable (UX1)');
   r(`S.edit=true;`);ok(r(`canEditC(S.chars.hector)`),'gestion en mode édition : PNJ modifiable');
-  ok(r(`JSON.stringify(shTabsOf(S.chars.hector).map(x=>x[0]))`)==='["por","situ","rel"]'&&r(`JSON.stringify(shTabsOf(S.chars.ismael).map(x=>x[0]))`)==='["por","situ","rel","prog"]','onglets : PNJ Portrait · Situation · Relations ; féal + Progression');
+  ok(r(`JSON.stringify(shTabsOf(S.chars.hector).map(x=>x[0]))`)==='["por","situ","rel"]'&&r(`JSON.stringify(shTabsOf(S.chars.ismael).map(x=>x[0]))`)==='["prog","por","situ","rel"]','onglets : PNJ Portrait · Situation · Relations ; féal : Progrès en premier (UX1)');
   ok(r(`shTabsOf(S.chars.kerian)[0][0]`)==='prog','PJ : onglets inchangés');
   ok(r(`pnBlkSee(S.chars.hector,'role')&&pnBlkSee(S.chars.hector,'orgs')`)&&r(`(ME='alice',!pnBlkSee(S.chars.hector,'autres')&&pnBlkSee(S.chars.hector,'orgs'))`),'PNJ existant : Portrait et Situation ouverts, Autres PNJ fermé');
   ok(r(`FI_G.bete&&FI_G.bete.noMj&&!FI_G.creatures`),'genre Bestiaire « bete », sans Notes MJ, distinct de « creatures »');
@@ -73,8 +73,8 @@ const DBG=process.env.DBG;
     if(!docsPath){
     console.log('2. Joueur');
     {const {page,errs,ctx}=await open(browser,base,db,'alice');
-      let t=await txt(page);ok(/PJ · 1/.test(t)&&/PNJ · 2/.test(t),'sélecteur PJ · 1 | PNJ · 2 (le préparé ne compte pas)');
-      await click(page,'[data-act="pnTeam"][data-v="pnj"]');await wait(page);t=await txt(page);
+      let t=await page.evaluate(()=>{S.view='univers';S.uni='home';render();return document.getElementById('app').innerText;});ok(/PNJ\s*2 PNJ/.test(t),'Univers : entrée PNJ (2, le préparé ne compte pas) (UX1)');
+      await page.evaluate(()=>{S.uni='pnj';render();});await wait(page);t=await txt(page);
       ok(/Hector Durvoy/.test(t)&&/Ismaël/.test(t)&&!/Armand/.test(t),'liste des PNJ : préparé absent');
       ok(/Cador/.test(t)&&/Féal de Kerian/.test(t),'ligne : rang, féal');
       await page.evaluate(()=>{const i=document.querySelector('[data-pnq]');i.value='hec';i.dispatchEvent(new Event('input',{bubbles:true}));});
@@ -89,7 +89,7 @@ const DBG=process.env.DBG;
       await click(page,'[data-act="pnTxt"][data-b="role"]');await page.evaluate(()=>{const e=document.getElementById('fiEd');e.innerText='Espion de la Monarchie';e.dispatchEvent(new Event('input',{bubbles:true}));});
       await click(page,'[data-act="pnTxtSave"]');await wait(page);ok((db.get('chars/hector').por||{}).role==='Espion de la Monarchie','le joueur renseigne le Rôle d\'un PNJ révélé');
       /* création par un joueur */
-      await page.evaluate(()=>{S.view='team';S.teamSel='pnj';render();});await click(page,'[data-act="pnNew"]');
+      await page.evaluate(()=>{S.view='univers';S.uni='pnj';render();});await click(page,'[data-act="pnNew"]');
       ok(!/Préparé/.test(await sheet(page)),'nouveau PNJ (joueur) : pas de choix de visibilité');
       await fill(page,'nom','Lucie Hastain');await click(page,'[data-act="pnCreate"]');await wait(page);
       const lu=db.all('chars').find(c=>c.court==='Lucie Hastain');ok(lu&&lu.type==='PNJ'&&lu.vis==='rev'&&lu.eye&&lu.eye.role,'PNJ créé par un joueur : révélé, blocs ouverts');
@@ -98,19 +98,19 @@ const DBG=process.env.DBG;
       t=await sheet(page);ok(/Lucie/.test(t)&&!/Armand/.test(t),'Relations d\'un PJ : PNJ préparé non proposé');await page.evaluate(()=>{S.dlg=null;render();});
       /* traits et forme */
       await page.evaluate(()=>{S.shTab='prog';render();});ok(!/Traits de caractère/i.test(await txt(page)),'onglet Progrès : plus de traits');
-      await page.evaluate(()=>{S.shTab='fiche';render();});t=await txt(page);if(DBG)console.log(t);ok(/Traits de caractère/i.test(t)&&!!(await page.$('[data-act="trOpen"]')),'onglet Fiche : traits modifiables');
-      ok(await page.evaluate(()=>{const b=document.querySelector('[data-act="forme"][data-v="d"]');return !!b&&b.getAttribute('aria-pressed')==='true';}),'forme démasquée par défaut');
+      await page.evaluate(()=>{S.shTab='fiche';render();});t=await txt(page);if(DBG)console.log(t);ok(/Âge et traits/i.test(t)&&!!(await page.$('[data-act="trOpen"]')),'onglet Fiche : traits modifiables');
+      ok(await page.evaluate(()=>{const b=document.querySelector('[data-act="forme"]');return !!b&&b.getAttribute('aria-checked')==='true';}),'forme démasquée par défaut');
       /* féal */
       await page.evaluate(()=>{S.sel='ismael';S.shTab='prog';render();});t=await txt(page);if(DBG)console.log(t);
-      ok(await page.evaluate(()=>[...document.querySelectorAll('.pchips .pchip')].map(b=>b.dataset.id).join()==='kerian,ismael'),'médaillons : PJ puis PNJ rattachés en fin de liste');
+      await click(page,'[data-act="shPick"]');ok(await page.evaluate(()=>[...document.querySelectorAll('.shpick .shpk')].map(b=>b.dataset.id).join()==='kerian,ismael'),'menu des portraits : PJ puis féaux (UX1)');
       await page.evaluate(()=>{S.shTab='rel';render();});ok(/Féal de\s*Kerian/.test(await page.evaluate(()=>document.getElementById('app').innerText)),'PJ liés : « Féal de Kerian » pour le PNJ rattaché');
       await page.evaluate(()=>{S.shTab='prog';render();});t=await txt(page);
-      ok(/Progression/i.test(t)&&/Valeurs dérivées/i.test(t)&&/XP dispo/i.test(t)&&/Caractéristiques/i.test(t),'féal : onglet Progression (valeurs dérivées, XP, caractéristiques)');
+      ok(/Progrès/i.test(t)&&/Valeurs dérivées/i.test(t)&&!!(await page.$('.shxp'))&&/Caractéristiques/i.test(t),'féal : onglet Progrès (valeurs dérivées, XP dans l\'en-tête, caractéristiques)');
       ok(errs.length===0,'aucune erreur JavaScript'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
 
     console.log('3. Gestion');
     {const {page,errs,ctx}=await open(browser,base,db,'lorenzo');
-      await click(page,'[data-act="pnTeam"][data-v="pnj"]');await wait(page);let t=await txt(page);
+      await page.evaluate(()=>{S.view='univers';S.uni='pnj';render();});await wait(page);let t=await txt(page);
       ok(/Armand/.test(t)&&/préparé/.test(t),'gestion : PNJ préparé listé avec « préparé »');
       ok(!(await page.$('[data-act="pnNew"]')),'hors mode édition : pas de « + Nouveau PNJ »');
       await page.evaluate(()=>{S.edit=true;render();});await click(page,'[data-act="pnNew"]');
@@ -141,14 +141,14 @@ const DBG=process.env.DBG;
       t=await txt(page);ok(/Ce que l'on sait/i.test(t)&&!/Notes MJ/i.test(t),'fiche Bestiaire : sans Notes MJ');
       /* session rattachée */
       await page.evaluate(()=>{S.cal={...(S.cal||{}),date:{a:1900,m:5,j:9}};S.view='gains';render();});await click(page,'[data-act="sessNew"]');
-      if(DBG)console.log(await sheet(page));ok(/Événement de la Chronique/i.test(await sheet(page)),'nouvelle session Scénario : champ Événement');
+      if(DBG)console.log(await sheet(page));ok(/Événement/i.test(await sheet(page))&&/Nouvel événement n° 01/.test(await sheet(page)),'nouvelle session Scénario : champ Événement (UX1 : numéro automatique)');
       await page.evaluate(()=>{const s=document.querySelector('#sdt');s.value='Autre';s.dispatchEvent(new Event('input',{bubbles:true}));});await wait(page);
       ok(!/Événement de la Chronique/.test(await sheet(page)),'type Autre : pas de champ Événement');
       await page.evaluate(()=>{const s=document.querySelector('#sdt');s.value='Scénario';s.dispatchEvent(new Event('input',{bubbles:true}));});await wait(page);
-      await page.evaluate(()=>{S.cal={...(S.cal||{}),date:{a:1900,m:5,j:9}};const i=document.querySelector('#sdi');i.value='S01. Le bal des masques';i.dispatchEvent(new Event('input',{bubbles:true}));});
+      await page.evaluate(()=>{S.cal={...(S.cal||{}),date:{a:1900,m:5,j:9}};const i=document.querySelector('#sdn');i.value='Le bal des masques';i.dispatchEvent(new Event('input',{bubbles:true}));});
       await click(page,'[data-act="sessCreate"]');await wait(page);
       const ev=(db.get('gains/all').events||[]).slice(-1)[0],f=ev&&ev.evt&&db.get('fiches/'+ev.evt);
-      if(DBG)console.log(JSON.stringify(f));ok(f&&f.genre==='evenement'&&f.num==='01.'&&f.nom==='Le bal des masques'&&f.debut&&f.debut.j===9,'session créée avec son événement prérempli ('+(f&&f.num)+')');
+      if(DBG)console.log(JSON.stringify(f));ok(f&&f.genre==='evenement'&&f.n===1&&f.nom==='Le bal des masques'&&f.debut&&f.debut.j===9,'session créée avec son événement prérempli ('+(f&&f.n)+')');
       ok(errs.length===0,'aucune erreur JavaScript'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
     }
     console.log('4. Tour des écrans (gestion puis joueur)');

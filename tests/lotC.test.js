@@ -32,7 +32,7 @@ const app=loadApp(ROOT,['config','engine','modele','migrations','core','vues','u
 setDocs(app,demoDocs());r(`S.brouillons={};ME='alice';S.edit=false;`);
 ok(r(`crSteps({kind:'pj'}).map(s=>s[0]).join()`)==='race,cap,pw,at,car,prof,comp,pp,id,recap','PJ : 10 étapes dans l\'ordre du livre');
 ok(r(`crSteps({kind:'feal'}).map(s=>s[0]).join()`)==='race,car,prof,id,recap','féal : 5 étapes');
-ok(r(`JSON.stringify(crRaceList().map(o=>o.x.sing))`)==='["Elfe","Troll"]','races proposées : traditionnelles et modernes, exotiques exclues');
+ok(r(`JSON.stringify(crRaceList().map(o=>o.x.sing))`)==='["Elfe","Smog","Troll"]','races proposées : traditionnelles, modernes et exotiques (UX1)');
 r(`B={id:'b1',kind:'pj',par:'alice',statut:'brouillon',d:{race:'Elfe',ident:{owner:'alice'}}};X=crX(B.d);`);
 ok(r(`crCarUsed(B.d,X)===0&&crCarLim(B.d,X,'Agilité').max===5&&crCarLim(B.d,X,'Force').max===3`),'caractéristiques : départ aux minima, plafond 5 (ou maximum de race plus bas)');
 ok(r(`crCheck(B).car.manque[0]`)==='10 points à répartir','10 points à répartir au-dessus des minima');
@@ -145,11 +145,11 @@ ok(r(`(()=>{const ctx=ppCtxGame(K4,K4.profils.find(p=>p.nom==='Gentleman'),{prof
   const browser=await chromium.launch({executablePath:fs.existsSync('/usr/bin/google-chrome')?undefined:undefined,args:['--no-sandbox']}).catch(()=>chromium.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']}));
   const db=fakeDb(demoDocs());
   {const {page,errs,ctx}=await open(browser,base,db,'alice');
-    ok(await page.evaluate(()=>{const g=document.querySelector('#app .grid');return !!g&&g.lastElementChild.matches('[data-act="cwNew"]');}),'Personnages › PJ : tuile « + Nouveau PJ » en fin de grille');
-    await click(page,'[data-act="cwNew"]');
+    await click(page,'[data-act="teamNew"]');ok(/Personnage joueur/.test(await page.evaluate(()=>document.getElementById('sheetRoot').innerText)),'Personnages : « + » propose Personnage joueur / Féal (UX1)');
+    await click(page,'[data-act="cwNew"][data-v="pj"]');
     ok(await page.evaluate(()=>S.view==='crea'&&document.body.classList.contains('crea')&&getComputedStyle(document.querySelector('.bnav')).display==='none'),'assistant en plein écran');
     ok(await page.evaluate(()=>/Étape 1 \/ 10/.test(document.querySelector('.cwhead').textContent)),'en-tête « Étape 1 / 10 »');
-    await click(page,'[data-act="cwRace"][data-v="Elfe"]');await SHOT(page,'1-race');await click(page,'[data-act="cwSet"][data-p="traitRace"][data-v="Hautain"]');
+    await page.evaluate(()=>{const s=document.querySelector('#cwr-trad');s.value='Elfe';s.dispatchEvent(new Event('change',{bubbles:true}));});await page.waitForTimeout(250);await SHOT(page,'1-race');await click(page,'[data-act="cwSet"][data-p="traitRace"][data-v="Hautain"]');
     ok(await page.evaluate(()=>/Étape complète/.test(document.querySelector('.cwst').textContent)),'étape 1 complète (race et trait)');
     ok(db.all('brouillons').length===1&&db.all('brouillons')[0].d.race==='Elfe','brouillon enregistré dans la collection brouillons');
     await click(page,'.cwfoot .btn.pri');ok(await page.evaluate(()=>S.cwStep===1),'Suivante › : étape 2');
@@ -164,7 +164,7 @@ ok(r(`(()=>{const ctx=ppCtxGame(K4,K4.profils.find(p=>p.nom==='Gentleman'),{prof
     await page.evaluate(()=>{S.cwStep=6;render();});ok(await page.evaluate(()=>/profils/.test(document.querySelector('.cwbody').textContent)),'compétences : demande d\'abord les profils');
     await page.evaluate(()=>{S.cwStep=9;render();});ok(await page.evaluate(()=>document.querySelector('[data-act="cwSend"]').disabled),'récapitulatif : envoi bloqué tant qu\'il manque des étapes');
     await click(page,'[data-act="cwQuit"]');ok(await page.evaluate(()=>S.dlg&&S.dlg.kind==='cwQuit'&&!!document.querySelector('#sheetRoot [data-act="cwAbandon"]')),'✕ : choix « Garder le brouillon » / « Abandonner la création »');await SHOT(page,'r-quit');
-    await click(page,'[data-act="cwQuitKeep"]');ok(await page.evaluate(()=>S.view==='team'&&!!document.querySelector('.cwtile')),'garder : retour à Personnages, tuile « Brouillon · reprendre »');
+    await click(page,'[data-act="cwQuitKeep"]');ok(await page.evaluate(()=>S.view==='team'&&!!document.querySelector('[data-act="cwOpen"]')),'garder : retour à Personnages, tuile « Brouillon · reprendre »');
     /* brouillon complet, envoi */
     await page.evaluate(B=>{const b=JSON.parse(JSON.stringify(cwList()[0]));b.d=B;cwSave(b);S.cwId=b.id;S.view='crea';S.cwStep=9;render();},r(`JSON.parse(JSON.stringify(B.d))`));
     await SHOT(page,'10-recap');await page.evaluate(()=>{S.cwStep=6;S.cwSp={'comp:Classe':true};render();});await SHOT(page,'7-comp');await page.evaluate(()=>{S.cwStep=7;render();});await SHOT(page,'8-pp');await page.evaluate(()=>{S.cwStep=9;render();});
@@ -183,17 +183,17 @@ ok(r(`(()=>{const ctx=ppCtxGame(K4,K4.profils.find(p=>p.nom==='Gentleman'),{prof
     await click(page,'#sheetRoot [data-act="cwPPCBuy"]');ok(await page.evaluate(([n,k])=>!S.dlg&&(cwB().d.pp||[]).length===n+k,[n0,ids.length]),'Acheter : éléments ajoutés au brouillon d\'un coup');
     await page.evaluate(()=>{S.cwStep=9;render();});await click(page,'[data-act="cwSend"]');
     ok(db.all('brouillons')[0].statut==='attente','envoi au MJ : statut « en attente »');
-    await SHOT(page,'team');ok(await page.evaluate(()=>/En attente de validation/.test(document.querySelector('.cwtile').textContent)),'tuile « En attente de validation »');
-    ok(await page.evaluate(()=>!!document.querySelector('.cwtw [data-act="cwDelAsk"]')),'tuile en attente : « Supprimer » pour le joueur');
+    await SHOT(page,'team');ok(await page.evaluate(()=>/En attente/.test(document.querySelector('[data-act="cwOpen"]').textContent)),'tuile « En attente de validation »');
+    ok(await page.evaluate(()=>!!document.querySelector('.tcw [data-act="cwDelAsk"]')),'tuile en attente : « Supprimer » pour le joueur');
     ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
-  {const {page,errs,ctx}=await open(browser,base,db,'bob');ok(await page.evaluate(()=>!document.querySelector('.cwtile')),'autre joueur : ne voit pas le brouillon');await ctx.close();}
-  {const {page,errs,ctx}=await open(browser,base,db,'bob');await click(page,'[data-act="cwNew"]');const n=db.all('brouillons').length;
+  {const {page,errs,ctx}=await open(browser,base,db,'bob');ok(await page.evaluate(()=>!document.querySelector('[data-act="cwOpen"]')),'autre joueur : ne voit pas le brouillon');await ctx.close();}
+  {const {page,errs,ctx}=await open(browser,base,db,'bob');await page.evaluate(()=>{cwNew('pj');render();});await page.waitForTimeout(400);const n=db.all('brouillons').length;
     await click(page,'[data-act="cwQuit"]');await click(page,'[data-act="cwAbandon"]');ok(await page.evaluate(()=>S.dlg&&S.dlg.kind==='cwDel'&&/définitivement/.test(document.querySelector('#sheetRoot').textContent)),'abandonner : confirmation demandée');
     await click(page,'[data-act="cwDelGo"]');ok(db.all('brouillons').length===n-1&&await page.evaluate(()=>S.view==='team'),'abandonner : brouillon supprimé, retour à Personnages');
-    await click(page,'[data-act="cwNew"]');await click(page,'[data-act="cwQuit"]');await click(page,'[data-act="cwQuitKeep"]');await click(page,'.cwtw [data-act="cwDelAsk"]');await SHOT(page,'r-del');await click(page,'[data-act="cwDelGo"]');
+    await page.evaluate(()=>{cwNew('pj');render();});await page.waitForTimeout(400);await click(page,'[data-act="cwQuit"]');await click(page,'[data-act="cwQuitKeep"]');await page.waitForTimeout(300);await page.evaluate(()=>document.querySelector('.tcw [data-act="cwDelAsk"]').click());await page.waitForTimeout(250);await SHOT(page,'r-del');await click(page,'[data-act="cwDelGo"]');
     ok(db.all('brouillons').length===n-1,'tuile : « Supprimer » avec confirmation');ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
   {const {page,errs,ctx}=await open(browser,base,db,'lorenzo');
-    await click(page,'.cwtile');await click(page,'[data-act="cwValOpen"]');
+    await click(page,'[data-act="cwOpen"]');await click(page,'[data-act="cwValOpen"]');
     ok(await page.evaluate(()=>S.dlg&&S.dlg.kind==='cwVal'),'MJ : fenêtre de validation');
     await page.fill('#cwcom','Revois le trait libre');await page.dispatchEvent('#cwcom','input');await click(page,'[data-act="cwBackDraft"]');
     ok(db.all('brouillons')[0].statut==='brouillon'&&db.all('brouillons')[0].com==='Revois le trait libre','renvoi en brouillon avec commentaire');
@@ -218,6 +218,7 @@ ok(r(`(()=>{const ctx=ppCtxGame(K4,K4.profils.find(p=>p.nom==='Gentleman'),{prof
     ok(await page.evaluate(()=>/Fortune 2 →/.test(document.querySelector('#sheetRoot').textContent)),'en jeu : récapitulatif avec la Fortune avant → après');
     await click(page,'#sheetRoot [data-act="ppCBuy"]');
     ok(await page.evaluate(()=>!S.dlg&&S.chars.kerian.achats.length===3&&S.chars.kerian.fortune.cur>2),'en jeu : 3 achats d\'un coup, Fortune de la fiche montée');
+    await page.evaluate(()=>{const F={...(S.shFold||{})};for(const pr of S.chars.kerian.profils||[])F['pr-'+pr.nom]=false;S.shFold=F;S._force=true;render();}); /* UX1 : profils repliés */
     ok(await page.evaluate(()=>/Classe|tabati/.test((document.querySelector('#app .ppjets')||{}).textContent||'')),'onglet Progrès : bonus de circonstance sous la compétence');await SHOT(page,'r-prog');
     await page.evaluate(()=>{S.shTab='situ';render();});await SHOT(page,'r-situ');
     const f0=await page.evaluate(()=>S.chars.kerian.fortune.cur);

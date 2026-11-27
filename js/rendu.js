@@ -11,9 +11,9 @@ function viewHome(){
   const mine=ME?pjIds().map(i=>S.chars[i]).find(c=>actif(c)&&owners(c).some(p=>p.id===ME)):null,sl=sessList()[0];
   const tile=(v,ic,l,lines,bdg)=>`<button class="htile2" data-act="tab" data-v="${v}"><span class="hic">${ICON[ic]}</span><span class="ht"><span class="hnm">${l}${bdg?` <span class="bdg">${bdg}</span>`:''}</span>${lines.filter(Boolean).map(x=>`<span class="muted small">${esc(x)}</span>`).join('')}</span></button>`;
   return `<div class="home-in">
-  <div class="hbans${game?'':' one'}">${game}${plan}</div>
+  ${typeof plTodo==='function'?plTodo():''}<div class="hbans${game?'':' one'}">${game}${plan}</div>
   <div class="htiles">${tile('univers','livre','Univers',[last?'Dernier : '+chEvLab(last):'Chronique · Secrets · Races · Lieux…'],ns)}${tile('team','masque','Personnages',[npj+' PJ · '+npnj+' PNJ','Fiches, relations, journaux'])}${tile('gains','medaille','XP',[mine?(mine.court||mine.nom)+' : '+summary(mine,S.events).dispo+' XP à dépenser':'Journal d\'XP',sl&&sl.date?'Dernière session : '+fmtDate(sl.date):''])}</div>
-  <div class="hfoot"><p>La belle appli aide à gérer les éléments ludiques des Héritiers, en complément du <a href="${KANKA_URL}" target="_blank" rel="noopener">Kanka</a>, qui reste la référence pour le contenu de nos belles aventures.</p><div class="hlinks2"><button class="lk" data-act="tab" data-v="players">Joueurs</button><button class="lk" data-act="tab" data-v="rules">Règles</button><button class="lk" data-act="tab" data-v="params">Paramètres</button></div></div></div>`;
+  <div class="hfoot"><p>La belle appli aide à gérer les éléments ludiques des Héritiers : personnages, XP, univers et organisation des parties.</p></div></div>`;
 }
 /* ---------- Qui es-tu ? ---------- */
 function whoGate(){return idGate();
@@ -77,7 +77,13 @@ function renderSheet0(){
   if(S.dlg){
     const g=S.dlg;let titre='',txt='';
     if(fiSheetHook(g,root))return; /* lot 1 : fenêtres des fiches */
-    if(g.kind==='menu'){root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu"><div class="in"><div class="menulist"><button data-act="tab" data-v="players"${S.view==='players'?' aria-current="page"':''}>${ICON.groupe}Joueurs</button><button data-act="tab" data-v="rules"${S.view==='rules'?' aria-current="page"':''}>${ICON.de}Règles</button>${canEdit()?`<button data-act="tab" data-v="params"${S.view==='params'?' aria-current="page"':''}>${ICON.baguette}Paramètres</button>`:''}</div><div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;return;}
+    if(g.kind==='menu'){root.innerHTML=plusMenu();return;}
+    if(g.kind==='pnjXp'){const c=S.chars[S.sel],f=S.pnjForm;if(!c){S.dlg=null;root.innerHTML='';return;}root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Ajouter des XP"><div class="in"><div class="blkhd"><h2 style="flex:1;margin:0">XP pour ${esc(c.court)}</h2><button type="button" class="ibtn sm" data-act="closeSheet" aria-label="Fermer">✕</button></div><div class="frow"><div class="field"><label for="px">Intitulé</label><input id="px" type="text" data-pnj="titre" value="${esc(f.titre)}"></div><div class="field"><label for="pm">XP</label><input id="pm" type="number" inputmode="numeric" min="0" data-pnj="montant" value="${esc(f.montant)}"></div></div><div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pnjXp"${f.titre.trim()&&+f.montant>0?'':' disabled'}>Ajouter</button></div></div></div>`;return;}
+    if(g.kind==='xpd'){root.innerHTML=xpdSheet(g);return;}
+    if(g.kind==='her'){root.innerHTML=heritageSheet();return;}
+    if(g.kind==='teamNew'){root.innerHTML=teamNewSheet();return;}
+    if(g.kind==='plWho'){root.innerHTML=plWhoSheet(g);return;}
+    if(g.kind==='xpAdd'){const x=xpAddSheet(g);if(!x){S.dlg=null;root.innerHTML='';return;}root.innerHTML=x;return;}
     if(g.kind==='pd'){root.innerHTML=dateSheet(g);return;}
     if(PF_KINDS.has(g.kind)){const html=pfSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='me'){root.innerHTML=idSheet();return;}
@@ -94,7 +100,7 @@ function renderSheet0(){
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Modifier ${esc(g.n)}"><div class="in"><div><h2>${esc(g.n)}</h2><div class="muted small">${esc(e.titre)}</div></div>
       ${body}
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="natSave">Enregistrer</button></div></div></div>`;return;}
-    if(g.kind==='ptr'){const c=S.chars[g.cid],ill=/^ill-/.test(g.cid);if(!c&&!ill){S.dlg=null;root.innerHTML='';return;}const s2=g.base*g.z;
+    if(g.kind==='ptr'){const c=S.chars[g.cid],ill=/^ill-|^br-/.test(g.cid);if(!c&&!ill){S.dlg=null;root.innerHTML='';return;}const s2=g.base*g.z;
       root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${ill?'Illustration':'Portrait'}"><div class="in"><div><h2>${ill?'Illustration'+(g.lab?' : '+esc(g.lab):''):'Portrait de '+esc(c.court)}</h2><div class="muted small">Fais glisser l'image pour la cadrer dans le ${ill?'carré':'cercle'}, et zoome avec le curseur.</div></div>
       <div id="ptrStage"><img id="ptrImg" src="${g.src}" alt="" style="left:${g.x}px;top:${g.y}px;width:${g.w*s2}px;height:${g.h*s2}px"><div class="ring${ill?' sq':''}"></div></div>
       <div class="field"><label for="ptrz">Zoom</label><input id="ptrz" type="range" min="1" max="4" step="0.01" data-ptrz="1" value="${g.z}" style="width:100%"></div>
@@ -126,14 +132,16 @@ function renderSheet0(){
       <div class="muted small">${g.cible?`${g.base} XP pour rejoindre ${esc(g.cible)} (${g.cibleTotal} XP), le joueur juste devant. `:''}Les PNJ rattachés ne touchent pas de part sur ce rattrapage.</div>
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="ratOk"${ok?'':' disabled'}>Attribuer ${n} XP</button></div></div></div>`;return;}
     if(g.kind==='sn'||g.kind==='sm'){const kids=g.kind==='sm'?sessChildren(g.id).filter(k=>!(k.secret&&k.secret.k==='bonus')).length:0;
-      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Session de jeu"><div class="in"><h2>${g.kind==='sn'?'Nouvelle session de jeu':'Modifier la session'}</h2>
-      <div class="field"><label for="sdt">Type</label><select id="sdt" data-sd="type">${TYPES.map(t=>`<option${t===g.type?' selected':''}>${t}</option>`).join('')}</select></div>
-      <div class="field"><label for="sdi">Intitulé</label><input id="sdi" type="text" data-sd="titre" autocomplete="off" placeholder="ex. S14. Titre du scénario" value="${esc(g.titre)}"></div>
+      const se=g.kind==='sm'&&sessById(g.id),fe=se&&se.evt&&S.fiches[se.evt],lk=g.kind==='sn'?xpLinked(g.type)&&!!g.evt:!!fe&&g.type===evType(se),L=g.kind==='sn'&&xpLinked(g.type)?xpEvOf(g.type):[];
+      const evF=g.kind==='sn'&&xpLinked(g.type)?`<div class="field"><label for="sde">Événement</label><select id="sde" data-sd="evt">${g.type==='Vie du fief'?`<option value=""${!g.evt?' selected':''}>Aucun événement</option>`:''}${L.map(f=>`<option value="${esc(f.id)}"${g.evt===f.id?' selected':''}>${esc((chNumOf(f)?chNumOf(f)+' · ':'')+f.nom)}</option>`).join('')}<option value="__new"${g.evt==='__new'?' selected':''}>＋ Nouvel événement n° ${chPad(g.type,xpNextN(g.type))}</option></select></div>${g.evt==='__new'?`<div class="field"><label for="sdn">Titre de l'événement</label><input id="sdn" type="text" data-sd="evNom" autocomplete="off" value="${esc(g.evNom||'')}"></div>`:''}`:lk?`<div class="field"><label>Événement</label><div class="small"><span class="chsn ${CH_TCL[fe.type]||''}">${esc(chNumOf(fe)||'·')}</span> ${esc(fe.nom)} <span class="muted">· se change depuis la Chronique</span></div></div>`:'';
+      root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Session de jeu"><div class="in"><h2>${g.kind==='sn'?'Nouvelle session':'Modifier la session'}</h2>
+      <div class="field"><label for="sdt">Type</label><select id="sdt" data-sd="type">${TYPES.map(t=>`<option${t===g.type?' selected':''}>${t}</option>`).join('')}</select>${fe&&g.type!==evType(se)?`<div class="muted small" style="margin-top:4px;color:var(--bad)">Changer le type détache la session de l'événement « ${esc(fe.nom)} ».</div>`:''}</div>
       <div class="field"><label for="sdd">Date</label><input id="sdd" type="date" data-sd="date" value="${esc(g.date)}"></div>
-      ${g.kind==='sn'&&(g.type==='Scénario'||g.type==='Interscénario')?`<div class="field"><label for="sde">Événement de la Chronique <span class="muted small">(obligatoire)</span></label><select id="sde" data-sd="evt"><option value="__new"${!g.evt||g.evt==='__new'?' selected':''}>＋ Nouvel événement (prérempli avec cette session)</option>${chEvOpts().map(f=>`<option value="${esc(f.id)}"${g.evt===f.id?' selected':''}>${esc([f.num,f.nom].filter(Boolean).join(' '))}</option>`).join('')}</select><div class="muted small" style="margin-top:4px">Nouvel événement : numéro, titre, type et PJ présents repris de la session, date du jeu actuelle ; modifiable ensuite.</div></div>`:''}
+      ${evF}
+      <div class="field"><label for="sdi">${lk?'Complément de titre <span class="muted small">(facultatif, ex. « Partie 2 », « Épilogue »)</span>':'Intitulé'}</label><input id="sdi" type="text" data-sd="titre" autocomplete="off" value="${esc(g.titre)}"></div>
       <div class="field"><label>PJ présents</label><div class="chips" style="flex-wrap:wrap;overflow:visible">${orderPJ([...new Set([...pjIds().filter(i=>actif(S.chars[i])),...(g.pj||[])])]).map(i=>`<button class="chip" data-act="sdPj" data-id="${i}" aria-pressed="${(g.pj||[]).includes(i)}">${esc(S.chars[i].court)}</button>`).join('')}</div><div class="muted small" style="margin-top:4px">L'XP de Scénario va aux PJ présents ; l'Individuel se choisit parmi eux.</div></div>
-      ${g.kind==='sn'?'<div class="muted small">La nouvelle session devient la session proposée par défaut pour l\'XP, les secrets et les races.</div>':kids?`<div class="muted small">Suppression impossible : ${kids} découverte${kids>1?'s sont rattachées':' est rattachée'} à cette session. Change d'abord leur session ou retire-les.</div>`:g.confirm?'<div class="muted small">La session et l\'XP saisie dedans seront supprimées pour tous les personnages.</div>':''}
-      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button>${g.kind==='sm'?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="sessDelOk">Confirmer la suppression</button>`:`<button class="btn" data-act="sessDel"${kids?' disabled':''}>Supprimer</button>`):''}<button class="btn pri" data-act="${g.kind==='sn'?'sessCreate':'sessSave'}"${g.titre.trim()?'':' disabled'}>${g.kind==='sn'?'Créer la session':'Enregistrer'}</button></div></div></div>`;return;}
+      ${kids?`<div class="muted small">Suppression impossible : ${kids} découverte${kids>1?'s sont rattachées':' est rattachée'} à cette session.</div>`:''}
+      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="${g.kind==='sn'?'sessCreate':'sessSave'}"${sdOk(g)?'':' disabled'}>${g.kind==='sn'?'Créer la session':'Enregistrer'}</button></div></div></div>`;return;}
     if(g.kind==='ca'||g.kind==='ct'||g.kind==='ce'){const html=creSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='eye'){const html=g.t==='sec'?eyeSecSheet(g):eyeRaceSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='pp2'||g.kind==='rv'){const html=g.kind==='pp2'?propSheet(g):revSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
@@ -190,31 +198,49 @@ function renderSheet0(){
   if(sh.fix)fix+=`<div class="frow" style="margin:0"><div class="field"><label for="fc">Niveau actuel</label><input id="fc" type="number" min="0" data-sh="fixCur" value="${esc(sh.fixCur)}"></div></div><div class="muted small">La correction ne dépense ni ne rend aucun XP.</div><div class="actions"><button class="btn" data-act="fixApply">Appliquer la correction</button></div>`;
   root.innerHTML=`<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(r.nom)}"><div class="in"><div><h2>${esc(r.nom)}</h2><div class="muted small">${esc(c.court)}</div></div>${body}${fix}<div class="actions"><button class="btn" data-act="closeSheet">Fermer</button></div></div></div>`;
 }
+/* UX1 (28/11/2026) : menu « Plus » — identité, Joueurs, Règles, Paramètres (mode édition), Voir comme un joueur, thème, notifications, déconnexion */
+function plusMenu(){const me=ME&&S.players[ME],dark=(document.documentElement.getAttribute('data-theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'))==='dark';
+  const sw=on=>`<span class="pmsw${on?' on':''}" aria-hidden="true"><i></i></span>`;
+  const row=(act,ic,lab,extra,attrs)=>`<button type="button" class="pmrow" data-act="${act}"${attrs||''}>${ic||''}<span class="pml">${lab}</span>${extra||''}</button>`;
+  const pk=pushOK()&&me&&typeof Notification!=='undefined'&&Notification.permission!=='denied';
+  const role=me?(me.role==='MJ'?'MJ':hasGest(me)?'Gestion':S.visit?'Visiteur':'Joueur'):'';
+  let h=`<div class="pmid">${me?`<span class="mepast big">${esc((me.nom||'?').charAt(0).toUpperCase())}</span><span class="pml"><b>${esc(me.nom)}</b><span class="muted small">${role}${S.visit?' · lecture seule':''}</span></span>`:'<span class="pml">Personne</span>'}<button type="button" class="lnk" data-act="meOpen">Changer</button></div>`;
+  h+=row('tab',ICON.groupe,'Joueurs','',` data-v="players"${S.view==='players'?' aria-current="page"':''}`);
+  h+=row('tab',ICON.de,'Règles','',` data-v="rules"${S.view==='rules'?' aria-current="page"':''}`);
+  if(isTech())h+=canEdit()?row('tab',ICON.baguette,'Paramètres','',` data-v="params"${S.view==='params'?' aria-current="page"':''}`):`<div class="pmrow dis" aria-disabled="true">${ICON.baguette}<span class="pml">Paramètres</span><span class="muted small">mode édition requis</span></div>`;
+  if(me&&isMJ(me)&&!S.visit)h+=S.asPlayer?row('asPlayerOff','','Revenir à ma vue (MJ)'):row('asPlayer','','Voir comme un joueur');
+  h+=`<hr class="pmhr">`+row('themeToggle','','Thème sombre',sw(dark));
+  if(pk)h+=row(S.pushSub?'pushOff':'pushOn','','Notifications',sw(!!S.pushSub));
+  else if(pushOK()&&typeof Notification!=='undefined'&&Notification.permission==='denied')h+=`<div class="pmrow dis"><span class="pml">Notifications</span><span class="muted small">bloquées dans le navigateur</span></div>`;
+  h+=row('logout','','Se déconnecter','',' style="color:var(--bad)"');
+  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet pmenu" role="dialog" aria-modal="true" aria-label="Plus"><div class="in">${h}</div></div>`;}
 function render(){
   if(S.gate)return;
   if(typeof CA_BUSY!=='undefined'&&CA_BUSY&&Date.now()-CA_G.t0<4000){CA_PEND=true;return;} /* lot Cartes : pas de redessin pendant un geste sur la carte */
   if(S.caFull&&!(S.view==='univers'&&S.fi&&S.fiches[S.fi]&&S.fiches[S.fi].genre==='carte')){S.caFull=false;document.body.classList.remove('cafull');} /* écran du code : rien ne doit le remplacer */
   const cur=k=>S.view===k||(k==='team'&&(S.view==='sheet'||S.view==='crea'));
-  if(S.edit&&(!isGest()||S.visit)){S.edit=false;S.rfEd=false;S.edQuit=false;}
+  if(S.edit&&(!isTech()||S.visit)){S.edit=false;S.rfEd=false;S.edQuit=false;}
   if(S.view==='params'&&!canEdit())S.view='home'; /* lot 4 bis : Paramètres seulement en mode édition */
-  const tabs=[['univers','Univers'],['team','Personnages'],['gains','XP'],['planning','Planning'],['players','Joueurs'],['rules','Règles'],['params','Paramètres']].filter(t=>t[0]!=='params'||canEdit());
+  const tabs=[['home','Accueil'],['univers','Univers'],['team','Personnages'],['gains','XP'],['planning','Planning']]; /* UX1 : même structure partout */
   const nb=unseenProps(),ns=propBadge(),bdg=k=>k==='planning'&&nb?`<span class="bdg" aria-label="${nb} date${nb>1?'s':''} proposée${nb>1?'s':''} sans réponse">${nb}</span>`:k==='univers'&&ns?`<span class="bdg" aria-label="${ns} proposition${ns>1?'s':''} de découverte en attente">${ns}</span>`:'';
-  document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${l}${bdg(k)}</button>`).join('');
-  const bn=[['univers','Univers','livre'],['team','Personnages','masque'],['gains','XP','medaille'],['planning','Planning','calp']]; /* lot 3 : nouvel ordre */
   const inMenu=S.view==='players'||S.view==='rules'||S.view==='params';
-  document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}" style="position:relative">${ICON[ic]}<span>${l}</span>${bdg(k)}</button>`).join('')+
-    `<button data-act="menu" aria-current="${inMenu}" aria-label="Menu : Joueurs, Règles, Paramètres" aria-haspopup="dialog">${ICON.menu}<span aria-hidden="true">&nbsp;</span></button>`;
+  document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}">${l}${bdg(k)}</button>`).join('')+`<button data-act="menu" aria-current="${inMenu}" aria-haspopup="dialog" class="tabplus">Plus ▾</button>`;
+  const bn=[['home','Accueil','maison'],['univers','Univers','livre'],['team','Personnages','masque'],['gains','XP','medaille'],['planning','Planning','calp']];
+  document.getElementById('bnav').innerHTML=bn.map(([k,l,ic])=>`<button data-act="tab" data-v="${k}" aria-current="${cur(k)}" style="position:relative">${ICON[ic]||ICON.livre}<span>${l}</span>${bdg(k)}</button>`).join('')+
+    `<button data-act="menu" aria-current="${inMenu}" aria-label="Plus : Joueurs, Règles, Paramètres, thème, identité" aria-haspopup="dialog">${ICON.menu}<span>Plus</span></button>`;
+  {const h1a=document.querySelector('.brand h1 a');if(h1a&&h1a.textContent!=='La belle appli')h1a.textContent='La belle appli';}
+  document.body.classList.toggle('edmode',canEdit());
   document.body.classList.toggle('home',S.view==='home');document.body.classList.toggle('crea',S.view==='crea'); /* lot C : assistant en plein écran */
-  {const mb=document.getElementById('meBtn');if(mb&&mb.parentNode){let eb=document.getElementById('edBtn');const show=isGest()&&!S.visit;
+  {const mb=document.getElementById('meBtn');if(mb&&mb.parentNode){let eb=document.getElementById('edBtn');const show=isTech()&&!S.visit;
     {let sb=document.getElementById('srBtn');if(!sb){sb=document.createElement('button');sb.type='button';sb.id='srBtn';sb.className='edbtn srbtn';sb.dataset.act='srOpen';sb.setAttribute('aria-label','Rechercher (Ctrl + K)');sb.title='Rechercher (Ctrl + K)';sb.innerHTML=SR_IC;mb.parentNode.insertBefore(sb,mb);}sb.classList.toggle('on',S.view==='srch');sb.hidden=!!S.gate;} /* recherche globale */
     if(!eb&&show){eb=document.createElement('button');eb.type='button';eb.id='edBtn';eb.className='edbtn';eb.dataset.act='editToggle';mb.parentNode.insertBefore(eb,mb);}
     if(eb){eb.hidden=!show;const on=!!S.edit;eb.classList.toggle('on',on);eb.setAttribute('aria-pressed',String(on));const lab=on?'Quitter le mode édition':'Passer en mode édition';eb.setAttribute('aria-label',lab);eb.title=lab;if(!eb.innerHTML)eb.innerHTML=ICON.crayon;}}}
-  {const mb=document.getElementById('meBtn');if(mb){const me=ME&&S.players[ME];const lab=me?esc(me.nom):'Qui es-tu ?';const html=`${ICON.perso}<span>${lab}</span>`;if(mb.innerHTML!==html)mb.innerHTML=html;mb.setAttribute('aria-label',me?'Connecté en tant que '+me.nom+', changer de joueur':'Choisir qui tu es');}}
+  {const mb=document.getElementById('meBtn');if(mb){const me=ME&&S.players[ME];const html=me?`<span class="mepast">${esc((me.nom||'?').trim().charAt(0).toUpperCase())}</span>`:`${ICON.perso}`;if(mb.innerHTML!==html)mb.innerHTML=html;mb.dataset.act='menu';mb.setAttribute('aria-label',me?me.nom+' — menu Plus':'Choisir qui tu es');}}
   const ae=document.activeElement;
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;navSave();
   const v=S.view,app=document.getElementById('app');
-  app.innerHTML=idBanners()+socleBanner()+(canEdit()?`<div class="edband" role="status">${ICON.crayon}<span>Mode édition actif : les modifications sont enregistrées pour toute la table</span></div>`:'')+navBar()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():v==='crea'?viewCrea():v==='srch'?viewSrch():viewRules());
+  app.innerHTML=idBanners()+socleBanner()+navBar()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():v==='crea'?viewCrea():v==='srch'?viewSrch():viewRules());
   renderSheet();
   hxTrack(); /* historique : une étape par écran (core.js) */
   {let q=document.getElementById('edqRoot');if(!q){q=document.createElement('div');q.id='edqRoot';document.body.appendChild(q);}const qh=S.edQuit?edQuitSheet():'';if(q.innerHTML!==qh)q.innerHTML=qh;}

@@ -27,14 +27,29 @@ document.addEventListener('click',ev=>{
   const toUni=a==='tab'&&d.v==='univers';
   if(a==='tab'&&d.v==='ref'){d.v='univers';S.uni='creatures';}
   if(a==='tab'&&d.v==='players')pinRefresh();
-  if(a==='tab'){ev.preventDefault();navClear();S.rfEd=false;S.rfBlk=null;S.rfPor=null;if(d.v==='univers')S.sec=null;if(toUni){S.uni='home';S.fi=null;}if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
-  else if(a==='sel'){S.sel=d.id;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
+  if(a==='tab'){ev.preventDefault();navClear();if(d.v==='gains'){S.xpSess=null;S.xpDel=null;}if(d.v==='planning')S.plDate=null;S.rfEd=false;S.rfBlk=null;S.rfPor=null;if(d.v==='univers')S.sec=null;if(toUni){S.uni='home';S.fi=null;}if(d.v==='ref')S.rf=null;if(d.pv)S.plan.view=d.pv;S.view=d.v;S.sheet=null;S.asheet=null;S.dlg=null;S.confirm=null;window.scrollTo(0,0);}
+  else if(a==='sel'){S.sel=d.id;S.shPick=false;S.nameForm={kind:null,nom:''};S.view='sheet';S.sheet=null;S.futForm.open=false;window.scrollTo(0,0);}
   else if(a==='open'){const c=S.chars[S.sel],r=ref(c,d.key);const cu=r.o.cur||0;const pl=(c.plan||{})[d.key];S.sheet={id:c.id,key:d.key,to:pl&&pl>cu?pl:cu+1,fix:false,fixCur:cu,fixMax:r.max,sp:{}};}
   else if(a==='closeSheet'&&S.dlg&&S.dlg.nav){navBack();return;}
   else if(a==='closeSheet'&&S.dlg&&S.dlg.kind==='elEdit'&&S.dlg.back){S.dlg=S.dlg.back;}
   else if(a==='closeSheet'&&S.dlg&&S.dlg.kind==='ptr'&&S.dlg.back){S.dlg=S.dlg.back;window._ptrImg=null;}
   else if(a==='closeSheet'){S.sheet=null;S.asheet=null;S.dlg=null;if(S.id.state==='ok')S.pinF=null;}
   else if(a==='menu'){S.dlg={kind:'menu'};}
+  else if(a==='xpOpen'){S.xpSess=d.id;S.xpDel=null;S.curSess=d.id;window.scrollTo(0,0);}
+  else if(a==='xpClose'){S.xpSess=null;S.xpDel=null;}
+  else if(a==='xpDet'){S.xpDet=S.xpDet||{};S.xpDet[d.id]=!S.xpDet[d.id];}
+  else if(a==='xpHelp'){S.xpHelp=S.xpHelp||{};S.xpHelp[d.k]=!S.xpHelp[d.k];}
+  else if(a==='xpFo'){S.xpFo=!S.xpFo;}
+  else if(a==='xpFt'){const F=S.xpF||(S.xpF={t:[],p:''});F.t=F.t.includes(d.v)?F.t.filter(x=>x!==d.v):[...F.t,d.v];}
+  else if(a==='xpFp'){const F=S.xpF||(S.xpF={t:[],p:''});F.p=d.v||'';}
+  else if(a==='xpDelAsk'){S.xpDel=d.id;S.xpDelEv=true;}
+  else if(a==='xpDelNo'){S.xpDel=null;}
+  else if(a==='xpDelOk'){const e=sessById(d.id);if(!e||!isUser())return;if(sessChildren(e.id).filter(k=>!(k.secret&&k.secret.k==='bonus')).length)return;
+    const f=e.evt&&S.fiches[e.evt],alone=f&&!sessList().some(x=>x.evt===f.id&&x.id!==e.id);S.xpDel=null;S.xpSess=null;if(S.curSess===e.id)S.curSess=null;
+    if(alone&&S.xpDelEv)fiRemove(f.id);saveEvents(S.events.filter(x=>x.id!==e.id));return;}
+  else if(a==='xpAddOpen'){S.curSess=d.id;S.form={titre:'',type:'Scénario',date:today(),lines:[{nature:'Scénario',montant:'',persos:null}]};S.dlg={kind:'xpAdd',sid:d.id};}
+  else if(a==='xpEvGo'){S.xpSess=null;navGo({t:'fiche',id:d.id});}
+  else if(a==='themeToggle'){const tb=document.getElementById('themeBtn');if(tb)tb.click();}
   else if(a==='pushOn'){pushEnable();return;}
   else if(a==='pushOff'){pushDisable();return;}
   else if(a==='setMe'){const old=ME;ME=d.id;try{localStorage.setItem('xp.me',ME);}catch(e){}S.dlg=null;S._force=true;
@@ -50,7 +65,14 @@ document.addEventListener('click',ev=>{
   else if(a==='pwRemoveOk'){if(!canEdit())return;const c=clone(S.chars[d.id]);c.pw=(c.pw||[]).filter(o=>o.i!==+d.i);S.confirm=null;saveChar(c);return;}
   else if(a==='rfPwOpen'){const i=+d.i;S.rf.pwOpen=S.rf.pwOpen===i?null:i;S.rf.pwx=S.rf.pwx||{};if(S.rf.pwOpen!=null&&!S.rf.pwx[i]){const id=pwIdByName(S.rf.pw[i][0]||'');const p=id?pwCat(id):{};S.rf.pwx[i]={desc:p.desc||'',fx:clone(p.fx||[]),fxEd:null,dirty:false};}}
   else if(a==='plOpen'){S.confirm=null;S.dlg={kind:'pl',id:d.pid};pinRefresh();}
-  else if(a==='pcOpen'){S.dlg={kind:'pc',id:d.id};}
+  else if(a==='pcOpen'){S.dlg={kind:'pc',id:d.id,sh:!!d.sh};}
+  else if(a==='shPick'){S.shPick=!S.shPick;}
+  else if(a==='xpdOpen'){S.dlg={kind:'xpd',id:d.id};}
+  else if(a==='xpdHist'){S.dlg=null;S.sel=d.id;S.shTab='prog';S.shFold={...(S.shFold||{}),'pg-hist':false};setTimeout(()=>{const e=document.getElementById('pg-hist');if(e)e.scrollIntoView({block:'start'});},60);}
+  else if(a==='fgRo'){S.fgRo={...(S.fgRo||{}),[d.rid]:!(S.fgRo||{})[d.rid]};}
+  else if(a==='pwF'){S.pwF={...(S.pwF||{}),[d.k]:!(S.pwF||{})[d.k]};}
+  else if(a==='rkOpen'){S.rkOpen={...(S.rkOpen||{}),[d.k]:!(S.rkOpen||{})[d.k]};}
+  else if(a==='pnjXpOpen'){S.dlg={kind:'pnjXp'};}
   else if(a==='pcSheetGo'){S.dlg=null;S.view='sheet';S.sel=d.id;window.scrollTo(0,0);}
   else if(a==='newPOpen'){if(!isGest())return;S.dlg={kind:'newp'};}
   else if(a==='ownNo'){if(S.dlg)delete S.dlg.own;}
@@ -65,20 +87,29 @@ document.addEventListener('click',ev=>{
   else if(a==='pinBack'){S.pinF=null;}
   else if(a==='pinReset'){if(!isGest())return;S.confirm='pin:'+d.pid;}
   else if(a==='pinResetOk'){if(!isGest())return;pinReset(d.pid);return;}
-  else if(a==='dPropose'){S.dlg={kind:'pd',date:'',sl:'S',type:'Scénario',note:''};}
+  else if(a==='dPropose'){S.dlg={kind:'pd',date:d.date||'',sl:d.sl||'S',type:'Scénario',note:''};}
+  else if(a==='herOpen'){S.dlg={kind:'her'};}
+  else if(a==='teamNew'){S.dlg={kind:'teamNew'};}
+  else if(a==='plEcart'){S.dEcart=[...(S.dEcart||[]),d.id];saveDates(S.dates);return;}
+  else if(a==='plMkSess'){const x=S.dates.find(z=>z.id===d.id);if(!x)return;const ty=TYPES.includes(x.type)?x.type:'Scénario',L=xpEvOf(ty);S.dlg={kind:'sn',type:ty,titre:'',evNom:'',evt:ty==='Vie du fief'||ty==='Autre'?'':L[0]?L[0].id:'__new',date:x.date,pj:allPJ()};}
+  else if(a==='plWho'){S.dlg={kind:'plWho',k:d.k};}
+  else if(a==='plOpen'){S.plDate=d.id;S.confirm=null;window.scrollTo(0,0);}
+  else if(a==='plClose'){S.plDate=null;S.confirm=null;}
+  else if(a==='plUnAsk'){S.confirm='du:'+d.id;}
+  else if(a==='plUnNo'){S.confirm=null;}
   else if(a==='pdSl'){S.dlg.sl=d.sl;}
   else if(a==='pdOk'){const g=S.dlg;if(!g.date||g.date<today())return;S.dlg=null;const x={id:'d'+Date.now().toString(36),date:g.date,sl:g.sl,type:g.type,note:(g.note||'').trim(),by:ME||null,status:'prop'};
     if(ME&&S.players[ME]){const pl=clone(S.players[ME]);pl.rep={...(pl.rep||{}),[x.id]:'ok'};savePlayer(pl);}saveDates([...S.dates,x]);setTimeout(()=>notify({kind:'prop',dateId:x.id,from:ME||null}),2500);return;}
-  else if(a==='dValidFree'){const x={id:'d'+Date.now().toString(36),date:d.date,sl:d.sl,type:'Scénario',note:'',by:ME||null,status:'valid'};if(d.end&&(d.end!==d.date||d.endsl!==d.sl)){x.endDate=d.end;x.endSl=d.endsl;}saveDates([...S.dates,x]);return;}
-  else if(a==='dValid'){const x0=S.dates.find(x=>x.id===d.id);if(x0&&mjRefus(x0))return;saveDates(S.dates.map(x=>x.id===d.id?{...x,status:'valid'}:x));return;}
-  else if(a==='dUnvalid'){saveDates(S.dates.map(x=>x.id===d.id?{...x,status:'prop'}:x));return;}
+  else if(a==='dValidFree'){const x={id:'d'+Date.now().toString(36),date:d.date,sl:d.sl,type:'Scénario',note:'',by:ME||null,status:'valid'};if(d.end&&(d.end!==d.date||d.endsl!==d.sl)){x.endDate=d.end;x.endSl=d.endsl;}saveDates([...S.dates,x]);setTimeout(()=>notify({kind:'valid',dateId:x.id,from:ME}),2500);return;}
+  else if(a==='dValid'){const x0=S.dates.find(x=>x.id===d.id);if(x0&&mjRefus(x0))return;saveDates(S.dates.map(x=>x.id===d.id?{...x,status:'valid'}:x));setTimeout(()=>notify({kind:'valid',dateId:d.id,from:ME}),2500);return;}
+  else if(a==='dUnvalid'){S.confirm=null;saveDates(S.dates.map(x=>x.id===d.id?{...x,status:'prop'}:x));return;}
   else if(a==='dDel'){const k='dd:'+d.id;if(S.confirm!==k){S.confirm=k;}else{S.confirm=null;saveDates(S.dates.filter(x=>x.id!==d.id));return;}}
   else if(a==='dRep'){if(!ME||!S.players[ME])return;const pl=clone(S.players[ME]);pl.rep={...(pl.rep||{})};const was=pl.rep[d.id];if(was===d.r)delete pl.rep[d.id];else pl.rep[d.id]=d.r;savePlayer(pl);
     if(isMJ(pl)&&pl.rep[d.id]==='no'&&was!=='no')setTimeout(()=>notify({kind:'refus',dateId:d.id,from:ME}),2500);return;}
   else if(a==='planView'){S.plan.view=d.v;}
   else if(a==='planMonth'){let m=S.plan.m+(+d.d),y=S.plan.y;if(m<0){m=11;y--;}if(m>11){m=0;y++;}S.plan.m=m;S.plan.y=y;S.plan.open=null;}
   else if(a==='planOpen'){S.plan.open=S.plan.open===d.k?null:d.k;}
-  else if(a==='planSet'){const p0=S.players[d.p];if(!p0)return;const pl=clone(p0);pl.dispo=pl.dispo||{};if(pl.dispo[d.k])delete pl.dispo[d.k];else pl.dispo[d.k]=true;savePlayer(pl);return;}
+  else if(a==='planSet'){const p0=S.players[d.p];if(!p0||!isUser())return;const pl=clone(p0);pl.dispo=pl.dispo||{};if(pl.dispo[d.k])delete pl.dispo[d.k];else pl.dispo[d.k]=true;savePlayer(pl);return;}
   else if(a==='natEdit'){const e=sessById(d.id);if(!e)return;const vals={};for(const en of e.entries){const ch=S.chars[en.perso];if(ch&&ch.type==='PJ'&&vis(ch)&&en.nature===d.n)vals[en.perso]=(vals[en.perso]||0)+en.montant;}
     const one=d.n==='Scénario'||d.n==='Groupe',vs=Object.values(vals).filter(Boolean);
     S.dlg={kind:'ne',id:d.id,n:d.n,vals,one,m:one&&vs.length?String(modeOf(vs)):'',mixed:one&&new Set(vs).size>1};}
@@ -93,24 +124,25 @@ document.addEventListener('click',ev=>{
   else if(a==='ratChar'){const w=S.dlg.who;S.dlg.who=w.includes(d.id)?w.filter(x=>x!==d.id):[...w,d.id];}
   else if(a==='ratOk'){const g=S.dlg,t=(g.titre||'').trim(),n=Math.floor(+g.montant||0);if(!t||n<=0||!g.who.length)return;S.dlg=null;
     const e={id:'g'+Date.now().toString(36),session:true,rattrapage:true,date:g.date||today(),titre:t,type:g.type||'Autre',entries:g.who.map(p=>({perso:p,nature:g.nature||'Individuel',montant:n})),pnj:{},pj:[...g.who]};saveEvents([...S.events,e]);return;}
-  else if(a==='sessNew'){S.dlg={kind:'sn',type:'Scénario',titre:sessPrefix('Scénario'),date:today(),pj:allPJ()};}
+  else if(a==='sessNew'){const L=xpEvOf('Scénario');S.dlg={kind:'sn',type:'Scénario',titre:'',evNom:'',evt:L[0]?L[0].id:'__new',date:today(),pj:allPJ()};}
   else if(a==='sdPj'){const w=S.dlg.pj||[];S.dlg.pj=w.includes(d.id)?w.filter(x=>x!==d.id):[...w,d.id];}
   else if(a==='sessEdit'||a==='sessEditId'){const e=a==='sessEdit'?curSession():sessById(d.id);if(!e)return;S.dlg={kind:'sm',id:e.id,type:evType(e),titre:e.titre||'',date:e.date||'',confirm:false,pj:presents(e)};}
-  else if(a==='sessCreate'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;const e={id:'g'+Date.now().toString(36),session:true,date:g.date||today(),titre:t,type:g.type||'Scénario',entries:[],pnj:{},pj:g.pj||[]};
-    /* lot 4 : Scénario et Interscénario rattachés à un événement, existant ou nouveau prérempli */
-    if(e.type==='Scénario'||e.type==='Interscénario'){const x=g.evt&&g.evt!=='__new'&&S.fiches[g.evt];if(x)e.evt=x.id;else{const f=chEvAuto(e);S.fiches={...S.fiches,[f.id]:f};fiSave(f,true);e.evt=f.id;}}
-    S.curSess=e.id;saveEvents([...S.events,e]);return;}
-  else if(a==='sessSave'){const g=S.dlg,t=(g.titre||'').trim();if(!t)return;S.dlg=null;const pj=g.pj||[];
+  else if(a==='sessCreate'){const g=S.dlg;if(!g||!sdOk(g))return;S.dlg=null;const t=(g.titre||'').trim(),e={id:'g'+Date.now().toString(36),session:true,date:g.date||today(),titre:t,type:g.type||'Scénario',entries:[],pnj:{},pj:g.pj||[]};
+    /* UX1 : toute session hors « Autre » est rattachée à un événement du même type ; nouvel événement numéroté automatiquement (entier, max + 1) */
+    if(xpLinked(e.type)&&g.evt){const x=g.evt&&g.evt!=='__new'&&S.fiches[g.evt];if(x)e.evt=x.id;else{const f=chEvAuto(e);f.nom=(g.evNom||'').trim();f.type=e.type;f.n=xpNextN(e.type);f.num='';S.fiches={...S.fiches,[f.id]:f};fiSave(f,true);e.evt=f.id;}}
+    S.curSess=e.id;S.xpSess=e.id;saveEvents([...S.events,e]);return;}
+  else if(a==='sessSave'){const g=S.dlg;if(!g||!sdOk(g))return;const t=(g.titre||'').trim();S.dlg=null;const pj=g.pj||[];
     saveEvents(S.events.map(e=>{if(e.id!==g.id)return e;const ch=pjIds();let en=e.entries;
       const sc=en.filter(x=>x.nature==='Scénario'&&x.montant&&ch.includes(x.perso));
       if(sc.length){const m=+modeOf(sc.map(x=>x.montant));en=en.filter(x=>!(x.nature==='Scénario'&&ch.includes(x.perso)&&!pj.includes(x.perso)));
         for(const p of pj)if(!en.some(x=>x.nature==='Scénario'&&x.perso===p))en=[...en,{perso:p,nature:'Scénario',montant:m}];}
-      return {...e,titre:t,type:g.type,date:g.date||e.date,pj,entries:en};}));return;}
+      const r={...e,titre:t,type:g.type,date:g.date||e.date,pj,entries:en};if(r.evt&&g.type!==evType(e))delete r.evt; /* UX1 : changer le type détache l'événement */
+      return r;}));return;}
   else if(a==='sessDel'){if(!sessChildren(S.dlg.id).length)S.dlg.confirm=true;}
   else if(a==='sessDelOk'){const id=S.dlg.id;S.dlg=null;if(sessChildren(id).length){render();return;}if(S.curSess===id)S.curSess=null;saveEvents(S.events.filter(e=>e.id!==id));return;}
   else if(a==='sessAdd'){const cs=curSession();if(!cs)return;const add=[];for(const l of S.form.lines){const m=+l.montant;if(m>0)for(const pp of slp(l,cs))add.push({perso:pp,nature:l.nature,montant:m});}if(!add.length)return;
-    S.form={titre:'',type:'Scénario',date:today(),lines:[{nature:'Scénario',montant:'',persos:null}]};saveEvents(S.events.map(e=>e.id===cs.id?{...e,entries:[...e.entries,...add]}:e));return;}
-  else if(a==='pnjToggle'){const cs=curSession();if(!cs)return;const pn={...(cs.pnj||{})};pn[d.id]=!pn[d.id];saveEvents(S.events.map(e=>e.id===cs.id?{...e,pnj:pn}:e));return;}
+    S.form={titre:'',type:'Scénario',date:today(),lines:[{nature:'Scénario',montant:'',persos:null}]};if(S.dlg&&S.dlg.kind==='xpAdd')S.dlg=null;saveEvents(S.events.map(e=>e.id===cs.id?{...e,entries:[...e.entries,...add]}:e));return;}
+  else if(a==='pnjToggle'){if(d.s)S.curSess=d.s;const cs=curSession();if(!cs)return;const pn={...(cs.pnj||{})};pn[d.id]=!pn[d.id];saveEvents(S.events.map(e=>e.id===cs.id?{...e,pnj:pn}:e));return;}
   else if(a==='sessLineDel'){const key='l:'+d.id+':'+d.k;if(S.confirm!==key){S.confirm=key;}else{S.confirm=null;const [n,m]=d.k.split('|');saveEvents(S.events.map(e=>e.id===d.id?{...e,entries:e.entries.filter(en=>!(en.nature===n&&String(en.montant)===m&&pjIds().includes(en.perso)))}:e));return;}}
   else if(a==='creAdd'){S.dlg={kind:'ca',nom:'',fam:'trad'};}
   else if(a==='creFam'){S.dlg.fam=d.f;}
@@ -281,7 +313,7 @@ document.addEventListener('click',ev=>{
   else if(a==='futOpen')S.futForm={open:true,nom:'',max:'6'};
   else if(a==='futCancel')S.futForm.open=false;
   else if(a==='futSave'){const nom=S.futForm.nom.trim();if(nom){const c=clone(S.chars[S.sel]);c.futiles=c.futiles||[];c.futiles.push({nom,max:Math.max(1,+S.futForm.max||6),cur:0});S.futForm={open:false,nom:'',max:'6'};saveChar(c);return;}}
-  else if(a==='pnjXp'){const f=S.pnjForm,m=+f.montant;if(f.titre.trim()&&m>0){const e={id:'g'+Date.now().toString(36),date:today(),titre:f.titre.trim(),type:'Autre',entries:[{perso:S.sel,nature:'Individuel',montant:m}]};S.pnjForm={titre:'',montant:''};saveEvents([...S.events,e]);return;}}
+  else if(a==='pnjXp'){const f=S.pnjForm,m=+f.montant;if(f.titre.trim()&&m>0){const e={id:'g'+Date.now().toString(36),date:today(),titre:f.titre.trim(),type:'Autre',entries:[{perso:S.sel,nature:'Individuel',montant:m}]};S.pnjForm={titre:'',montant:''};if(S.dlg&&S.dlg.kind==='pnjXp')S.dlg=null;saveEvents([...S.events,e]);return;}}
   else if(a==='slChar'){const l=S.form.lines[+d.l];const cp=l.persos||[];l.persos=cp.includes(d.id)?cp.filter(x=>x!==d.id):[...cp,d.id];}
   else if(a==='lineChar'){const l=S.form.lines[+d.l];if(lockedLine(l))return;const cp=lp(l);l.persos=cp.includes(d.id)?cp.filter(x=>x!==d.id):[...cp,d.id];}
   else if(a==='lineAll'){S.form.lines[+d.l].persos=allPJ();}
@@ -325,8 +357,6 @@ document.addEventListener('click',ev=>{
       saveChar(n);return;}
     if(g.kind==='u'){const c=S.chars[g.id],l=c&&lastAutre(c,g.nom),u=c&&undoAutre(c,g.nom);if(u){saveChar(u.c);if(l&&l.xfer)saveEvents(S.events.filter(e=>e.id!==l.xfer));}else render();return;}
     if(g.kind==='b'){const c=S.chars[g.id],r=c&&ref(c,g.key),nm=(g.nom||'').trim(),named=r&&(r.kind==='atout'||r.kind==='spec');if(r&&(!named||nm)&&(r.o.cur||0)===g.from&&lvlCost(r.kind,g.from+1)<=summary(c,S.events).dispo&&(r.max==null||g.from<r.max))saveChar(buy(c,g.key,g.from+1,today(),named?nm:undefined));else render();return;}if(g.kind==='c')removeChar(g.id);else if(g.kind==='p')removePlayer(g.id);else if(g.kind==='g')saveEvents(S.events.filter(e=>e.id!==g.id));return;}
-  else if(a==='star'){const n=+d.n,auto=scenarioCount(S.events),cs=starCount(S.events,S.heritage.delta);const h={score:S.heritage.score,delta:(n===cs?n-1:n)-auto};S.heritage=h;persist('meta/heritage',h);}
-  else if(a==='starReset'){S.heritage={score:S.heritage.score,delta:0};persist('meta/heritage',S.heritage);}
   else if(a==='addP'){if(!isGest())return;const n=S.newP.nom.trim();if(n){const p={id:slug(n),nom:n,role:S.newP.role,parti:false,persos:[]};S.newP={nom:'',role:'Joueur'};S.dlg=null;savePlayer(p);return;}}
   render();
 });
@@ -378,7 +408,7 @@ document.addEventListener('input',ev=>{
   else if(t.dataset.pd!==undefined&&S.dlg){S.dlg[t.dataset.pd]=t.value;if(t.dataset.pd==='date'){const b=q0('#sheetRoot [data-act="pdOk"]');if(b)b.disabled=!(t.value&&t.value>=today());}}
   else if(t.dataset.nv!==undefined&&S.dlg&&S.dlg.kind==='ne'){S.dlg.vals[t.dataset.nv]=t.value;}
   else if(t.dataset.nem!==undefined&&S.dlg&&S.dlg.kind==='ne'){S.dlg.m=t.value;}
-  else if(t.dataset.sd!==undefined&&S.dlg){if(t.dataset.sd==='type'&&S.dlg.kind==='sn'){const old=S.dlg.titre||'';if(!old.trim()||old===sessPrefix(S.dlg.type)){S.dlg.titre=sessPrefix(t.value);const i=q0('#sdi');if(i)i.value=S.dlg.titre;const b=q0('#sheetRoot [data-act="sessCreate"]');if(b)b.disabled=!S.dlg.titre.trim();}}S.dlg[t.dataset.sd]=t.value;if(t.dataset.sd==='type'&&S.dlg.kind==='sn'){S._force=true;render();return;}if(t.dataset.sd==='titre'){const b=q0('#sheetRoot [data-act="sessCreate"],#sheetRoot [data-act="sessSave"]');if(b)b.disabled=!t.value.trim();}if(S.dlg.kind==='rat'){const g=S.dlg,b=q0('#sheetRoot [data-act="ratOk"]'),n=Math.floor(+g.montant||0);if(b){b.disabled=!(n>0&&g.who.length&&(g.titre||'').trim());b.textContent='Attribuer '+n+' XP';}}}
+  else if(t.dataset.sd!==undefined&&S.dlg){S.dlg[t.dataset.sd]=t.value;if(S.dlg.kind==='sn'&&t.dataset.sd==='type'){const L=xpEvOf(t.value);S.dlg.evt=t.value==='Vie du fief'?'':L[0]?L[0].id:'__new';S._force=true;render();return;}if((S.dlg.kind==='sn'&&t.dataset.sd==='evt')||(S.dlg.kind==='sm'&&t.dataset.sd==='type')){S._force=true;render();return;}if(t.dataset.sd==='titre'||t.dataset.sd==='evNom'){const b=q0('#sheetRoot [data-act="sessCreate"],#sheetRoot [data-act="sessSave"]');if(b)b.disabled=!sdOk(S.dlg);}if(S.dlg.kind==='rat'){const g=S.dlg,b=q0('#sheetRoot [data-act="ratOk"]'),n=Math.floor(+g.montant||0);if(b){b.disabled=!(n>0&&g.who.length&&(g.titre||'').trim());b.textContent='Attribuer '+n+' XP';}}}
   else if(t.dataset.sxs!==undefined&&S.dlg){S.dlg.sess=t.value;if(S.dlg.gain){S._force=true;render();}}
   else if(t.dataset.cr!==undefined&&S.dlg){S.dlg.nom=t.value;const v=t.value.trim(),dup=!!v&&S.creatures.some(c=>c.id!==S.dlg.id&&c.nom.toLowerCase()===v.toLowerCase());const b=q0('#sheetRoot [data-act="creAddOk"],#sheetRoot [data-act="creSave"]');if(b)b.disabled=!v||dup;const w=document.getElementById('crdup');if(w)w.style.display=dup?'':'none';}
   else if(t.dataset.sx!==undefined&&S.dlg){S.dlg.txt=t.value;const b=q0('#sheetRoot [data-act="sxOk"],#sheetRoot [data-act="seSave"],#sheetRoot [data-act="propSend"]');if(b)b.disabled=!t.value.trim();}
@@ -393,6 +423,10 @@ document.addEventListener('input',ev=>{
   if(t.dataset.np){const b=q('[data-act="addP"]');if(b)b.disabled=!S.newP.nom.trim();}
 });
 document.addEventListener('change',ev=>{
+  {const t0=ev.target;if(t0&&t0.dataset&&t0.dataset.cwsitf&&t0.value){cwAct('cwSitF',{k:t0.dataset.cwsitf,v:t0.value});return;}}
+  {const t0=ev.target;if(t0&&t0.dataset&&t0.dataset.cwrace&&t0.value){cwAct('cwRace',{v:t0.value});return;}}
+  {const t0=ev.target;if(t0&&t0.dataset&&t0.dataset.pprub&&S.dlg){S.dlg.rub=t0.value;S._force=true;render();return;}}
+  {const t0=ev.target;if(t0&&t0.dataset&&t0.dataset.xpdelev){S.xpDelEv=t0.checked;return;}}
   if(editorOpen())S.edDirty=true;
   const t=ev.target;S._force=true;
   if(cwInput(t,'change'))return; /* lot C */
@@ -400,7 +434,7 @@ document.addEventListener('change',ev=>{
   if(t.dataset.cursess){S.curSess=t.value;render();}
   else if(t.dataset.spoff!==undefined&&S.sheet){S.sheet.sp={...(S.sheet.sp||{}),off:t.checked};renderSheet();}
   else if(t.dataset.acc!==undefined&&S.sheet){const c=clone(S.chars[S.sheet.id]);if(t.checked){if(c.accru&&c.accru!==t.dataset.acc){t.checked=false;return;}c.accru=t.dataset.acc;}else if(c.accru===t.dataset.acc)c.accru=null;saveChar(c);}
-  else if(t.dataset.her){S.heritage={score:t.value,delta:S.heritage.delta};persist('meta/heritage',S.heritage);render();}
+  else if(t.dataset.her){if(!isTech())return;S.heritage={score:t.value,delta:0};persist('meta/heritage',S.heritage);}
   else if(t.dataset.note!==undefined){const c=clone(S.chars[S.sel]);const p=c.profils.find(x=>x.nom===t.dataset.note);const v=t.value.trim();p.note=v===''?null:(isNaN(+v)?v:+v);saveChar(c);}
   else if(t.dataset.k==='nature'){S.form.lines[+t.dataset.l].persos=null;render();}
   else if(t.dataset.k==='fief'&&t.dataset.l!==undefined){S.form.lines[+t.dataset.l].fief=t.value;render();} /* lot 7 */

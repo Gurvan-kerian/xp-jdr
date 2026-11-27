@@ -84,7 +84,7 @@ const SHOTS=process.env.SHOTS;
         await type(page,'zzzz');ok(/Rien pour « zzzz »/.test(await res(page)),'aucun résultat');
         if(SHOTS){await type(page,'hiver');await page.evaluate(()=>{S.srch.g='all';srPaint();});await page.screenshot({path:path.join(SHOTS,'recherche-resultats.png'),fullPage:true});}
         await type(page,'pays');await page.evaluate(()=>document.querySelector('#srchRes [data-act="lnk"][data-id="hiver"]').click());await wait(page,300);
-        ok(await page.evaluate(()=>S.view==='univers'&&S.fi==='hiver'),'clic : la fiche s\'ouvre');ok(/depuis Recherche/.test(await txt(page)),'barre « ‹ Retour depuis Recherche »');
+        ok(await page.evaluate(()=>S.view==='univers'&&S.fi==='hiver'),'clic : la fiche s\'ouvre');ok(await page.evaluate(()=>!!document.querySelector('.crumb')),'fil d\'Ariane (UX1, remplace « ‹ Retour depuis »)');
         await page.evaluate(()=>history.back());await wait(page,400);ok(await page.evaluate(()=>S.view==='srch'&&document.getElementById('srchQ').value==='pays'),'retour : la recherche est retrouvée');
         await page.evaluate(()=>{S.srch.q='';render();});await wait(page);t=await res(page);if(process.env.DBG)console.log(t);ok(/Recherches récentes/i.test(t)&&/pays/.test(t)&&/Ouverts récemment/i.test(t)&&/Pays d'Hiver/.test(t),'recherches récentes et fiches ouvertes');
         if(SHOTS)await page.screenshot({path:path.join(SHOTS,'recherche-ouverte.png'),fullPage:true});

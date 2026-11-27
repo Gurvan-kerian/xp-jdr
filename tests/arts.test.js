@@ -91,7 +91,7 @@ const SHOTS=process.env.SHOTS;
       console.log('3. Joueur après déblocage');
       {const {page,errs,ctx}=await open(browser,base,db,'anne');
         let t=await prog(page);ok(/Arts obscurs/i.test(t)&&/Druidisme/.test(t)&&!/Nécromancie/.test(t),'section visible avec le seul art débloqué');
-        const order=await page.evaluate(()=>{const H=[...document.querySelectorAll('#app h2')].map(h=>h.textContent);return H.indexOf('Capacités féeriques')<H.indexOf('Arts obscurs')&&H.indexOf('Arts obscurs')<H.indexOf('Ressources générales');});ok(order,'placée entre Capacités féeriques et Ressources générales');
+        const order=await page.evaluate(()=>{const H=[...document.querySelectorAll('#app h2, #app .rbt .t')].map(h=>h.textContent.trim());return H.indexOf('Capacités féeriques')<H.indexOf('Arts obscurs')&&H.indexOf('Arts obscurs')<H.indexOf('Ressources générales');});ok(order,'placée entre Capacités féeriques et Ressources générales');
         for(let i=0;i<2;i++){await click(page,'[data-act="quick"][data-key="art:dru"]');await wait(page);await page.evaluate(()=>{const b=document.querySelector('#sheetRoot .btn.pri');b&&b.click();});await wait(page,300);}
         ok(db.get('chars/sloan').arts.dru.cur===2,'rangs 1 et 2 achetés (comme une compétence)');
         ok(db.get('chars/sloan').achats.filter(a=>a.key==='art:dru').reduce((s,a)=>s+a.cout,0)===9,'coût : 3 + 6 XP');

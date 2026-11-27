@@ -6,7 +6,7 @@ if(location.hash==='#dates'){try{history.replaceState(null,'',location.pathname+
 let ME=null;try{ME=localStorage.getItem('xp.me')||null;}catch(e){}
 const S={chars:{},players:{},events:[],ready:false,view:window.__openDates?'planning':'home',sel:null,sheet:null,asheet:null,dlg:null,nameForm:{kind:null,nom:''},confirm:null,heritage:{score:'',delta:0},
   futForm:{open:false,nom:'',max:'6'},pnjForm:{titre:'',montant:''},newP:{nom:'',role:'Joueur'},newC:{court:'',nom:'',type:'PJ',owner:''},
-  secrets:[],secretsReady:false,dates:[],datesReady:false,plan:{view:window.__openDates?'com':'mes',y:new Date().getFullYear(),m:new Date().getMonth(),open:null},curSess:null,creatures:[],creaturesReady:false,uni:'home',sec:null,secFilter:'all',
+  secrets:[],secretsReady:false,dates:[],datesReady:false,plan:{view:'com',y:new Date().getFullYear(),m:new Date().getMonth(),open:null},curSess:null,creatures:[],creaturesReady:false,uni:'home',sec:null,secFilter:'all',
   form:{titre:'',type:'Scénario',date:'',lines:[{nature:'Scénario',montant:'',persos:null}]},hist:{},dirty:false,sync:'loading'};
 /* Lot 2 : au rechargement, l'appli rouvre la même page et le même onglet (mémoire de l'onglet du navigateur) */
 const KANKA_URL='https://app.kanka.io/w/350361';
@@ -25,7 +25,11 @@ const owners=c=>Object.values(S.players).filter(p=>(p.persos||[]).includes(c.id)
 const hasGest=p=>!!(p&&(p.gestion||p.role==='MJ')&&!p.parti);
 const mjCount=()=>Object.values(S.players).filter(p=>p.role==='MJ'&&!p.parti).length;
 const lastMJ=p=>!!p&&p.role==='MJ'&&!p.parti&&mjCount()<=1;
-const isGest=()=>!S.asPlayer&&!!ME&&hasGest(S.players[ME]);
+/* UX1 — droits définitifs (27/11/2026) : isGest() = MJ en action (voit et prépare le masqué, valide, révèle) ;
+   isTech() = droits techniques (MJ ou gestion) : mode édition, Paramètres, listes, PIN, Données ; la gestion sans rôle MJ ne voit pas le masqué */
+const isGest=()=>!S.asPlayer&&!!ME&&!!S.players[ME]&&S.players[ME].role==='MJ'&&!S.players[ME].parti;
+const isTech=()=>!S.asPlayer&&!!ME&&hasGest(S.players[ME]);
+const isUser=()=>!!ME&&!!S.players[ME]&&!S.visit;
 const gestCount=()=>Object.values(S.players).filter(hasGest).length;
 const meOwns=c=>!!ME&&!!S.players[ME]&&(S.players[ME].persos||[]).includes(c.id);
 /* Lot 4 : un PNJ est préparé (invisible des joueurs) ou révélé ; un féal est toujours révélé. Le réglage « cache » ne vaut plus que pour les PJ. */
@@ -139,7 +143,7 @@ const pnjOf=c=>Object.values(S.chars).filter(x=>x.type==='PNJ'&&x.pj===c.id&&(!x
    Un lien n'existe que si la personne voit la cible ; sinon le nom reste en texte simple. */
 S.nav=[];S.edit=false;S.rfEd=false;S.edDirty=false;
 /* Mode édition : droits de gestion + mode actif (bouton crayon) ; désactivé à chaque ouverture */
-const canEdit=()=>isGest()&&!!S.edit&&!S.visit;
+const canEdit=()=>isTech()&&!!S.edit&&!S.visit;
 const crById=id=>(S.creatures||[]).find(c=>c.id===id);
 const crBySing=sing=>!!sing&&(S.creatures||[]).find(x=>raceRec(x).sing===sing);
 /* Un pouvoir ou une capacité est connu de la personne s'il apparaît, visible, sur une race ou un personnage qu'elle voit */
@@ -208,7 +212,11 @@ function navPop(){const s=S.nav.pop();if(!s)return;
 /* « ‹ Retour » : même effet que le retour du téléphone */
 function navBack(){if(HX.cur>0){try{history.back();return;}catch(e){}}navPop();}
 const navClear=()=>{S.nav=[];};
-function navBar(){if(!S.nav.length)return '';const path=S.nav.map(s=>s.lab).filter(Boolean);
+/* UX1 : fil d'Ariane — liste de [libellé, attributs du bouton] ; le dernier élément sans attributs est le niveau courant */
+const crumb=(...L)=>`<nav class="crumb" aria-label="Fil d'Ariane">${L.filter(Boolean).map(([lab,at])=>at?`<button type="button" class="crb" ${at}>${lab}</button>`:`<span class="cur">${lab}</span>`).join('<span class="sep" aria-hidden="true">›</span>')}</nav>`;
+const CR_UNI=['Univers','data-act="uni" data-v="home"'];
+function navBar(){return ''; /* UX1 : « ‹ Retour depuis… » remplacé par le fil d'Ariane ; le retour du téléphone garde l'historique */
+  if(!S.nav.length)return '';const path=S.nav.map(s=>s.lab).filter(Boolean);
   return `<div class="navbar"><button type="button" class="navback" data-act="navBack"><span aria-hidden="true">‹</span> Retour</button><span class="navpath">${path.length?'depuis '+path.map(esc).join(' › '):''}</span></div>`;}
 /* ---------- Historique du navigateur (24/11/2026) ----------
    Chaque changement d'écran ajoute une étape : retour du téléphone, « page précédente » et « ‹ Retour » ramènent à l'écran
@@ -217,12 +225,12 @@ function navBar(){if(!S.nav.length)return '';const path=S.nav.map(s=>s.lab).filt
    Les étapes sont gardées pendant la session de l'onglet (sessionStorage xp.hx) pour survivre à un rechargement. */
 const HX={L:[],cur:0,key:'',rest:false};
 function hxKey(){const v=S.view,u=v==='univers'||v==='ref',g=S.dlg&&S.dlg.nav?S.dlg.kind+':'+(S.dlg.t||'')+':'+S.dlg.id:'';
-  return [v,v==='sheet'?S.sel:'',v==='sheet'?S.jrOpen||'':'',u?S.uni||'':'',u?S.fi||'':'',u?S.sec||'':'',u&&S.rf?(S.rf.id||(S.rf.hum?'hum':'nv')):'',u?S.chPage||'':'',v==='params'?S.ptab||'':'',v==='players'?S.pTab||'':'',v==='rules'?(S.rgTab||'')+':'+(S.rgNote||''):'',v==='crea'?(S.cwId||'')+':'+(S.cwStep||0):'',g].join('|');}
-function hxSnap(y){const s=navSnap();s.y=y||0;s.nav=S.nav.slice();s.chPage=S.chPage||null;s.ptab=S.ptab||'';s.pTab=S.pTab||'';s.forme=S.forme;s.chV=S.chV;s.pv=S.plan&&S.plan.view;s.cwId=S.cwId||null;s.cwStep=S.cwStep||0;s.rgTab=S.rgTab||'';s.rgNote=S.rgNote||null;return s;}
+  return [v,v==='sheet'?S.sel:'',v==='sheet'?S.jrOpen||'':'',u?S.uni||'':'',u?S.fi||'':'',u?S.sec||'':'',u&&S.rf?(S.rf.id||(S.rf.hum?'hum':'nv')):'',u?S.chPage||'':'',v==='params'?S.ptab||'':'',v==='players'?S.pTab||'':'',v==='rules'?(S.rgTab||'')+':'+(S.rgNote||''):'',v==='crea'?(S.cwId||'')+':'+(S.cwStep||0):'',v==='gains'?S.xpSess||'':'',v==='planning'?S.plDate||'':'',g].join('|');}
+function hxSnap(y){const s=navSnap();s.y=y||0;s.nav=S.nav.slice();s.chPage=S.chPage||null;s.ptab=S.ptab||'';s.pTab=S.pTab||'';s.forme=S.forme;s.chV=S.chV;s.pv=S.plan&&S.plan.view;s.cwId=S.cwId||null;s.cwStep=S.cwStep||0;s.rgTab=S.rgTab||'';s.rgNote=S.rgNote||null;s.xpSess=S.xpSess||null;s.plDate=S.plDate||null;return s;}
 function hxSave(){try{sessionStorage.setItem('xp.hx',JSON.stringify(HX.L.slice(0,HX.cur+1)));}catch(e){}}
 function hxApply(s){S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.fi=s.fi||null;S.rf=s.rf||null;S.rfTab=s.rfTab;S.rfEd=!!s.rfEd&&canEdit();S.rfBlk=null;S.rfPor=null;
   S.jrOpen=s.jrOpen||null;S.jrSel=s.jrSel||null;S.dlg=s.dlg?{...s.dlg}:null;S.nav=(s.nav||[]).slice();S.chPage=s.chPage||null;S.ptab=s.ptab||'';S.pTab=s.pTab||'';
-  if(s.forme)S.forme=s.forme;if(s.chV)S.chV=s.chV;if(s.pv&&S.plan)S.plan.view=s.pv;if(s.view==='crea'){S.cwId=s.cwId;S.cwStep=s.cwStep||0;}S.rgTab=s.rgTab||'';S.rgNote=s.rgNote||null;S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;}
+  if(s.forme)S.forme=s.forme;if(s.chV)S.chV=s.chV;if(s.pv&&S.plan)S.plan.view=s.pv;if(s.view==='crea'){S.cwId=s.cwId;S.cwStep=s.cwStep||0;}S.rgTab=s.rgTab||'';S.rgNote=s.rgNote||null;S.xpSess=s.xpSess||null;S.plDate=s.plDate||null;S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;}
 /* Appelé à la fin de chaque rendu : nouvel écran → nouvelle étape ; même écran → l'étape courante est mise à jour */
 function hxTrack(){if(typeof history==='undefined'||!history.pushState)return;const k=hxKey();
   if(HX.rest||!HX.key){HX.rest=false;HX.key=k;HX.L[HX.cur]=hxSnap((HX.L[HX.cur]||{}).y);hxSave();return;}

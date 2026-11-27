@@ -1,33 +1,39 @@
 /* La belle appli — vues : XP, personnages, joueurs, règles */
 /* --- vues --- */
-const kankaBtn=(lien,nom,lab)=>`<a class="kk" href="${esc(kankaHref(lien,nom))}" target="_blank" rel="noopener" aria-label="${esc(lab)}${lien?'':' (recherche sur le nom)'}" title="${lien?'Ouvrir la fiche Kanka':'Rechercher sur Kanka'}">${ICON.kanka}</a>`;
+const kankaBtn=()=>''; /* UX1 : liens Kanka retirés de l'affichage (identifiants gardés en base) */
+/* ---------- UX1 (28/11/2026) : liste des personnages ---------- */
+function teamStage(c){const p=rangInfo(c);if(!p||p.done||!actif(c))return '';return `<span class="muted small">${esc(p.next)}${p.blocked?' : hors de portée':p.ready?' : pouvoir à acquérir':' dans '+p.total+' XP'}</span>`;}
 function teamCard(c){
-  const s=summary(c,S.events),p=rangInfo(c),off=!actif(c);
-  let stage='';
-  if(p&&!off){stage=p.done?`<span class="pill good">Légendaire atteint</span>`:`<span class="pill acc">${p.next} : ${p.blocked?'hors de portée':p.ready?'pouvoir à acquérir':p.total+' XP'}</span>`;}
-  const plan=off?`<span class="pill">${STATUTS[c.statut]||''}</span>`:s.prevu?`${s.manque?`<span class="pill bad">Il manque ${s.manque}</span>`:''}<span class="pill plan">Prévu ${s.prevu}</span>`:`<span class="pill">Rien de prévu</span>`;
-  const img=portrait(c);
-  return `<button class="card team${off?' off':''}" data-act="sel" data-id="${c.id}"><span class="thead"><span class="tph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="nm">${esc(c.court)}</span><span class="small" style="color:var(--accent);font-weight:600">${[c.race,rangOf(c)].filter(Boolean).map(esc).join(' · ')}</span><span class="muted small">${whoLine(c)}${c.cache?' · masqué aux autres':''}</span></span></span>
-    <span class="big num">${s.dispo}</span><span class="muted small">XP disponibles · ${s.gains} gagnés, ${s.spent} dépensés</span>
-    <span style="display:flex;gap:6px;flex-wrap:wrap">${plan}${stage}</span></button>`;
-}
-function heritageCard(){
-  const auto=scenarioCount(S.events),n=starCount(S.events,S.heritage.delta),adj=n-auto;
-  let st='';for(let i=1;i<=STARS;i++)st+=`<button class="star${i<=n?' on':''}" data-act="star" data-n="${i}" aria-pressed="${i<=n}" aria-label="Étoile ${i} sur ${STARS}">${i<=n?'★':'☆'}</button>`;
-  return `<div class="card"><div class="prof-head"><b style="font-family:var(--font-display);font-size:18px">Rang d'héritage</b><span class="pill plan">${n} / ${STARS} étoiles</span></div><div class="frow" style="margin-bottom:6px"><div class="field"><label for="hs">Score</label><input id="hs" type="number" inputmode="numeric" data-her="score" value="${esc(S.heritage.score)}"></div></div><div class="stars">${st}</div><div class="muted small" style="margin-top:6px">Une étoile se remplit à chaque gain de type Scénario (${auto} joués). Touche une étoile pour corriger à la main${adj?' · ajusté de '+(adj>0?'+':'')+adj:''}.${adj?' <button class="btn ghost" style="padding:2px 8px" data-act="starReset">Annuler l\'ajustement</button>':''}</div></div>`;
-}
+  const s=summary(c,S.events),off=!actif(c),img=portrait(c),o=owners(c);
+  const sub=[c.race,rangOf(c),o.length?o.map(p=>p.nom).join(', '):''].filter(Boolean).map(esc).join(' · ');
+  const fe=off?'':pnjOf(c).filter(vis).map(f=>`<button type="button" class="tfeal" data-act="sel" data-id="${f.id}"><span>Féal · ${esc(f.court)}</span><span class="muted small">${summary(f,S.events).dispo} XP</span></button>`).join('');
+  return `<div class="tcw"><button type="button" class="tcard${off?' off':''}" data-act="sel" data-id="${c.id}"><span class="tph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span class="tmain"><span class="nm">${esc(c.court)}</span><span class="muted small">${sub}${c.cache?' · masqué aux autres':''}${off?' · '+esc(STATUTS[c.statut]||''):''}</span>${off?'':`<span class="tpl">${s.manque?`<span class="pill bad">Il manque ${s.manque} XP</span>`:''}${teamStage(c)}</span>`}</span><span class="txp"><b class="num">${s.dispo}</b><small>XP</small></span></button>${fe}</div>`;}
+function cwCard(b){const I=(b.d||{}).ident||{},st=crSteps(b),n=Math.min(b.etape||0,st.length-1),own=S.players[b.par];
+  return `<div class="tcw"><button type="button" class="tcard" data-act="cwOpen" data-id="${esc(b.id)}"><span class="tph"><span class="ini">+</span></span><span class="tmain"><span class="nm">${esc((I.court||'').trim()||(b.kind==='feal'?'Nouveau féal':'Nouveau PJ'))} <span class="pill ${b.statut==='attente'?'acc':'plan'}">${b.statut==='attente'?'En attente':'Brouillon'}</span></span><span class="muted small">${b.kind==='feal'?'Féal':'PJ'}${b.d&&b.d.race?' · '+esc(b.d.race):''} · étape ${n+1} / ${st.length}${isTech()&&own?' · par '+esc(own.nom):''}</span>${b.com&&b.statut==='brouillon'?`<span class="small bad">Renvoyé par le MJ</span>`:''}</span></button><button type="button" class="lnk cwtdel" data-act="cwDelAsk" data-id="${esc(b.id)}" aria-label="Supprimer le brouillon">Supprimer</button></div>`;}
+function heritageRow(){const n=starCount(S.events);return `<button type="button" class="crow hrrow" data-act="herOpen"><span class="cmain"><span class="t">Rang d'héritage ${esc(S.heritage.score||'–')}</span></span><span class="hst">★ ${n} / ${STARS}</span><span class="chev" aria-hidden="true">›</span></button>`;}
+function heritageSheet(){const n=starCount(S.events);let st='';for(let i=1;i<=STARS;i++)st+=`<span class="star${i<=n?' on':''}" aria-hidden="true">${i<=n?'★':'☆'}</span>`;
+  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Rang d'héritage"><div class="in"><div class="blkhd"><h2 style="flex:1;margin:0">Rang d'héritage</h2><button type="button" class="ibtn sm" data-act="closeSheet" aria-label="Fermer">✕</button></div>
+  <div class="field"><label for="hs">Score</label><input id="hs" type="number" inputmode="numeric" data-her="score" value="${esc(S.heritage.score)}"${isTech()?'':' disabled'} style="max-width:120px"></div>
+  <div class="stars" role="img" aria-label="${n} étoiles sur ${STARS}">${st}</div><div class="muted small" style="margin-top:6px">Une étoile par événement Scénario joué, ${STARS} au maximum.</div></div></div>`;}
 function viewTeam(){
-  const hc=heritageCard();
-  if(!ids().length&&!fiCanNew()&&!(ME&&S.players[ME]&&!S.visit))return hc+emptyState();
-  /* lot 4 : sélecteur PJ | PNJ ; PNJ en liste (fiches.js, pnListView) */
-  const P=pjIds(),N=ids().filter(i=>S.chars[i].type==='PNJ'),sel=S.teamSel==='pnj'?'pnj':'pj';
-  let h=`<h2 style="margin-top:4px">Personnages</h2><div class="seg teamseg" role="group" aria-label="PJ ou PNJ">${[['pj','PJ · '+P.length],['pnj','PNJ · '+N.length]].map(([v,l])=>`<button type="button" data-act="pnTeam" data-v="${v}" aria-pressed="${sel===v}">${l}</button>`).join('')}</div>`;
-  if(sel==='pnj')return h+pnListView();
-  const act=P.filter(i=>actif(S.chars[i])),arc=P.filter(i=>!actif(S.chars[i]));
-  h+=hc+`<div class="grid">${act.map(i=>teamCard(S.chars[i])).join('')}${cwTiles()}</div>`; /* lot C : brouillons et « + Nouveau PJ » en fin de grille */
-  if(arc.length)h+=`<h2>Archives</h2><div class="grid">${arc.map(i=>teamCard(S.chars[i])).join('')}</div>`;
+  if(S.teamSel==='pnj'){S.teamSel='pj';S.view='univers';S.uni='pnj';return viewUnivers();} /* UX1 : liste des PNJ déplacée dans l'Univers */
+  if(!ids().length&&!(ME&&S.players[ME]&&!S.visit))return emptyState();
+  const P=pjIds().filter(i=>vis(S.chars[i])),act=P.filter(i=>actif(S.chars[i])),arc=P.filter(i=>!actif(S.chars[i]));
+  const al=L=>L.slice().sort((a,b)=>(S.chars[a].court||'').localeCompare(S.chars[b].court||'','fr'));
+  const can=ME&&S.players[ME]&&!S.visit;
+  let h=`<div class="pghead"><h2>Personnages</h2>${can?`<button type="button" class="pbtn big" data-act="teamNew" aria-label="Nouveau personnage">+</button>`:''}</div>`;
+  h+=`<section class="card xpsec">${heritageRow()}</section>`;
+  const B=cwList();
+  if(isTech()){h+=`<div class="tgrid">${al(act).map(i=>teamCard(S.chars[i])).join('')}${B.map(cwCard).join('')}</div>`;}
+  else{const mine=act.filter(i=>ME&&owners(S.chars[i]).some(p=>p.id===ME)),oth=al(act.filter(i=>!mine.includes(i))),mb=B.filter(b=>b.par===ME);
+    if(mine.length||mb.length)h+=`<h3 class="tgh">Mes personnages</h3><div class="tgrid">${mine.map(i=>teamCard(S.chars[i])).join('')}${mb.map(cwCard).join('')}</div>`;
+    if(oth.length)h+=`<h3 class="tgh">La troupe</h3><div class="tgrid">${oth.map(i=>teamCard(S.chars[i])).join('')}${B.filter(b=>b.par!==ME).map(cwCard).join('')}</div>`;}
+  if(arc.length)h+=`<h3 class="tgh">Archives</h3><div class="tgrid">${al(arc).map(i=>teamCard(S.chars[i])).join('')}</div>`;
   return h;
 }
+function teamNewSheet(){return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Nouveau personnage"><div class="in"><div class="blkhd"><h2 style="flex:1;margin:0">Nouveau personnage</h2><button type="button" class="ibtn sm" data-act="closeSheet" aria-label="Fermer">✕</button></div>
+  <button type="button" class="crow" data-act="cwNew" data-v="pj"><span class="cmain"><span class="t">Personnage joueur</span><span class="s">Assistant de création</span></span><span class="chev" aria-hidden="true">›</span></button>
+  <button type="button" class="crow" data-act="cwNew" data-v="feal"><span class="cmain"><span class="t">Féal</span><span class="s">Rattaché à un de tes PJ</span></span><span class="chev" aria-hidden="true">›</span></button></div></div>`;}
 function emptyState(){
   const msg=S.sync==='local'?"Les données sont partagées par la base du groupe, qui n'est pas accessible depuis cette vue. Ouvre la page depuis claude.ai avec ton compte.":S.ready?"Aucun personnage visible pour l'instant. Tu peux en créer un dans l'onglet Joueurs.":"Chargement des personnages…";
   return `<div class="card empty">${esc(msg)}</div>`;
@@ -51,7 +57,7 @@ function goalBlock(c,s){const p=rangInfo(c);if(!p)return '';const open=!!(S.goal
   if(p.done)return `<div class="goal done"><b>Rang Légendaire</b> · atteint</div>`;
   const sum=p.gauges.map(g=>{const ok=g.cost===0&&g.cur>=g.target;return `${GSHORT[g.label]||g.label} ${ok?'✓':g.cur+'/'+g.target}`;}).join(' · ');
   const etat=p.blocked?'maximum trop bas':p.ready?'Acquérir le pouvoir '+p.next.toLowerCase():p.total+' XP restants';
-  let h=`<button class="goal${p.ready?' ready':''}" data-act="goalToggle" data-id="${esc(c.id)}" aria-expanded="${open}"><span><b>Rang ${esc(p.next)}</b> · ${etat}</span><span class="gg">${esc(sum)} ${open?'▴':'▾'}</span></button>`;
+  let h=`<button class="goal${p.ready?' ready':''}" data-act="goalToggle" data-id="${esc(c.id)}" aria-expanded="${open}"><span><b>Rang ${esc(p.next)}</b> ${p.blocked?'· '+etat:p.ready?'· '+etat:'dans '+p.total+' XP'} ›</span><span class="gg">${esc(sum)} ${open?'▴':'▾'}</span></button>`;
   if(!open)return h;
   h+=`<div class="card goald"><div class="muted small" style="margin-bottom:6px">${p.ready?`Les quatre critères sont réunis : il reste à acquérir le pouvoir ${p.next.toLowerCase()} (Capacités féeriques › Féerie). Le MJ le dévoile.`:'Il faut réunir les quatre critères.'}</div>`+p.gauges.map(g=>{const done=g.cost===0&&g.cur>=g.target;
     return `<div class="gauge${done?' done':''}"><span>${esc(g.label)}${g.via?`<br><span class="muted small">le moins cher : ${esc(g.via)}</span>`:''}</span>${bar(g.cur,g.target)}<span class="lv">${g.cur}<small>/${g.target}</small> <span class="pill ${done?'good':g.blocked?'bad':''}">${done?'OK':g.blocked?'max trop bas':g.cost+' XP'}</span></span></div>`;}).join('');
@@ -61,72 +67,88 @@ function goalBlock(c,s){const p=rangInfo(c);if(!p)return '';const open=!!(S.goal
 function viewSheet(){
   if(!ids().length)return emptyState();
   const id=S.sel&&S.chars[S.sel]&&vis(S.chars[S.sel])?S.sel:ids()[0];S.sel=id;const c=S.chars[id],s=summary(c,S.events);
-  if(c.type==='PNJ')return pnSheetHead(c,s)+pnSheetBody(c,s,id); /* lot 4 : fiche PNJ (fiches.js) */
-  let h=`<button class="back" data-act="tab" data-v="team"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Tous les personnages</button>${shChips(id)}`;
-  /* Lot 2 bis : médaillon du portrait dans l'en-tête (✎ pour le joueur du personnage et la gestion) */
-  {const im=portrait(c),inner=im?`<img src="${im}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`;
-   h+=`<div class="shhd">${canPortrait(c)?`<label class="shmed ed" aria-label="Changer le portrait de ${esc(c.court)}">${inner}<span class="pen" aria-hidden="true">✎</span><input type="file" accept="image/*" data-ptrfile="${esc(c.id)}" hidden></label>`:`<span class="shmed">${inner}</span>`}`;}
-  const idm=!isHum(c)&&S.forme==='m'&&(c.idm||'').trim(); /* lot 8 : identité masquée affichée en forme masquée */
-  h+=`<div style="margin-bottom:10px;flex:1;min-width:0"><div class="shname"><span>${esc(idm||c.nom)}</span>${kankaBtn(c.kanka,c.nom||c.court,'Fiche Kanka de '+(c.court||c.nom))}</div>${idm?`<div class="shreal">identité masquée · vrai nom : ${esc(c.nom)}</div>`:''}${(c.surnom||'').trim()?`<div class="shsur">« ${esc(c.surnom.trim())} »</div>`:''}<div class="shrace">${c.race?`<span class="rc">${raceLk(c)}</span> · `:''}<span class="rg">${esc(rangOf(c))}</span>${natfOf(c)?` · <span class="rg">${esc(NATF[natfOf(c)])}</span>`:''}</div><div class="muted small">${whoLineL(c)}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div>${fealLine(c)}</div></div>`;
-  /* Bandeau XP qui reste visible */
-  h+=`<div class="xpbar"><div class="xpd"><b class="num">${s.dispo}</b><span>XP dispo</span></div><div class="xpo"><span><b class="num">${s.prevu}</b> prévu</span><span class="${s.manque?'bad':''}"><b class="num">${s.manque}</b> manque</span></div><div class="xpm">${s.gains} gagnés · ${s.spent} dépensés</div></div>`;
+  if(c.type==='PNJ')return (isFeal(c)?shHead(c,s):pnSheetHead(c,s))+pnSheetBody(c,s,id); /* UX1 : le féal prend l'en-tête du PJ ; lot 4 : fiche PNJ (fiches.js) */
+  let h=shHead(c,s);
   const tab=shTabOf(c);
   h+=shTabsBar(c,tab);
   if(tab!=='prog')return h+viewSheetTab(c,tab);
   return h+viewProg(c,s,id);}
+/* UX1 (28/11/2026) : en-tête commun des fiches PJ et féal */
+function shPickList(id){const L=pjIds().filter(i=>vis(S.chars[i])&&actif(S.chars[i])).concat(ids().filter(i=>isFeal(S.chars[i])&&vis(S.chars[i])).sort((a,b)=>(S.chars[a].court||'').localeCompare(S.chars[b].court||'','fr')));
+  return `<div class="shpick card">${L.map(i=>{const c=S.chars[i],img=portrait(c);return `<button type="button" class="shpk" data-act="sel" data-id="${i}" aria-pressed="${i===id}"><span class="tph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span class="small">${esc(c.court)}</span></button>`;}).join('')}</div>`;}
+function shHead(c,s){const id=c.id,im=portrait(c),inner=im?`<img src="${im}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`,fe=c.type==='PNJ';
+  let h=`<div class="shtop">${crumb(['Personnages','data-act="tab" data-v="team"'])}<button type="button" class="shpkb" data-act="shPick" aria-expanded="${!!S.shPick}" aria-label="Changer de personnage"><span class="tph sm">${inner}</span>▾</button><span style="flex:1"></span>${isGest()?`<button type="button" class="ibtn del" data-act="cDel" data-id="${id}" aria-label="Supprimer ${esc(c.court)}">${ICON.corbeille}</button>`:''}</div>`;
+  if(S.shPick)h+=shPickList(id);
+  const idm=!fe&&!isHum(c)&&S.forme==='m'&&(c.idm||'').trim(),o=owners(c);
+  const sub=fe?[raceLk(c),esc(rangOf(c)),'féal de '+lk({t:'perso',id:c.pj},S.chars[c.pj].court)]:[c.race?raceLk(c):'',esc(rangOf(c)),natfOf(c)?esc(NATF[natfOf(c)]):'',o.length?esc(o.map(p=>p.nom).join(', ')):''];
+  h+=`<div class="shid">${canPortrait(c)?`<label class="shmed ed" aria-label="Changer le portrait de ${esc(c.court)}">${inner}<span class="pen" aria-hidden="true">✎</span><input type="file" accept="image/*" data-ptrfile="${esc(id)}" hidden></label>`:`<span class="shmed">${inner}</span>`}
+    <div class="shidt"><div class="shname"><span>${esc(idm||c.nom||c.court)}</span>${canEditC(c)?`<button type="button" class="ibtn sm" data-act="pcOpen" data-id="${id}" data-sh="1" aria-label="Modifier l'identité">${ICON.crayon}</button>`:''}</div>${idm?`<div class="shreal">identité masquée · vrai nom : ${esc(c.nom)}</div>`:''}${(c.surnom||'').trim()?`<div class="shsur">« ${esc(c.surnom.trim())} »</div>`:''}<div class="muted small">${sub.filter(Boolean).join(' · ')}${actif(c)?'':' · '+(STATUTS[c.statut]||'')}${c.cache?' · masqué aux autres':''}</div>${fe?'':fealLine(c)}</div>
+    <button type="button" class="shxp" data-act="xpdOpen" data-id="${id}"><b class="num">${s.dispo}</b><small>XP ›</small>${s.manque?`<span class="pill bad">−${s.manque}</span>`:''}</button></div>`;
+  return h;}
+function xpdSheet(g){const c=S.chars[g.id];if(!c)return '';const s=summary(c,S.events),r=(l,v,cl)=>`<div class="xprow"><span class="cmain">${l}</span><b class="${cl||''}">${v}</b></div>`;
+  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="XP de ${esc(c.court)}"><div class="in"><div class="blkhd"><h2 style="flex:1;margin:0">XP de ${esc(c.court)}</h2><button type="button" class="ibtn sm" data-act="closeSheet" aria-label="Fermer">✕</button></div>
+  ${r('Disponibles',s.dispo)}${r('Prévus',s.prevu)}${r('Manquants',s.manque,s.manque?'bad':'')}${r('Gagnés',s.gains)}${r('Dépensés',s.spent)}
+  <div class="actions"><button type="button" class="btn" data-act="xpdHist" data-id="${c.id}">Voir l'historique ›</button></div></div></div>`;}
 /* Onglet Progrès (PJ) et Progression (féal, lot 4) */
 /* Médaillons du haut : les PJ, puis les PNJ rattachés à un PJ (lot 4, médaillons plus petits) */
 function shChips(id){const L=pjIds().concat(ids().filter(i=>isFeal(S.chars[i])).sort((a,b)=>(S.chars[a].court||'').localeCompare(S.chars[b].court||'','fr')));
   return `<div class="pchips">${L.map(i=>{const c=S.chars[i],img=portrait(c),f=c.type==='PNJ';return `<button class="pchip${f?' pchf':''}" data-act="sel" data-id="${i}" aria-pressed="${i===id}" aria-label="${esc(c.court)}${f?' (féal de '+esc(S.chars[c.pj].court)+')':''}"><span class="ph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span class="pn">${esc(c.court)}</span></button>`;}).join('')}</div>`;}
 function viewProg(c,s,id){let h='';
   if(c.type==='PNJ'){
-    const f=S.pnjForm;
-    h+=`<h2>Ajouter des XP</h2><div class="card"><div class="frow"><div class="field"><label for="px">Intitulé</label><input id="px" type="text" data-pnj="titre" placeholder="ex. S12. Titre du scénario" value="${esc(f.titre)}"></div><div class="field"><label for="pm">XP</label><input id="pm" type="number" inputmode="numeric" min="0" data-pnj="montant" value="${esc(f.montant)}"></div></div><button class="btn pri" data-act="pnjXp"${f.titre.trim()&&+f.montant>0?'':' disabled'}>Ajouter à ${esc(c.court)}</button></div>`;
+    if(canEditC(c))h+=`<div class="pghead" style="margin-top:0"><span></span><button type="button" class="btn" data-act="pnjXpOpen">+ XP</button></div>`; /* UX1 : fenêtre au lieu du formulaire permanent */
   }
   if(c.type==='PJ')h+=goalBlock(c,s);
   const OB=!!S.onlyBuy,ir=key=>OB&&!canBuyKey(c,key,s.dispo)?'':itemRow(c,key,s.dispo),none='<div class="muted small" style="padding:6px 2px">Rien d\'achetable ici pour l\'instant.</div>';
-  const card=(t,inner)=>`<h2>${t}</h2><div class="card">${inner||none}</div>`;
-  h+=`<div class="flt"><span>Achetable maintenant</span><button class="tgb" data-act="onlyBuy" role="switch" aria-checked="${OB}" aria-label="Afficher seulement ce qui est achetable maintenant"><span class="tg${OB?' on':''}"></span></button></div>`;
+  const PJ=c.type==='PJ',card=(t,inner,k,sum)=>PJ?cBlk('pg-'+k,t,sum==null?'':sum,inner||none):`<h2>${t}</h2><div class="card">${inner||none}</div>`;
+  const nMax=keys=>keys.filter(k=>{const r=ref(c,k);return r&&r.max!=null&&(r.o.cur||0)>=r.max;}).length,mxS=keys=>{const n=nMax(keys);return n?n+' au max':'';};
+  const L1=[],L2=[];
+  if(PJ){for(const pr of c.profils||[])if(ppHave(pr)>0)h+=`<button type="button" class="ppban" data-act="ppOpen" data-prof="${esc(pr.nom)}"><b>${esc(ppFmt(ppHave(pr)))} PP</b> · profil ${esc(profLab(pr.nom,c))} <span aria-hidden="true">›</span></button>`;}
+  h+=`<div class="flt">${PJ?`<span class="muted small">♥ = prévu</span><button type="button" class="qbtn" data-act="xpHelp" data-k="prog" aria-label="Aide">?</button><span style="flex:1"></span>`:''}<span>Achetable maintenant</span><button class="tgb" data-act="onlyBuy" role="switch" aria-checked="${OB}" aria-label="Afficher seulement ce qui est achetable maintenant"><span class="tg${OB?' on':''}"></span></button></div>${PJ&&(S.xpHelp||{}).prog?`<div class="qtip2">♡ prévoit un niveau (le coût s'ajoute aux XP prévus). « +n » achète un niveau pour n XP ; grisé quand les XP disponibles ne suffisent pas. ★ max : valeur au maximum.</div>`:''}`;
   if(c.type==='PJ'){
     const fe=ir('feerie');
-    h+=card('Capacités féeriques',fe+(fe?pwSection(c):'')+ir('masque')+(OB?'':staticRow('Tricherie',tricherie(c),'calculée'))+ir('atout'));
-    h+=aoProgBlock(c,s,ir); /* arts obscurs : invisible tant qu'aucun art n'est débloqué */
+    L1.push(card('Capacités féeriques',fe+(fe?pwSection(c):'')+ir('masque')+(OB?'':staticRow('Tricherie',tricherie(c),'calculée'))+ir('atout'),'fee',mxS(['feerie','masque','atout'])));
+    L1.push(aoProgBlock(c,s,ir)); /* arts obscurs : invisible tant qu'aucun art n'est débloqué */
     const fo=ir('fortune');
-    h+=card('Ressources générales',fo?fo+(()=>{const src=fxIntSrc(c,'fortune').concat(ppFortSrc(c));return src.length?`<div class="muted small fxnote">Fortune : dont ${src.map(esc).join(', ')}</div>`:'';})():'');
+    L1.push(card('Ressources générales',fo?fo+(()=>{const src=fxIntSrc(c,'fortune').concat(ppFortSrc(c));return src.length?`<div class="muted small fxnote">Fortune : dont ${src.map(esc).join(', ')}</div>`:'';})():'','res'));
   }
-  h+=card('Caractéristiques',CARACS.map(n=>{const r=ir('carac:'+n);return r?r+(()=>{const src=fxIntSrc(c,'car:'+n);return src.length?`<div class="muted small fxnote">${esc(n)} : dont ${src.map(esc).join(', ')}</div>`:'';})():'';}).join(''));
+  (PJ?L1:{push:x=>{h+=x;}}).push(card('Caractéristiques',CARACS.map(n=>{const r=ir('carac:'+n);return r?r+(()=>{const src=fxIntSrc(c,'car:'+n);return src.length?`<div class="muted small fxnote">${esc(n)} : dont ${src.map(esc).join(', ')}</div>`:'';})():'';}).join(''),'car',mxS(CARACS.map(n=>'carac:'+n))));
   if(!OB&&c.type==='PNJ')h+=traitsCard(c); /* lot 4 : traits des PJ sur l'onglet Fiche seulement */
-  h+=`<h2>${c.type==='PNJ'?'Profils':'Compétences'}</h2>`;
-  if(c.type==='PJ'){const sp=ir('spec');if(sp)h+=`<div class="card" style="margin-bottom:10px">${sp}${specBlock(c)}</div>`;}
+  if(!PJ)h+=`<h2>Profils</h2>`;let PB='';
+  if(c.type==='PJ'){const sp=ir('spec');if(sp)PB+=`<div class="card" style="margin-bottom:10px">${sp}${specBlock(c)}</div>`;}
   let anyP=false;
   for(const pr of c.profils||[]){
     const rk=rankOf(c,pr),nr=nextRank(c,pr);
     let body='';
     if(c.type==='PJ'){body=(pr.comps||[]).map(x=>ir('comp:'+x.nom)).join('');if(OB&&!body)continue;
-      body+=nr?`<div class="muted small" style="padding-top:6px">Rang ${rk+1} : <b class="num">${nr.cost} XP</b> (${esc(nr.steps.join(', '))})</div>`:`<div class="muted small" style="padding-top:6px">Rang suivant hors de portée (maxima atteints).</div>`;}
+      const ko=c.id+'|'+pr.nom,ro=!!(S.rkOpen&&S.rkOpen[ko]);
+      body+=nr?`<button type="button" class="lnk rklink" data-act="rkOpen" data-k="${esc(ko)}" aria-expanded="${ro}">Rang ${rk+1} dans ${nr.cost} XP ›</button>${ro?`<ul class="rkpath">${nr.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`:`<div class="muted small" style="padding-top:6px">Rang suivant hors de portée (maxima atteints).</div>`;}
     else{body=ir('prof:'+pr.nom);if(OB&&!body)continue;if(pr.subs&&pr.subs.length)body+=`<div class="tags">${pr.subs.map(x=>`<span class="pill">${esc(x)}</span>`).join('')}</div>`;}
     anyP=true;
     if(c.type==='PJ'&&rk>=4)body=titreLine(c,pr)+body;
+    if(PJ){const k='pr-'+pr.nom,fold=OB?false:shFolded(k,true),pp=ppHave(pr);
+      PB+=`<section class="rblk"><div class="rbh"><button type="button" class="rbt" data-act="shFold" data-k="${esc(k)}" data-e="1" aria-expanded="${!fold}"><span class="tt"><span class="t">${esc(profLab(pr.nom,c))}</span><span class="n">rang ${rk}</span></span><span class="chev" aria-hidden="true">${fold?'›':'⌄'}</span></button>${pp>0?`<button type="button" class="ppgold" data-act="ppOpen" data-prof="${esc(pr.nom)}" aria-label="${esc(ppFmt(pp))} PP à dépenser pour ${esc(profLab(pr.nom,c))}">${esc(ppFmt(pp))} PP</button>`:''}</div>${fold?'':`<div class="rbb">${body}</div>`}</section>`;continue;}
     h+=`<div class="card" style="margin-bottom:10px"><div class="prof-head"><b>${esc(profLab(pr.nom,c))}</b><span style="display:flex;gap:8px;align-items:center"><span class="pill acc">rang ${rk}</span>`+
       (c.type==='PJ'?`<button class="ppf${ppHave(pr)>0?' on':''}" data-act="ppOpen" data-prof="${esc(pr.nom)}" aria-label="Points de personnage ${esc(profLab(pr.nom,c))} : ${pr.note??0}"><small>PP</small>${esc(ppFmt(pr.note??0))}</button>`:'')+`</span></div>${body}</div>`;
   }
-  if(OB&&!anyP)h+=`<div class="card">${none}</div>`;
+  if(OB&&!anyP){if(PJ)PB+=none;else h+=`<div class="card">${none}</div>`;}
+  if(PJ)L2.push(cBlk('pg-comp','Compétences',String((c.profils||[]).length)+' profils',PB));
   if(c.type==='PNJ'){const sp=ir('spec');if(sp)h+=`<div class="card" style="margin-top:10px">${sp}${specBlock(c)}</div>`;}
   if(c.type==='PJ'){
     const fu=(c.futiles||[]).map(f=>ir('fut:'+f.nom)).join('');
-    h+=`<h2>Compétences futiles</h2><div class="card">`+(fu||(OB?none:'<div class="muted">Aucune.</div>'));
-    if(!OB){if(S.futForm.open)h+=`<div class="frow" style="margin-top:10px"><div class="field"><label for="fn">Nom</label><input id="fn" type="text" data-fut="nom" value="${esc(S.futForm.nom)}"></div><div class="field"><label for="fm">Niveau max</label><input id="fm" type="number" min="1" max="12" data-fut="max" value="${esc(S.futForm.max)}"></div></div><div class="actions"><button class="btn pri" data-act="futSave">Ajouter</button><button class="btn" data-act="futCancel">Annuler</button></div>`;
-    else h+=`<div style="margin-top:10px"><button class="btn" data-act="futOpen">+ Ajouter une compétence futile</button></div>`;}
-    h+=`</div>`;
+    let FU=(fu||(OB?none:'<div class="muted">Aucune.</div>'));
+    if(!OB){if(S.futForm.open)FU+=`<div class="frow" style="margin-top:10px"><div class="field"><label for="fn">Nom</label><input id="fn" type="text" data-fut="nom" value="${esc(S.futForm.nom)}"></div><div class="field"><label for="fm">Niveau max</label><input id="fm" type="number" min="1" max="12" data-fut="max" value="${esc(S.futForm.max)}"></div></div><div class="actions"><button class="btn pri" data-act="futSave">Ajouter</button><button class="btn" data-act="futCancel">Annuler</button></div>`;
+    else FU+=`<div style="margin-top:10px"><button class="btn" data-act="futOpen">+ Ajouter une compétence futile</button></div>`;}
+    L2.push(cBlk('pg-fut','Compétences futiles',String((c.futiles||[]).length),FU));
     const pnjs=pnjOf(c);
-    h+=`<h2>Autres dépenses</h2><div class="card">`+AUTRES.filter(n=>n!=='PNJ'||pnjs.length).map(n=>`<div class="irow" style="grid-template-columns:minmax(0,1fr) 60px"><button class="rmain" data-act="openAutre" data-nom="${n}" style="grid-template-columns:minmax(0,1fr) auto"><span class="nm">${autreLab(n)}${n==='PNJ'?`<span class="nsub">vers ${pnjs.map(x=>esc(x.court)).join(', ')}</span>`:n==='Domaine'?'<span class="nsub">transfert</span>':''}</span><span class="lv">${autreTotal(c,n)}<small> XP</small></span></button><button class="plus${s.dispo>0?' ok':''}" data-act="autrePlus" data-nom="${n}"${s.dispo>0?'':' disabled'} aria-label="Dépenser des XP en ${autreLab(n)}">+</button></div>`).join('')+`</div>`;
+    L2.push(cBlk('pg-aut','Autres dépenses','',AUTRES.filter(n=>n!=='PNJ'||pnjs.length).map(n=>`<div class="irow" style="grid-template-columns:minmax(0,1fr) 60px"><button class="rmain" data-act="openAutre" data-nom="${n}" style="grid-template-columns:minmax(0,1fr) auto"><span class="nm">${autreLab(n)}${n==='PNJ'?`<span class="nsub">vers ${pnjs.map(x=>esc(x.court)).join(', ')}</span>`:n==='Domaine'?'<span class="nsub">transfert</span>':''}</span><span class="lv">${autreTotal(c,n)}<small> XP</small></span></button><button class="plus${s.dispo>0?' ok':''}" data-act="autrePlus" data-nom="${n}"${s.dispo>0?'':' disabled'} aria-label="Dépenser des XP en ${autreLab(n)}">+</button></div>`).join('')));
+    h+=`<div class="pg2col"><div>${L1.join('')}</div><div>${L2.join('')}</div></div>`;
   }
   const ach=[...(c.achats||[])].reverse();
-  h+=`<h2>Historique des achats</h2><div class="card"><div class="muted small" style="margin-bottom:6px">${ach.length} achats · ${s.spent} XP dépensés · touche un achat pour le modifier ou l'annuler</div>`;
+  let HI=`<div class="muted small" style="margin-bottom:6px">${s.spent} XP dépensés · touche un achat pour le modifier ou l'annuler</div>`;
   const shown=S.hist[id]?ach:ach.slice(0,3);
-  h+=shown.map(a=>`<button class="row" style="grid-template-columns:minmax(0,1fr) auto" data-act="achatEdit" data-id="${a.id}"><span><span class="t" style="font-weight:600">${a.ppNP?esc(a.label.replace(/non précisé$/,'')).concat('<i style="font-weight:400">non précisé</i>'):esc(a.label)}</span><br><span class="muted small">${a.date?fmtDate(a.date):'importé du tableur'}${a.motif?' · '+esc(a.motif):''}</span></span><span class="nx">${a.cout} XP</span></button>`).join('')||'<div class="muted">Aucun achat.</div>';
-  if(ach.length>3)h+=`<div style="margin-top:8px"><button class="btn ghost" data-act="histToggle">${S.hist[id]?'Réduire':'Tout afficher ('+ach.length+')'}</button></div>`;
-  h+=`</div>`;
+  HI+=shown.map(a=>`<button class="row" style="grid-template-columns:minmax(0,1fr) auto" data-act="achatEdit" data-id="${a.id}"><span><span class="t" style="font-weight:600">${a.ppNP?esc(a.label.replace(/non précisé$/,'')).concat('<i style="font-weight:400">non précisé</i>'):esc(a.label)}</span><br><span class="muted small">${a.date?fmtDate(a.date):'sans date'}${a.motif?' · '+esc(a.motif):''}</span></span><span class="nx">${a.cout} XP</span></button>`).join('')||'<div class="muted">Aucun achat.</div>';
+  if(ach.length>3)HI+=`<div style="margin-top:8px"><button class="btn ghost" data-act="histToggle">${S.hist[id]?'Réduire':'Tout afficher ('+ach.length+')'}</button></div>`;
+  h+=PJ?`<div id="pg-hist">${cBlk('pg-hist','Historique',ach.length+' achats',HI)}</div>`:`<h2>Historique des achats</h2><div class="card">${HI}</div>`;
   return h;
 }
 /* Onglet « Fiche complète » : consultation, sans achat */
@@ -135,7 +157,7 @@ function viewSheetFull(c){const fm=S.forme||'d',fxl=fxOf(c),x=raceRecOf(c),fee=c
   const fxLines=(k,nom)=>fxl.filter(e=>e.kind===k&&nrmA(e.src)===nrmA(nom)).map(e=>`<div class="fxs${fxOn(e,fm)?'':' off'}">Effet : ${esc(fxLabel(e))}${fxQ(e.quand)==='d'?' · démasqué seulement':''}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}</div>`).join('');
   const item=(nom,desc,fx)=>`<div class="fi"><b>${esc(nom)}</b>${desc?`<div class="s">${esc(desc)}</div>`:''}${fx||''}</div>`;
   const spl=key=>{const L=specsOf(c).filter(y=>y.cible===key);return L.length?`<div class="fsp">${L.map(y=>{const i=specInfo(y.nom);return esc(y.nom)+(i&&i[2]?'*':'');}).join(', ')}</div>`:'';};
-  if(!isHum(c))h+=`<div class="formesw"><span class="muted small">Forme</span><div class="seg sm" role="group" aria-label="Forme du personnage">${[['m','Masquée'],['d','Démasquée']].map(([v,l])=>`<button data-act="forme" data-v="${v}" aria-pressed="${fm===v}">${l}</button>`).join('')}</div></div>`;
+  if(!isHum(c))h+=`<div class="formesw"><span>Forme ${fm==='d'?'démasquée':'masquée'}</span><button class="tgb" data-act="forme" data-v="${fm==='d'?'m':'d'}" role="switch" aria-checked="${fm==='d'}" aria-label="Forme démasquée"><span class="tg${fm==='d'?' on':''}"></span></button></div>`; /* UX1 : interrupteur */
   h+=`<h2>Caractéristiques dérivées</h2><div class="dg">`+derived(c,fm).map(([n,v,b,src])=>{const tip=derFormula(c,fm,n);
     const ab=(src||[]).map(y=>{const m=y.match(/^([+−-]?\d+)\s+(.*)$/);return m?m[1]+' '+m[2].slice(0,4)+'.':y;}).join(' ');
     return `<button class="dt" data-act="derTip" data-n="${esc(n)}" title="${esc(tip)}" aria-label="${esc(tip)} : ${v}">${derIco(n)}<b class="num">${v}</b>${ab?`<small>${esc(ab)}</small>`:''}${S.derTip===n?`<span class="dtip" role="tooltip">${esc(tip)}</span>`:''}</button>`;}).join('')+`</div>`;
@@ -143,7 +165,8 @@ function viewSheetFull(c){const fm=S.forme||'d',fxl=fxOf(c),x=raceRecOf(c),fee=c
     let b=(pal?`<div class="muted small" style="padding-bottom:4px">Palier ${pal}</div>`:'')+row('Féerie',lv(c,'feerie'))+row('Masque',lv(c,'masque'))+row('Tricherie',tricherie(c));
     if(x&&own.length){b+=`<div class="muted small" style="margin-top:8px">Pouvoirs</div>`+[...own].sort((a,z)=>a.i-z.i).map(o=>{const p=pwCat(o.id),v=varOf(p,o.v||raceVarAt(x,o.i)),meta=[pwNat(o.id)?NAT_L[pwNat(o.id)].toLowerCase():'',p.type?TYPE_L[p.type]||p.type:''].filter(Boolean).join(' · ');
       const fl=(L,t)=>(L||[]).map(e=>`<div class="fxs${fxOn(e,fm)?'':' off'}">Effet : ${esc(fxLabel(e))}${fxQ(e.quand)==='d'?' · démasqué seulement':''}${v?` <span class="muted">· ${t}</span>`:''}</div>`).join('');
-      return `<div class="fi fil">${illThumb('pw',o.id,48)}<div><b>${pwLk(x,o.i,o.id)}</b>${meta?` <span class="muted small">${esc(meta)}</span>`:''}${p.desc?`<div class="s">${esc(p.desc)}</div>`:''}${fl(p.fx,'commun')}${v?fl(v.fx,'sous-type'):''}</div></div>`;}).join('');}
+      const op=!!(S.pwF&&S.pwF[c.id+'|'+o.id]);
+      return `<div class="fi fil">${illThumb('pw',o.id,48)}<div style="flex:1"><b>${pwLk(x,o.i,o.id)}</b>${meta?` <span class="muted small">${esc(meta)}</span>`:''}${op?(p.desc?`<div class="s">${esc(p.desc)}</div>`:'')+fl(p.fx,'commun')+(v?fl(v.fx,'sous-type'):''):''}</div><button type="button" class="ibtn sm" data-act="pwF" data-k="${esc(c.id+'|'+o.id)}" aria-expanded="${op}" aria-label="Détail">${op?'⌄':'›'}</button></div>`;}).join('');}
     h+=`<h2>Capacités féeriques</h2><div class="card">${b}</div>`;}
   if(x&&c.type==='PJ'){
     const av=(x.av||[]).filter(e=>e&&e[0]),dv=(x.dv||[]).filter(e=>e&&e[0]);
@@ -206,44 +229,73 @@ function sessPrefix(type){
   let n=0;for(const e of S.events)if(e.session&&evType(e)===type){const m=(e.titre||'').match(re);if(m)n=Math.max(n,+m[1]);}
   return type==='Scénario'?'S'+String(n+1).padStart(2,'0')+'. ':'[Int. '+String(n+1).padStart(3,'0')+'] ';
 }
-const sessLabel=e=>e?esc(e.titre)+(e.date?' · '+fmtDate(e.date):e.textuelle?' · Session textuelle':''):'';
+const sessLabel=e=>e?esc((h=>(h.num?h.num+' · ':'')+h.t)(chSessHead(e)))+(e.date?' · '+fmtDate(e.date):e.textuelle?' · Session textuelle':''):'';
 const sessChildren=id=>S.events.filter(e=>e.sessionId===id);
 function sessOptions(sel,req){return (req&&sessList().length?'':`<option value="">Aucune session</option>`)+sessList().map(e=>`<option value="${e.id}"${e.id===sel?' selected':''}>${sessLabel(e)}</option>`).join('');}
 function pnjAttached(){return Object.values(S.chars).filter(c=>c.type==='PNJ'&&c.pj&&S.chars[c.pj]&&vis(c)).sort((a,b)=>(a.court||'').localeCompare(b.court||''));}
+/* UX1 : événements d'un type, plus récent (numéro le plus haut) en tête */
+const xpEvOf=type=>chEvs().filter(f=>{const x=chEvNum(f);return x?x.type===type:f.type===type;}).sort((a,b)=>((chEvNum(b)||{}).n||0)-((chEvNum(a)||{}).n||0));
+const xpLinked=t=>t!=='Autre';
+function sdOk(g){if(g.kind==='sm'){const e=sessById(g.id);return (!!(e&&e.evt&&S.fiches[e.evt])&&g.type===evType(e))||!!(g.titre||'').trim();}
+  if(!xpLinked(g.type)||(g.type==='Vie du fief'&&!g.evt))return !!(g.titre||'').trim();return g.evt==='__new'?!!(g.evNom||'').trim():!!(g.evt&&S.fiches[g.evt]);}
+/* ---------- UX1 (28/11/2026) : page XP — Bilan, Sessions, session ouverte ---------- */
+const XP_PILL=e=>{const h=chSessHead(e);return `<span class="chsn ${h.cl}">${esc(h.num||'·')}</span>`;};
+const xpNum=d=>String(Math.round(d*10)/10).replace('.',',');
+function xpNextN(type){let n=0;for(const f of Object.values(S.fiches||{}))if(f.genre==='evenement'){const x=chEvNum(f);if(x&&x.type===type)n=Math.max(n,x.n);}return n+1;}
+function xpBilan(){const list=pjIds().map(i=>S.chars[i]).filter(c=>c&&vis(c)),gt=gainsTable(list,S.events);
+  const extra=[];for(const e of S.events)for(const en of e.entries){const ch=S.chars[en.perso];if(ch&&ch.type==='PJ'&&!NATURES.includes(en.nature)&&!extra.includes(en.nature))extra.push(en.nature);}
+  const nat=NATURES.concat(extra),rows=gt.rows.slice().sort((a,b)=>b.total-a.total);
+  const on=r=>actif(r.c)&&!r.c.horsMoyenne,off=rows.filter(r=>!on(r));S.xpDet=S.xpDet||{};
+  const ec=r=>{const d=Math.round(r.delta*10)/10;return on(r)?(d>0?'+'+xpNum(d):d<0?'−'+xpNum(-d):'0'):'';};
+  let ph=rows.filter(on).map(r=>{const c=r.c,det=S.xpDet[c.id];
+    return `<div class="xpbr${r.alert?' alert':''}"><button type="button" class="crow" data-act="xpDet" data-id="${c.id}" aria-expanded="${!!det}"><span class="cmain"><span class="t">${esc(c.court)}</span></span>${r.alert?`<span class="xpwarn">⚠ ${ec(r)}</span>`:`<span class="muted small">${ec(r)}</span>`}<b class="xptot">${r.total}</b></button>${r.alert&&rattrapage(gt.rows,r)?`<button type="button" class="lnk" data-act="ratOpen" data-id="${c.id}">Rattraper</button>`:''}${det?`<div class="xpdet muted small">${nat.filter(n=>r.by[n]).map(n=>`${esc(n)} ${r.by[n]}`).join(' · ')}</div>`:''}</div>`;}).join('');
+  ph+=`<div class="xpavg muted small"><span>Moyenne du groupe · ${xpNum(gt.avg)}</span>${off.length?`<span>${off.map(r=>esc(r.c.court)+' : '+r.total).join(', ')} (hors moyenne)</span>`:''}</div>`;
+  const tb=`<div class="tbl"><table><thead><tr><th>PJ</th>${nat.map(n=>`<th>${esc(n)}</th>`).join('')}<th>Total</th><th>Écart</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.alert?'alert':on(r)?'':'off'}"><td>${esc(r.c.court)}${on(r)?'':' <span class="pill">hors moyenne</span>'}</td>${nat.map(n=>`<td>${r.by[n]||'·'}</td>`).join('')}<td><b>${r.total}</b></td><td>${r.alert?'⚠ ':''}${ec(r)}</td><td>${r.alert&&rattrapage(gt.rows,r)?`<button type="button" class="lnk" data-act="ratOpen" data-id="${r.c.id}">Rattraper</button>`:''}</td></tr>`).join('')}<tr class="avg"><td>Moyenne du groupe</td>${nat.map(()=>'<td></td>').join('')}<td><b>${xpNum(gt.avg)}</b></td><td></td><td></td></tr></tbody></table></div>`;
+  return `<section class="card xpsec"><div class="blkhd"><h3>Bilan</h3><button type="button" class="qbtn" data-act="xpHelp" data-k="bil" aria-label="Aide">?</button></div>${(S.xpHelp||{}).bil?`<div class="qtip2">⚠ : PJ actif dont le total est inférieur d'au moins ${GAP} XP à la moyenne. « Rattraper » propose l'XP qui le ramène au PJ juste devant. Toucher une ligne : détail par nature.</div>`:''}<div class="only-ph">${ph}</div><div class="only-pc">${tb}</div></section>`;}
+function xpSessList(){const F=S.xpF||{t:[],p:''},L=sessList().filter(e=>(!F.t.length||F.t.includes(evType(e)))&&(!F.p||presents(e).includes(F.p)||e.entries.some(x=>x.perso===F.p)));
+  let fl='';if(S.xpFo){const chip=(act,v,lab,on)=>`<button type="button" class="chip" data-act="${act}" data-v="${esc(v)}" aria-pressed="${on}">${esc(lab)}</button>`;
+    fl=`<div class="chips" style="flex-wrap:wrap;overflow:visible;margin:6px 0">${TYPES.map(t=>chip('xpFt',t,t,F.t.includes(t))).join('')}</div><div class="chips" style="flex-wrap:wrap;overflow:visible;margin:0 0 6px">${chip('xpFp','','Tous les PJ',!F.p)}${pjIds().filter(i=>vis(S.chars[i])).map(i=>chip('xpFp',i,S.chars[i].court,F.p===i)).join('')}</div>`;}
+  const rows=L.map(e=>`<button type="button" class="crow" data-act="xpOpen" data-id="${e.id}">${XP_PILL(e)}<span class="cmain"><span class="t">${esc(chSessHead(e).t)}</span><span class="s">${e.date?fmtDate(e.date):'sans date'} · ${presents(e).length} PJ</span></span><span class="chev" aria-hidden="true">›</span></button>`).join('');
+  return `<section class="card xpsec"><div class="blkhd"><h3>Sessions · ${L.length}</h3><button type="button" class="chip" data-act="xpFo" aria-expanded="${!!S.xpFo}">Filtres ▾</button></div>${fl}${rows||'<div class="muted small">Aucune session.</div>'}</section>`;}
+function xpSessView(e){const h=chSessHead(e),f=e.evt&&S.fiches[e.evt],ed=isUser(),pr=orderPJ(presents(e)).filter(i=>vis(S.chars[i]));
+  const kids=sessChildren(e.id),blocked=kids.filter(k=>!(k.secret&&k.secret.k==='bonus')).length,others=f?sessList().filter(x=>x.evt===f.id&&x.id!==e.id).length:0;
+  let o=crumb(['XP','data-act="xpClose"'],['Session '+(h.num||esc(evType(e)))]);
+  o+=`<div class="ttlrow"><div class="ttl"><div class="xpmeta">${XP_PILL(e)}<span class="muted small">${esc(evType(e))} · ${e.date?fmtDate(e.date):'sans date'} · ${pr.length} PJ</span></div><h2 class="xph">${esc(h.t)}</h2></div>${ed?`<button type="button" class="ibtn" data-act="sessEditId" data-id="${e.id}" aria-label="Modifier la session">${ICON.crayon}</button><button type="button" class="ibtn del" data-act="xpDelAsk" data-id="${e.id}" aria-label="Supprimer la session"${blocked?' disabled':''}>${ICON.corbeille}</button>`:''}</div>`;
+  if(S.xpDel===e.id)o+=`<div class="delconf" role="alert"><span><b>Supprimer cette session ?</b> L'XP saisie dedans sera retirée pour tous les personnages.</span>${f&&!others?`<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-xpdelev="1"${S.xpDelEv?' checked':''}> Supprimer aussi l'événement « ${esc(f.nom)} » (aucune autre session)</label>`:''}<div class="acts"><button type="button" class="btn" data-act="xpDelNo">Annuler</button><button type="button" class="btn danger" data-act="xpDelOk" data-id="${e.id}">Supprimer</button></div></div>`;
+  if(blocked)o+=`<div class="muted small">Suppression impossible tant que ${blocked} découverte${blocked>1?'s sont rattachées':' est rattachée'} à cette session.</div>`;
+  const pv=c=>{const ch=S.chars[c];return ch&&ch.type==='PJ'&&vis(ch);},ord=pjIds(),by={};
+  for(const en of e.entries){if(!pv(en.perso))continue;(by[en.nature]=by[en.nature]||{});by[en.nature][en.perso]=(by[en.nature][en.perso]||0)+en.montant;}
+  const nats=NATURES.filter(n=>by[n]).concat(Object.keys(by).filter(n=>!NATURES.includes(n)));
+  let body='';for(const n of nats){const x=by[n],ps=Object.keys(x).filter(p=>x[p]).sort((a,b)=>ord.indexOf(a)-ord.indexOf(b));if(!ps.length)continue;const vals=[...new Set(ps.map(p=>x[p]))],nm=p=>esc(S.chars[p].court);
+    const act=pjIds().filter(i=>actif(S.chars[i])&&vis(S.chars[i]));
+    const who=vals.length===1?`<div class="xprow"><span class="cmain">${n==='Groupe'&&ps.length>=act.length?'Tous les PJ actifs, présents ou non':ps.map(nm).join(', ')}</span><b>${vals[0]}${ps.length>1?' chacun':''}</b></div>`:ps.map(p=>`<div class="xprow"><span class="cmain">${nm(p)}</span><b>${x[p]}</b></div>`).join('');
+    body+=`<div class="xpnat"><div class="xpnh"><span>${esc(n)}</span>${ed?`<button type="button" class="ibtn sm" data-act="natEdit" data-id="${e.id}" data-n="${esc(n)}" aria-label="Modifier ${esc(n)}">${ICON.crayon}</button>`:''}</div>${who}</div>`;}
+  body+=typeof fgSessBlock==='function'?fgSessBlock(e):'';
+  body+=kids.map(k=>{const ents=k.entries.filter(en=>pv(en.perso));if(!ents.length)return '';return `<div class="xpnat"><div class="xpnh"><span>${jTitle(k)}</span></div><div class="muted small">${[...new Set(ents.map(en=>en.nature+' +'+en.montant))].join(' · ')} · se corrige depuis Univers › ${k.creature?'Races':'Secrets'}</div></div>`;}).join('');
+  {const P=pnjAttached().map(c=>({c,sh:pnjShares(c,S.events).find(x=>x.sess===e.id)})).filter(x=>x.sh);
+    if(P.length)body+=`<div class="xpnat"><div class="xpnh"><span>Part des PNJ</span><button type="button" class="qbtn" data-act="xpHelp" data-k="pnj" aria-label="Aide">?</button></div>${(S.xpHelp||{}).pnj?`<div class="qtip2">Féal rattaché : 50 % des gains de son PJ dans la session s'il a participé activement, 25 % sinon (interrupteur), arrondi à l'inférieur.</div>`:''}${P.map(({c,sh})=>`<div class="xprow"><span class="cmain">${esc(c.court)} <span class="muted small">· féal de ${esc(S.chars[c.pj].court)} · ${sh.pct} %</span></span><b>${sh.montant}</b>${ed?`<button class="tgl" role="switch" aria-checked="${sh.on}" aria-label="${esc(c.court)} a participé activement" data-act="pnjToggle" data-id="${c.id}" data-s="${e.id}"><i></i></button>`:''}</div>`).join('')}</div>`;}
+  o+=`<section class="card xpsec"><div class="blkhd"><h3>XP attribués</h3>${ed?`<button type="button" class="pbtn" data-act="xpAddOpen" data-id="${e.id}" aria-label="Ajouter des XP">+</button>`:''}</div>${body||'<div class="muted small">Aucun XP pour l\'instant.</div>'}</section>`;
+  if(f)o+=`<section class="card xpsec"><div class="xpmeta">${f?`<span class="chsn ${CH_TCL[f.type]||''}">${esc(chNumOf(f)||'·')}</span>`:''}<span class="cmain">Événement : ${esc(f.nom)}</span></div><button type="button" class="lnk" data-act="xpEvGo" data-id="${f.id}">Voir dans la Chronique ›</button></section>`;
+  return o;}
 function viewGains(){
   if(!ids().length)return emptyState();
   if(S.form.editId)return viewLegacyForm()+gainsTableAndJournal();
-  const cs=curSession(),L=sessList();
-  let h=`<h2 style="margin-top:4px">Session de jeu</h2><div class="card" style="display:flex;flex-direction:column;gap:10px">`;
-  if(cs){h+=`<div class="field"><label for="cur-s">Session</label><select id="cur-s" data-cursess="1">${L.map(e=>`<option value="${e.id}"${e.id===cs.id?' selected':''}>${sessLabel(e)} · ${esc(evType(e))}</option>`).join('')}</select></div>`;}
-  else h+=`<div class="muted">Aucune session pour l'instant. Crée la première pour y ajouter de l'XP.</div>`;
-  h+=`<div class="actions">${cs?`<button class="btn" data-act="sessEdit">Modifier la session</button>`:''}<button class="btn pri" data-act="sessNew">+ Nouvelle session</button></div></div>`;
-  if(cs){
-    const f=S.form,formChars=pjIds().filter(i=>actif(S.chars[i]));
-    h+=`<h2>Ajouter de l'XP à la session</h2><div class="card">`;
-    const pr=orderPJ(presents(cs)),nmL=a=>a.filter(i=>vis(S.chars[i])).map(i=>esc(S.chars[i].court)).join(', ');
-    f.lines.forEach((ln,i)=>{
-      h+=`<div style="${i?'border-top:1px solid var(--line);padding-top:10px;margin-top:10px':''}"><div class="frow"><div class="field"><label for="gn${i}">Nature</label><select id="gn${i}" data-l="${i}" data-k="nature">${NATURES.concat(typeof fgFiefs==='function'&&fgFiefs().length?['Fief']:[]).map(n=>`<option${n===ln.nature?' selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label for="gm${i}">${ln.nature==='Fief'?'XP au fief':'XP par personnage'}</label><input id="gm${i}" type="number" inputmode="numeric" min="0" data-l="${i}" data-k="montant" value="${esc(ln.montant)}"></div></div>`;
-      if(ln.nature==='Scénario')h+=`<div class="muted small" style="margin:6px 0 4px">${pr.length?`Attribuée aux PJ présents : ${nmL(pr)}.`:'Aucun PJ présent : coche-les dans « Modifier la session ».'}</div>`;
-      else if(ln.nature==='Groupe')h+=`<div class="muted small" style="margin:6px 0 4px">Attribuée à tous les PJ actifs (${allPJ().length}).</div>`;
-      else if(ln.nature==='Fief')h+=fgFormLine(ln,i); /* lot 7 */
-      else{const sel=slp(ln,cs);h+=`<div class="chips" style="flex-wrap:wrap;overflow:visible;margin-top:6px">${pr.filter(id=>vis(S.chars[id])).map(id=>`<button class="chip" data-act="slChar" data-l="${i}" data-id="${id}" aria-pressed="${sel.includes(id)}">${esc(S.chars[id].court)}</button>`).join('')}</div><div class="muted small" style="margin-top:4px">${pr.length?'Seuls les PJ présents sont proposés.':'Aucun PJ présent : coche-les dans « Modifier la session ».'}</div>`;}
-      h+=f.lines.length>1?`<div class="actions" style="margin-bottom:4px"><button class="btn ghost" data-act="lineDel" data-l="${i}">Retirer la ligne</button></div>`:'';
-      h+=`</div>`;
-    });
-    const valid=f.lines.some(l=>+l.montant>0&&slp(l,cs).length);
-    h+=`<div class="actions" style="margin-top:10px"><button class="btn" data-act="lineAdd">+ Autre nature</button><button class="btn pri" data-act="sessAdd"${valid?'':' disabled'}>Ajouter à la session</button></div>`;
-    const P=pnjAttached();
-    if(P.length){
-      h+=`<div class="pnjbox"><h3>PNJ · part calculée sur la session</h3>`+P.map(c=>{const sh=pnjShares(c,S.events).find(x=>x.sess===cs.id),pj=S.chars[c.pj];
-        if(!sh)return `<div class="prow"><span class="pn"><b>${esc(c.court)}</b> <span class="muted">· ${esc(pj.court)} · rattaché après cette session</span></span></div>`;
-        return `<div class="prow"><span class="pn"><b>${esc(c.court)}</b> <span class="muted">· ${esc(pj.court)} · ${sh.pct} % de ${sh.base}</span></span><span class="pv num">+${sh.montant}</span><button class="tgl" role="switch" aria-checked="${sh.on}" aria-label="${esc(c.court)} a participé activement" data-act="pnjToggle" data-id="${c.id}"><i></i></button></div>`;}).join('')+
-        `<div class="muted small" style="margin-top:6px">Interrupteur : a participé activement (50 %), sinon 25 %. Arrondi à l'inférieur, mis à jour automatiquement si un gain est rattaché plus tard.</div></div>`;
-    }
-    h+=`</div>`;
-  }
-  return h+gainsTableAndJournal();
+  const se=S.xpSess&&sessById(S.xpSess);if(se)return xpSessView(se);
+  return `<div class="pghead"><h2>XP</h2>${isUser()?`<button type="button" class="pbtn big" data-act="sessNew" aria-label="Nouvelle session">+</button>`:''}</div>`+xpBilan()+xpSessList();
 }
+/* Fenêtre « + XP » : reprend le formulaire d'ajout existant (S.form, sessAdd) dans une feuille */
+function xpAddSheet(g){const cs=sessById(g.sid);if(!cs)return '';S.curSess=cs.id;const f=S.form,pr=orderPJ(presents(cs));
+  let h='';f.lines.forEach((ln,i)=>{
+    h+=`<div style="${i?'border-top:1px solid var(--line);padding-top:10px;margin-top:10px':''}"><div class="frow"><div class="field"><label for="gn${i}">Nature</label><select id="gn${i}" data-l="${i}" data-k="nature">${NATURES.concat(typeof fgFiefs==='function'&&fgFiefs().length?['Fief']:[]).map(n=>`<option${n===ln.nature?' selected':''}>${n}</option>`).join('')}</select></div><div class="field"><label for="gm${i}">${ln.nature==='Fief'?'XP au fief':'Montant par PJ'}</label><input id="gm${i}" type="number" inputmode="numeric" min="0" data-l="${i}" data-k="montant" value="${esc(ln.montant)}"></div></div>`;
+    if(ln.nature==='Groupe')h+=`<div class="muted small" style="margin:6px 0 4px">Tous les PJ actifs, présents ou non (${allPJ().length}).</div>`;
+    else if(ln.nature==='Fief')h+=fgFormLine(ln,i);
+    else if(ln.nature==='Scénario')h+=`<div class="muted small" style="margin:6px 0 4px">${pr.length?'PJ présents : '+pr.filter(id=>vis(S.chars[id])).map(id=>esc(S.chars[id].court)).join(', ')+'.':'Aucun PJ présent : coche-les dans la session (crayon).'}</div>`;
+    else{const sel=slp(ln,cs);h+=`<div class="chips" style="flex-wrap:wrap;overflow:visible;margin-top:6px">${pr.filter(id=>vis(S.chars[id])).map(id=>`<button class="chip" data-act="slChar" data-l="${i}" data-id="${id}" aria-pressed="${sel.includes(id)}">${esc(S.chars[id].court)}</button>`).join('')}</div>`;}
+    if(f.lines.length>1)h+=`<div class="actions" style="margin-bottom:4px"><button class="btn ghost" data-act="lineDel" data-l="${i}">Retirer la ligne</button></div>`;
+    h+=`</div>`;});
+  const add=[];for(const l of f.lines){const m=+l.montant;if(m>0)for(const pp of slp(l,cs))add.push([pp,m]);}
+  const rs=add.length?add.map(([p,m])=>(String(p).startsWith('fief:')?'Fief':esc((S.chars[p]||{}).court||p))+' +'+m).join(', '):'';
+  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Ajouter des XP"><div class="in"><div class="blkhd"><h2 style="flex:1;margin:0">Ajouter des XP</h2><button type="button" class="ibtn sm" data-act="closeSheet" aria-label="Fermer">✕</button></div>${h}${rs?`<div class="small">${rs}.</div>`:''}<div class="actions"><button class="btn ghost" data-act="lineAdd">+ Autre nature</button><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="sessAdd"${add.length?'':' disabled'}>Ajouter</button></div></div></div>`;}
 function gainsTableAndJournal(){
   let h='';
   const list=pjIds().map(i=>S.chars[i]);
@@ -293,14 +345,13 @@ function gainsTableAndJournal(){
   return h;
 }
 function viewPlayers(){
-  const pl=playersSorted(),tab=S.pTab||'joueurs',G=isGest();
+  const pl=playersSorted(),tab='joueurs',G=isGest(); /* UX1 : sous-onglet Personnages supprimé */
   const me=S.players[ME],CHG='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>';
   const pushOk=pushOK()&&me&&Notification.permission!=='denied';
   let h=`<h2 style="margin-top:4px">Joueurs</h2><div class="card me2"><div style="min-width:0"><div class="muted small" style="white-space:nowrap">Sur cet appareil</div><b style="font-size:17px">${S.visit?'Visiteur':me?esc(me.nom):'—'}</b></div><div class="me2r">${pushOk?`<button class="nsw" data-act="${S.pushSub?'pushOff':'pushOn'}" role="switch" aria-checked="${!!S.pushSub}" aria-label="Notifications sur cet appareil" title="Notifications sur cet appareil"><span aria-hidden="true">🔔</span><span class="tg${S.pushSub?' on':''}"></span></button>`:''}<button class="icb" data-act="meOpen" title="Changer d'identité" aria-label="Changer d'identité">${CHG}</button></div></div>`;
   if(S.pushMsg||(!pushOK()&&me))h+=`<div class="muted small" style="margin:6px 4px 0">${S.pushMsg?esc(S.pushMsg):isIOS()&&!isStandalone()?'Notifications : sur iPhone, ajoute d\'abord l\'appli à l\'écran d\'accueil.':'Notifications non disponibles sur ce navigateur.'}</div>`;
   else if(me&&pushOK()&&Notification.permission==='denied')h+=`<div class="muted small" style="margin:6px 4px 0">Notifications bloquées pour ce site : autorise-les dans les réglages du navigateur.</div>`;
   const vc=ids().map(i=>S.chars[i]);
-  h+=`<div class="seg2" role="group" aria-label="Affichage"><button data-act="pTab" data-v="joueurs" aria-pressed="${tab==='joueurs'}">Joueurs (${pl.filter(p=>!p.parti).length})</button><button data-act="pTab" data-v="perso" aria-pressed="${tab==='perso'}">Personnages (${vc.length})</button></div>`;
   const av=(txt,img)=>`<span class="av2">${img?`<img src="${img}" alt="">`:esc((txt||'?').slice(0,1))}</span>`;
   if(tab==='joueurs'){
     const row=p=>{const mine=vc.filter(c=>(p.persos||[]).includes(c.id)).map(c=>c.court).join(', ');
@@ -324,9 +375,7 @@ function viewPlayers(){
 }
 /* Droits dans l'onglet Joueurs : chacun sa fiche et ses personnages ; le reste avec les droits de gestion */
 const canEditP=p=>!!p&&!S.visit&&(isGest()||p.id===ME);
-const canEditC=c=>!!c&&!S.visit&&(c.type!=='PNJ'?(isGest()||owners(c).some(p=>p.id===ME))
-  :isFeal(c)?(isGest()||owners(S.chars[c.pj]).some(p=>p.id===ME)) /* lot 4 : féal = joueur de son PJ et gestion */
-  :(canEdit()||(!isGest()&&!!ME&&pnRev(c)))); /* lot 4 : PNJ = règle des fiches */
+const canEditC=c=>!!c&&isUser()&&vis(c); /* UX1 : tout le visible est modifiable par tout joueur identifié (PJ des autres, féaux, PNJ) */
 function plSheet(g){const p=S.players[g.id];if(!p)return null;const G=isGest(),ed=canEditP(p),last=gestCount()<=1,on=hasGest(p),arm=S.confirm==='pin:'+p.id;
   const mine=Object.values(S.chars).filter(c=>(p.persos||[]).includes(c.id)&&vis(c)).sort((a,b)=>(a.court||'').localeCompare(b.court||''));
   const opt=(lab,body)=>`<div class="optrow2"><span>${lab}</span>${body}</div>`;
@@ -354,7 +403,6 @@ function pcSheet(g){const c=S.chars[g.id];if(!c)return null;const ed=canEditC(c)
     <div class="field"><label for="cgn-${c.id}">Genre</label>${ed?`<select id="cgn-${c.id}" data-cf="genre" data-id="${c.id}">${[['','— à préciser —'],['m','Masculin'],['f','Féminin']].map(([v,l])=>`<option value="${v}"${(c.genre||'')===v?' selected':''}>${l}</option>`).join('')}</select>`:ro(c.genre==='f'?'Féminin':c.genre==='m'?'Masculin':'—')}</div>
     ${c.type==='PNJ'?`<div class="field"><label for="crg-${c.id}">Rang</label>${ed?`<select id="crg-${c.id}" data-cf="rang" data-id="${c.id}">${[...new Set([...pnjRangs(),rangOf(c)])].map(r=>`<option${rangOf(c)===r?' selected':''}>${esc(r)}</option>`).join('')}</select>`:ro(esc(rangOf(c)))}</div>`:`<div class="field"><label>Rang</label>${ro(esc(rangOf(c)))}</div>`}
     ${c.type==='PNJ'&&c.race===HUMAIN&&!isFeal(c)?`<div class="field" style="grid-column:1/-1"><label class="chk"><input type="checkbox" data-cfeal="${c.id}"${c.feal?' checked':''}${ed?'':' disabled'}> Féal <span class="muted small">(humain au courant de l'existence des fées et qui leur est favorable)</span></label></div>`:''}
-    ${canEdit()?`<div class="field" style="grid-column:1/-1"><label for="ck-${c.id}">Lien Kanka <span class="muted small">(facultatif : sans lien, le livre ouvre la recherche sur le nom)</span></label><input id="ck-${c.id}" type="url" inputmode="url" data-cf="kanka" data-id="${c.id}" value="${esc(c.kanka||'')}" placeholder="https://app.kanka.io/w/350361/entities/…" autocomplete="off"></div>`:''}
     ${c.type==='PJ'?`<div class="field" style="grid-column:1/-1"><label for="co-${c.id}">Joué par</label>${ed?`<select id="co-${c.id}" data-owner="${c.id}"><option value="">— personne —</option>${playersSorted().filter(p=>!p.parti||ow.some(o=>o.id===p.id)).map(p=>`<option value="${p.id}"${ow[0]&&ow[0].id===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}</select>`:ro(ow.map(p=>esc(p.nom)).join(', ')||'—')}</div>`:`<div class="field" style="grid-column:1/-1"><label for="cp-${c.id}">Rattaché au PJ</label>${ed?`<select id="cp-${c.id}" data-cf="pj" data-id="${c.id}"><option value="">— aucun —</option>${Object.values(S.chars).filter(x=>x.type==='PJ').sort((a,b)=>(a.court||'').localeCompare(b.court||'')).map(x=>`<option value="${x.id}"${c.pj===x.id?' selected':''}>${esc(x.court)}</option>`).join('')}</select>`:ro(c.pj&&S.chars[c.pj]?esc(S.chars[c.pj].court):'—')}</div>`}</div>`;
   if(g.own!==undefined){const np=S.players[g.own];h+=`<div class="confirm2"><div><b>Confier ${esc(c.court)} à ${np?esc(np.nom):'personne'} ?</b></div><div class="muted small">${ow.length?esc(ow.map(p=>p.nom).join(', '))+' ne le verra plus dans ses personnages.':''}${np?' '+esc(np.nom)+' pourra le modifier.':' Le personnage n\'aura plus de joueur.'}</div><div class="actions"><button class="btn ghost" data-act="ownNo">Annuler</button><button class="btn pri" data-act="ownOk">Confirmer</button></div></div>`;}
   let o='';
@@ -362,7 +410,7 @@ function pcSheet(g){const c=S.chars[g.id];if(!c)return null;const ed=canEditC(c)
   if(ed&&c.type==='PJ')o+=opt('Exclure de la moyenne d\'XP',`<button class="tgb" data-act="cMoy" data-id="${c.id}" role="switch" aria-checked="${!!c.horsMoyenne}" aria-label="Exclure de la moyenne d'XP"><span class="tg${c.horsMoyenne?' on':''}"></span></button>`);
   if(canPortrait(c))o+=opt('Portrait',`<span style="display:flex;gap:6px"><label class="btn ghost" style="cursor:pointer">Changer<input type="file" accept="image/*" data-ptrfile="${c.id}" hidden></label>${own?`<button class="btn ghost" data-act="ptrDel" data-id="${c.id}">Retirer</button>`:''}</span>`);
   if(o)h+=`<div class="grp2">Options</div>${o}`;
-  h+=`<div class="actions" style="margin-top:12px"><button class="btn pri" data-act="pcSheetGo" data-id="${c.id}">Ouvrir la fiche ›</button></div>`;
+  if(!g.sh)h+=`<div class="actions" style="margin-top:12px"><button class="btn pri" data-act="pcSheetGo" data-id="${c.id}">Ouvrir la fiche ›</button></div>`;
   if(G)h+=`<div class="danger2"><span>Zone sensible</span><button class="lnk-bad" data-act="cDel" data-id="${c.id}">Supprimer le personnage</button></div>`;
   return h+`</div></div>`;}
 function newPSheet(){return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Nouveau joueur"><div class="in"><div class="shd"><h2>Nouveau joueur</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div><div class="frow"><div class="field"><label for="np-n">Nom</label><input id="np-n" type="text" data-np="nom" value="${esc(S.newP.nom)}"></div><div class="field"><label for="np-r">Rôle</label><select id="np-r" data-np="role">${['Joueur','MJ'].map(r=>`<option${S.newP.role===r?' selected':''}>${r}</option>`).join('')}</select></div></div><div class="actions"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="addP">Ajouter</button></div></div></div>`;}
@@ -423,10 +471,10 @@ const evTypeL=e=>{const t=evType(e);return t===CRE_TYPE?"Race de l'univers":t;};
    sont des actions de jeu : joueur du personnage et gestion (canEditC), hors mode édition.
    ========================================================================== */
 const SH_ICO={por:'<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1-4 3.8-6 7-6s6 2 7 6"/>',prog:'<path d="M4 18l5-5 4 3 7-8"/><path d="M15 8h5v5"/>',fiche:'<rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>',feer:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',rel:'<circle cx="8.5" cy="9" r="3"/><circle cx="16" cy="10" r="2.5"/><path d="M3.5 19c.8-3 3-4.5 5-4.5s4.2 1.5 5 4.5M14 15.2c2.6-.4 4.6.9 5.5 3.8"/>',situ:'<path d="M4 20V10l8-5 8 5v10"/><path d="M9.5 20v-5h5v5"/>',jour:'<path d="M6 3.5h10a2 2 0 0 1 2 2v15H8a2 2 0 0 1-2-2z"/><path d="M6 17.5a2 2 0 0 1 2-2h10"/>'};
-const SH_TABS=[['prog','Progrès'],['fiche','Fiche'],['feer','Féerie'],['rel','Relations'],['situ','Situation'],['jour','Chronique']]; /* lot 2 : l'onglet Journaux devient « Chronique » (Quêtes / Journaux ; Feuilleton au lot 3) */
+const SH_TABS=[['prog','Progrès'],['fiche','Fiche'],['feer','Féerie'],['rel','Relations'],['situ','Situation'],['jour','Carnets']]; /* UX1 : « Chronique » devient « Carnets » ; lot 2 : l'onglet Journaux devient « Chronique » (Quêtes / Journaux ; Feuilleton au lot 3) */
 const shHasFee=c=>c.type==='PJ'&&!isHum(c);
 const PN_TABS=[['por','Portrait'],['situ','Situation'],['rel','Relations']]; /* lot 4 : fiche PNJ ; féal : + Progression */
-const shTabsOf=c=>c.type==='PNJ'?(isFeal(c)?PN_TABS.concat([['prog','Progression']]):PN_TABS):SH_TABS.filter(([k])=>k!=='feer'||shHasFee(c));
+const shTabsOf=c=>c.type==='PNJ'?(isFeal(c)?[['prog','Progrès']].concat(PN_TABS):PN_TABS):SH_TABS.filter(([k])=>k!=='feer'||shHasFee(c));
 function shTabOf(c){const L=shTabsOf(c);let t=S.shTab||L[0][0];if(t==='full')t='fiche';return L.some(x=>x[0]===t)?t:L[0][0];}
 const shTabsBar=(c,tab)=>`<div class="tabs6" role="group" aria-label="Parties de la fiche" style="grid-template-columns:repeat(${shTabsOf(c).length},minmax(0,1fr))">${shTabsOf(c).map(([k,l])=>`<button type="button" data-act="shTab" data-v="${k}" aria-pressed="${tab===k}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SH_ICO[k]}</svg>${l}</button>`).join('')}</div>`;
 const SHFOLD0={fut:true,lang:true,notab:true};
@@ -454,7 +502,7 @@ function shIllu(c,fm){const two=c.type==='PJ'&&!isHum(c),mq=two&&fm!=='d',id=two
   const lab=two?(mq?'forme masquée':'forme démasquée'):'',full=c.court+(lab?' · '+lab:''),can=canPortrait(c);
   const inp=`<input type="file" accept="image/*" data-ptrfile="${esc(id)}" data-plab="${esc(full)}" hidden>`;
   if(src)return `<div class="fibigw shill">${bigImg(id,src,full)}${can?`<div style="margin-top:6px"><label class="edl" style="cursor:pointer">${ICON.crayon} Changer l'illustration${lab?' ('+esc(lab)+')':''}${inp}</label></div>`:''}</div>`;
-  return `<div class="fibigw shill">${can?`<label class="fibig vide" aria-label="Ajouter l'illustration${lab?' ('+esc(lab)+')':''}"><span aria-hidden="true">+</span>Ajouter l'illustration${lab?'<br>('+esc(lab)+')':''}${inp}</label>`:`<span class="fibig vide" role="img" aria-label="Pas d'illustration"></span>`}</div>`;}
+  return `<div class="fibigw shill">${can?`<label class="addimg" aria-label="Ajouter l'illustration${lab?' ('+esc(lab)+')':''}">+ Image${lab?' <span class="muted small">('+esc(lab)+')</span>':''}${inp}</label>`:''}</div>`;}
 /* ---------- onglets Fiche et Féerie : reprise de l'ancienne « Fiche complète », en blocs ---------- */
 function viewSheetTab(c,tab){
   if(tab==='rel')return viewRelations(c);
@@ -465,11 +513,11 @@ function viewSheetTab(c,tab){
   const fxLines=(k,nom)=>fxl.filter(e=>e.kind===k&&nrmA(e.src)===nrmA(nom)).map(e=>`<div class="fxs${fxOn(e,fm)?'':' off'}">Effet : ${esc(fxLabel(e))}${fxQ(e.quand)==='d'?' · démasqué seulement':''}${e.t!=='rap'&&e.txt?' · '+esc(e.txt):''}</div>`).join('');
   const item=(nom,desc,fx)=>`<div class="fi"><b>${esc(nom)}</b>${desc?`<div class="s">${esc(desc)}</div>`:''}${fx||''}</div>`;
   const spl=key=>{const L=specsOf(c).filter(y=>y.cible===key);return L.length?`<div class="fsp">${L.map(y=>{const i=specInfo(y.nom);return esc(y.nom)+(i&&i[2]?'*':'');}).join(', ')}</div>`:'';};
-  if(!isHum(c))h+=`<div class="formesw"><span class="muted small">Forme</span><div class="seg sm" role="group" aria-label="Forme du personnage">${[['m','Masquée'],['d','Démasquée']].map(([v,l])=>`<button data-act="forme" data-v="${v}" aria-pressed="${fm===v}">${l}</button>`).join('')}</div></div>`;
-  if(tab==='fiche')h+=shIllu(c,fm)+chAgeBlk(c); /* lot 2 bis ; lot 3 : âge */
+  if(!isHum(c))h+=`<div class="formesw"><span>Forme ${fm==='d'?'démasquée':'masquée'}</span><button class="tgb" data-act="forme" data-v="${fm==='d'?'m':'d'}" role="switch" aria-checked="${fm==='d'}" aria-label="Forme démasquée"><span class="tg${fm==='d'?' on':''}"></span></button></div>`; /* UX1 : interrupteur */
+  if(tab==='fiche')h+=shIllu(c,fm); /* UX1 : âge dans le bloc « Âge et traits » */
   if(tab==='fiche'){
     const T=traitsOf(c);
-    h+=cBlk('trt','Traits de caractère',T.length?String(T.length):'',T.length?`<div class="fxl">${T.map(([n,s])=>`<span class="rchip">${esc(n)} <small class="muted">· ${esc(s)}</small></span>`).join('')}</div>`:shNone,canEditC(c)?`<div class="relbtns"><button type="button" class="addl" data-act="trOpen" data-id="${esc(c.id)}">${ICON.crayon} Modifier les traits</button></div>`:''); /* lot 4 : modifiables ici seulement */
+    h+=cBlk('trt','Âge et traits',T.length?String(T.length):'',chAgeBlk(c)+(T.length?`<div class="fxl">${T.map(([n,s])=>`<span class="rchip">${esc(n)} <small class="muted">· ${esc(s)}</small></span>`).join('')}</div>`:'')||shNone,canEditC(c)?`<div class="relbtns" style="justify-content:flex-end"><button type="button" class="ibtn sm" data-act="trOpen" data-id="${esc(c.id)}" aria-label="Modifier les traits">${ICON.crayon}</button></div>`:''); /* UX1 ; lot 4 : modifiables ici seulement */
     h+=cBlk('der','Caractéristiques dérivées','',`<div class="dg">`+derived(c,fm).map(([n,v,b,src])=>{const tip=derFormula(c,fm,n);
       const ab=(src||[]).map(y=>{const m=y.match(/^([+−-]?\d+)\s+(.*)$/);return m?m[1]+' '+m[2].slice(0,4)+'.':y;}).join(' ');
       return `<button class="dt" data-act="derTip" data-n="${esc(n)}" title="${esc(tip)}" aria-label="${esc(tip)} : ${v}">${derIco(n)}<b class="num">${v}</b>${ab?`<small>${esc(ab)}</small>`:''}${S.derTip===n?`<span class="dtip" role="tooltip">${esc(tip)}</span>`:''}</button>`;}).join('')+`</div>`);
@@ -488,7 +536,7 @@ function viewSheetTab(c,tab){
   let pw='';if(x&&own.length)pw=[...own].sort((a,z)=>a.i-z.i).map(o=>{const p=pwCat(o.id),v=varOf(p,o.v||raceVarAt(x,o.i)),meta=[PW_LAB[o.i]?PW_LAB[o.i].toLowerCase():'',p.type?TYPE_L[p.type]||p.type:''].filter(Boolean).join(' · ');
       const fl=(L,t)=>(L||[]).map(e=>`<div class="fxs${fxOn(e,fm)?'':' off'}">Effet : ${esc(fxLabel(e))}${fxQ(e.quand)==='d'?' · démasqué seulement':''}${v?` <span class="muted">· ${t}</span>`:''}</div>`).join('');
       return `<div class="fi fil">${illThumb('pw',o.id,48)}<div><b>${pwLk(x,o.i,o.id)}</b>${meta?` <span class="muted small">${esc(meta)}</span>`:''}${p.desc?`<div class="s">${esc(p.desc)}</div>`:''}${fl(p.fx,'commun')}${v?fl(v.fx,'sous-type'):''}</div></div>`;}).join('');
-  h+=cBlk('pw','Pouvoirs',`${own.length} sur 8`,pw||'<div class="muted small">Aucun pouvoir choisi.</div>');
+  h+=cBlk('pw','Pouvoirs',`${own.length} pouvoir${own.length>1?'s':''} sur 8 possibles`,pw||'<div class="muted small">Aucun pouvoir choisi.</div>');
   if(x){const av=(x.av||[]).filter(e=>e&&e[0]),dv=(x.dv||[]).filter(e=>e&&e[0]);
     h+=cBlk('avdv','Avantages et désavantages',`${av.length} + ${dv.length}`,(av.length?`<div class="fsub">Avantages</div>`+av.map(e=>item(e[0],e[1],fxLines('av',e[0]))).join(''):'')+(dv.length?`<div class="fsub">Désavantages</div>`+dv.map(e=>item(e[0],e[1],fxLines('dv',e[0]))).join(''):'')||shNone);
     const capL=(x.cap||[]).filter(e=>e&&e[0]);
@@ -505,15 +553,23 @@ function viewSheetTab(c,tab){
 /* ---------- Situation ---------- */
 const SITU=[['titres','Titres','Titre obtenu en jeu'],['fiefs','Fiefs','Fief'],['familles','Familles','Famille'],['orgs','Organisations','Organisation'],['poss','Possessions courantes','Possession'],['possN','Possessions notables','Possession notable'],['lieux','Résidence et lieux','Lieu']]; /* lot 4 : « lieux » pour les PNJ ; lot 6 : aussi pour les PJ (nature résidence / propriétaire / autre) */
 const situOf=c=>c.situ||{};
-function situRows(c,k){const E=canEditC(c);return (situOf(c)[k]||[]).map(e=>`<div class="srow"><span>${situNm(e)}${k==='orgs'&&e.role?` <span class="muted">· ${esc(e.role)}</span>`:''}${k==='lieux'&&situNat(e)!=='autre'?` <span class="muted">· ${SITU_NAT[situNat(e)]}</span>`:''}${e.note?`<span class="d">${esc(e.note)}</span>`:''}</span>${srcChip('jeu')}${E?`<button type="button" class="ibtn" data-act="situEd" data-k="${k}" data-i="${esc(e.id)}" aria-label="Modifier ${esc(e.nom)}">✎</button>`:''}</div>`);}
+function situRows(c,k){const E=canEditC(c);return (situOf(c)[k]||[]).map(e=>`<div class="srow"><span>${situNm(e)}${k==='orgs'&&e.role?` <span class="muted">· ${esc(e.role)}</span>`:''}${k==='lieux'&&situNat(e)!=='autre'?` <span class="muted">· ${SITU_NAT[situNat(e)]}</span>`:''}${e.note?`<span class="d">${esc(e.note)}</span>`:''}</span>${E?`<button type="button" class="ibtn sm" data-act="situEd" data-k="${k}" data-i="${esc(e.id)}" aria-label="Modifier ${esc(e.nom)}">✎</button>`:''}</div>`);}
 function viewSituation(c){let h='';const E=canEditC(c),add=(k,l)=>E?`<button type="button" class="addl" data-act="situEd" data-k="${k}">+ ${l}</button>`:'';
-  if(c.type==='PJ'){const f=lv(c,'fortune'),F=FORTUNE[f];h+=`<div class="fortl"><span>Fortune${F?` · <b>${esc(F[0])}</b> <span class="muted small">(${esc(F[1])})</span>`:''}</span><b class="num">${f}</b></div>`;}
-  const B=[],A=ppLinesOf(c,'A');B.push({e:!A.length,h:cBlk('act','Activités',A.length?String(A.length):'',A.join('')||shNone,'',!A.length)});
-  for(const [k,l,al] of SITU){let rows=k==='orgs'||k==='titres'?ogSitRows(c,k):k==='familles'?faSitRows(c):situRows(c,k); /* lot 5 a : organisations et titres reliés */
+  if(c.type==='PJ'){const f=lv(c,'fortune'),F=FORTUNE[f];h+=`<div class="fortl"><span>Fortune <b class="num">${f}</b>${F?` · <b>${esc(F[0])}</b>`:''}</span></div>`;} /* UX1 : une ligne */
+  const B=[],A=ppLinesOf(c,'A');B.push({e:!A.length,h:cBlk('act','Activités',String(A.length),A.join('')||shNone,'',!A.length)});
+  for(const [k,l,al] of SITU){if(k==='fiefs'&&c.type==='PJ')continue;
+    if(k==='titres'&&c.type==='PJ'){const ti=situTitIds(c),TR=ogSitRows(c,'titres'),FL=situOf(c).fiefs||[],FR=situRows(c,'fiefs'),used=new Set();let rows=ppLinesOf(c,'T');
+      TR.forEach((r,i)=>{rows.push(r);FL.forEach((f,j)=>{if(f.titre&&f.titre===ti[i]){used.add(j);rows.push(`<div class="sfief">${FR[j]}</div>`);}});});
+      FL.forEach((f,j)=>{if(!used.has(j))rows.push(FR[j]);});
+      const n=rows.length;B.push({e:!n,h:cBlk('titres','Titres et fiefs',String(n),rows.join('')||shNone,E?`<div class="relbtns">${add('titres','Titre')}${add('fiefs','Fief')}</div>`:'',!n)});continue;}
+    let rows=k==='orgs'||k==='titres'?ogSitRows(c,k):k==='familles'?faSitRows(c):situRows(c,k); /* lot 5 a : organisations et titres reliés */
     if(k==='titres')rows=ppLinesOf(c,'T').concat(rows);
     if(k==='poss')rows=ppLinesOf(c,'E').concat(situObjRows(c),rows); /* lot 6 : objets dont il est détenteur */
-    B.push({e:!rows.length,h:cBlk(k,l,rows.length?String(rows.length):'',rows.join('')||shNone,add(k,al),!rows.length)});}
+    B.push({e:!rows.length,h:cBlk(k,l,String(rows.length),rows.join('')||shNone,add(k,al),!rows.length)});}
   return h+shOrder(B);}
+/* UX1 : identifiants des titres, dans l'ordre d'ogSitRows(c,'titres') */
+function situTitIds(c){const T=ogTitles(c).filter(x=>!x.t.pp),ids=new Set(T.map(x=>x.t.id));return T.map(x=>x.t.id).concat(((c.situ||{}).titres||[]).filter(e=>!ids.has(e.id)).map(e=>e.id));}
+function situTitOpts(c){const T=ogTitles(c).filter(x=>!x.t.pp),ids=new Set(T.map(x=>x.t.id));return T.map(x=>[x.t.id,ogRL(x.r,c)]).concat(((c.situ||{}).titres||[]).filter(e=>!ids.has(e.id)).map(e=>[e.id,e.nom]));}
 /* ---------- Relations v2 (23/11/2026) : Contacts · Alliés · Ennemis · Autres jauges ----------
    Contacts / Alliés / Ennemis = PNJ de la liste (rang repris de sa fiche) ; contacts achetés en PP et contacts de groupe en texte ;
    jauge en cours affichée dans la section visée ; jauge pleine → « Valider ». Aucun coût ni gain d'XP / PP. */
@@ -552,15 +608,16 @@ function viewRelations(c){const R=relsOf(c),E=canEditC(c);let h='';
   const pend=obj=>R.flatMap(r=>(r.jauges||[]).filter(j=>j.obj===obj).map(j=>{const bo=relOrgBonus(c,r),d=j.diff!=null&&j.diff!==''?+j.diff:relDiff(relRang(r),obj);
     return jaugeBox(c,E,{...j,diffShow:d!=null?d-bo:null},`<div class="relh"><span>${relName(r)} <span class="muted small">· ${esc(relRang(r))}</span></span><span class="tagp">en cours ${REL_OBJ[obj][2]}</span></div>${bo?`<div class="muted small">dont même organisation −${bo} (${esc(relOrgName(c,r))})</div>`:''}`,{id:r.id,add:'relAddS',del:'relJDel',val:'relVal',valLab:'devient '+REL_OBJ[obj][3].toLowerCase()});})).join('');
   const sec=(k,t,niv,obj,btns)=>{const L=R.filter(r=>r.niv===niv),P=obj?pend(obj):'',n=L.length;
-    const em=!n&&!P;return {e:em,h:cBlk('rel-'+k,t,(n?String(n):'')+(P?(n?' + ':'')+'jauge en cours':''),(L.map(r=>relRow(c,r,E)).join('')||(P?'':shNone))+P,E?`<div class="relbtns">${btns}</div>`:'',em)};};
+    const em=!n&&!P;return {e:em,h:cBlk('rel-'+k,t,String(n)+(P?' + jauge en cours':''),(L.map(r=>relRow(c,r,E)).join('')||(P?'':shNone))+P,E?`<div class="relbtns">${btns}</div>`:'',em)};};
   const B=[];
   B.push(sec('contact','Contacts','contact','contact','<button type="button" class="addl" data-act="relNew" data-niv="contact">+ Contact</button><button type="button" class="addl" data-act="relGrp">+ Contact de groupe</button>'));
   B.push(sec('allie','Alliés','allie','allie','<button type="button" class="addl" data-act="relNew" data-niv="allie">+ Allié</button>'));
   B.push(sec('ennemi','Ennemis','ennemi',null,'<button type="button" class="addl" data-act="relNew" data-niv="ennemi">+ Ennemi</button>'));
   const O=c.jauges||[],QJ=jrRelJauges(c),nO=O.length+QJ.length; /* lot 2 : jauges de recherche des quêtes */
-  B.push({e:!nO,h:cBlk('rel-autres','Autres jauges',nO?String(nO):'',QJ.join('')+O.map(j=>jaugeBox(c,E,{...j,diffShow:j.diff!==''&&j.diff!=null?+j.diff:null},`<div class="relh"><span><b>${esc(j.nom)}</b></span></div>`,{add:'relOAdd',del:'relODel',val:'relOVal'})).join('')||(QJ.length?'':shNone),E?`<div class="relbtns"><button type="button" class="addl" data-act="relOJ">+ Autre jauge</button></div>`:'',!nO)});
+  B.push({e:!nO,h:cBlk('rel-autres','Autres jauges',String(nO),QJ.join('')+O.map(j=>jaugeBox(c,E,{...j,diffShow:j.diff!==''&&j.diff!=null?+j.diff:null},`<div class="relh"><span><b>${esc(j.nom)}</b></span></div>`,{add:'relOAdd',del:'relODel',val:'relOVal'})).join('')||(QJ.length?'':shNone),E?`<div class="relbtns"><button type="button" class="addl" data-act="relOJ">+ Autre jauge</button></div>`:'',!nO)});
   h+=shOrder(B);
-  h+=`<div class="muted small" style="margin-top:4px">Jauges : ouvertes à la demande du joueur ; après un jet fait à la table, on ajoute les succès (plusieurs d'un coup). Jauge pleine : « Valider ». Aucun coût en XP ni en PP.</div>`;
+  h+=`<div class="blkhd" style="justify-content:flex-end;margin-top:4px"><button type="button" class="qbtn" data-act="xpHelp" data-k="rel" aria-label="Aide sur les jauges">?</button></div>`;
+  if((S.xpHelp||{}).rel)h+=`<div class="qtip2">Jauges : ouvertes à la demande du joueur ; après un jet fait à la table, on ajoute les succès (plusieurs d'un coup). Jauge pleine : « Valider ». Aucun coût en XP ni en PP.</div>`;
   return h;}
 /* ---------- Journaux : remplacés au lot 2 par l'onglet Chronique (fiches.js, jrView) ---------- */
 /* ---------- Fenêtres et actions des onglets Relations et Situation ---------- */
@@ -570,7 +627,7 @@ const fld=(k,l,v,ta)=>`<div class="field"><label for="dk-${k}">${l}</label>${ta?
 const segF=(k,v,opts,l)=>`<div class="field"><label>${l}</label><div class="seg" role="group" aria-label="${esc(l)}">${opts.map(([o,t])=>`<button type="button" data-act="dlgSet" data-k="${k}" data-v="${o}" aria-pressed="${v===o}">${t}</button>`).join('')}</div></div>`;
 const dlgFoot=(del,ok)=>`${S.dlg&&S.dlg.err?`<div class="bad small" role="alert">${esc(S.dlg.err)}</div>`:''}<div class="actions" style="margin-top:12px">${del?`<button class="btn ghost" data-act="${del}" style="margin-right:auto">${S.dlg&&S.dlg.conf?'Confirmer le retrait':'Retirer'}</button>`:''}<button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="${ok}">Enregistrer</button></div></div></div>`;
 function shDlgSheet(g){const c=S.chars[g.cid];if(!c)return null;const f=g.f;
-  if(g.kind==='situEd'){const L=SITU.find(s=>s[0]===g.k);return dlgHead((g.i?'Modifier : ':'Ajouter : ')+L[2].toLowerCase(),esc(c.court))+fld('nom','Nom',f.nom)+(g.k==='orgs'?fld('role','Rôle dans l\'organisation',f.role):'')+situFField(g.k,f.f)+(g.k==='lieux'?segF('nat',f.nat||'res',[['res','Résidence'],['prop','Propriétaire'],['autre','Autre lieu']],'Nature'):'')+fld('note','Note',f.note,2)+dlgFoot(g.i?'situDel':'','situSave');}
+  if(g.kind==='situEd'){const L=SITU.find(s=>s[0]===g.k);return dlgHead((g.i?'Modifier : ':'Ajouter : ')+L[2].toLowerCase(),esc(c.court))+fld('nom','Nom',f.nom)+(g.k==='orgs'?fld('role','Rôle dans l\'organisation',f.role):'')+situFField(g.k,f.f)+(g.k==='fiefs'?`<div class="field"><label for="dk-titre">Titre</label><select id="dk-titre" data-dk="titre"><option value="">— sans titre —</option>${situTitOpts(c).map(([id,n])=>`<option value="${esc(id)}"${f.titre===id?' selected':''}>${esc(n)}</option>`).join('')}</select><div class="muted small" style="margin-top:4px">Titre absent de la liste : ajoute-le d'abord (« + Titre »).</div></div>`:'')+(g.k==='lieux'?segF('nat',f.nat||'res',[['res','Résidence'],['prop','Propriétaire'],['autre','Autre lieu']],'Nature'):'')+fld('note','Note',f.note,2)+dlgFoot(g.i?'situDel':'','situSave');}
   if(g.kind==='relPP'){const a=(c.achats||[]).find(x=>x.id===g.aid);if(!a||!a.ppel)return null;const cur=ctcPnjOf(a.ppel);
     return dlgHead('Contact acheté en PP',esc(c.court)+' · '+esc(a.ppel.nom)+(a.ppel.prec?' : '+esc(a.ppel.prec):''))+pnjPickF(f,relPnjs(c),'PNJ relié')
       +`${g.err?`<div class="bad small" role="alert">${esc(g.err)}</div>`:''}<div class="actions" style="margin-top:12px">${cur?'<button class="btn ghost" data-act="relPPDet" style="margin-right:auto">Détacher</button>':''}<button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="relPPSave">Enregistrer</button></div></div></div>`;}
@@ -592,11 +649,11 @@ function shCharAct(a,d){if(relpAct(a))return true;const c=S.chars[S.sel];
   const cc=OPEN.includes(a)?c:S.chars[S.dlg&&S.dlg.cid];if(!cc||!canEditC(cc))return true;
   const now=today(),g=S.dlg;
   const setC=fn=>{const n=clone(cc);fn(n);saveChar(n);};
-  if(a==='situEd'){const e=d.i&&(situOf(cc)[d.k]||[]).find(x=>x.id===d.i);S.dlg={kind:'situEd',cid:cc.id,k:d.k,i:d.i||null,f:e?{nom:e.nom,role:e.role||'',note:e.note||'',res:!!e.res,nat:situNat(e),f:e.f||''}:{nom:'',role:'',note:'',res:false,nat:'res',f:''}};}
+  if(a==='situEd'){const e=d.i&&(situOf(cc)[d.k]||[]).find(x=>x.id===d.i);S.dlg={kind:'situEd',cid:cc.id,k:d.k,i:d.i||null,f:e?{nom:e.nom,role:e.role||'',note:e.note||'',res:!!e.res,nat:situNat(e),f:e.f||'',titre:e.titre||''}:{nom:'',role:'',note:'',res:false,nat:'res',f:'',titre:''}};}
   else if(a==='situSave'){if(situSaveF(cc,g)){S.dlg=null;toast('Enregistré');render();return true;} /* lot 6 : objet ou lieu choisi dans Possessions */
     const fx=g.f.f&&S.fiches[g.f.f]&&situFk[g.k]?S.fiches[g.f.f]:null,nom=(g.f.nom||'').trim()||(fx?fx.nom:'');if(!nom){g.err='Le nom est obligatoire.';render();return true;}
-    setC(n=>{const s=n.situ={...(n.situ||{})},L=(s[g.k]||[]).slice(),v={nom,...((g.f.role||'').trim()&&g.k==='orgs'?{role:g.f.role.trim()}:{}),...((g.f.note||'').trim()?{note:g.f.note.trim()}:{}),...(g.k==='lieux'?{nat:g.f.nat||'res',res:(g.f.nat||'res')==='res'}:{}),f:fx?fx.id:undefined};
-      const i=L.findIndex(x=>x.id===g.i);if(i>=0){L[i]={...L[i],...v,role:v.role,note:v.note,res:v.res,nat:v.nat,f:v.f};if(!v.f)delete L[i].f;}else{const nv={id:uid('s'),date:now,...v};if(!nv.f)delete nv.f;L.push(nv);}s[g.k]=L;}); /* lot 5 a : ajout sans fiche corrigé */S.dlg=null;toast('Enregistré');}
+    setC(n=>{const s=n.situ={...(n.situ||{})},L=(s[g.k]||[]).slice(),v={nom,...((g.f.role||'').trim()&&g.k==='orgs'?{role:g.f.role.trim()}:{}),...((g.f.note||'').trim()?{note:g.f.note.trim()}:{}),...(g.k==='lieux'?{nat:g.f.nat||'res',res:(g.f.nat||'res')==='res'}:{}),...(g.k==='fiefs'?{titre:g.f.titre||''}:{}),f:fx?fx.id:undefined};
+      const i=L.findIndex(x=>x.id===g.i);if(i>=0){L[i]={...L[i],...v,role:v.role,note:v.note,res:v.res,nat:v.nat,f:v.f};if(g.k==='fiefs'&&!v.titre)delete L[i].titre;if(!v.f)delete L[i].f;}else{const nv={id:uid('s'),date:now,...v};if(!nv.f)delete nv.f;L.push(nv);}s[g.k]=L;}); /* lot 5 a : ajout sans fiche corrigé */S.dlg=null;toast('Enregistré');}
   else if(a==='situDel'){if(!g.conf){g.conf=true;render();return true;}setC(n=>{const s=n.situ={...(n.situ||{})};s[g.k]=(s[g.k]||[]).filter(x=>x.id!==g.i);});S.dlg=null;}
   else if(a==='relNew'){S.dlg={kind:'relNew',cid:cc.id,niv:d.niv,f:{pnj:'',nnom:'',note:'',taille:'',diff:''}};}
   else if(a==='relPP'){const x=(cc.achats||[]).find(y=>y.id===d.id);if(!x||!x.ppel)return true;const cur=ctcPnjOf(x.ppel);S.dlg={kind:'relPP',cid:cc.id,aid:x.id,f:{pnj:cur||(ctcMatch(x.ppel.prec).length?'':(x.ppel.prec?'__new':'')),nnom:x.ppel.prec||''}};}
@@ -645,15 +702,10 @@ const cwCanEd=b=>cwSee(b)&&(isGest()||b.statut!=='attente');
 const cwList=()=>Object.values(S.brouillons||{}).filter(cwSee).sort((a,b)=>(a.cree||'').localeCompare(b.cree||''));
 function cwSave(b){b.maj=new Date().toISOString();S.brouillons={...(S.brouillons||{}),[b.id]:b};S.cwSaved=true;persist('brouillons/'+b.id,b);}
 function cwUpd(fn){const b0=cwB();if(!cwCanEd(b0))return false;const b=clone(b0);b.d=b.d||{};const r=fn(b.d,b);if(r===false)return false;cwSave(b);return true;}
-function cwNew(){if(!ME||S.visit||!S.players[ME])return;const id='br-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),now=new Date().toISOString();
-  const b={id,kind:'pj',par:ME,cree:now,maj:now,etape:0,statut:'brouillon',d:{ident:{owner:isGest()?'':ME}}};cwSave(b);cwGoTo(id,0);}
+function cwNew(kind){if(!ME||S.visit||!S.players[ME])return;const id='br-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),now=new Date().toISOString();
+  const b={id,kind:kind==='feal'?'feal':'pj',par:ME,cree:now,maj:now,etape:0,statut:'brouillon',d:{ident:{owner:isGest()?'':ME}}};cwSave(b);cwGoTo(id,0);}
 function cwGoTo(id,step){navClear();S.view='crea';S.cwId=id;S.cwStep=step||0;S.dlg=null;S.sheet=null;S.cwSaved=false;window.scrollTo(0,0);}
 const cwMeta=(b,X)=>{const I=(b.d||{}).ident||{};return (b.kind==='feal'?'Nouveau féal':'Nouveau PJ')+((I.court||'').trim()?' · '+I.court.trim():'');};
-/* Tuiles de Personnages › PJ : brouillons visibles, puis « + Nouveau PJ » */
-function cwTiles(){let h='';for(const b of cwList()){const I=(b.d||{}).ident||{},st=crSteps(b),n=Math.min(b.etape||0,st.length-1),own=S.players[b.par];
-    h+=`<div class="cwtw"><button class="card team cwtile${b.statut==='attente'?' att':''}" data-act="cwOpen" data-id="${esc(b.id)}"><span class="pill ${b.statut==='attente'?'acc':'plan'}">${b.statut==='attente'?'En attente de validation':'Brouillon · reprendre'}</span><span class="nm">${esc((I.court||'').trim()||(b.kind==='feal'?'Nouveau féal':'Nouveau PJ'))}</span><span class="muted small">${b.kind==='feal'?'Féal':'PJ'}${b.d&&b.d.race?' · '+esc(b.d.race):''} · étape ${n+1} / ${st.length}${isGest()&&own?' · par '+esc(own.nom):''}</span>${b.com&&b.statut==='brouillon'?`<span class="small bad">Renvoyé par le MJ</span>`:''}</button><button type="button" class="lnk cwtdel" data-act="cwDelAsk" data-id="${esc(b.id)}" aria-label="Supprimer le brouillon ${esc((I.court||'').trim()||'sans nom')}">Supprimer</button></div>`;}
-  if(ME&&S.players[ME]&&!S.visit)h+=`<button class="card team cwnew" data-act="cwNew"><span class="cwplus" aria-hidden="true">+</span><span class="nm">Nouveau PJ</span><span class="muted small">Assistant de création (PJ ou féal)</span></button>`;
-  return h;}
 /* ---------- Écran de l'assistant ---------- */
 const cwChip=(act,attrs,on,lab,dis)=>`<button type="button" class="chip" data-act="${act}" ${attrs} aria-pressed="${!!on}"${dis?' disabled':''}>${lab}</button>`;
 const cwSec=(t,body,sub)=>`<section class="card cwsec"><h3>${t}</h3>${sub?`<p class="muted small">${sub}</p>`:''}${body}</section>`;
@@ -666,7 +718,7 @@ function viewCrea(){const b=cwB();
   const st=crSteps(b),i=Math.max(0,Math.min(S.cwStep||0,st.length-1)),k=st[i][0],ck=crCheck(b),cur=ck[k]||{ok:true,manque:[],avert:[]},E=cwCanEd(b);
   let h=`<div class="cwhead"><div class="cwtop"><span class="small">${S.cwSaved?'Brouillon enregistré':b.statut==='attente'?'Envoyé au MJ':'Brouillon'}</span><button type="button" class="cwx" data-act="cwQuit" aria-label="Quitter l'assistant (le brouillon est gardé)">✕</button></div>
     <h1>${esc(cwMeta(b))}</h1><span class="small">Étape ${i+1} / ${st.length} · ${esc(st[i][1])}</span><div class="cwbar"><i style="width:${Math.round(100*(i+1)/st.length)}%"></i></div>
-    <div class="cwdots" role="list">${st.map((s,j)=>`<button type="button" role="listitem" data-act="cwGo" data-i="${j}" class="${j===i?'on':''}${(ck[s[0]]||{}).ok?' ok':''}" aria-label="Étape ${j+1} : ${esc(s[1])}${(ck[s[0]]||{}).ok?' (complète)':''}" title="${esc(s[1])}">${j+1}</button>`).join('')}</div></div>`;
+    <div class="cwdots" role="list">${st.map((s,j)=>{const rch=j<=Math.max(b.etape||0,i),ok=(ck[s[0]]||{}).ok&&j!==i&&rch;return `<button type="button" role="listitem" data-act="cwGo" data-i="${j}" class="${j===i?'on':''}${ok?' ok':''}${rch?'':' off'}" aria-label="Étape ${j+1} : ${esc(s[1])}${ok?' (complète)':''}" title="${esc(s[1])}"${rch?'':' disabled'}>${ok?'✓':j+1}</button>`;}).join('')}</div></div>`; /* UX1 : étapes non atteintes inactives */
   h+=cwFxBox(b);
   if(b.com&&b.statut==='brouillon')h+=`<div class="cwcom"><b>Message du MJ</b><div>${esc(b.com)}</div></div>`;
   if(b.statut==='attente')h+=`<div class="cwcom att"><b>En attente de validation par le MJ.</b>${isGest()?`<div class="actions"><button class="btn pri" data-act="cwValOpen">Valider ou renvoyer</button></div>`:'<div class="small">La fiche ne peut plus être modifiée ; le MJ peut la renvoyer en brouillon.</div>'}</div>`;
@@ -677,14 +729,16 @@ function viewCrea(){const b=cwB();
   h+=`<div class="cwfoot">${i>0?`<button class="btn" data-act="cwGo" data-i="${i-1}">‹ Précédente</button>`:''}${i<st.length-1?`<button class="btn pri" data-act="cwGo" data-i="${i+1}">Suivante ›</button>`:''}</div>`;
   return `<div class="cwiz">${h}</div>`;}
 function cwStep(b,k,ck){const d=b.d||{},X=crX(d),R=crRules(),fe=b.kind==='feal';
-  if(k==='race'){let h=cwSec('Statut',`<div class="chips cwchips">${cwChip('cwKind','data-v="pj"',!fe,'PJ')}${cwChip('cwKind','data-v="feal"',fe,"Féal d'un de mes PJ")}</div>`,"Un PNJ non rattaché n'a pas de scores : il se crée depuis Personnages › PNJ.");
+  if(k==='race'){let h=''; /* UX1 : PJ ou féal se choisit au « + » de la liste */
     if(fe){const L=pjIds().map(id=>S.chars[id]).filter(c=>actif(c)&&(isGest()||owners(c).some(p=>p.id===ME)));
       h+=cwSec('Rattachement',L.length?`<div class="chips cwchips">${L.map(c=>cwChip('cwSet',`data-p="pj" data-v="${esc(c.id)}"`,d.pj===c.id,esc(c.court))).join('')}</div>`:'<p class="muted small">Aucun PJ actif à rattacher.</p>','Le féal est un humain, au rang Larbin, toujours visible de toute la table.');
       return h+cwInfo(`Féal : ${R.fealC3} caractéristiques à 3 et ${R.fealC2} à 2 ; ${R.fealProf} points de profils (${R.fealProfMax} au plus par profil) ; ${R.trFeal} traits. Pas de compétences, d'atouts, de capacités ni de pouvoirs.`);}
-    const RL=crRaceList(),grp=f=>RL.filter(o=>o.cr.fam===f);
-    let rh='';for(const [f,l] of [['trad','Fées traditionnelles'],['mod','Fées modernes'],['','Autres']]){const L=f?grp(f):RL.filter(o=>o.cr.fam!=='trad'&&o.cr.fam!=='mod');if(!L.length)continue;
-      rh+=`<p class="cwgl">${l}</p><div class="chips cwchips">${L.map(o=>cwChip('cwRace',`data-v="${esc(o.x.sing)}"`,d.race===o.x.sing,esc(raceNm(o.x)))).join('')}</div>`;}
-    h+=cwSec('Race',rh||'<p class="muted small">Aucune race disponible (caractéristiques à renseigner dans Univers › Races).</p>','Exotiques exclues ; seules les races visibles sont proposées.');
+    /* UX1 : 3 listes déroulantes, une seule race en tout ; exotiques proposées */
+    const RL=crRaceList();let rh='';
+    for(const [f,l] of [['trad','Fée traditionnelle'],['mod','Fée moderne'],['exo','Fée exotique']]){const L=RL.filter(o=>f==='exo'?o.cr.fam!=='trad'&&o.cr.fam!=='mod':o.cr.fam===f);if(!L.length)continue;const on=L.some(o=>o.x.sing===d.race);
+      rh+=`<div class="field cwrsel${on?' on':''}"><label for="cwr-${f}">${l} · ${L.length}</label><select id="cwr-${f}" data-cwrace="1"><option value="">—</option>${L.map(o=>`<option value="${esc(o.x.sing)}"${d.race===o.x.sing?' selected':''}>${esc(raceNm(o.x))}</option>`).join('')}</select></div>`;}
+    if(X)rh+=`<p class="small">Race choisie : <b>${esc(raceNm(X.x))}</b> · ${lk({t:'race',id:X.cr.id},'Aperçu')}</p>`;
+    h=cwSec('Race',rh||'<p class="muted small">Aucune race disponible (caractéristiques à renseigner dans Univers › Races).</p>','Races visibles dont les caractéristiques sont renseignées.');
     if(X){const x=X.x,mins=CARACS.reduce((t,c)=>t+crCarLim({},X,c).min,0),pred=crPredList(d,X).map(p=>p.alt?p.alt.join(' ou '):p.nom),av=(x.av||[]).filter(e=>e&&e[0]).map(e=>e[0]),dv=(x.dv||[]).filter(e=>e&&e[0]).map(e=>e[0]);
       h+=cwSec(esc(raceNm(x))+' — aperçu',`<p class="small">${esc(NATF[X.cr.fam]||'')}${x.taille?' · taille : '+esc(x.taille):''} · minima ${mins} · prédilection : ${esc(pred.join(', ')||'—')}</p>${av.length?`<p class="small"><b>Avantages :</b> ${esc(av.join(', '))}</p>`:''}${dv.length?`<p class="small"><b>Désavantages :</b> ${esc(dv.join(', '))}</p>`:''}<p class="small">Avantages et désavantages acquis d'office. ${lk({t:'race',id:X.cr.id},'Ouvrir la fiche de race')}</p>`);
       const T=crRaceTraits(X);h+=cwSec('Trait de caractère de la race',T.length?`<div class="chips cwchips">${T.map(t=>cwChip('cwSet',`data-p="traitRace" data-v="${esc(t)}"`,d.traitRace===t,esc(t))).join('')}</div>`:cwTxt('traitRace',d.traitRace,'Trait','Aucun trait saisi pour cette race : saisie libre'));}
@@ -728,8 +782,9 @@ function cwStep(b,k,ck){const d=b.d||{},X=crX(d),R=crRules(),fe=b.kind==='feal';
       `<div class="field"><label>Genre (facultatif)</label><div class="seg cwseg">${[['','—'],['m','Masculin'],['f','Féminin']].map(([v,l])=>`<button type="button" data-act="cwSet" data-p="ident.genre" data-v="${v}" aria-pressed="${(I.genre||'')===v}">${l}</button>`).join('')}</div></div>`+
       `<div class="field"><label for="cw-own">Joueur (obligatoire)</label>${G?`<select id="cw-own" data-cwf="ident.owner"><option value="">— choisir —</option>${pl.map(p=>`<option value="${esc(p.id)}"${I.owner===p.id?' selected':''}>${esc(p.nom)}</option>`).join('')}</select>`:`<div class="inp ro">${esc((S.players[I.owner]||{}).nom||'')}</div>`}</div>`+
       `<div class="field"><label>Date de naissance dans le jeu (facultatif)</label><div class="frow cwnaiss">${[['j','Jour',2],['m','Mois',2],['a','Année',4]].map(([f,l,w])=>`<input type="number" inputmode="numeric" data-cwf="ident.naiss.${f}" data-num="1" value="${esc(n[f]||'')}" placeholder="${l}" aria-label="${l}" style="max-width:${w*22+30}px">`).join('')}</div></div>`+
-      '<p class="muted small">Portrait : il se met depuis la fiche, une fois le personnage validé.</p>');
-    return h+cwSec('Situation (facultatif)',CR_SITU.map(([f,l])=>cwTxt('situ.'+f,S0[f],l,'Une entrée par ligne',2)).join(''),'En texte libre ; reliée aux fiches (familles, organisations, lieux, objets) quand elles existeront.');}
+      `<div class="field"><label>Portrait (facultatif)</label>${(S.ptr||{})[b.id]?`<span class="tph" style="width:56px;height:56px;border-radius:50%;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:8px"><img src="${S.ptr[b.id]}" alt="" style="width:100%;height:100%;object-fit:cover"></span>`:''}<label class="addimg">${(S.ptr||{})[b.id]?'Changer':'+ Image'}<input type="file" accept="image/*" data-ptrfile="${esc(b.id)}" hidden></label></div>`);
+    const F=d.situF||{},pick=(k,l,flt)=>{const L=fiSort(fiAll().filter(x=>flt(x)&&fiSee(x)));if(!L.length)return '';const sel=(F[k]||[]).filter(id=>S.fiches[id]);return `<div class="field"><label for="cws-${k}">${l}</label>${sel.length?`<div class="chips cwchips">${sel.map(id=>cwChip('cwSitF',`data-k="${k}" data-v="${esc(id)}"`,true,esc(S.fiches[id].nom)+' ✕')).join('')}</div>`:''}<select id="cws-${k}" data-cwsitf="${k}"><option value="">Ajouter…</option>${L.filter(x=>!sel.includes(x.id)).map(x=>`<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></div>`;}; /* UX1 : liste déroulante */
+    return h+cwSec('Situation (facultatif)',pick('fiefs','Fiefs',x=>fiIsFief(x))+pick('familles','Familles',x=>x.genre==='famille')+pick('orgs','Organisations',x=>x.genre==='org')+pick('lieux','Lieux',x=>x.genre==='lieu'&&!fiIsFief(x))+cwTxt('situ.titres',S0.titres,'Titres','Une entrée par ligne',2)+cwTxt('situ.poss',S0.poss,'Possessions courantes','Une entrée par ligne',2)+cwTxt('situ.possN',S0.possN,'Possessions notables','Une entrée par ligne',2),'Choix parmi les fiches de l\'univers ; titres et possessions en texte.');}
   if(k==='recap')return cwRecap(b,ck);
   return '';}
 /* Étape Compétences : groupées par profil (majeur, mineur, autres repliés), spécialités dépliables, futiles à part */
@@ -815,9 +870,7 @@ function cwDiff(b,o){const s=S.cwSnap;
 function cwFxBox(b){let o;try{o=cwVals(b);}catch(e){console.error(e);return '';}
   const fe=b.kind==='feal',L=cwDiff(b,o),hi=k=>L&&L.keys.includes(k)?' hi':'',c=o.c,op=!!S.cwOpen;
   const tile=(n,lab,v)=>`<div class="cwfxt${hi(n)}"><span>${esc(lab)}</span><b class="num">${v}</b></div>`;
-  let h=`<section class="cwfx" aria-label="Le personnage à ce stade"><div class="cwfxh"><span>Le personnage à ce stade</span><button type="button" class="chip" data-act="cwFx" aria-expanded="${op}">${op?'Replier ▴':'Détail ▾'}</button></div>`;
-  if(fe)h+=`<p class="muted small cwfxs">Caractéristiques et profils du féal.</p>`;
-  else h+=`<div class="cwfxk">${tile('PdV','PdV',o.v.PdV)}${tile('Initiative','Initiative',o.v.Initiative)}${tile('Fortune','Fortune',o.v.Fortune)}</div>`;
+  let h=`<section class="cwfx2" aria-label="Le personnage à ce stade"><div class="cwfxh2"><span class="muted small">À ce stade${fe?'':` : PdV <b class="num${hi('PdV')}">${o.v.PdV}</b> · Initiative <b class="num${hi('Initiative')}">${o.v.Initiative}</b> · Fortune <b class="num${hi('Fortune')}">${o.v.Fortune}</b>`}</span><button type="button" class="lnk" data-act="cwFx" aria-expanded="${op}">${op?'Replier ▴':'Détail ▾'}</button></div>`; /* UX1 : une ligne */
   if(L&&L.t)h+=`<p class="cwfxl" role="status">Dernier changement : ${esc(L.t)}</p>`;
   if(op){const grid=(t,sub,ks,lab)=>`<div class="cwfxb"><div class="cwgl">${t}${sub?` <small>· ${sub}</small>`:''}</div><div class="cwfxg">${ks.map(k=>tile(k,lab?lab(k):k,o.v[k])).join('')}</div></div>`;
     if(fe)h+=grid('Caractéristiques','',CARACS)+grid('Profils','',PROFILS.map(p=>'prof:'+p),k=>profLab(k.slice(5)));
@@ -861,6 +914,7 @@ function cwValidate(g){const b=S.brouillons&&S.brouillons[g.bid];if(!b||!isGest(
   let id=slug(court);while(S.chars[id])id=slug(court);
   const {c,ev}=crBuild(b,{id,xp:b.kind==='feal'?0:g.xp});c.par=b.par||'';for(const x of (c.achats||[]))if(x.ppel)ctcLinkX(x.ppel); /* correctif 26/11 : contacts reliés aux PNJ */c.cree=c.cree||new Date().toISOString();
   saveChar(c);
+  if(S.ptr&&S.ptr[b.id]){const im=S.ptr[b.id];S.ptr={...S.ptr,[id]:im};persist('portraits/'+id,{img:im,t:Date.now()});persistDel('portraits/'+b.id);S.ptrV=Date.now();persist('meta/portraits',{v:S.ptrV});} /* UX1 : portrait choisi à l'étape 9 */
   const ow=b.kind==='feal'?'':(b.d.ident||{}).owner;if(ow&&S.players[ow]){const p=clone(S.players[ow]);if(!(p.persos||[]).includes(id)){p.persos=[...(p.persos||[]),id];savePlayer(p);}}
   if(ev)saveEvents([...S.events,ev]);
   const B={...S.brouillons};delete B[b.id];S.brouillons=B;persistDel('brouillons/'+b.id);
@@ -868,7 +922,7 @@ function cwValidate(g){const b=S.brouillons&&S.brouillons[g.bid];if(!b||!isGest(
 /* Actions ; renvoie true si traitée */
 function cwAct(a,d){if(!/^cw/.test(a))return false;const g=S.dlg;
   const redraw=()=>{S._force=true;render();return true;};
-  if(a==='cwNew'){cwNew();return redraw();}
+  if(a==='cwNew'){cwNew(d.v);return redraw();}
   if(a==='cwFx'){S.cwOpen=!S.cwOpen;return redraw();}
   if(a==='cwOpen'){const b=S.brouillons&&S.brouillons[d.id];if(!cwSee(b))return true;cwGoTo(b.id,Math.min(b.etape||0,crSteps(b).length-1));S.cwMsg='';return redraw();}
   /* Recette lot C : ✕ Quitter propose de garder le brouillon ou d'abandonner la création (suppression, avec confirmation) */
@@ -878,7 +932,7 @@ function cwAct(a,d){if(!/^cw/.test(a))return false;const g=S.dlg;
   if(a==='cwDelAsk'){const b=S.brouillons&&S.brouillons[d.id];if(!cwSee(b))return true;S.dlg={kind:'cwDel',bid:b.id};return redraw();}
   if(a==='cwDelGo'){const b=g&&g.kind==='cwDel'&&S.brouillons[g.bid];if(!b||!cwSee(b))return true;cwDelete(b);S.dlg=null;if(S.view==='crea'&&S.cwId===b.id){S.view='team';S.teamSel='pj';window.scrollTo(0,0);}setTimeout(()=>toast('Brouillon supprimé'),0);return redraw();}
   if(a==='cwGo'){const b=cwB();if(!b)return true;S.cwStep=Math.max(0,Math.min(+d.i,crSteps(b).length-1));S.cwMsg='';S.cwDelAsk=false;
-    if(cwCanEd(b)&&b.etape!==S.cwStep){const n=clone(b);n.etape=S.cwStep;cwSave(n);}window.scrollTo(0,0);return redraw();}
+    if(cwCanEd(b)&&S.cwStep>(b.etape||0)){const n=clone(b);n.etape=S.cwStep;cwSave(n);} /* UX1 : étape la plus avancée atteinte */window.scrollTo(0,0);return redraw();}
   if(a==='cwValOpen'){if(!isGest())return true;S.dlg={kind:'cwVal',bid:S.cwId,xp:String(crRules().xpStart),com:''};return redraw();}
   if(a==='cwValOk'){if(g&&g.kind==='cwVal')cwValidate(g);return true;}
   if(a==='cwBackDraft'){if(!g||g.kind!=='cwVal'||!isGest())return true;const b0=S.brouillons[g.bid];if(!b0)return true;const b=clone(b0);b.statut='brouillon';b.com=(g.com||'').trim();cwSave(b);S.dlg=null;setTimeout(()=>toast('Renvoyé en brouillon'),0);return redraw();}
@@ -902,6 +956,7 @@ function cwAct(a,d){if(!/^cw/.test(a))return false;const g=S.dlg;
   if(a==='cwFold'){S.cwFold={...(S.cwFold||{}),[d.k]:!(S.cwFold||{})[d.k]};return redraw();}
   if(a==='cwPPOpen'){if(!cwCanEd(b))return true;S.dlg={kind:'cwPP',bid:b.id,prof:d.v,rub:'all',q:'',sel:null};return redraw();}
   if(!cwCanEd(b))return true;S.cwMsg='';
+  if(a==='cwSitF'){if(!cwUpd(b=>{const F=b.d.situF=b.d.situF||{},L=F[d.k]||[];F[d.k]=L.includes(d.v)?L.filter(x=>x!==d.v):[...L,d.v];}))return true;return redraw();}
   if(a==='cwKind'){const k=d.v==='feal'?'feal':'pj';if(b.kind!==k){const n=clone(b);n.kind=k;cwSave(n);}return redraw();}
   if(a==='cwRace'){cwUpd(D=>{const r=crRaceSet(D,d.v);Object.keys(D).forEach(x=>delete D[x]);Object.assign(D,r.d);if(r.lost.length)S.cwMsg='Race changée : '+r.lost.join(', ')+' retirés (choix de l\'ancienne race).';});return redraw();}
   if(a==='cwSet'){cwUpd(D=>{cwPath(D,d.p,d.n?+d.v:d.v);if(d.p==='maj'||d.p==='min'){const t={...(D.traits||{})};t[d.p]='';D.traits=t;}});return redraw();}

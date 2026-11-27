@@ -17,6 +17,8 @@ const chPad=(t,n)=>String(n).padStart(t==='Scénario'?2:3,'0');
 function chNumOf(f){const x=chEvNum(f);return x?chPad(x.type,x.n):(f.num||'').trim();}
 function chSessHead(e){const sn=chSessNum(e),ty=sn?sn.type:evType(e);let t=e.titre||'';
   if(sn)t=t.replace(sn.type==='Interscénario'?CH_RE_I:sn.type==='Scénario'?CH_RE_S:CH_RE_F,'').replace(/^\s*[.:\-–—]?\s*/,'');
+  /* UX1 : la session porte le titre de son événement, suivi de son suffixe libre (« Épilogue », « Partie 2 ») */
+  const f=e.evt&&S.fiches&&S.fiches[e.evt];if(f&&f.nom&&!CH_RE_S.test(e.titre||'')&&!CH_RE_I.test(e.titre||'')&&!CH_RE_F.test(e.titre||''))t=f.nom+(t?' — '+t:'');
   return {cl:CH_TCL[ty]||'',num:sn?chPad(sn.type,sn.n):'',t:t||e.titre||''};}
 function chSessT(e){const h=chSessHead(e);return (h.num?`<span class="chsn ${h.cl}">${esc(h.num)}</span> `:'')+esc(h.t);}
 const CH_JSC=['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
@@ -183,10 +185,10 @@ function chMonth(){const now=chNow();if(!S.chM){const b=now||chLast()&&chLast().
 
 /* ---------- Fiche Événement ---------- */
 function chEvView(f){const G=isGest(),ed=chCanEv();
-  let h=`<button class="back" data-act="chBack">${FI_BACK}Chronique</button>`;
+  let h=crumb(CR_UNI,['Chronique','data-act="chBack"'],[esc(f.nom)]);
   const P=(f.pj||[]).map(id=>S.chars[id]).filter(Boolean).map(c=>lk({t:'perso',id:c.id},c.court||c.nom)).join(', ');
   const im=illOf('fiche',f.id); /* lot 8 b : image et lien Kanka de l'événement */
-  h+=`<div class="card fihead chhead">${im||f.kanka?`<div class="chimg">${im?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${im}" alt=""></button>`:''}${f.kanka?kankaBtn(f.kanka,f.nom,'Fiche Kanka : '+f.nom):''}</div>`:''}<div class="chhm">${chNumOf(f)?`<span class="chnum">${esc(chNumOf(f))}</span>`:''}${chEvTag(f)}</div><h2 class="finm">${esc(f.nom)}</h2>
+  h+=`<div class="card fihead chhead">${im?`<div class="chimg">${im?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${im}" alt=""></button>`:''}${f.kanka?kankaBtn(f.kanka,f.nom,'Fiche Kanka : '+f.nom):''}</div>`:''}<div class="chhm">${chNumOf(f)?`<span class="chnum">${esc(chNumOf(f))}</span>`:''}${chEvTag(f)}</div><h2 class="finm">${esc(f.nom)}</h2>
     <div class="small">${esc(chRangeTxt(f.debut,f.duree))}${chOk(f.debut)&&f.debut.j&&(f.duree||1)>1?' · '+f.duree+' jours':''}</div>
     <div class="chkv">${P?`<span>PJ</span><div>${P}</div>`:''}${(f.lieux||'').trim()?`<span>Lieux</span><div>${fiInline(f.lieux)}</div>`:''}</div>
     ${ed?`<div style="margin-top:8px"><button type="button" class="edl" data-act="chEvEd">${ICON.crayon} Numéro, titre, type, dates, PJ, lieux</button></div>`:''}</div>`;
@@ -202,7 +204,7 @@ function chEvView(f){const G=isGest(),ed=chCanEv();
   return h;}
 const chSessOf=id=>S.events.filter(e=>e.session&&e.evt===id);
 function chAgView(f){const p=S.players[f.par];
-  let h=`<button class="back" data-act="chBack">${FI_BACK}Chronique</button>`;
+  let h=crumb(CR_UNI,['Chronique','data-act="chBack"'],[esc(f.nom)]);
   h+=`<div class="card fihead chhead"><div class="chhm">${chTag('ag','Agenda')}</div><h2 class="finm">${esc(f.nom)}</h2><div class="small">${esc(chRangeTxt(f.debut,f.duree))}</div>${p?`<div class="muted small" style="margin-top:4px">Ajouté par ${esc(p.nom)}</div>`:''}
     ${(f.desc||'').trim()?`<div style="margin-top:8px">${fiRich(f.desc)}</div>`:''}
     ${chCanAg(f)?`<div style="margin-top:8px"><button type="button" class="edl" data-act="chAgEd">${ICON.crayon} Modifier ou supprimer</button></div>`:''}</div>`;
@@ -210,7 +212,7 @@ function chAgView(f){const p=S.players[f.par];
 
 /* ---------- Fêtes ---------- */
 function chFetesView(){const E=canEdit(),a=(chNow()||{a:new Date().getFullYear()}).a,L=chFetes().filter(chFeSee).slice().sort((x,y)=>chFeOrd(x)-chFeOrd(y));
-  let h=`<button class="back" data-act="chPage" data-v="">${FI_BACK}Chronique</button><h2 style="margin-top:2px">Fêtes</h2>`;
+  let h=crumb(CR_UNI,['Chronique','data-act="chPage" data-v=""'],[''])+`<h2 style="margin-top:2px">Fêtes</h2>`;
   h+=`<div class="plst">${L.map(f=>{const d=chFeDate(f,a),sub=(f.mode==='calc'?CH_CALC[f.calc||0][1]+' · ':'')+chRangeShort(d,f.nbj)+' en '+a+(f.surch&&f.surch[a]?' (date modifiée)':'');
     return `<div class="chfer${f.vis===false?' prep':''}"><button type="button" class="pli" data-act="chFeOpen" data-id="${esc(f.id)}" data-a="${a}"><span class="ptx"><b>${esc(f.nom)}</b><small>${esc(sub)}</small></span><span aria-hidden="true" class="pch">›</span></button>${isGest()?eyeBtn('chFeEye',`data-id="${esc(f.id)}"`,f.vis!==false,'Fête '+f.nom):''}</div>`;}).join('')}</div>`;
   if(E)h+=`<button type="button" class="addl" data-act="chFeNew">+ Nouvelle fête</button>`;
@@ -227,8 +229,9 @@ function chEvAuto(e){const sn=chSessNum(e),p=n=>String(n).padStart(3,'0');
   const f={id:fiRid('f-'),genre:'evenement',vis:'rev',eye:{desc:true,sait:true},desc:'',notes:'',par:ME||'',cree:now,nom,num,type:CH_TYPES.includes(ty)?ty:'Interscénario',duree:1,pj:(e.pj||[]).filter(id=>S.chars[id]),lieux:''};
   if(n)f.debut={a:n.a,m:n.m,j:n.j};return f;}
 const chEvOpts=()=>chEvs().slice().sort((a,b)=>(chKey(b.debut)||0)-(chKey(a.debut)||0)||String(b.num||'').localeCompare(String(a.num||'')));
-function chSessNum(e){const t=e.titre||'';let m=t.match(CH_RE_I);if(m)return {type:'Interscénario',n:+m[1]};m=t.match(CH_RE_S);if(m)return {type:'Scénario',n:+m[1]};m=t.match(CH_RE_F);if(m)return {type:'Vie du fief',n:+m[1]};return null;}
-function chEvNum(f){const t=(f.num||'').trim();let m=t.match(/^\[\s*0*(\d+)\s*\]/);if(m)return {type:'Interscénario',n:+m[1]};m=t.match(/^\(\s*0*(\d+)\s*\)/);if(m)return {type:'Vie du fief',n:+m[1]};m=t.match(/^0*(\d+)\s*\.?$/);if(m)return {type:'Scénario',n:+m[1]};return null;}
+function chSessNum(e){{const f=e.evt&&S.fiches&&S.fiches[e.evt];const x=f&&chEvNum(f);if(x)return x;}const t=e.titre||'';let m=t.match(CH_RE_I);if(m)return {type:'Interscénario',n:+m[1]};m=t.match(CH_RE_S);if(m)return {type:'Scénario',n:+m[1]};m=t.match(CH_RE_F);if(m)return {type:'Vie du fief',n:+m[1]};return null;}
+function chEvNum(f){if(f&&f.n>0&&CH_TCL[f.type])return {type:f.type,n:+f.n}; /* UX1 : numéro entier par type */
+  const t=(f.num||'').trim();let m=t.match(/^\[\s*0*(\d+)\s*\]/);if(m)return {type:'Interscénario',n:+m[1]};m=t.match(/^\(\s*0*(\d+)\s*\)/);if(m)return {type:'Vie du fief',n:+m[1]};m=t.match(/^0*(\d+)\s*\.?$/);if(m)return {type:'Scénario',n:+m[1]};return null;}
 const chBare=t=>nrm(String(t||'').replace(CH_RE_I,'').replace(CH_RE_S,'').replace(/^\s*\.\s*/,'').replace(/\s*[—–-]\s*[ée]pilogue.*$/i,'').replace(/\s*part\.?\s*\d+\s*$/i,'').replace(/[^\p{L}\p{N} ]/gu,' ').replace(/\s+/g,' ').trim());
 function chRattProps(){const E=chEvs(),out=[];
   for(const e of S.events){if(!e.session||e.rattrapage)continue;if(e.evt&&S.fiches[e.evt])continue;
@@ -238,7 +241,7 @@ function chRattProps(){const E=chEvs(),out=[];
     out.push({e,sn,ev});}
   return out;}
 function chRattView(){const R=chRattProps();if(!S.chRat)S.chRat={sel:{},chk:{}};const st=S.chRat,E=chEvs().slice().sort((a,b)=>(chKey(a.debut)||0)-(chKey(b.debut)||0));
-  let h=`<button class="back" data-act="chPage" data-v="">${FI_BACK}Chronique</button><h2 style="margin-top:2px">Rattachements proposés</h2>
+  let h=crumb(CR_UNI,['Chronique','data-act="chPage" data-v=""'],[''])+`<h2 style="margin-top:2px">Rattachements proposés</h2>
     <div class="muted small" style="margin-bottom:8px">Sessions du journal d'XP sans événement. Rapprochement par numéro (« S03. » ↔ « 03. », « [Int. 012] » ↔ « [012] »), sinon par titre. Rien n'est rattaché sans validation.</div>`;
   if(!R.length)return h+`<div class="card empty">Toutes les sessions sont rattachées.</div>`;
   const opts=sel=>`<option value="">— aucun —</option>`+E.map(f=>`<option value="${esc(f.id)}"${f.id===sel?' selected':''}>${esc(chEvLab(f))}</option>`).join('');
@@ -262,7 +265,7 @@ function chAgeBlk(c){const t=chAgeTxt(c),ed=canEditC(c);if(!t&&!ed)return '';
   return `<div class="chage">${t?`<span class="chagel">Âge</span><span class="chagev">${line}</span>${ed?`<button type="button" class="ibtn" data-act="chNa" data-id="${esc(c.id)}" aria-label="Modifier l'âge">✎</button>`:''}`:`<button type="button" class="addl" style="margin-top:0" data-act="chNa" data-id="${esc(c.id)}">+ Âge</button>`}</div>`;}
 function chFeuil(c){const L=chEvs().filter(f=>(f.pj||[]).includes(c.id)).sort((a,b)=>(chKey(b.debut)||0)-(chKey(a.debut)||0));
   if(!L.length)return `<div class="muted small" style="padding:6px 2px">Aucun événement pour l'instant.</div>`;
-  const ex=t=>String(t||'').replace(FI_TOK,(m,ty,id,nom)=>nom).replace(/\s+/g,' ').trim();
+  const ex=t=>String(t||'').split('\n').filter(l=>!/^\s*(@\[perso:[^\]]*\]\s*)+$/.test(l)).join('\n').replace(FI_TOK,(m,ty,id,nom)=>nom).replace(/\s+/g,' ').trim(); /* UX1 : sans la ligne des joueurs / personnages venue de Kanka */
   return `<div class="muted small" style="margin:2px 0 6px">${L.length} événement${L.length>1?'s':''} vécu${L.length>1?'s':''} · du plus récent au plus ancien</div><div class="card chfeu">`+L.map(f=>{const oth=(f.pj||[]).filter(x=>x!==c.id).map(x=>S.chars[x]).filter(x=>x&&vis(x)).map(x=>x.court);
     return `<button type="button" class="chfu" data-act="lnk" data-t="fiche" data-id="${esc(f.id)}"><span class="chsq ${CH_TCL[f.type]||''}">${esc(chNumOf(f)||'—')}</span><span class="chtx"><b>${esc(f.nom)}</b><small>${esc([chOk(f.debut)?chRangeShort(f.debut,f.duree)+' '+f.debut.a:'sans date',oth.length?'avec '+oth.join(', '):'seul'].join(' · '))}</small>${(f.desc||'').trim()?`<span class="chex">${esc(ex(f.desc))}</span>`:''}</span></button>`;}).join('')+`</div>`;}
 
@@ -385,7 +388,7 @@ function chAct(a,d){
     const du=Math.max(1,parseInt(g.duree,10)||1),ed=document.getElementById('fiEd'),lieux=ed?fiSer(ed):(g.txt||'');
     const pj=g.pj.filter(id=>S.chars[id]),type=CH_TYPES.includes(g.type)?g.type:'Interscénario';
     let f;if(g.id){const x=S.fiches[g.id];if(!x)return true;f=clone(x);}else f={id:fiRid('f-'),genre:'evenement',vis:'rev',eye:{desc:true,sait:true},desc:'',notes:'',par:ME||'',cree:now};
-    f.nom=nom;f.num=(g.num||'').trim();f.type=type;f.duree=du;f.pj=pj;f.lieux=lieux;if(db)f.debut=db;else delete f.debut;
+    f.nom=nom;f.num=(g.num||'').trim();f.type=type;{const nn=parseInt(String(f.num).replace(/\D/g,''),10);if(nn>0&&CH_TCL[type]){f.n=nn;f.num='';}else delete f.n;} /* UX1 : numéro entier */f.duree=du;f.pj=pj;f.lieux=lieux;if(db)f.debut=db;else delete f.debut;
     S.dlg=null;FI_AT=null;S.fiches={...S.fiches,[f.id]:f};fiSave(f,true);
     if(g.sess&&canEdit()){saveEvents(S.events.map(e=>e.id===g.sess?{...e,evt:f.id}:e));}
     if(!g.id&&!g.stay){S.fi=f.id;S.uni='evenement';S.view='univers';window.scrollTo(0,0);} /* créé depuis le journal d'XP : on y reste */

@@ -73,7 +73,7 @@ function idBanners(){let h='';
   if(BY&&S.players[BY]&&S.players[ME])h+=`<div class="idban g"><span>${esc(S.players[BY].nom)}, tu es connecté <b>en tant que ${esc(S.players[ME].nom)}</b></span><button class="btn ghost" data-act="idBack">Revenir</button></div>`;
   return h;}
 /* Joueurs : état des PIN et réinitialisation (gestion) */
-function pinCard(){if(!isGest())return '';
+function pinCard(){if(!isTech())return '';
   if(!pinOn())return `<div class="card" style="margin-top:12px"><h3>Codes PIN</h3><div class="muted small">Les codes PIN ne sont pas encore actifs : le script <b>3_pin.sql</b> n'est pas installé dans Supabase. En attendant, l'identité se choisit librement.</div></div>`;
   return `<div class="card" style="margin-top:12px"><h3>Codes PIN</h3>${planPlayers().map(p=>{const has=S.id.pins&&S.id.pins.has(p.id),arm=S.confirm==='pin:'+p.id;
     return `<div class="gestrow"><div><b>${esc(p.nom)}</b></div><div style="display:flex;gap:8px;align-items:center"><span class="pst2 ${has?'ok':'no'}">${has?'PIN défini':'pas encore de PIN'}</span>${has?(arm?`<button class="btn" style="color:var(--bad)" data-act="pinResetOk" data-pid="${esc(p.id)}">Confirmer</button>`:`<button class="btn ghost" data-act="pinReset" data-pid="${esc(p.id)}">Réinitialiser</button>`):''}</div></div>`;}).join('')}
@@ -81,6 +81,6 @@ function pinCard(){if(!isGest())return '';
 async function pinReset(pid){const by=realId();let r=null;try{r=await DB.rpc('xp_pin_reset',{p_by:by,p_token:toks()[by]||'',p_player:pid});}catch(e){r=null;}
   S.confirm=null;if(r&&r.ok&&S.id.pins)S.id.pins.delete(pid);else alert('Réinitialisation refusée : reconnecte-toi avec ton PIN puis réessaie.');render();}
 /* Visiteur : seules la navigation et la consultation sont permises */
-const VISIT_OK=new Set(['jrSel','jrOpen','jrBack','jrGo','pwToggle','rfTab','rfFold','shFold','jOpen','jBack','pfOpen','pfTab','pfRub','ppElOpen','ppElBack','shTab','onlyBuy','goalToggle','derTip','forme','tab','menu','meOpen','closeSheet','sel','uni','secOpen','secBack','secFilter','rfOpen','rfBack','rfHum','ptab','forme','histToggle','sessToggle','planMonth','planView','open','openAutre','idPick','idVisit','idBack','pinKey','pinBack','step','quick']);
+const VISIT_OK=new Set(['themeToggle','xpOpen','xpClose','xpDet','xpHelp','xpFo','xpFt','xpFp','xpEvGo','plWho','plOpen','plClose','planView','planMonth','planHelp','closeSheet','logout','asPlayerOff','crumb','pfold','jrSel','jrOpen','jrBack','jrGo','pwToggle','rfTab','rfFold','shFold','jOpen','jBack','pfOpen','pfTab','pfRub','ppElOpen','ppElBack','shTab','onlyBuy','goalToggle','derTip','forme','tab','menu','meOpen','closeSheet','sel','uni','secOpen','secBack','secFilter','rfOpen','rfBack','rfHum','ptab','forme','histToggle','sessToggle','planMonth','planView','open','openAutre','idPick','idVisit','idBack','pinKey','pinBack','step','quick']);
 /* Met à jour la liste des identités qui ont un PIN (créé depuis un autre appareil) */
 async function pinRefresh(){if(!pinOn()||!DB)return;try{const r=await DB.rpc('xp_pin_status',{});S.id.pins=new Set((r||[]).map(x=>typeof x==='string'?x:(x.xp_pin_status||x.player||Object.values(x)[0])));render();}catch(e){}}

@@ -27,30 +27,31 @@ function fgXp(fid){const rec=[],dep=[];
   for(const h of fgG(S.fiches[fid]).hist)dep.push({date:h.date||'',lab:h.lab,m:+h.cout||0,h});
   const r=rec.reduce((s,x)=>s+x.m,0),d=dep.reduce((s,x)=>s+x.m,0);return {rec,dep,recu:r,depense:d,solde:r-d};}
 /* Droits : achats par les joueurs des PJ détenteurs et la gestion ; contributions : les PJ que l'on peut modifier */
-const fgCan=f=>!!f&&!S.visit&&(isGest()||fgHolders(f.id).some(c=>owners(c).some(p=>p.id===ME)));
+const fgCan=f=>!!f&&isUser()&&fiSee(f); /* UX1 : achats du fief ouverts à tout joueur qui voit le fief */
 const fgCtbs=fid=>fgHolders(fid).filter(c=>actif(c)&&vis(c)&&!S.visit&&(isGest()||owners(c).some(p=>p.id===ME))).sort((a,b)=>(a.court||'').localeCompare(b.court||'','fr'));
 const fgNm=c=>c.court||c.nom||c.id;
 
 /* ---------- Onglet Gestion ---------- */
-function fgView(f){const g=fgG(f),C=fgCfg(),X=fgXp(f.id),can=fgCan(f),E=canEdit(),Hd=fgHolders(f.id);
-  let h=`<div class="xpbar fgxp"><div class="xpd"><b class="num">${X.solde}</b><span>XP du fief</span></div><div class="xpo"><span><b class="num">${X.recu}</b> reçus</span><span><b class="num">${X.depense}</b> dépensés</span></div><div class="xpm">Détenu par ${Hd.map(c=>lk({t:'perso',id:c.id},fgNm(c))).join(', ')}</div></div>`;
-  if(E)h+=`<div class="actions" style="margin:0 0 8px"><button class="btn" data-act="fgEd" data-fid="${esc(f.id)}">${ICON.crayon} Modifier la gestion</button></div>`;
-  h+=`<h2>Traits</h2><div class="card"><div class="fgtr">${g.traits.length?g.traits.map(t=>`<span class="fgtrait">${esc(t)}</span>`).join(''):'<span class="muted small">Aucun trait.</span>'}</div><div class="muted small" style="margin-top:6px">+1 au test quand le trait est pertinent.</div></div>`;
-  h+=`<h2>Caractéristiques</h2><div class="card">`+FG_CAR.map(([k,nom,ds])=>{const v=+g.car[k]||0,atMax=v>=C.max,cost=(v+1)*C.cc,ok=can&&!atMax;
-    return `<div class="irow fgrow${atMax?' max':ok?' can':''}"><div class="rmain"><span class="nm">${nom}<span class="nsub">${ds}</span></span>${bar(v,C.max)}<span class="lv">${v}<small>/${C.max}</small></span></div><span></span>${atMax?'<span class="pill plan">★ max</span>':`<button class="plus${ok?' ok':''}" data-act="fgBuy" data-fid="${esc(f.id)}" data-k="car:${k}"${ok?'':' disabled'} aria-label="Monter ${nom} à ${v+1} pour ${cost} XP">+<small>${cost}</small></button>`}</div>`;}).join('')+
-    `<div class="muted small" style="margin-top:6px">Coût : nouveau score × ${C.cc} XP, payé sur l'XP du fief, complété au besoin par les PJ. La caractéristique s'ajoute telle quelle au jet.</div></div>`;
+function fgView(f){const g=fgG(f),C=fgCfg(),X=fgXp(f.id),can=fgCan(f),E=canEdit(),Hd=fgHolders(f.id),fid=esc(f.id),Hp=S.xpHelp||{};
+  const q=(k)=>`<button type="button" class="qbtn" data-act="xpHelp" data-k="${k}" aria-label="Aide">?</button>`,tip=(k,t)=>Hp[k]?`<div class="qtip2">${t}</div>`:'';
+  /* UX1 (28/11/2026) : bandeau, sections repliables au modèle du Progrès */
+  let h=`<div class="fgban"><div class="fgsol"><b class="num">${X.solde}</b><small>XP du fief</small></div><div class="cmain small"><div>${X.recu} reçus · ${X.depense} dépensés</div><div class="muted">Détenu par ${Hd.map(c=>lk({t:'perso',id:c.id},fgNm(c))).join(', ')}</div></div>${q('fgxp')}</div>`+tip('fgxp',`L'XP du fief vient des sessions (nature « Fief ») et des transferts des PJ. Un achat se paie d'abord sur l'XP du fief, puis par les PJ liés au fief.`);
+  if(E)h+=`<div class="blkhd" style="justify-content:flex-end;margin:0 0 6px"><button type="button" class="ibtn sm" data-act="fgEd" data-fid="${fid}" aria-label="Modifier la gestion">${ICON.crayon}</button></div>`;
+  const L1=[],L2=[];
+  L1.push(cBlk('fg-tr','Traits',String(g.traits.length),(g.traits.length?`<div class="fgtr">${g.traits.map(t=>`<span class="fgtrait">${esc(t)}</span>`).join('')}</div>`:'<span class="muted small">Aucun trait.</span>')+`<div class="blkhd" style="justify-content:flex-end">${q('fgtr')}</div>`+tip('fgtr','+1 au test quand le trait est pertinent.')));
+  L1.push(cBlk('fg-car','Caractéristiques','',FG_CAR.map(([k,nom,ds])=>{const v=+g.car[k]||0,atMax=v>=C.max,cost=(v+1)*C.cc,ok=can&&!atMax;
+    return `<div class="irow fgrow${atMax?' max':ok?' can':''}"><div class="rmain"><span class="nm">${nom}</span>${bar(v,C.max)}<span class="lv">${v}<small>/${C.max}</small></span></div><button type="button" class="ibtn sm" data-act="xpHelp" data-k="fgc-${k}" aria-label="Description de ${nom}">?</button>${atMax?'<span class="pill plan">★ max</span>':`<button class="plus${ok?' ok':''}" data-act="fgBuy" data-fid="${fid}" data-k="car:${k}"${ok?'':' disabled'} aria-label="Monter ${nom} à ${v+1} pour ${cost} XP">+<small>${cost}</small></button>`}</div>${Hp['fgc-'+k]?`<div class="qtip2">${ds}</div>`:''}`;}).join('')+`<div class="muted small" style="margin-top:6px">Coût : nouveau score × ${C.cc} XP.</div>`));
   const p=Math.max(0,Math.min(g.pop,C.pop.length-1)),pp=C.pop[p]||{n:'',m:0},mt=fgMod(C.tailles,g.taille),me=fgMod(C.etats,g.eco);
-  const row=(l,v,m)=>`<div class="ev"><div class="t" style="min-width:120px">${l}</div><div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;text-align:right">${v?esc(v):'<span class="muted">—</span>'}${m!=null?`<span class="pill">${fgSg(m)}</span>`:''}</div></div>`;
-  h+=`<h2>Population et territoire</h2><div class="card"><div class="irow fgrow"><div class="rmain"><span class="nm">Population féerique<span class="nsub">${esc(pp.n)} fées conscientes · modificateur ${fgSg(pp.m)}</span></span>${bar(g.pop,C.max)}<span class="lv">${g.pop}<small>/${C.max}</small></span></div><span></span><span></span></div>`+
-    row('Taille',g.taille,mt)+row('État économique',g.eco,me)+`<div class="muted small" style="margin-top:6px">Population et taille : seulement si elles sont pertinentes pour l'action. État économique : toujours.</div></div>`;
-  h+=`<h2>Ressources</h2><div class="card">${g.res.length?g.res.map(r=>`<div class="fgres"><div class="fgresh"><b>${esc(r.nom)}</b>${E?`<button type="button" class="ibtn" data-act="fgRes" data-fid="${esc(f.id)}" data-rid="${esc(r.id)}" aria-label="Modifier ${esc(r.nom)}">✎</button>`:''}</div>${r.av?`<div class="small">${esc(r.av)}</div>`:''}${r.fx?`<div class="small fgfx">Effet : ${esc(r.fx)}</div>`:''}</div>`).join(''):'<div class="muted small">Aucune ressource.</div>'}
-    <div class="actions">${can?`<button class="btn pri" data-act="fgBuy" data-fid="${esc(f.id)}" data-k="res">+ Créer une ressource · ${C.cr} XP</button>`:''}${E?`<button class="btn" data-act="fgRes" data-fid="${esc(f.id)}">+ Ajouter une ressource (sans XP)</button>`:''}</div></div>`;
-  const L=[...X.rec.map(x=>({...x,s:1})),...X.dep.map(x=>({...x,s:-1}))].sort((a,b)=>(b.date||'').localeCompare(a.date||'')),all=!!(S.fgAll&&S.fgAll[f.id]),sh=all?L:L.slice(0,5);
+  const row=(l,v,m)=>v?`<div class="xprow"><span class="cmain">${l}</span><span>${esc(v)}</span>${m!=null?`<span class="pill">${fgSg(m)}</span>`:''}</div>`:'';
+  L1.push(cBlk('fg-pop','Population et territoire','',`<div class="irow fgrow"><div class="rmain"><span class="nm">Population<span class="nsub">${esc(pp.n)} · ${fgSg(pp.m)}</span></span>${bar(g.pop,C.max)}<span class="lv">${g.pop}<small>/${C.max}</small></span></div><span></span><span></span></div>`+row('Taille',g.taille,mt)+row('État économique',g.eco,me)));
+  const RO=S.fgRo||{};
+  L2.push(cBlk('fg-res','Ressources',String(g.res.length),(g.res.map(r=>{const o=!!RO[r.id];return `<div class="fgres"><div class="fgresh"><button type="button" class="lnk fgrt" data-act="fgRo" data-rid="${esc(r.id)}" aria-expanded="${o}">${esc(r.nom)} ${o?'⌄':'›'}</button>${E&&o?`<button type="button" class="ibtn sm" data-act="fgRes" data-fid="${fid}" data-rid="${esc(r.id)}" aria-label="Modifier ${esc(r.nom)}">${ICON.crayon}</button>`:''}</div>${o&&r.av?`<div class="small">${esc(r.av)}</div>`:''}${o&&r.fx?`<div class="small fgfx">Effet : ${esc(r.fx)}</div>`:''}</div>`;}).join('')||'<div class="muted small">Aucune ressource.</div>')+
+    `<div class="xprow" style="margin-top:6px"><span class="cmain">Nouvelle ressource : ${C.cr} XP</span>${can?`<button class="pbtn" data-act="fgBuy" data-fid="${fid}" data-k="res" aria-label="Créer une ressource pour ${C.cr} XP">+</button>`:''}</div>${E?`<button class="lnk" data-act="fgRes" data-fid="${fid}">Ajouter sans XP</button>`:''}`));
+  const Lh=[...X.rec.map(x=>({...x,s:1})),...X.dep.map(x=>({...x,s:-1}))].sort((a,b)=>(b.date||'').localeCompare(a.date||'')),all=!!(S.fgAll&&S.fgAll[f.id]),sh=all?Lh:Lh.slice(0,5);
   const last=[...g.hist].reverse().find(x=>x.t==='achat'),lastIs=x=>last&&x.h&&x.h.id===last.id&&g.hist[g.hist.length-1].id===last.id;
-  h+=`<h2>Historique du fief</h2><div class="card"><div class="muted small" style="margin-bottom:6px">${X.recu} XP reçus · ${X.depense} dépensés${can&&last?' · le dernier achat peut être annulé':''}</div>`+
-    (sh.map(x=>`<div class="ev"><div style="min-width:0"><div class="t">${esc(x.lab)}</div><div class="muted small">${x.date?fmtDate(x.date):'sans date'}</div></div><span style="display:flex;gap:6px;align-items:center;flex:none">${can&&lastIs(x)?`<button class="btn ghost" style="padding:4px 10px" data-act="fgUndo" data-fid="${esc(f.id)}">Annuler</button>`:''}<span class="pill${x.s>0?' fgin':''}">${x.s>0?'+':'−'}${x.m} XP</span></span></div>`).join('')||'<div class="muted small">Aucun mouvement.</div>')+
-    (L.length>5?`<div class="actions"><button class="btn" data-act="fgAll" data-fid="${esc(f.id)}">${all?'Réduire':'Tout afficher ('+L.length+')'}</button></div>`:'')+`</div>`;
-  return h;}
+  L2.push(cBlk('fg-hist','Historique',String(Lh.length),(sh.map(x=>`<div class="ev"><div style="min-width:0"><div class="t">${esc(x.lab)}</div><div class="muted small">${x.date?fmtDate(x.date):'sans date'}</div></div><span style="display:flex;gap:6px;align-items:center;flex:none">${can&&lastIs(x)?`<button class="btn ghost" style="padding:4px 10px" data-act="fgUndo" data-fid="${fid}">Annuler</button>`:''}<span class="pill${x.s>0?' fgin':''}">${x.s>0?'+':'−'}${x.m} XP</span></span></div>`).join('')||'<div class="muted small">Aucun mouvement.</div>')+
+    (Lh.length>5?`<div class="actions"><button class="btn" data-act="fgAll" data-fid="${fid}">${all?'Réduire':'Tout afficher ('+Lh.length+')'}</button></div>`:'')));
+  return h+`<div class="pg2col"><div>${L1.join('')}</div><div>${L2.join('')}</div></div>`;}
 
 /* ---------- Achat : caractéristique ou ressource, contributions des PJ ---------- */
 function fgBuySt(g){const f=S.fiches[g.fid],G=fgG(f),C=fgCfg(),X=fgXp(g.fid);let cost,lab,from;
@@ -78,14 +79,14 @@ function fgUndoOk(fid){const f=S.fiches[fid];if(!fgCan(f))return;const n=clone(f
 function fgSheet(g){const f=S.fiches[g.fid];if(!f||!fiIsFief(f))return null;const C=fgCfg(),G=fgG(f);
   const inp=(id,k,v,lab,o)=>`<div class="field"${o&&o.w?` style="${o.w}"`:''}><label for="${id}">${lab}</label><input id="${id}" type="${o&&o.num?'number':'text'}"${o&&o.num?' inputmode="numeric" min="0"':''} data-fgi="${k}" value="${esc(v==null?'':String(v))}" autocomplete="off"></div>`;
   if(g.kind==='fgBuy'){if(!fgCan(f))return null;const st=fgBuySt(g),X=fgXp(f.id),L=fgCtbs(f.id);
-    const sub=g.k==='res'?`${esc(f.nom)} · ${st.cost} XP`:`${esc(f.nom)} · ${st.from} → ${st.from+1}`;
+    const sub=g.k==='res'?`${esc(f.nom)} · ${st.cost} XP`:`${esc(st.lab.replace(/^Monter /,''))} ${st.from} → ${st.from+1} · ${st.cost} XP (${st.from+1} × ${C.cc})`;
     return fiShell(g,st.lab,`<div><h2>${st.lab}</h2><div class="muted small">${sub}</div></div>
       ${g.k==='res'?inp('fgRn','nom',g.nom,'Nom')+inp('fgRa','av',g.av,'Avantage')+inp('fgRf','fx',g.fx,'Effet'):''}
       <div class="calc"><span>Coût</span><b>${st.cost} XP</b><span>Pris sur l'XP du fief (solde ${X.solde})</span><b>${st.fromF} XP</b></div>
       ${st.need?`<div class="fimg">Contributions des PJ · sur leur XP</div>${L.map(c=>`<div class="frow" style="align-items:center"><label for="fgc-${esc(c.id)}" style="flex:1"><b>${esc(fgNm(c))}</b> <span class="muted small">· ${summary(c,S.events).dispo} XP disponibles</span></label><input id="fgc-${esc(c.id)}" type="number" inputmode="numeric" min="0" data-fgc="${esc(c.id)}" value="${esc(String((g.ctb||{})[c.id]||''))}" style="width:90px" autocomplete="off"></div>`).join('')||'<div class="muted small">Aucun PJ lié au fief ne peut contribuer.</div>'}`:''}
       <div class="xpbox" id="fgTot">${fgTotTxt(st)}</div>
       ${st.need?'<div class="muted small">Chaque contribution s\'inscrit dans l\'historique du PJ (« Fief ») et dans celui du fief.</div>':''}
-      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="fgBuyOk"${st.ok?'':' disabled'}>Valider l'achat</button></div>`);}
+      <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="fgBuyOk"${st.ok?'':' disabled'}>Acheter</button></div>`);}
   if(g.kind==='fgUndo'){if(!fgCan(f))return null;const l=G.hist[G.hist.length-1];if(!l||l.t!=='achat')return null;const n=Object.values(S.chars).reduce((s,c)=>s+(c.achats||[]).filter(a=>a.grp===l.id).length,0);
     return fiShell(g,'Annuler un achat',`<div><h2>Annuler l'achat</h2><div class="muted small">${esc(f.nom)}</div></div><div>${esc(l.lab)} · ${l.cout} XP${l.date?' du '+fmtDate(l.date):''}.</div><div class="muted small">${l.k==='res'?'La ressource est retirée':'La caractéristique revient à '+l.from}${n?` ; les ${n} contribution${n>1?'s':''} des PJ ${n>1?'sont rendues':'est rendue'}`:''}.</div>
       <div class="actions"><button class="btn" data-act="closeSheet">Fermer</button><button class="btn pri" data-act="fgUndoOk">Annuler l'achat</button></div>`);}
@@ -104,7 +105,7 @@ function fgSheet(g){const f=S.fiches[g.fid];if(!f||!fiIsFief(f))return null;cons
       ${inp('fgRn','nom',g.nom,'Nom')}${inp('fgRa','av',g.av,'Avantage')}${inp('fgRf','fx',g.fx,'Effet')}
       <div class="actions">${g.rid?`<button class="btn ghost" data-act="fgResDel">${g.del?'Confirmer la suppression':'Supprimer'}</button>`:''}<button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="fgResOk">Enregistrer</button></div>`);}
   return null;}
-const fgTotTxt=st=>`${st.fromF} (fief) + ${st.sum} (PJ) = ${st.fromF+st.sum} / ${st.cost} XP ${st.ok?'✓':'· '+st.err}`;
+const fgTotTxt=st=>`${st.fromF+st.sum} / ${st.cost} XP ${st.ok?'✓':'· '+st.err}`; /* UX1 */
 function fgEdErr(g,C){for(const k of [...FG_CAR.map(x=>'car_'+x[0]),'pop']){const v=String(g[k]??'').trim();if(v===''||isNaN(+v)||+v<0||+v>C.max||Math.floor(+v)!==+v)return `Les scores vont de 0 à ${C.max}.`;}return '';}
 ['fgBuy','fgUndo','fgEd','fgRes'].forEach(k=>FI_DLG.add(k));
 document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset||!S.dlg||!/^fg[A-Z]/.test(S.dlg.kind||''))return;const g=S.dlg;

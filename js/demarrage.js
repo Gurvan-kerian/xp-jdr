@@ -22,7 +22,7 @@ function start(){
     on('meta/schema',x=>{S.schema=x||null;S.schemaReady=true;});
     on('meta/heritage',x=>{S.heritage={score:x&&x.score!=null?x.score:'',delta:(x&&x.delta)||0};});
     on('meta/secrets',x=>{S.secretsDoc=x||null;S.secrets=(x&&Array.isArray(x.list))?x.list:[];S.secretProps=(x&&x.props)||[];S.secretsReady=true;});
-    on('meta/planning',x=>{S.dates=(x&&Array.isArray(x.dates))?x.dates:[];S.datesReady=true;});
+    on('meta/planning',x=>{S.dates=(x&&Array.isArray(x.dates))?x.dates:[];S.dEcart=(x&&Array.isArray(x.ecartes))?x.ecartes:[];S.datesReady=true;});
     on('meta/params',x=>{S.params=x&&x.versions?x:{versions:[]};S.paramsReady=true;applyParams();});
     on('meta/pouvoirs',x=>{S.pouvoirs=(x&&x.byId)||{};S.pouvoirsReady=true;});
     on('meta/capacites',x=>{S.capacites=(x&&x.byId)||{};S.capReady=true;});

@@ -6,7 +6,7 @@ const NATURES=['Scénario','Groupe','Individuel'];
 const PROFILS=['Aventurier','Combattant','Erudit','Gentleman','Roublard','Savant'];
 const PROFCOMPS={Aventurier:['Conduite','Mouvement','Ressort','Survie'],Combattant:['Art de la guerre','Autorité','Mêlée','Tir'],Erudit:['Culture','Fortitude','Occultisme','Rhétorique'],Gentleman:['Classe','Entregent','Séduction','Sensibilité'],Roublard:['Comédie','Larçin','Discrétion','Monde du crime'],Savant:['Habiletés','Médecine','Observations','Sciences']};
 const GAP=10;
-const TYPES=['Scénario','Interscénario','Autre'];
+const TYPES=['Scénario','Interscénario','Vie du fief','Autre']; /* UX1 : type Vie du fief pour les sessions */
 const STARS=30;
 const LABEL={feerie:'Féerie',masque:'Masque',fortune:'Fortune',atout:'Atouts féeriques',spec:'Spécialités'};
 const STAGES=[{nom:'Profond',feerie:7,carac:6,comp:6,atout:4},{nom:'Légendaire',feerie:8,carac:7,comp:7,atout:5}];
@@ -294,8 +294,10 @@ function newChar(id,court,nom,type){
   return base;
 }
 function evType(e){if(e.type)return e.type;const t=e.titre||'';if(/^\s*\[\s*int/i.test(t))return 'Interscénario';if(/epilogue/i.test(t))return 'Autre';if(/^\s*S\.?\s*\d/i.test(t))return 'Scénario';return 'Autre';}
-function scenarioCount(events){return events.filter(e=>evType(e)==='Scénario').length;}
-function starCount(events,delta){return Math.max(0,Math.min(STARS,scenarioCount(events)+(delta||0)));}
+/* UX1 (27/11) : une étoile par événement Scénario joué (rattaché à au moins une session), plus de correction à la main */
+function scenarioCount(events,fiches){const F=fiches||(typeof S!=='undefined'&&S.fiches)||{},seen=new Set();
+  for(const e of events){if(!e.session||!e.evt)continue;const f=F[e.evt];if(f&&f.type==='Scénario')seen.add(e.evt);}return seen.size;}
+function starCount(events,fiches){return Math.max(0,Math.min(STARS,scenarioCount(events,fiches)));}
 /*ENDENGINE*/
 
 
@@ -423,7 +425,7 @@ const CR_STEPS_FEAL=[['race','Statut et rattachement'],['car','Caractéristiques
 const crSteps=b=>b&&b.kind==='feal'?CR_STEPS_FEAL:CR_STEPS_PJ;
 const CR_SITU=[['titres','Titres'],['fiefs','Fiefs'],['familles','Familles'],['orgs','Organisations'],['poss','Possessions courantes'],['possN','Possessions notables']];
 /* Races proposées : fées traditionnelles et modernes visibles, caractéristiques renseignées (ni exotiques, ni Humain) */
-function crRaceList(){return raceCres().map(cr=>({cr,x:raceRec(cr)})).filter(({cr,x})=>x&&x.sing&&!x.hum&&cr.fam!=='exo'&&carOk(x)&&raceVisible(cr,x)).sort((a,b)=>raceNm(a.x).localeCompare(raceNm(b.x),'fr'));}
+function crRaceList(){return raceCres().map(cr=>({cr,x:raceRec(cr)})).filter(({cr,x})=>x&&x.sing&&!x.hum&&carOk(x)&&raceVisible(cr,x)).sort((a,b)=>raceNm(a.x).localeCompare(raceNm(b.x),'fr'));}
 function crX(d){if(!d||!d.race)return null;const cr=raceCres().find(c=>raceRec(c).sing===d.race);return cr?{cr,x:raceRec(cr),r:(S.races||{})[cr.id]||{}}:null;}
 const crTroll=X=>!!X&&nrm(X.x.sing)==='troll';
 const crRaceTraits=X=>X?((X.r&&X.r.traits)||X.x.traits||[]).filter(Boolean):[];
@@ -540,7 +542,9 @@ function crBuildFeal(b,opt,court,id,dt){const d=b.d||{},I=d.ident||{},c=newChar(
   const t=d.traits||{};c.traits={};if(t.maj&&t.maj.n)c.traits.maj={p:t.maj.p,n:t.maj.n};if((t.libre||'').trim())c.traits.libre=t.libre.trim();
   c.par=b.par||'';c.cree=new Date().toISOString();crSituTo(c,d,dt);c.crea={date:dt,par:b.par||'',etapes:crSummary(b)};
   return {c,ev:null};}
-function crSituTo(c,d,dt){const s=d.situ||{},o={};for(const [k] of CR_SITU){const L=String(s[k]||'').split('\n').map(x=>x.trim()).filter(Boolean);if(L.length)o[k]=L.map((nom,i)=>({id:'s-'+dt.replace(/-/g,'')+'-'+k+i,date:dt,nom}));}if(Object.keys(o).length)c.situ=o;}
+function crSituTo(c,d,dt){const s=d.situ||{},o={};for(const [k] of CR_SITU){const L=String(s[k]||'').split('\n').map(x=>x.trim()).filter(Boolean);if(L.length)o[k]=L.map((nom,i)=>({id:'s-'+dt.replace(/-/g,'')+'-'+k+i,date:dt,nom}));}
+  /* UX1 : fiches choisies (fiefs, familles, organisations, lieux) */
+  const F=d.situF||{},FS=(typeof S!=='undefined'&&S.fiches)||{};for(const k of ['fiefs','familles','orgs','lieux'])for(const [i,fid] of (F[k]||[]).entries()){const x=FS[fid];if(!x)continue;(o[k]=o[k]||[]).push({id:'s-'+dt.replace(/-/g,'')+'-'+k+'f'+i,date:dt,nom:x.nom,f:fid});}if(Object.keys(o).length)c.situ=o;}
 function crXpEv(id,court,xp,dt){const n=Math.floor(+xp||0);if(n<=0)return null;return {id:'g'+Date.now().toString(36)+'-xd',date:dt,titre:'XP de départ · '+court,type:'Autre',entries:[{perso:id,nature:'Individuel',montant:n}]};}
 /* Résumé par étape (récapitulatif et section « Création » de l'historique) */
 function crSummary(b){const d=b.d||{},X=crX(d),out=[],R=crRules(),T=d.traits||{};
