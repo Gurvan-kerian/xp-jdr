@@ -251,7 +251,7 @@ function pnjAttached(){return Object.values(S.chars).filter(c=>c.type==='PNJ'&&c
 /* UX1 : événements d'un type, plus récent (numéro le plus haut) en tête */
 const xpEvOf=type=>chEvs().filter(f=>{const x=chEvNum(f);return x?x.type===type:f.type===type;}).sort((a,b)=>((chEvNum(b)||{}).n||0)-((chEvNum(a)||{}).n||0));
 const xpLinked=t=>t!=='Autre';
-function sdOk(g){if(g.kind==='sm'){const e=sessById(g.id);return (!!(e&&e.evt&&S.fiches[e.evt])&&g.type===evType(e))||!!(g.titre||'').trim();}
+function sdOk(g){if(g.kind==='sm'){const e=sessById(g.id);return (!!(e&&e.evt&&S.fiches[e.evt])&&(g.type===evType(e)||!S.events.some(x=>x.session&&x.evt===e.evt&&x.id!==e.id)))||!!(g.titre||'').trim();} /* UX2 : l'événement de sa seule session suit le type */
   if(!xpLinked(g.type)||(g.type==='Vie du fief'&&!g.evt))return !!(g.titre||'').trim();return g.evt==='__new'?!!(g.evNom||'').trim():!!(g.evt&&S.fiches[g.evt]);}
 /* ---------- UX1 (28/11/2026) : page XP — Bilan, Sessions, session ouverte ---------- */
 const XP_PILL=e=>{const h=chSessHead(e);return `<span class="chsn ${h.cl}">${esc(h.num||'·')}</span>`;};

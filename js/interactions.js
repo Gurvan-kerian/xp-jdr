@@ -136,7 +136,10 @@ document.addEventListener('click',ev=>{
       const sc=en.filter(x=>x.nature==='Scénario'&&x.montant&&ch.includes(x.perso));
       if(sc.length){const m=+modeOf(sc.map(x=>x.montant));en=en.filter(x=>!(x.nature==='Scénario'&&ch.includes(x.perso)&&!pj.includes(x.perso)));
         for(const p of pj)if(!en.some(x=>x.nature==='Scénario'&&x.perso===p))en=[...en,{perso:p,nature:'Scénario',montant:m}];}
-      const r={...e,titre:t,type:g.type,date:g.date||e.date,pj,entries:en};if(r.evt&&g.type!==evType(e))delete r.evt; /* UX1 : changer le type détache l'événement */
+      const r={...e,titre:t,type:g.type,date:g.date||e.date,pj,entries:en};
+      if(r.evt&&g.type!==evType(e)){const ev=S.fiches[r.evt],seul=ev&&!S.events.some(x=>x.session&&x.evt===ev.id&&x.id!==e.id);
+        /* UX2 : l'événement de cette seule session suit le type (numéro suivant du nouveau type) ; partagé : la session s'en détache (UX1) */
+        if(seul){const n=clone(ev);n.type=g.type;n.num='';if(CH_TCL[g.type])n.n=xpNextN(g.type);else delete n.n;fiSave(n,true);}else delete r.evt;}
       return r;}));return;}
   else if(a==='sessDel'){if(!sessChildren(S.dlg.id).length)S.dlg.confirm=true;}
   else if(a==='sessDelOk'){const id=S.dlg.id;S.dlg=null;if(sessChildren(id).length){render();return;}if(S.curSess===id)S.curSess=null;saveEvents(S.events.filter(e=>e.id!==id));return;}

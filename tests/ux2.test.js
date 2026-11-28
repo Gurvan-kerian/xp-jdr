@@ -107,6 +107,18 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
       await E(page,()=>document.querySelector('[data-act="chSet"][data-k="type"][data-v="Rendez-vous"]').click());await wait(page,150);
       ok(await E(page,()=>S.dlg&&S.dlg.kind==='chAg'),'Rendez-vous : fenêtre de rendez-vous');
       await E(page,()=>{S.dlg=null;render();});
+      console.log('6 bis. Numéros automatiques');
+      const mk=(nom,type)=>E(page,([nom,type])=>{chAct('chEvNew',{});Object.assign(S.dlg,{nom,type});chAct('chEvSave',{});return Object.values(S.fiches).find(f=>f.genre==='evenement'&&f.nom===nom);},[nom,type]);
+      ok(await E(page,()=>!document.getElementById('chNum')||true)&&(await mk('Sc A','Scénario')).n===1,'création : numéro automatique (Scénario 1)');
+      const b=await mk('Sc B','Scénario');ok(b.n===2,'Scénario suivant : 2');
+      await E(page,id=>{S.view='univers';S.uni='evenement';S.fi=id;chAct('chEvEd',{});S.dlg.type='Interscénario';chAct('chEvSave',{});},b.id);
+      ok(await E(page,id=>S.fiches[id].type==='Interscénario'&&S.fiches[id].n===1,b.id),'changement de type : numéro suivant du nouveau type');
+      ok((await mk('Sc C','Scénario')).n===2,'numéro libéré repris (Scénario 2)');
+      ok(!(await mk('Rdv autre','Autre')).n,'type Autre : sans numéro');
+      ok(await E(page,()=>{chAct('chEvNew',{});const t=[...document.querySelectorAll('#sheetRoot [data-k="type"]')].map(x=>x.dataset.v).join(',');S.dlg=null;render();return t;})==='Scénario,Interscénario,Vie du fief,Rendez-vous,Autre','ordre des types : Rendez-vous avant Autre');
+      const sid=await E(page,()=>{const f=Object.values(S.fiches).find(x=>x.nom==='Sc C');const e={id:'gT',session:true,date:'2026-11-27',titre:'',type:'Scénario',entries:[],pnj:{},pj:[],evt:f.id};saveEvents([...S.events,e]);S.dlg={kind:'sm',id:'gT',type:'Interscénario',titre:'',date:'2026-11-27',confirm:false,pj:[]};return f.id;});
+      await E(page,()=>document.dispatchEvent(new Event('x')));await E(page,()=>{const b=document.createElement('button');b.dataset.act='sessSave';document.body.appendChild(b);b.click();b.remove();});await wait(page,200);
+      ok(await E(page,id=>S.fiches[id].type==='Interscénario'&&S.fiches[id].n===2&&S.events.find(e=>e.id==='gT').evt===id,sid),'session : l\'événement de sa seule session suit le type (numéro suivant)');
       console.log('7. Lot de révélations');
       await E(page,()=>{window._n=[];notify=p=>window._n.push(p);S.view='univers';S.uni='secrets';S.sec=1;S._force=true;render();});
       ok(/Vérité A/.test(await txt(page))&&await E(page,()=>!!document.querySelector('[data-act="secRevAsk"]')),'MJ : élément préparé avec « Révéler »');

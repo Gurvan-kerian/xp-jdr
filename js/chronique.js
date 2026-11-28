@@ -12,6 +12,7 @@ S.cal=null;S.calReady=false;S.chV='liste';S.chTy='tout';S.chTs=[];S.chFo=false;S
 /* ---------- Dates ---------- */
 const CH_TYPES=['Scénario','Interscénario','Vie du fief','Autre']; /* UX2 : type Autre ; Rendez-vous = genre agenda */
 const chCl=f=>CH_TCL[f.type]||'au';
+const CH_TYP2=['Scénario','Interscénario','Vie du fief','Rendez-vous','Autre']; /* ordre de la fenêtre de création */
 const CH_TF=[['sc','Scénarios'],['in','Interscénarios'],['fi','Vie du fief'],['au','Autres'],['ag','Rendez-vous']];
 const CH_TCL={'Scénario':'sc','Interscénario':'in','Vie du fief':'fi'};
 /* Numérotation affichée (26/11) : numéro seul, la couleur dit le type (Scénario 2 chiffres, autres 3) */
@@ -290,8 +291,8 @@ const chSeg=(k,v,opts,l)=>`<div class="field"><span class="flab">${l}</span><div
 function chSheet(g){
   if(g.kind==='chEv'){const f=g.id&&S.fiches[g.id];if(!chCanEv()||(g.id&&!f))return null;const pjs=Object.values(S.chars).filter(c=>c.type==='PJ'&&((vis(c)&&actif(c))||g.pj.includes(c.id)));
     return fiShell(g,f?'Modifier l\'événement':'Ajouter à la Chronique',`<h2>${f?'Modifier l\'événement':'Ajouter à la Chronique'}</h2>
-      <div class="chnf"><div class="field"><label for="chNum">Numéro</label><input id="chNum" type="text" data-fin="num" value="${esc(g.num)}" placeholder="[025]" autocomplete="off"></div><div class="field"><label for="jrNm">Titre</label><input id="jrNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div></div>
-      ${chSeg('type',g.type,CH_TYPES.concat(f?[]:['Rendez-vous']).map(t=>[t,t]),'Type')}
+      ${f&&canEdit()&&CH_TCL[g.type]&&g.type===f.type?`<div class="chnf"><div class="field"><label for="chNum">Numéro</label><input id="chNum" type="text" inputmode="numeric" data-fin="num" value="${esc(g.num)}" autocomplete="off"></div><div class="field"><label for="jrNm">Titre</label><input id="jrNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div></div>`:`<div class="field"><label for="jrNm">Titre</label><input id="jrNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>${CH_TCL[g.type]&&(!f||g.type!==f.type)&&!g.sess?`<div class="muted small">Numéro attribué automatiquement : ${esc(chPad(g.type,xpNextN(g.type)))}</div>`:''}`}
+      ${chSeg('type',g.type,(f?CH_TYPES:CH_TYP2).map(t=>[t,t]),'Type')}
       ${chDateFields(g,'d','Début <span class="muted">— le jour peut rester vide (période floue)</span>','')}
       <div class="field"><label for="chDu">Durée en jours</label><div class="chdu"><input id="chDu" type="number" min="1" inputmode="numeric" data-fin="duree" value="${esc(g.duree)}"><span class="muted small" data-chprev="fin">${esc(chFinTxt(g))}</span></div></div>
       <div class="field"><span class="flab">PJ impliqués</span><div class="jrparts">${pjs.map(c=>{const on=g.pj.includes(c.id);return `<button type="button" class="jrpc${on?' on':''}" data-act="chPjT" data-v="${esc(c.id)}" aria-pressed="${on}">${esc(c.court||c.nom)}</button>`;}).join('')}</div></div>
@@ -306,7 +307,7 @@ function chSheet(g){
       <div class="muted small">Tape <b>@</b> puis quelques lettres pour lier une fiche ; une ligne qui commence par « - » devient une liste.</div>
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="chTxtSave">Enregistrer</button></div>`);}
   if(g.kind==='chAg'){const f=g.id&&S.fiches[g.id];if(g.id?!chCanAg(f):!chCanEv())return null;
-    return fiShell(g,f?'Rendez-vous':'Nouveau rendez-vous',`<h2>${f?'Modifier le rendez-vous':'Ajouter à la Chronique'}</h2>${f?'':chSeg('type','Rendez-vous',CH_TYPES.concat('Rendez-vous').map(t=>[t,t]),'Type')}
+    return fiShell(g,f?'Rendez-vous':'Nouveau rendez-vous',`<h2>${f?'Modifier le rendez-vous':'Ajouter à la Chronique'}</h2>${f?'':chSeg('type','Rendez-vous',CH_TYP2.map(t=>[t,t]),'Type')}
       <div class="field"><label for="jrNm">Titre</label><input id="jrNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
       ${chDateFields(g,'d','Date','Jour, mois et année')}
       ${chSeg('plus',g.plus?'1':'',[['','Un jour'],['1','Plusieurs jours']],'Durée')}
@@ -384,7 +385,7 @@ function chAct(a,d){
     const num=sn?(sn.type==='Scénario'?String(sn.n).padStart(2,'0')+'.':sn.type==='Interscénario'?'['+p(sn.n)+']':'('+p(sn.n)+')'):'';
     const nom=String(e.titre||'').replace(CH_RE_I,'').replace(CH_RE_S,'').replace(CH_RE_F,'').replace(/^\s*\.\s*/,'').replace(/\s*[—–-]\s*[ée]pilogue.*$/i,'').replace(/\s*part\.?\s*\d+\s*$/i,'').trim();
     const ty=sn?sn.type:evType(e);fiOpenDlg({kind:'chEv',id:'',num,nom,type:CH_TYPES.includes(ty)?ty:'Interscénario',dj:'',dm:'',da:'',duree:'1',pj:orderPJ(presents(e)),txt:'',sess:e.id,stay:d.stay==='1'});render();return true;}
-  if(a==='chEvEd'){const f=S.fiches[S.fi];if(!f||!chCanEv())return true;const b=f.debut||{};fiOpenDlg({kind:'chEv',id:f.id,num:f.num||'',nom:f.nom||'',type:f.type||'Interscénario',dj:b.j?String(b.j):'',dm:b.m?String(b.m):'',da:b.a?String(b.a):'',duree:String(f.duree||1),pj:(f.pj||[]).slice(),txt:f.lieux||''});render();return true;}
+  if(a==='chEvEd'){const f=S.fiches[S.fi];if(!f||!chCanEv())return true;const b=f.debut||{};fiOpenDlg({kind:'chEv',id:f.id,num:f.n?String(f.n):(f.num||''),nom:f.nom||'',type:f.type||'Interscénario',dj:b.j?String(b.j):'',dm:b.m?String(b.m):'',da:b.a?String(b.a):'',duree:String(f.duree||1),pj:(f.pj||[]).slice(),txt:f.lieux||''});render();return true;}
   if(a==='chPjT'){if(g&&g.kind==='chEv'){g.pj=g.pj.includes(d.v)?g.pj.filter(x=>x!==d.v):[...g.pj,d.v];redraw();}return true;}
   if(a==='chEvSave'){if(!g||g.kind!=='chEv'||!chCanEv())return true;const nom=(g.nom||'').trim();if(!nom){g.err='Le titre est obligatoire.';redraw();return true;}
     const any=['dj','dm','da'].some(k=>String(g[k]||'').trim()),db=chDateOf(g,'d');
@@ -393,7 +394,12 @@ function chAct(a,d){
     const du=Math.max(1,parseInt(g.duree,10)||1),ed=document.getElementById('fiEd'),lieux=ed?fiSer(ed):(g.txt||'');
     const pj=g.pj.filter(id=>S.chars[id]),type=CH_TYPES.includes(g.type)?g.type:'Interscénario';
     let f;if(g.id){const x=S.fiches[g.id];if(!x)return true;f=clone(x);}else f={id:fiRid('f-'),genre:'evenement',vis:'rev',eye:{desc:true,sait:true},desc:'',notes:'',par:ME||'',cree:now};
-    f.nom=nom;f.num=(g.num||'').trim();f.type=type;{const nn=parseInt(String(f.num).replace(/\D/g,''),10);if(nn>0&&CH_TCL[type]){f.n=nn;f.num='';}else delete f.n;} /* UX1 : numéro entier */f.duree=du;f.pj=pj;f.lieux=lieux;if(db)f.debut=db;else delete f.debut;
+    f.nom=nom;f.num=(g.num||'').trim();f.type=type;{const old=g.id&&S.fiches[g.id],nn=parseInt(String(f.num).replace(/\D/g,''),10);f.num='';
+      /* UX2 : numéro automatique (plus grand du type + 1) ; corrigeable en mode édition ; changement de type = numéro suivant du nouveau type */
+      if(!CH_TCL[type])delete f.n;
+      else if(old&&old.type===type)f.n=canEdit()&&nn>0?nn:(old.n||nn||xpNextN(type));
+      else if(!old&&g.sess&&nn>0)f.n=nn; /* rattachement d'une ancienne session : numéro repris de son titre */
+      else f.n=xpNextN(type);}f.duree=du;f.pj=pj;f.lieux=lieux;if(db)f.debut=db;else delete f.debut;
     S.dlg=null;FI_AT=null;S.fiches={...S.fiches,[f.id]:f};fiSave(f,true);
     if(g.sess&&canEdit()){saveEvents(S.events.map(e=>e.id===g.sess?{...e,evt:f.id}:e));}
     if(!g.id&&!g.stay){S.fi=f.id;S.uni='evenement';S.view='univers';window.scrollTo(0,0);} /* créé depuis le journal d'XP : on y reste */
