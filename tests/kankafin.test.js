@@ -93,7 +93,7 @@ const SHOTS=process.env.SHOTS;
         await click(page,'[data-act="rgBack"]');await wait(page);ok(/La Fortune/.test(await txt(page)),'retour à la liste');
         if(SHOTS)await page.screenshot({path:path.join(SHOTS,'regles-images.png'),fullPage:true});
         console.log('2. Joueur : chronologie et PNJ');
-        t=await uni(page,'home');ok(/Chronologies/.test(t),'Univers : entrée Chronologies');
+        t=await uni(page,'home');ok(/Histoire/.test(t),'Univers : entrée Histoire (UX2)');
         t=await uni(page,'chrono');ok(/Une histoire des fées/.test(t),'liste des chronologies');
         t=await uni(page,'chrono','chr');
         ok(/temps mythiques[\s\S]*temps modernes[\s\S]*Belle Époque/i.test(t),'ères triées par début');
@@ -111,7 +111,7 @@ const SHOTS=process.env.SHOTS;
         await page.evaluate(()=>{S.view='srch';S.srch={q:'arthurien',g:'all'};S._force=true;render();});ok(/Une histoire des fées/.test(await res(page)),'recherche : texte d\'un élément');
         t=await pnj(page,'fab');ok(/Pouvoirs et capacités[\s\S]*Réflexe surhumain[\s\S]*Chute indolore[\s\S]*Pattes de velours/i.test(t),'PNJ : bloc Pouvoirs et capacités');
         ok(await page.evaluate(()=>!!document.querySelector('.lk[data-t="pw"][data-id="pw-ref"]')&&!!document.querySelector('.lk[data-t="cap"][data-id="cap-pat"]')),'liens vers les fiches de pouvoir et de capacité');
-        ok(/Modifier/.test(await page.evaluate(()=>[...document.querySelectorAll('.rblk')].find(s=>/Pouvoirs et capacités/i.test(s.innerText)).innerText)),'joueur : modification (règle des fiches, PNJ révélé)');
+        ok(await page.evaluate(()=>!![...document.querySelectorAll('.rblk')].find(s=>/Pouvoirs et capacités/i.test(s.innerText)).querySelector('.ibtn,[data-act="pnPw"]')),'joueur : modification (règle des fiches, PNJ révélé)');
         t=await pnj(page,'cor');ok(!/Coup d'œil/.test(t),'œil fermé : bloc caché au joueur');
         ok(errs.length===0,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
       console.log('3. Gestion : édition');

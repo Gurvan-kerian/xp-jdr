@@ -38,7 +38,7 @@ if(!docsPath){const app=loadApp(ROOT,['config','engine','modele','migrations','c
   r(`ME='alice';S.edit=false;S.visit=false;`);
   ok(r(`!fiSee(S.fiches.lavoir)&&fiSee(S.fiches.cave)&&fiCanEd(S.fiches.paris)`),'joueur : lieu préparé invisible, lieu révélé modifiable (principe du 25/11)');
   {const h=r(`S.fiQ='';S.fiTy='';fiListBody('lieu')`);const row=h.split('class="firow').find(x=>x.includes('La cave secrète'));
-    ok(!!row&&/padding-left:6px/.test(row)&&!/Bateau-Lavoir/.test(h),'joueur : lieu révélé au parent préparé affiché à la racine');}
+    ok(!!row&&/padding-left:0px/.test(row)&&!/Bateau-Lavoir/.test(h),'joueur : lieu révélé au parent préparé affiché à la racine');}
   ok(r(`JSON.stringify(fiEyeKeys(S.fiches.fva))`)==='["desc","sait","fief","pers","orgs","obj","carte"]'&&!r(`fiEyeKeys(S.fiches.paris).includes('fief')`),'yeux : bloc Fief seulement pour un lieu de type Fief');
   /* rattachement par nom (gestion) */
   r(`ME='lorenzo';S.edit=true;`);
@@ -117,7 +117,7 @@ const DBG=process.env.DBG;
         await page.evaluate(()=>{S.view='univers';S.uni='lieu';S.fi=null;render();});let t=await txt(page);
         ok(/Paris/.test(t)&&/La cave secrète/.test(t)&&!/Bateau-Lavoir/.test(t),'liste des lieux (joueur) : préparé absent, enfant remonté');
         await page.evaluate(()=>{S.fi='paris';render();});t=await txt(page);if(DBG)console.log(t);
-        ok(/Lieux contenus/i.test(t)&&/Personnages liés/i.test(t)&&/Objets présents/i.test(t)&&!/Notes MJ/i.test(t),'fiche Lieu (joueur) : blocs, sans Notes MJ');
+        ok(/Lieux contenus/i.test(t)&&/Compléter/.test(t)&&/Personnage lié/i.test(t)&&!/Objets présents/i.test(t)&&!/Pas de carte/.test(t)&&!/Notes MJ/i.test(t),'fiche Lieu (joueur) : blocs remplis, vides dans « Compléter », sans Notes MJ (UX2)');
         await click(page,'[data-act="fi6Lk"][data-m="pers"][data-n="res"]');await fill(page,'cid','kerian');await click(page,'[data-act="fi6LkSave"]');await page.waitForTimeout(300);
         ok(((db.get('chars/kerian').situ||{}).lieux||[]).some(e=>e.f==='paris'&&e.nat==='res'),'joueur : « + Résident » enregistré dans la Situation de Kerian');
         await page.evaluate(()=>{S.view='sheet';S.sel='kerian';S.shTab='situ';render();});t=await txt(page);if(DBG)console.log(t);
@@ -130,8 +130,8 @@ const DBG=process.env.DBG;
       console.log('3. Gestion');
       {const {page,errs,ctx}=await open(browser,base,db,'lorenzo');
         await page.evaluate(()=>{S.edit=true;S.view='univers';S.uni='lieu';S.fi='fva';render();});let t=await txt(page);if(DBG)console.log(t);
-        ok(/Fief/i.test(t)&&/Situation féerique/i.test(t)&&/sur 7 visibles/i.test(t),'fief (gestion) : bloc Fief, 7 blocs comptés');
-        await page.evaluate(()=>{S.fi='lavoir';render();});t=await txt(page);ok(/Fiche préparée/.test(t),'lieu préparé : bandeau');
+        ok(/Fief/i.test(t)&&/Situation féerique/i.test(t)&&!/sur 7 visibles/i.test(t),'fief (gestion) : bloc Fief ; un seul œil de fiche (UX2)');
+        await page.evaluate(()=>{S.fi='lavoir';render();});t=await txt(page);ok(await page.evaluate(()=>!!document.querySelector('.ibtn.prepi[data-act="fiEye"][data-k="fiche"]')),'lieu préparé : œil barré dans l\'en-tête (UX2)');
         await page.evaluate(()=>{S.view='params';S.ptab='donnees';render();});t=await txt(page);ok(/Rattachement par nom/i.test(t),'Paramètres › Données : rattachement par nom');
         ok(errs.length===0,'aucune erreur JavaScript'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
     }

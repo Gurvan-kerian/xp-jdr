@@ -40,8 +40,8 @@ const fiRid=p=>p+Date.now().toString(36).slice(-5)+Math.random().toString(36).sl
 const fiAll=()=>Object.values(S.fiches||{});
 const fiSee=f=>!!f&&(isGest()||f.vis==='rev');
 const fiEyeOf=f=>(f&&f.eye)||{};
-const fiBlkSee=(f,k)=>fiSee(f)&&(isGest()||!!fiEyeOf(f)[k]);
-const fiItSee=(f,it)=>!!it&&fiBlkSee(f,'sait')&&(isGest()||!!it.rev);
+const fiBlkSee=(f,k)=>fiSee(f); /* UX2 : un seul œil par fiche (vis) ; les clés eye restent en base */
+const fiItSee=(f,it)=>!!it&&fiSee(f)&&(isGest()||!!it.rev);
 const fiCanEd=f=>!!f&&isUser()&&(isGest()||f.vis==='rev'); /* UX1 : contenu visible modifiable sans mode édition */
 const fiCanNew=()=>!S.visit&&(canEdit()||(!isGest()&&!!ME));
 const fiSort=L=>L.sort((a,b)=>(a.nom||'').localeCompare(b.nom||'','fr',{sensitivity:'base'}));
@@ -118,7 +118,7 @@ function fiMentions(t,id){const out=[];
     if(fiHas(F.desc,t,id)&&fiBlkSee(F,'desc'))hits.push(F.genre==='evenement'?'Résumé':F.genre==='agenda'?'Note':'Description');
     if((F.sait||[]).some(it=>fiHas(it.txt,t,id)&&fiItSee(F,it)))hits.push("Ce que l'on sait");
     if((F.spec||[]).some(x=>fiHas(x.txt,t,id)&&fiSpecSee(x)))hits.push('Spécimens connus'); /* lot 8 b */
-    if((F.els||[]).some(x=>fiHas(x.txt,t,id)&&ctElSee(x)))hits.push('Chronologie'); /* chronologies */
+    if((F.els||[]).some(x=>fiHas(x.txt,t,id)&&ctElSee(x)))hits.push('Histoire'); /* chronologies */
     if(isGest()&&fiHas(F.notes,t,id))hits.push('Notes MJ');
     if(t==='fiche'&&F.parent===id)hits.push((FI_G[F.genre]||{}).sub||'fiche contenue');
     if(F.genre==='objet'&&fiBlkSee(F,'det')){if(t==='fiche'&&F.lieu&&F.lieu.f===id)hits.push('emplacement');if(t==='perso'&&(F.det||[]).some(x=>x.id===id))hits.push('détenteur');} /* lot 6 */
@@ -137,88 +137,124 @@ function fiMentionsHtml(L){if(!L.length)return '<div class="muted small">Aucune 
 
 /* ---------- Univers : accueil en liste groupée ---------- */
 function fiUniHome(){const G=isGest(),pl=(n,s,p)=>n+' '+(n>1?p:s);
-  const cnt=g=>{const L=fiAll().filter(f=>f.genre===g),v=L.filter(fiSee).length,p=G?L.filter(f=>f.vis!=='rev').length:0;
-    return S.fichesReady?(v?FI_G[g].cnt(v)+(p?' · '+pl(p,'préparée','préparées'):''):'aucune fiche pour l\'instant'):'chargement…';};
+  const nv=(g,L)=>{const k=uniNewCount(g,L);return k?k:0;};
+  const cnt=g=>{const L=fiAll().filter(f=>f.genre===g),V=L.filter(fiSee),v=V.length,p=G?L.filter(f=>f.vis!=='rev').length:0;
+    return S.fichesReady?(v?FI_G[g].cnt(v)+(p?' · '+pl(p,'préparée','préparées'):''):'aucune fiche'):'chargement…';};
   const L=S.secrets||[],nt=L.filter(titreVis).length,np=propBadge();
-  const sec=S.secretsReady?pl(L.length,'secret','secrets')+' · '+pl(nt,'titre révélé','titres révélés')+(np?' · '+pl(np,'proposition en attente','propositions en attente'):''):'chargement…';
+  const sec=S.secretsReady?pl(L.length,'secret','secrets')+' · '+pl(nt,'titre révélé','titres révélés'):'chargement…';
   const rv=raceCres().filter(cr=>raceVisible(cr,raceRec(cr))),rd=rv.filter(cr=>cr.done).length;
-  const rac=S.creaturesReady?pl(rv.length,'race','races')+(rd?' · '+pl(rd,'fiche complète','fiches complètes'):''):'chargement…';
-  const row=(act,v,ic,l,sum,bdg)=>`<button type="button" class="pli" data-act="${act}" data-v="${v}"><span class="pic">${FI_SVG(FI_IC[ic])}</span><span class="ptx"><b>${l}${bdg?` <span class="bdg" aria-label="${bdg} en attente">${bdg}</span>`:''}</b><small>${esc(sum)}</small></span><span aria-hidden="true" class="pch">›</span></button>`;
-  const grp=(t,rows)=>`<div class="pgrp">${t}</div><div class="plst">${rows.join('')}</div>`;
-  return `<h2 style="margin-top:4px">Univers</h2>`
-    +grp('Récit',[row('uni','chron','chron','Chronique',chUniSum()),row('uni','chrono','chrono','Chronologies',cnt('chrono')),row('uni','secrets','secrets','Secrets',sec,np)]) /* lot 3 */
-    +grp('Peuples',[row('uni','creatures','races','Races',rac),row('uni','pnj','pnj','PNJ',(()=>{const n=ids().filter(i=>S.chars[i].type==='PNJ').length;return n+' PNJ';})()),row('uni','pouvoirs','pouvoirs','Pouvoirs et capacités',uniPwSum()),row('uni','art','art','Arts obscurs',cnt('art')),row('uni','bete','bete','Bestiaire',cnt('bete')),row('uni','famille','famille','Familles',cnt('famille')),row('uni','org','org','Organisations',cnt('org'))])
-    +grp('Lieux et choses',[row('uni','lieu','lieu','Lieux',cnt('lieu')),row('uni','carte','carte','Cartes',cnt('carte')),row('uni','objet','objet','Objets',cnt('objet'))]);}
+  const rac=S.creaturesReady?pl(rv.length,'race','races')+(rd?' · '+pl(rd,'complète','complètes'):''):'chargement…';
+  const pnjL=ids().map(i=>S.chars[i]).filter(c=>c&&c.type==='PNJ'&&vis(c));
+  const row=(v,ic,l,sum,k,bdg)=>`<button type="button" class="pli ux2li" data-act="uni" data-v="${v}"><span class="pic">${FI_SVG(FI_IC[ic])}</span><span class="ptx"><b>${l}${bdg?` <span class="bdg" aria-label="${bdg} en attente">${bdg}</span>`:''}</b><small>${esc(sum)}${k?` · <span class="nouv">${k} nouveau${k>1?'x':''}</span>`:''}</small></span><span aria-hidden="true" class="pch">›</span></button>`;
+  const fg=g=>nv(g,fiAll().filter(f=>f.genre===g&&fiSee(f)));
+  const grp=(t,rows)=>`<div class="ux2grp"><div class="pgrp">${t}</div><div class="plst">${rows.join('')}</div></div>`;
+  return `<div class="pghead"><h2>Univers</h2></div><div class="ux2home">`
+    +grp('Récit',[row('chron','chron','Chronique',chUniSum(),nv('evenement',chEvs())),row('chrono','chrono','Histoire',cnt('chrono'),fg('chrono')),row('secrets','secrets','Secrets',sec,0,np)])
+    +grp('Société',[row('pnj','pnj','PNJ',pnjL.length+' PNJ',nv('pnj',pnjL)),row('famille','famille','Familles',cnt('famille'),fg('famille')),row('org','org','Organisations',cnt('org'),fg('org'))])
+    +grp('Monde',[row('lieu','lieu','Lieux',cnt('lieu'),fg('lieu')),row('carte','carte','Cartes',cnt('carte'),fg('carte')),row('objet','objet','Objets',cnt('objet'),fg('objet'))])
+    +grp('Féerie',[row('creatures','races','Races',rac,0),row('pouvoirs','pouvoirs','Pouvoirs et capacités',uniPwSum(),0),row('art','art','Arts obscurs',cnt('art'),fg('art')),row('bete','bete','Bestiaire',cnt('bete'),fg('bete'))])+`</div>`;}
+/* UX2 : nouveautés = éléments visibles révélés ou modifiés depuis la dernière visite de la liste (par navigateur) */
+function uniSeen(){try{return JSON.parse(localStorage.getItem('xp.uniSeen')||'{}');}catch(e){return {};}}
+function uniSeenSet(g){try{const m=uniSeen();m[g]=new Date().toISOString();localStorage.setItem('xp.uniSeen',JSON.stringify(m));}catch(e){}}
+function uniNewCount(g,L){const t=uniSeen()[g];if(!t)return 0;return (L||[]).filter(x=>x&&((x.modif||x.cree||'')>t)).length;}
+function uniSortOf(g){try{return (JSON.parse(localStorage.getItem('xp.uniSort')||'{}'))[g]||'az';}catch(e){return 'az';}}
+function uniSortSet(g,v){try{const m=JSON.parse(localStorage.getItem('xp.uniSort')||'{}');m[g]=v;localStorage.setItem('xp.uniSort',JSON.stringify(m));}catch(e){}}
 /* lot 3 : résumé de l'entrée Chronique */
 function chUniSum(){if(!S.fichesReady)return 'chargement…';const n=chEvs().length,d=chNow();return (n?n+' événement'+(n>1?'s':''):'aucun événement pour l\'instant')+(d?' · '+chDateTxt(d):'');}
 const fiUniBack=()=>crumb(CR_UNI,['']);
 
 /* ---------- Liste d'un genre : recherche, filtre par type, arborescence ---------- */
 function fiListView(g){const Gm=FI_G[g],T=fiTypes(g);if(S.fiTy&&!T.some(t=>t[0]===S.fiTy))S.fiTy='';
-  let h=fiUniBack()+`<h2 style="margin-top:2px">${Gm.pl}</h2>`;
+  const plus=fiCanNew()&&(g!=='art'||canEdit())?`<button type="button" class="pbtn big" data-act="fiNew" data-g="${g}" aria-label="${esc(Gm.nv)}">+</button>`:'';
+  let h=fiUniBack()+`<div class="pghead"><h2>${Gm.pl}</h2>${plus}</div>`;
   if(!S.fichesReady)return h+`<div class="card empty">Chargement…</div>`;
-  h+=`<div class="fisrch"><input type="search" data-fiq="1" value="${esc(S.fiQ)}" placeholder="Rechercher (nom, type)" aria-label="Rechercher dans les ${Gm.pl.toLowerCase()}" autocomplete="off"></div>`;
-  if(T.length)h+=`<div class="chips fichips">${[['','Tous']].concat(T.map(t=>[t[0],t[0]])).map(([v,l])=>`<button class="chip" data-act="fiTy" data-v="${esc(v)}" aria-pressed="${(S.fiTy||'')===v}">${esc(l)}</button>`).join('')}${g==='objet'?`<button class="chip" data-act="fi6Uq" aria-pressed="${!!S.fiUq}">Uniques</button>`:''}</div>`;
+  const so=uniSortOf(g);
+  h+=`<div class="ux2tb"><input type="search" data-fiq="1" value="${esc(S.fiQ)}" placeholder="Filtrer les ${Gm.pl.toLowerCase()}" aria-label="Filtrer les ${Gm.pl.toLowerCase()}" autocomplete="off"><div class="ux2sel">`
+    +(T.length?`<label class="ux2dd${S.fiTy?' on':''}"><span>Type :</span><select data-fity="1" aria-label="Type">${[['','Tous']].concat(T.map(t=>[t[0],t[0]])).map(([v,l])=>`<option value="${esc(v)}"${(S.fiTy||'')===v?' selected':''}>${esc(l)}</option>`).join('')}</select></label>`:'')
+    +`<label class="ux2dd"><span>Tri :</span><select data-fiso="${g}" aria-label="Tri"><option value="az"${so==='az'?' selected':''}>A-Z</option><option value="rec"${so==='rec'?' selected':''}>Récents</option></select></label>`
+    +(g==='objet'?`<button class="chip" data-act="fi6Uq" aria-pressed="${!!S.fiUq}">Uniques</button>`:'')
+    +(isGest()?`<button class="chip" data-act="fiPrep" aria-pressed="${!!S.fiPrep}">Préparés seulement</button>`:'')+`</div></div>`;
   h+=`<div id="fiRes">${fiListBody(g)}</div>`;
-  if(fiCanNew()&&(g!=='art'||canEdit()))h+=`<button class="btn pri cta" data-act="fiNew" data-g="${g}">+ ${Gm.nv}</button>`;
   return h;}
-function fiListBody(g){const Gm=FI_G[g],L=fiAll().filter(f=>f.genre===g&&fiSee(f)&&!(g==='objet'&&S.fiUq&&!f.uniq)),q=nrm(S.fiQ),ty=S.fiTy||'';
-  if(!L.length)return `<div class="card empty">Aucune fiche pour l'instant.${fiCanNew()?' Crée la première avec le bouton ci-dessous.':''}</div>`;
-  const tag=f=>f.vis!=='rev'?' <span class="tag2">préparé</span>':'';
-  const th=f=>{const s=illOf('fiche',f.id);return s?`<img class="illt" src="${s}" alt="" style="width:30px;height:30px">`:`<span class="fiic" aria-hidden="true">${FI_SVG(FI_IC[g],16)}</span>`;};
-  const line=(f,sub,depth,tog)=>`<div class="firow${f.vis!=='rev'?' prep':''}" style="padding-left:${6+depth*18}px">${tog||'<span class="fitog0"></span>'}<button type="button" class="fili" data-act="fiOpen" data-id="${esc(f.id)}">${th(f)}<span class="fitx"><b>${esc(f.nom)}${tag(f)}</b><small>${esc(sub)}</small></span></button></div>`;
-  if(q||ty||!Gm.arbo||(g==='objet'&&S.fiUq)){const R=fiSort(L.filter(f=>(!ty||(f.type||'').trim()===ty)&&(!q||nrm(f.nom).includes(q)||nrm(f.type).includes(q))));
+function fiListBody(g){const Gm=FI_G[g],L=fiAll().filter(f=>f.genre===g&&fiSee(f)&&!(g==='objet'&&S.fiUq&&!f.uniq)&&!(S.fiPrep&&f.vis==='rev')),q=nrm(S.fiQ),ty=S.fiTy||'',so=uniSortOf(g);
+  if(!L.length)return `<div class="card empty">${S.fiPrep?'Aucune fiche préparée.':'Aucune fiche pour l\'instant.'}</div>`;
+  const tag=f=>f.vis!=='rev'?`<span class="ux2prep">${EYE_C}préparé</span>`:'';
+  const th=f=>{const s=illOf('fiche',f.id);return s?`<img class="illt" src="${s}" alt="" style="width:36px;height:36px">`:`<span class="ux2nothumb" aria-hidden="true"></span>`;};
+  const line=(f,sub,depth,tog)=>`<div class="firow ux2row${f.vis!=='rev'?' prep':''}" style="padding-left:${depth*22}px">${tog||'<span class="fitog0"></span>'}<button type="button" class="fili" data-act="fiOpen" data-id="${esc(f.id)}">${th(f)}<span class="fitx"><b>${esc(f.nom)}</b><small>${esc(sub)}</small></span>${tag(f)}</button></div>`;
+  const subOf=(f,p)=>f.genre==='carte'?caListSub(f,null)+(p?' · '+p:''):[f.type,p,fi6Hold(f)].filter(Boolean).join(' · ');
+  if(q||ty||so==='rec'||!Gm.arbo||(g==='objet'&&S.fiUq)||S.fiPrep){let R=L.filter(f=>(!ty||(f.type||'').trim()===ty)&&(!q||nrm(f.nom).includes(q)||nrm(f.type).includes(q)));
+    R=so==='rec'?R.sort((a,b)=>((b.modif||b.cree||'')>(a.modif||a.cree||'')?1:-1)):fiSort(R);
     if(!R.length)return `<div class="card empty">Aucune fiche ne correspond.</div>`;
-    return `<div class="filst">${R.map(f=>{const p=Gm.arbo?fiPath(f).filter(fiSee).map(x=>x.nom).join(' › '):'';return line(f,f.genre==='carte'?caListSub(f,null)+(p?' · '+p:''):[f.type,p,fi6Hold(f)].filter(Boolean).join(' · '),0);}).join('')}</div>`;}
+    return `<div class="filst">${R.map(f=>{const p=Gm.arbo?fiPath(f).filter(fiSee).map(x=>x.nom).join(' › '):'';return line(f,subOf(f,p),0);}).join('')}</div>`;}
   const ids0=new Set(L.map(f=>f.id)),roots=fiSort(L.filter(f=>!f.parent||!ids0.has(f.parent)));
   const rec=(f,depth)=>{const K=g==='famille'?faKidOrd(fiKidsOf(f.id,L)):fiSort(fiKidsOf(f.id,L)),n=fiDesc(f.id,L),op=S.fiTree[f.id]!=null?S.fiTree[f.id]:false;
     const tog=K.length?`<button type="button" class="fitog" data-act="fiTree" data-id="${esc(f.id)}" aria-expanded="${op}" aria-label="${op?'Replier':'Déplier'} ${esc(f.nom)}">${op?'⌄':'›'}</button>`:'';
-    return line(f,g==='famille'?faListSub(f,K):g==='carte'?caListSub(f,K):[f.type,K.length?n+' contenu'+(n>1?'s':''):'',fi6Hold(f)].filter(Boolean).join(' · '),depth,tog)+(op?K.map(k=>rec(k,depth+1)).join(''):'');};
+    const un=Gm.un==='lieu'?'lieu':Gm.un;
+    return line(f,g==='famille'?faListSub(f,K):g==='carte'?caListSub(f,K):[f.type,K.length?n+' '+(g==='lieu'?(n>1?'lieux':'lieu'):g==='objet'?(n>1?'objets':'objet'):(n>1?'éléments':'élément')):'',fi6Hold(f)].filter(Boolean).join(' · '),depth,tog)+(op?K.map(k=>rec(k,depth+1)).join(''):'');};
   return `<div class="filst">${roots.map(f=>rec(f,0)).join('')}</div>`;}
-
 /* ---------- La fiche ---------- */
 const fiFolded=k=>!!(S.fiFold||{})[k];
 function fiBlk(k,title,sum,body,o){o=o||{};const fold=fiFolded(k),id='fb-'+k;
-  const ed=o.edit?`<button type="button" class="edl" data-act="${o.edit}"${o.ea||''}>${ICON.crayon} Modifier</button>`:'';
-  return `<section class="rblk${o.hid?' fihid':''}"><div class="rbh"><button type="button" class="rbt" data-act="fiFold" data-k="${k}" aria-expanded="${!fold}" aria-controls="${id}"><span class="tt"><span class="t">${title}</span>${sum!==''&&sum!=null?`<span class="n">${sum}</span>`:''}</span><span class="chev" aria-hidden="true">${fold?'›':'⌄'}</span></button>${ed}${o.eye||''}</div>${fold?'':`<div class="rbb" id="${id}">${body}</div>`}</section>`;}
+  const ed=o.edit?`<button type="button" class="ibtn sm" data-act="${o.edit}"${o.ea||''} aria-label="Modifier « ${esc(String(title).replace(/<[^>]+>/g,''))} »">${ICON.crayon}</button>`:'';
+  const pl=o.plus&&!fold?`<div class="blkplus"><button type="button" class="pbtn" data-act="${o.plus}"${o.pa||''} aria-label="Ajouter">+</button></div>`:'';
+  return `<section class="rblk${o.cls?' '+o.cls:''}"><div class="rbh"><button type="button" class="rbt" data-act="fiFold" data-k="${k}" aria-expanded="${!fold}" aria-controls="${id}"><span class="tt"><span class="t">${title}</span>${sum!==''&&sum!=null?`<span class="n">${sum}</span>`:''}</span><span class="chev" aria-hidden="true">${fold?'›':'⌄'}</span></button>${ed}${o.keepEye?o.eye||'':''}</div>${pl}${fold?'':`<div class="rbb" id="${id}">${body}</div>`}</section>`;}
+/* UX2 : texte long replié après 6 lignes */
+function fiClamp(key,html){if(html.replace(/<[^>]+>/g,'').length<380)return html;const op=!!(S.fiMore||{})[key];return `<div class="ux2clamp${op?' op':''}">${html}</div><button type="button" class="lnk ux2more" data-act="fiMore" data-k="${esc(key)}">${op?'Réduire':'Lire la suite'}</button>`;}
+/* UX2 : barre « Compléter » (blocs vides) */
+function fiComp(L){L=L.filter(Boolean);if(!L.length)return '';return `<div class="ux2comp"><span class="muted small">Compléter :</span>${L.map(([lab,act,at,raw])=>raw||`<button type="button" class="ux2cb" data-act="${act}"${at||''}>+ ${lab}</button>`).join('')}</div>`;}
+/* UX2 : en-tête de fiche commun (fil d'Ariane + œil MJ + crayon + corbeille, image, nom, sous-titre) */
+function fiHeadUX2(f,crumbs,opt){opt=opt||{};const G=isGest(),ed=fiCanEd(f);
+  const eye=G?(f.vis==='rev'?`<button type="button" class="ibtn" data-act="fiEye" data-k="fiche" aria-label="Fiche révélée : la préparer (masquer)" title="Fiche révélée">${EYE_O}</button>`:`<button type="button" class="ibtn prepi" data-act="fiEye" data-k="fiche" aria-label="Fiche préparée : la révéler" title="Fiche préparée">${EYE_C}</button>`):'';
+  const pen=ed&&!opt.noPen?`<button type="button" class="ibtn" data-act="${opt.penAct||'fiHead'}" aria-label="Modifier la fiche">${ICON.crayon}</button>`:'';
+  const del=canEdit()&&!opt.noDel?`<button type="button" class="ibtn del" data-act="fiDelAsk" aria-label="Supprimer la fiche">${ICON.corbeille}</button>`:'';
+  let h=`<div class="ux2top">${crumb(...crumbs)}<span class="ux2sp"></span>${eye}${pen}${del}</div>`;
+  if(S.fiRevAsk===f.id)h+=`<div class="delconf ux2conf"><div><b>Révéler la fiche ?</b> Elle devient visible de toute la table, avec tous ses blocs. « À révéler » reste caché.</div><div class="acts"><button class="btn" data-act="fiRevNo">Annuler</button><button class="btn pri" data-act="fiRevOk">Révéler</button></div></div>`;
+  if(S.fiDelAsk===f.id)h+=`<div class="delconf"><div><b>Supprimer « ${esc(f.nom)} » ?</b> Ses sous-éléments sont rattachés à son parent.</div><div class="acts"><button class="btn" data-act="fiDelNo2">Annuler</button><button class="btn danger" data-act="fiDelOk2">Supprimer</button></div></div>`;
+  return h;}
 /* Lot 8 b (26/11/2026) : Bestiaire › Spécimens connus — spec:[{id, nom, txt, rev, cree, par}], image illId('spec', id), un œil par spécimen */
 const fiSpecSee=x=>!!x&&(isGest()||!!x.rev);
 function fiSpecBlk(f,ed,G){const A=f.spec||[],V=A.filter(fiSpecSee),nr=A.filter(x=>x.rev).length;if(!V.length&&!ed)return '';
   const rows=V.map(x=>{const im=illOf('spec',x.id);return `<div class="fiit fispec${x.rev?'':' fihid'}">${im?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('spec',x.id))}" data-lab="${esc(x.nom)}" aria-label="Agrandir l'image de ${esc(x.nom)}"><img src="${im}" alt=""></button>`:''}<div class="fiitx"><b>${esc(x.nom)}</b>${(x.txt||'').trim()?`<div>${fiRich(x.txt)}</div>`:''}</div>${ed?`<button type="button" class="fiedi" data-act="fiSpec" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">${ICON.crayon}</button>`:''}${G?eyeBtn('fiEye',`data-k="spec" data-i="${esc(x.id)}"`,!!x.rev,'Spécimen '+x.nom):''}</div>`;}).join('');
   return fiBlk('spec','Spécimens connus',G?`${nr} / ${A.length} révélé${nr>1?'s':''}`:String(V.length||''),(rows||'<div class="muted small">Aucun spécimen connu.</div>')+(ed?`<div class="radd"><button class="btn" data-act="fiSpec" data-i="">+ Un spécimen</button></div>`:''));}
 function fiFicheView(f){
-  const G=isGest(),E=canEdit(),ed=fiCanEd(f),Gm=FI_G[f.genre]||FI_G.lieu,e=fiEyeOf(f);
-  let h=crumb(CR_UNI,[Gm.pl,'data-act="fiBack"'],[esc(f.nom)]);
-  if(G){if(f.vis!=='rev')h+=`<div class="fivis prep"><span class="fivi" aria-hidden="true">${EYE_C}</span><span class="fivt"><b>Fiche préparée</b> · invisible des joueurs</span><button class="btn pri" data-act="fiReveal">Révéler</button></div>`;
-    else{const K=fiEyeKeys(f),n=K.filter(k=>e[k]).length;h+=`<div class="fivis">${eyeBtn('fiEye','data-k="fiche"',true,'Fiche '+f.nom)}<span class="fivt"><b>Fiche révélée</b> · ${n} bloc${n>1?'s':''} sur ${K.length} visible${n>1?'s':''}</span></div>`;}}
+  const G=isGest(),E=canEdit(),ed=fiCanEd(f),Gm=FI_G[f.genre]||FI_G.lieu;
+  let h=fiHeadUX2(f,[CR_UNI,[Gm.pl,'data-act="fiBack"']]);
   const img=illOf('fiche',f.id),path=fiPath(f);
   const sub=[f.type?esc(f.type):'',...fi6Sub(f),...(f.genre==='famille'?faSub(f):[]),...(f.genre==='art'?aoSub(f):[]),path.length&&f.genre!=='famille'?path.map(x=>fiSee(x)?lk({t:'fiche',id:x.id},x.nom):`<span class="nolk">${esc(x.nom)}</span>`).join(' › '):''].filter(Boolean).join(' · ');
-  h+=`<div class="card fihead"><div class="fihd">${img?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${img}" alt=""></button>`:`<span class="fithumb vide" aria-hidden="true">${FI_SVG(FI_IC[f.genre],26)}</span>`}<div style="flex:1;min-width:0"><h2 class="finm">${esc(f.nom)}</h2>${sub?`<div class="muted small">${sub}</div>`:''}${f.genre==='famille'?faHeadKv(f):''}</div>${f.kanka?kankaBtn(f.kanka,f.nom,'Fiche Kanka : '+f.nom):''}</div>
-    ${ed?`<div style="margin-top:8px"><button type="button" class="edl" data-act="fiHead">${ICON.crayon} ${f.genre==='famille'?'Nom, type, suzerain, devise, race':'Nom, type'+(Gm.arbo?', '+Gm.par.toLowerCase():'')}${f.genre==='objet'?', unique, créateur':''}${f.genre==='carte'?', lieu associé':''}, image</button></div>`:''}</div>`;
+  const prep=f.vis!=='rev'?` <span class="ux2prep">${EYE_C}préparée</span>`:'';
+  h+=`<div class="ux2hero${img?' img':''}">${img?`<button type="button" class="ux2heroimg" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${img}" alt=""></button>`:''}<div class="ux2herot"><h2 class="finm">${esc(f.nom)}</h2>${sub||prep?`<div class="muted small">${sub}${prep}</div>`:''}${f.genre==='famille'?faHeadKv(f):''}${!img&&ed?`<button type="button" class="lnk" data-act="fiHead">+ Image</button>`:''}</div></div>`;
   if(f.genre==='carte')h+=caFicheBlocks(f); /* lot Cartes */
   const T6=fi6Tabs(f);if(T6){h+=T6;if(S.fiTab==='gest')return h+(typeof fgView==='function'?fgView(f):fi6Gest(f));} /* lot 6 : Fief rattaché à un PJ */
   const OT=f.genre==='org'?ogTab():'';if(OT)h+=ogTabsBar(OT); /* lot 5 a : onglets de l'organisation */
+  const comp=FI_CX=[];const pres=!OT||OT==='pres';
   /* Description */
-  if((!OT||OT==='pres')&&fiBlkSee(f,'desc')&&((f.desc||'').trim()||ed))
-    h+=fiBlk('desc',f.genre==='famille'?'Présentation':'Description','',(f.desc||'').trim()?fiRich(f.desc):'<div class="muted small">Pas encore de description.</div>',{edit:ed?'fiEd':'',ea:' data-b="desc"',hid:G&&!e.desc,eye:G?eyeBtn('fiEye','data-k="desc"',!!e.desc,'Description'):''});
-  if(['lieu','org','objet'].includes(f.genre)&&(!OT||OT==='pres'))h+=caOnMap('fiche',f.id); /* lot Cartes */
-  /* Ce que l'on sait : un œil par élément */
-  if((!OT||OT==='pres')&&f.genre!=='carte'&&f.genre!=='chrono'&&fiBlkSee(f,'sait')){const A=(f.sait||[]),V=A.filter(it=>fiItSee(f,it)),nr=A.filter(it=>it.rev).length;
-    if(V.length||ed){const rows=V.map(it=>`<div class="fiit${it.rev?'':' fihid'}"><div class="fiitx">${fiRich(it.txt)}</div>${ed?`<button type="button" class="fiedi" data-act="fiItem" data-i="${esc(it.id)}" aria-label="Modifier l'élément">${ICON.crayon}</button>`:''}${G?eyeBtn('fiEye',`data-k="item" data-i="${esc(it.id)}"`,!!it.rev,"Élément de « Ce que l'on sait »"):''}</div>`).join('');
-      h+=fiBlk('sait',"Ce que l'on sait",G?`${nr} / ${A.length} révélé${nr>1?'s':''}`:String(V.length||''),(rows||'<div class="muted small">Rien pour l\'instant.</div>')+(ed?`<div class="radd"><button class="btn" data-act="fiItem" data-i="">+ Un élément</button></div>`:''),{hid:G&&!e.sait,eye:G?eyeBtn('fiEye','data-k="sait"',!!e.sait,"Ce que l'on sait"):''});}}
+  if(pres){if((f.desc||'').trim())h+=fiBlk('desc',f.genre==='famille'?'Présentation':'Description','',fiClamp(f.id+':desc',fiRich(f.desc)),{edit:ed?'fiEd':'',ea:' data-b="desc"'});
+    else if(ed)comp.push([f.genre==='famille'?'Présentation':'Description','fiEd',' data-b="desc"']);}
+  /* UX2 : Ce que l'on sait (révélé) puis À révéler (MJ) */
+  if(pres&&f.genre!=='carte'&&f.genre!=='chrono'){const A=(f.sait||[]),V=A.filter(it=>it.rev),Hd=A.filter(it=>!it.rev);
+    if(V.length)h+=fiBlk('sait',"Ce que l'on sait",String(V.length),V.map(it=>fiItRow(f,it,ed)).join(''),{plus:ed?'fiItem':'',pa:' data-i="" data-h="0"'});
+    else if(ed)comp.push(["Ce que l'on sait",'fiItem',' data-i="" data-h="0"']);
+    if(G){if(Hd.length)h+=fiBlk('arev','À révéler',String(Hd.length),`<div class="ux2arh">${EYE_C}Invisible des joueurs · un élément révélé passe dans « Ce que l'on sait »</div>`+Hd.map(it=>fiItRow(f,it,ed,true)).join(''),{plus:'fiItem',pa:' data-i="" data-h="1"',cls:'ux2arev'});
+      else comp.push(['À révéler','fiItem',' data-i="" data-h="1"']);}}
+  if(['lieu','org','objet'].includes(f.genre)&&pres)h+=caOnMap('fiche',f.id); /* lot Cartes */
   if(f.genre==='bete')h+=fiSpecBlk(f,ed,G); /* lot 8 b : spécimens connus */
   if(f.genre==='art')h+=aoBlocks(f,ed,G); /* arts obscurs */
   if(f.genre==='chrono')h+=ctBlocks(f,ed,G); /* chronologies */
   h+=fi6Blocks(f); /* lot 6 : blocs propres aux lieux et objets */
   if(OT)h+=ogBlocks(f,OT); /* lot 5 a */
   if(f.genre==='famille')h+=faBlocks(f); /* lot 5 b */
-  if(OT&&OT!=='ctx')return h;
-  /* Notes MJ : gestion seule, jamais révélées */
-  if(G&&!Gm.noMj&&((f.notes||'').trim()||E))h+=fiBlk('notes','Notes MJ','jamais révélées',(f.notes||'').trim()?fiRich(f.notes):'<div class="muted small">Aucune note.</div>',{edit:E?'fiEd':'',ea:' data-b="notes"',hid:true});
-  /* Mentions */
-  const M=fiMentions('fiche',f.id);
-  h+=fiBlk('ment','Mentions',M.length?M.length+' · mises à jour automatiquement':'',fiMentionsHtml(M));
+  if(OT&&OT!=='ctx')return h+fiComp(comp);
+  /* Mentions (UX2 : sans les fiches déjà listées dans la fiche) */
+  const M=fiMentions('fiche',f.id).filter(m=>!(m.o&&m.o.t==='fiche'&&S.fiches[m.o.id]&&S.fiches[m.o.id].parent===f.id)&&!/^Situation · /.test(m.prec||'')); /* UX2 : sans ce que les blocs listent déjà */
+  if(M.length)h+=fiBlk('ment','Mentions',String(M.length),fiMentionsHtml(M));
+  h+=fiComp(comp);
   return h;}
+/* UX2 : ligne d'élément de « Ce que l'on sait » / « À révéler » */
+let FI_CX=[];
+function fiItRow(f,it,ed,hid){const P=it.par&&S.players[it.par],by=P&&!isMJ(P)?` · ajouté par ${esc(P.nom)}`:'';
+  const rv=it.revDj?`<span class="ux2rv">révélé</span> ${esc(typeof chDateTxt==='function'?chDateTxt(it.revDj):'')}`:'';
+  const meta=(rv||by)?`<div class="ux2itm">${rv}${by}</div>`:'';
+  return `<div class="fiit ux2it${hid?' ux2hid':''}"><div class="fiitx">${fiRich(it.txt)}${meta}${hid?`<div class="ux2rvb"><button type="button" class="btn pri sm" data-act="fiRevIt" data-i="${esc(it.id)}">${EYE_O} Révéler</button></div>`:''}</div>${ed?`<button type="button" class="fiedi" data-act="fiItem" data-i="${esc(it.id)}" aria-label="Modifier l'élément">${ICON.crayon}</button>`:''}</div>`;}
 
 /* ---------- Routage de l'Univers ---------- */
 function fiUniView(){const f=S.fi&&S.fiches[S.fi];
@@ -409,12 +445,14 @@ function fiAct(a,d){
   if(/^jr[A-Z]/.test(a))return jrAct(a,d); /* lot 2 : journaux et quêtes */
   if(/^ch[A-Z]/.test(a))return chAct(a,d); /* lot 3 : chronique et calendrier */
   if(/^pn[A-Z]/.test(a))return pnAct(a,d); /* lot 4 : PNJ */
-  if(a==='uni'){S.uni=d.v||'home';S.chPage=null;S.sec=null;S.rf=null;S.fi=null;S.fiQ='';S.fiTy='';window.scrollTo(0,0);render();return true;}
+  if(a==='uni'){if(d.v&&d.v!=='home')uniSeenSet(d.v==='chron'?'evenement':d.v);S.fiPrep=false;S.uni=d.v||'home';S.chPage=null;S.sec=null;S.rf=null;S.fi=null;S.fiQ='';S.fiTy='';window.scrollTo(0,0);render();return true;}
   if(a==='fiOpen'){const f=S.fiches[d.id];if(!fiSee(f))return true;S.fiTab='';S.fi=f.id;S.uni=f.genre;window.scrollTo(0,0);render();return true;}
   if(a==='fiBack'){if(S.nav.length){navBack();return true;}S.fi=null;window.scrollTo(0,0);render();return true;}
   if(a==='fiFold'){S.fiFold={...S.fiFold,[d.k]:!fiFolded(d.k)};render();return true;}
   if(a==='fiTree'){S.fiTree={...S.fiTree,[d.id]:!S.fiTree[d.id]};render();return true;}
   if(a==='fiTy'){S.fiTy=d.v||'';render();return true;}
+  if(a==='fiPrep'){S.fiPrep=!S.fiPrep;render();return true;}
+  if(a==='fiMore'){S.fiMore={...(S.fiMore||{}),[d.k]:!(S.fiMore||{})[d.k]};render();return true;}
   if(a==='fiLv'){S.fiLv=d.v;render();return true;}
   if(a==='fiImg'){if(d.cid){const c=S.chars[d.cid];fiViewer(c&&portrait(c),d.cid,c&&c.court);return true;}
     const src=S.ptr&&S.ptr[d.id];const f=S.fiches[String(d.id).replace(/^ill-fiche-/,'')];fiViewer(src,d.id,f?f.nom:(d.lab||''));return true;}
@@ -423,6 +461,7 @@ function fiAct(a,d){
   if(a==='closeSheet'&&S.dlg&&FI_DLG.has(S.dlg.kind)){FI_AT=null;return false;}
   if(/^fi6[A-Z]/.test(a))return fi6Act(a,d); /* lot 6 */
   if(/^fiO[A-Z]/.test(a)||(a==='situEd'&&(d.k==='orgs'||d.k==='titres')))return ogAct(a,d); /* lot 5 a */
+  if(a==='faAllT'){S.faAll={...(S.faAll||{}),[d.id]:!(S.faAll||{})[d.id]};render();return true;}
   if(/^fa[A-Z]/.test(a))return faAct(a,d); /* lot 5 b */
   if(/^ca[A-Z]/.test(a))return caAct(a,d); /* lot Cartes */
   if(!/^fi[A-Z]/.test(a))return false;
@@ -434,9 +473,17 @@ function fiAct(a,d){
     const gest=canEdit(),rev=gest?g.vis==='rev':true,now=new Date().toISOString();
     const nf={id:fiRid('f-'),genre:g.genre,nom,type:(g.type||'').trim(),parent:FI_G[g.genre].arbo&&g.parent&&S.fiches[g.parent]?g.parent:'',kanka:'',vis:rev?'rev':'prep',eye:Object.fromEntries(['desc','sait'].concat(g.genre==='org'||g.genre==='famille'?FI6_EYE[g.genre]:[]).map(k=>[k,rev])),desc:'',sait:[],notes:'',par:ME||'',cree:now,modif:now};
     S.dlg=null;S.fi=nf.id;S.uni=nf.genre;S.fiQ='';S.fiTy='';fiSave(nf);window.scrollTo(0,0);setTimeout(()=>toast('Fiche créée'),0);return true;}
+  if(a==='fiDelAsk'){if(!f||!canEdit())return true;S.fiDelAsk=f.id;render();return true;}
+  if(a==='fiDelNo2'){S.fiDelAsk=null;render();return true;}
+  if(a==='fiDelOk2'){if(!f||!canEdit())return true;S.fiDelAsk=null;S.fi=null;fiRemove(f.id);render();setTimeout(()=>toast('Fiche supprimée'),0);return true;}
+  if(a==='fiRevNo'){S.fiRevAsk=null;render();return true;}
+  if(a==='fiRevOk'){if(!f||!isGest())return true;S.fiRevAsk=null;const n=clone(f);n.vis='rev';fiSave(n);return true;}
+  if(a==='fiRevIt'){if(!f||!isGest())return true;const n=clone(f),it=(n.sait||[]).find(x=>x.id===d.i);if(!it)return true;it.rev=true;it.revDj=typeof chNow==='function'?chNow():null;fiSave(n);
+    S.fiUndo={fid:f.id,iid:it.id};setTimeout(()=>toastAct("Révélé : ajouté à « Ce que l'on sait »",'Annuler','fiRevUndo'),0);return true;}
+  if(a==='fiRevUndo'){const u=S.fiUndo,x=u&&S.fiches[u.fid];if(!x||!isGest())return true;const n=clone(x),it=(n.sait||[]).find(y=>y.id===u.iid);if(it){it.rev=false;delete it.revDj;fiSave(n);}S.fiUndo=null;return true;}
   if(a==='fiReveal'){if(!f||!isGest())return true;const n=clone(f);n.vis='rev';fiSave(n);return true;}
   if(a==='fiEye'){if(!f||!isGest())return true;const n=clone(f),e={...fiEyeOf(n)};let open;
-    if(d.k==='fiche'){open=n.vis!=='rev';if(!open&&!canEdit())return true;n.vis=open?'rev':'prep';}
+    if(d.k==='fiche'){open=n.vis!=='rev';if(open){S.fiRevAsk=f.id;render();return true;}if(!canEdit()){toast('Mode édition requis pour préparer une fiche révélée');return true;}n.vis='prep';}
     else if(fiEyeKeys(n).includes(d.k)){open=!e[d.k];if(!open&&!canEdit())return true;e[d.k]=open;n.eye=e;}
     else if(d.k==='item'){const it=(n.sait||[]).find(x=>x.id===d.i);if(!it)return true;open=!it.rev;if(!open&&!canEdit())return true;it.rev=open;}
     else if(d.k==='spec'){const it=(n.spec||[]).find(x=>x.id===d.i);if(!it)return true;open=!it.rev;if(!open&&!canEdit())return true;it.rev=open;}
@@ -453,7 +500,7 @@ function fiAct(a,d){
   if(a==='fiDelNo'){if(S.dlg){S.dlg.confirm=false;S._fiRedraw=true;render();}return true;}
   if(a==='fiDelOk'){const g=S.dlg;if(!g||g.kind!=='fiHead'||!canEdit())return true;const x=S.fiches[g.id];S.dlg=null;if(x){S.fi=null;fiRemove(x.id);}render();setTimeout(()=>toast('Fiche supprimée'),0);return true;}
   if(a==='fiEd'){if(!fiCanEd(f))return true;if(d.b==='notes'&&!canEdit())return true;fiOpenDlg({kind:'fiTxt',fid:f.id,b:d.b,txt:d.b==='notes'?(f.notes||''):d.b==='effet'?(f.effet||''):d.b==='feerie'?((f.fief||{}).feerie||''):d.b==='prat'?(f.prat||''):d.b==='terr'?(f.terr||''):(f.desc||'')});render();return true;}
-  if(a==='fiItem'){if(!fiCanEd(f))return true;const it=d.i?(f.sait||[]).find(x=>x.id===d.i):null;if(d.i&&!it)return true;fiOpenDlg({kind:'fiTxt',fid:f.id,b:'item',iid:it?it.id:'',txt:it?it.txt:''});render();return true;}
+  if(a==='fiItem'){if(!fiCanEd(f))return true;const it=d.i?(f.sait||[]).find(x=>x.id===d.i):null;if(d.i&&!it)return true;fiOpenDlg({kind:'fiTxt',fid:f.id,b:'item',iid:it?it.id:'',txt:it?it.txt:'',hid:d.h==='1'});render();return true;}
   if(a==='fiSpec'){if(!fiCanEd(f))return true;const it=d.i?(f.spec||[]).find(x=>x.id===d.i):null;if(d.i&&!it)return true;fiOpenDlg({kind:'fiSpec',fid:f.id,iid:it?it.id:'',sid:it?it.id:fiRid('s'),nom:it?it.nom:'',txt:it?(it.txt||''):''});render();return true;}
   if(a==='fiSpecDel'){if(S.dlg&&S.dlg.kind==='fiSpec'){S.dlg.confirm=true;S._fiRedraw=true;render();}return true;}
   if(a==='fiSpecDelOk'){const g=S.dlg,x=g&&S.fiches[g.fid];if(!x||!fiCanEd(x))return true;const n=clone(x);n.spec=(n.spec||[]).filter(y=>y.id!==g.iid);S.dlg=null;fiSave(n);return true;}
@@ -473,13 +520,15 @@ function fiAct(a,d){
     else if(g.b==='terr')n.terr=txt; /* lot 5 b */
     else if(g.b==='notes'){if(!canEdit())return true;n.notes=txt;}
     else if(g.b==='item'){n.sait=n.sait||[];if(g.iid){const it=n.sait.find(y=>y.id===g.iid);if(!it)return true;if(!txt){n.sait=n.sait.filter(y=>y.id!==g.iid);}else it.txt=txt;}
-      else{if(!txt){S.dlg=null;render();return true;}n.sait.push({id:fiRid('i'),txt,rev:!isGest(),cree:new Date().toISOString(),par:ME||''});}}
+      else{if(!txt){S.dlg=null;render();return true;}n.sait.push({id:fiRid('i'),txt,rev:!(isGest()&&g.hid),cree:new Date().toISOString(),par:ME||''});}}
     FI_AT=null;S.dlg=null;fiSave(n);return true;}
   if(a==='fiTyp'){if(!canEdit()||(FI_RES[d.g]||[]).includes(d.v))return true;fiOpenDlg({kind:'fiTyp',genre:d.g,type:d.v,nom:d.v,into:''});render();return true;}
   if(a==='fiTypSave'){const g=S.dlg;if(!g||g.kind!=='fiTyp'||!canEdit())return true;const to=(g.into||'').trim()||(g.nom||'').trim();S.dlg=null;
     if(to&&to!==g.type){fiTypApply(g.genre,g.type,to);setTimeout(()=>toast('Type mis à jour'),0);}else render();return true;}
   return false;}
 /* Listes déroulantes des fenêtres de fiche */
+/* UX2 : listes Type et Tri */
+document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset)return;if(t.dataset.fity!==undefined){S.fiTy=t.value||'';render();}else if(t.dataset.fiso!==undefined){uniSortSet(t.dataset.fiso,t.value);render();}});
 document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.fin===undefined||!S.dlg||!FI_DLG.has(S.dlg.kind))return;S.dlg[t.dataset.fin]=t.type==='checkbox'?t.checked:t.value;});
 
 /* ---------- Lot 2 (23/11/2026) : journaux v2 et quêtes — onglet « Chronique » de la fiche de personnage ----------
@@ -692,7 +741,7 @@ const PN_POR=[['role','Rôle'],['app','Apparence'],['car','Caractère'],['fm','F
 const PN_SIT=[['titres','Titres'],['familles','Familles'],['orgs','Organisations'],['lieux','Résidence et lieux'],['poss','Possessions']];
 const PN_EYE0={role:true,app:true,car:true,fm:true,pw:true,titres:true,familles:true,orgs:true,lieux:true,poss:true};
 const pnEye=c=>(c&&c.eye)||PN_EYE0;
-const pnBlkSee=(c,k)=>!!c&&vis(c)&&(isGest()||isFeal(c)||!!pnEye(c)[k]);
+const pnBlkSee=(c,k)=>!!c&&vis(c)&&(isGest()||isFeal(c)||k!=='pw'||!!pnEye(c)[k]); /* UX2 : un seul œil par fiche, sauf le bloc Pouvoirs et capacités */
 const pnMain=c=>c&&c.alias&&S.chars[c.alias]&&S.chars[c.alias].type==='PNJ'?S.chars[c.alias]:null;
 const pnAliases=c=>Object.values(S.chars).filter(x=>x.type==='PNJ'&&x.alias===c.id&&x.id!==c.id).sort((a,b)=>(a.court||'').localeCompare(b.court||'','fr'));
 const pnCanNew=()=>!S.visit&&(canEdit()||(!isGest()&&!!ME));
@@ -707,7 +756,7 @@ const pnSitNames=(c,k)=>pnBlkSee(c,k)?pnSitRows(c,k).map(e=>(e.nom||'').trim()).
 const pnRes=c=>{const L=pnBlkSee(c,'lieux')?pnSitRows(c,'lieux'):[];const r=L.find(e=>e.res)||L[0];return r?r.nom:'';};
 const pnFold=(k,empty)=>{const f=(S.fiFold||{})[k];return f==null?!!empty:f;};
 function pnBlk(k,title,sum,body,o){o=o||{};const fold=pnFold(k,o.empty),id='fb-'+k;
-  const ed=o.edit?`<button type="button" class="edl" data-act="${o.edit}"${o.ea||''}>${ICON.crayon} Modifier</button>`:'';
+  const ed=o.edit?`<button type="button" class="ibtn sm" data-act="${o.edit}"${o.ea||''} aria-label="Modifier">${ICON.crayon}</button>`:'';
   return `<section class="rblk${o.hid?' fihid':''}"><div class="rbh"><button type="button" class="rbt" data-act="pnFold" data-k="${k}"${o.empty?' data-e="1"':''} aria-expanded="${!fold}" aria-controls="${id}"><span class="tt"><span class="t">${title}</span>${sum!==''&&sum!=null?`<span class="n">${sum}</span>`:''}</span><span class="chev" aria-hidden="true">${fold?'›':'⌄'}</span></button>${ed}${o.eye||''}</div>${fold?'':`<div class="rbb" id="${id}">${body}</div>`}</section>`;}
 const pnEyeB=(c,k,lab)=>isGest()&&!isFeal(c)?eyeBtn('pnEye',`data-k="${k}"`,!!pnEye(c)[k],lab):'';
 const pnAv=c=>{const im=portrait(c);return `<span class="pnav">${im?`<img src="${im}" alt="">`:`<span class="ini">${esc(pnName(c).slice(0,1))}</span>`}</span>`;};
@@ -716,28 +765,31 @@ const pnAv=c=>{const im=portrait(c);return `<span class="pnav">${im?`<img src="$
 function pnListView(){const G=isGest(),F=S.pnF||{},all=ids().map(i=>S.chars[i]).filter(c=>c.type==='PNJ');
   const opts=k=>{const m={};for(const c of all)for(const n of (k==='lieux'?pnSitNames(c,'lieux'):pnSitNames(c,k)))m[n]=1;return Object.keys(m).sort((a,b)=>a.localeCompare(b,'fr'));};
   const sel=(k,l)=>{const O=opts(k),v=F[k]||'';if(!O.length&&!v)return '';return `<label class="pnchip${v?' on':''}"><span>${esc(v?l+' : '+v:l)}</span><span aria-hidden="true">${v?'✕':'▾'}</span><select data-pnf="${k}" aria-label="Filtrer par ${esc(l.toLowerCase())}"><option value="">${esc(l)} : tous</option>${O.map(o=>`<option${o===v?' selected':''}>${esc(o)}</option>`).join('')}</select></label>`;};
-  let h=pnCanNew()?`<button class="btn pri cta pntop" data-act="pnNew">+ Nouveau PNJ</button>`:''; /* lot C : bouton en haut de la liste */
-  h+=`<div class="fisrch"><input type="search" data-pnq="1" value="${esc(S.pnQ||'')}" placeholder="Rechercher un nom" aria-label="Rechercher un PNJ" autocomplete="off"></div>`;
-  h+=`<div class="pnchips">${sel('familles','Famille')}${sel('orgs','Organisation')}${sel('lieux','Lieu')}${G?`<button type="button" class="chip" data-act="pnPrepF" aria-pressed="${!!S.pnPrep}">Préparés</button>`:''}</div>`;
+  const RK=[...new Set(all.map(c=>rangOf(c)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr')),RC=[...new Set(all.filter(c=>c.race).map(c=>c.race))].sort((a,b)=>a.localeCompare(b,'fr'));
+  const sel2=(k,l,O)=>{const v=F[k]||'';return `<label class="ux2dd${v?' on':''}"><span>${l} :</span><select data-pnf="${k}" aria-label="${esc(l)}"><option value="">Tous</option>${O.map(o=>`<option${o===v?' selected':''}>${esc(o)}</option>`).join('')}</select></label>`;};
+  const nf=['familles','orgs','lieux','rang','race'].filter(k=>F[k]).length;
+  let h=`<div class="pghead"><h2>PNJ</h2>${pnCanNew()?`<button type="button" class="pbtn big" data-act="pnNew" aria-label="Nouveau PNJ">+</button>`:''}</div>`;
+  h+=`<div class="ux2tb"><input type="search" data-pnq="1" value="${esc(S.pnQ||'')}" placeholder="Filtrer les PNJ" aria-label="Filtrer les PNJ" autocomplete="off">`
+    +`<details class="ux2flt"${nf||S.pnFo?' open':''}><summary>Filtres${nf?' · '+nf:''} ▾</summary><div class="ux2sel">${sel2('rang','Rang',RK)}${sel2('race','Race',RC)}${sel2('familles','Famille',opts('familles'))}${sel2('orgs','Organisation',opts('orgs'))}${sel2('lieux','Lieu',opts('lieux'))}${G?`<button type="button" class="chip" data-act="pnPrepF" aria-pressed="${!!S.pnPrep}">Préparés seulement</button>`:''}</div></details></div>`;
   h+=`<div id="pnRes">${pnListBody()}</div>`;
   return h;}
 function pnListBody(){const G=isGest(),F=S.pnF||{},q=nrm(S.pnQ||'');
   let L=ids().map(i=>S.chars[i]).filter(c=>c.type==='PNJ');
   if(!L.length)return `<div class="card empty">Aucun PNJ pour l'instant.</div>`;
-  L=L.filter(c=>(!q||nrm(c.court).includes(q)||nrm(c.nom).includes(q)||nrm(c.surnom||'').includes(q))&&(!G||!S.pnPrep||!pnRev(c))&&['familles','orgs','lieux'].every(k=>!F[k]||pnSitNames(c,k).includes(F[k])));
+  L=L.filter(c=>(!q||nrm(c.court).includes(q)||nrm(c.nom).includes(q)||nrm(c.surnom||'').includes(q))&&(!G||!S.pnPrep||!pnRev(c))&&['familles','orgs','lieux'].every(k=>!F[k]||pnSitNames(c,k).includes(F[k]))&&(!F.rang||rangOf(c)===F.rang)&&(!F.race||c.race===F.race));
   if(!L.length)return `<div class="card empty">Aucun PNJ ne correspond.</div>`;
   L.sort((a,b)=>pnName(a).localeCompare(pnName(b),'fr',{sensitivity:'base'}));
   const row=c=>{const m=pnMain(c),org=pnSitNames(c,'orgs')[0]||'',res=pnRes(c);
     const sub=G&&m?`<small class="pnreal">alias de ${esc(pnName(m))}${org?' · '+esc(org):''}</small>`:`<small>${esc([pnRaceTxt(c),isFeal(c)?'Féal de '+pnName(S.chars[c.pj]):org,res].filter(Boolean).join(' · '))}</small>`;
-    const rk=!actif(c)?`<span class="pndead">${c.statut==='mort'?'† '+(c.genre==='f'?'morte':'mort'):esc(STATUTS[c.statut]||'')}</span>`:!pnRev(c)?'<span class="tag2">préparé</span>':`<span class="pnrk">${esc(rangOf(c))}</span>`;
+    const rk=!actif(c)?`<span class="pndead">${c.statut==='mort'?'† '+(c.genre==='f'?'morte':'mort'):esc(STATUTS[c.statut]||'')}</span>`:!pnRev(c)?`<span class="ux2prep">${EYE_C}préparé</span>`:'';
     return `<button type="button" class="pnli${pnRev(c)?'':' prep'}" data-act="sel" data-id="${esc(c.id)}">${pnAv(c)}<span class="pntx"><b>${esc(pnName(c))}${(c.surnom||'').trim()?` <i class="pnsur">« ${esc(c.surnom.trim())} »</i>`:''}</b>${sub}</span>${rk}</button>`;};
-  const fk=['familles','orgs','lieux'].find(k=>F[k]);
+  const fk=['familles','orgs','lieux','rang','race'].find(k=>F[k]);
   if(fk)return `<div class="pgrp">${esc(F[fk])} · ${L.length}</div><div class="plst pnlst">${L.map(row).join('')}</div>`;
   const grp={};for(const c of L){const k=(nrm(pnName(c))[0]||'#').toUpperCase();(grp[k]=grp[k]||[]).push(c);}
   return Object.keys(grp).map(k=>`<div class="pgrp">${esc(k)}</div><div class="plst pnlst">${grp[k].map(row).join('')}</div>`).join('');}
 
 /* ---------- Fiche PNJ : en-tête ---------- */
-function pnSheetHead(c){const G=isGest(),fe=isFeal(c);
+function pnSheetHead(c){const G=isGest(),fe=isFeal(c);if(!fe)return pnHeadUX2(c);
   let h=fe?'':crumb(CR_UNI,['PNJ','data-act="pnBack"'],[esc(c.court||c.nom)]);
   if(G&&!fe){const e=pnEye(c),K=pnVisKeys(c),n=K.filter(k=>e[k]).length;
     h+=!pnRev(c)?`<div class="fivis prep"><span class="fivi" aria-hidden="true">${EYE_C}</span><span class="fivt"><b>Fiche préparée</b> · invisible des joueurs</span><button class="btn pri" data-act="pnEye" data-k="fiche">Révéler</button></div>`
@@ -750,8 +802,49 @@ function pnSheetHead(c){const G=isGest(),fe=isFeal(c);
   return h;}
 const pnVisKeys=c=>(c.alias?['idr']:[]).concat(PN_POR.filter(([k])=>k!=='fm'||pnHasFm(c)).map(x=>x[0]),['pw'],PN_SIT.map(x=>x[0]),['autres']);
 
+
+/* ---------- UX2 (28/11/2026) : PNJ sur une page ---------- */
+function pnHeadUX2(c){const G=isGest(),E=canEditC(c);
+  const eye=G?(pnRev(c)?`<button type="button" class="ibtn" data-act="pnEye" data-k="fiche" aria-label="Fiche révélée : la préparer">${EYE_O}</button>`:`<button type="button" class="ibtn prepi" data-act="pnEye" data-k="fiche" aria-label="Fiche préparée : la révéler">${EYE_C}</button>`):'';
+  let h=`<div class="ux2top">${crumb(CR_UNI,['PNJ','data-act="pnBack"'])}<span class="ux2sp"></span>${eye}${E?`<button type="button" class="ibtn" data-act="pcOpen" data-id="${esc(c.id)}" aria-label="Modifier l'identité">${ICON.crayon}</button>`:''}</div>`;
+  const im=portrait(c),inner=im?`<img src="${im}" alt="">`:`<span class="ini">${esc(pnName(c).slice(0,1))}</span>`;
+  const med=im?`<button type="button" class="ux2pnav" data-act="fiImg" data-cid="${esc(c.id)}" aria-label="Agrandir le portrait de ${esc(pnName(c))}">${inner}</button>`:canPortrait(c)?`<label class="ux2pnav" aria-label="Ajouter un portrait">${inner}<input type="file" accept="image/*" data-ptrfile="${esc(c.id)}" hidden></label>`:`<span class="ux2pnav">${inner}</span>`;
+  const tit=pnSitNames(c,'titres')[0],fam=pnSitNames(c,'familles')[0],age=(typeof chAgeTxt==='function'&&chAgeTxt(c)||{}).age,occ=((c.por||{}).occ||'').trim();
+  const aka=pnAliases(c).filter(a=>G||(vis(a)&&pnBlkSee(a,'idr'))).map(a=>pnName(a));
+  const kv=[['Race',c.race?raceLk(c)+(pnFeal(c)?' · féal':''):''],['Titre',tit?esc(elid(tit)):''],['Famille',fam?esc(fam):''],['Occupation',occ?esc(occ):''],['Rang',esc(rangOf(c))],['Âge',age?esc(age):''],['Statut',(c.statut||'actif')!=='actif'?esc(STATUTS[c.statut]||''):'']].filter(x=>x[1]);
+  h+=`<section class="ux2pnid"><div class="ux2pnhd">${med}<div style="flex:1;min-width:0"><h2 class="finm">${esc(c.nom||c.court)}${(c.surnom||'').trim()?` <i class="pnsur">« ${esc(c.surnom.trim())} »</i>`:''}</h2>${aka.length?`<div class="muted small">Aussi connu sous : ${aka.map(esc).join(', ')}</div>`:''}${!pnRev(c)?`<span class="ux2prep">${EYE_C}préparé</span>`:''}</div></div><div class="pnkv ux2kv">${kv.map(([a,b])=>`<span>${a}</span><b>${b}</b>`).join('')}</div></section>`;
+  return h;}
+function pnDescOf(c){const p=c.por||{};return (p.desc||'').trim()||[p.role,p.app,p.car].map(x=>(x||'').trim()).filter(Boolean).join('\n\n');}
+function pnPage(c){const G=isGest(),E=canEditC(c),comp=[];let h='';
+  const m=pnMain(c);if(m&&pnBlkSee(c,'idr'))h+=fiBlk('pn-idr','Identité réelle','',`Alias de ${lk({t:'perso',id:m.id},pnName(m))}`+(E?`<div class="relbtns"><button type="button" class="addl" data-act="pnAliasOff">Détacher de ${esc(pnName(m))}</button></div>`:''));
+  if(E&&!((c.por||{}).occ||'').trim())comp.push(['Occupation','pnTxt',' data-b="occ"']);
+  const d=pnDescOf(c);if(d)h+=fiBlk('pn-desc','Description','',fiClamp(c.id+':desc',fiRich(d)),{edit:E?'pnTxt':'',ea:' data-b="desc"'});else if(E)comp.push(['Description','pnTxt',' data-b="desc"']);
+  /* Ce que l'on sait / À révéler */
+  const A=c.sait||[],V=A.filter(it=>it.rev),Hd=A.filter(it=>!it.rev);
+  if(V.length)h+=fiBlk('pn-sait',"Ce que l'on sait",String(V.length),V.map(it=>fiItRow(c,it,E).replace(/data-act="fiItem"/g,'data-act="pnItem"')).join(''),{plus:E?'pnItem':'',pa:' data-i="" data-h="0"'});else if(E)comp.push(["Ce que l'on sait",'pnItem',' data-i="" data-h="0"']);
+  if(G){if(Hd.length)h+=fiBlk('pn-arev','À révéler',String(Hd.length),`<div class="ux2arh">${EYE_C}Invisible des joueurs · un élément révélé passe dans « Ce que l'on sait »</div>`+Hd.map(it=>fiItRow(c,it,E,true).replace(/data-act="fiItem"/g,'data-act="pnItem"').replace(/data-act="fiRevIt"/g,'data-act="pnRevIt"')).join(''),{plus:'pnItem',pa:' data-i="" data-h="1"',cls:'ux2arev'});else comp.push(['À révéler','pnItem',' data-i="" data-h="1"']);}
+  /* Forme : démasquée / masquée */
+  const fm=((c.por||{}).fm||'').trim(),im=portrait(c);
+  if(pnHasFm(c)&&fm){const msk=!!(S.pnFm||{})[c.id];
+    h+=fiBlk('pn-fm','Forme','',`<div class="seg ux2seg" role="group" aria-label="Forme"><button type="button" data-act="pnFmT" data-v="0" aria-pressed="${!msk}">Démasquée</button><button type="button" data-act="pnFmT" data-v="1" aria-pressed="${msk}">Masquée</button></div><div class="ux2fm">${msk?fiRich(fm):im?`<button type="button" class="ux2heroimg" data-act="fiImg" data-cid="${esc(c.id)}" aria-label="Agrandir"><img src="${im}" alt=""></button>`:'<div class="muted small">Pas de portrait.</div>'}</div>`,{edit:E?'pnTxt':'',ea:' data-b="fm"'});}
+  else if(E&&pnHasFm(c))comp.push(['Forme masquée','pnTxt',' data-b="fm"']);
+  const PB=pnPwBlk(c,E,G,pnEye(c));if(PB&&!PB.e)h+=PB.h;else if(PB&&E)comp.push(['Pouvoirs et capacités','pnPw','']);
+  /* Situation : organisations, titres, familles, lieux */
+  const parts=[];for(const [k,l] of [['orgs','Organisations'],['titres','Titres'],['familles','Familles'],['lieux','Lieux']]){if(!pnBlkSee(c,k))continue;const OG=k==='orgs'||k==='titres'?ogSitRows(c,k):k==='familles'?faSitRows(c):null,R=OG||pnSitRows(c,k);if(!R.length)continue;
+    const rows=OG?OG.join(''):R.map(x=>`<div class="srow"><span>${situNm(x)}${x._k==='lieux'&&situNat(x)!=='autre'?` <span class="muted">· ${SITU_NAT[situNat(x)]}</span>`:''}${x._k==='fiefs'?' <span class="muted">· fief</span>':''}${x.note?`<span class="d">${esc(x.note)}</span>`:''}</span>${E?`<button type="button" class="ibtn sm" data-act="situEd" data-k="${x._k}" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">${ICON.crayon}</button>`:''}</div>`).join('');
+    parts.push(`<div class="fimg">${l}</div>${rows}`);}
+  const adds=E?`<div class="ux2comp">${[['orgs','Organisation'],['titres','Titre'],['familles','Famille'],['lieux','Lieu']].map(([k,l])=>`<button type="button" class="ux2cb" data-act="situEd" data-k="${k}">+ ${l}</button>`).join('')}</div>`:'';
+  if(parts.length)h+=fiBlk('pn-situ','Situation','',parts.join('')+adds);else if(E)comp.push(['Situation','situEd',' data-k="orgs"']);
+  if(E&&!m&&!isFeal(c))comp.push(['Alias','pnAlias','']); /* rattacher un alias (identité secrète) */
+  h+=caOnMap('perso',c.id);
+  /* PJ liés */
+  const fp=isFeal(c)&&vis(S.chars[c.pj])?S.chars[c.pj]:null;
+  const P=pjIds().map(i=>S.chars[i]).filter(Boolean).flatMap(pj=>(pj.rel||[]).filter(r=>r.pnj===c.id).concat(relsOf(pj).filter(r=>r.src==='pp'&&r.pnj===c.id)).map(r=>({pj,r})));
+  if(P.length)h+=fiBlk('pn-pjl','PJ liés',String(P.length),P.map(({pj,r})=>`<div class="srow"><span>${lk({t:'perso',id:pj.id},pj.court)} <span class="muted">· ${esc(REL_NIV[r.niv]||r.niv||'')}</span>${r.src==='pp'?' <span class="muted small">(PP)</span>':''}</span></div>`).join(''));
+  const M=fiMentions('perso',c.id);if(M.length)h+=fiBlk('pn-ment','Mentions',String(M.length),fiMentionsHtml(M));
+  return h+fiComp(comp);}
 /* ---------- Fiche PNJ : onglets ---------- */
-function pnSheetBody(c,s,id){const tab=shTabOf(c);let h=shTabsBar(c,tab);
+function pnSheetBody(c,s,id){if(!isFeal(c))return pnPage(c);const tab=shTabOf(c);let h=shTabsBar(c,tab);
   if(tab==='prog'){ /* UX1 : XP dans l'en-tête ; dérivées en icônes */
     h+=cBlk('pn-der','Valeurs dérivées','',`<div class="dg">${derived(c,'m').map(([n,v])=>`<span class="dt" title="${esc(n)}" aria-label="${esc(n)} : ${v}">${derIco(n)}<b class="num">${v}</b></span>`).join('')}</div>`);
     return h+viewProg(c,s,id);}
@@ -797,7 +890,7 @@ const pnSeg=(k,v,L,lab)=>`<div class="field"><label>${lab}</label><div class="se
 const pnErr=g=>g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:'';
 function pnSheet(g){
   if(g.kind==='pnPw')return pnPwSheet(g); /* pouvoirs et capacités */
-  if(g.kind==='pnTxt'){const c=S.chars[g.cid];if(!c||!canEditC(c))return null;const tt=(PN_POR.find(x=>x[0]===g.b)||[,''])[1];
+  if(g.kind==='pnTxt'){const c=S.chars[g.cid];if(!c||!canEditC(c))return null;const tt=({occ:'Occupation',desc:'Description',item:g.hid?'À révéler':"Ce que l'on sait"})[g.b]||(PN_POR.find(x=>x[0]===g.b)||[,''])[1];
     return fiShell(g,'Modifier : '+tt,`<div><h2>Modifier : ${esc(tt)}</h2><div class="muted small">${esc(pnName(c))}</div></div>
       <div class="fiedw"><div id="fiEd" class="fied" contenteditable="true" role="textbox" aria-multiline="true" aria-label="${esc(tt)}" spellcheck="true">${fiEdHtml(g.txt)}</div><div id="fiSug" class="fisug" role="listbox" hidden></div></div>
       <div class="muted small">Tape <b>@</b> puis quelques lettres pour lier une fiche ; une ligne qui commence par « - » devient une liste.</div>
@@ -836,6 +929,7 @@ function pnAct(a,d){
   if(a==='pnBack'){if(S.nav.length){navBack();return true;}S.view='team';S.teamSel='pnj';window.scrollTo(0,0);render();return true;}
   if(a==='pnFold'){S.fiFold={...(S.fiFold||{}),[d.k]:!pnFold(d.k,d.e==='1')};render();return true;}
   if(a==='pnPrepF'){S.pnPrep=!S.pnPrep;render();return true;}
+  if(a==='pnFmT'){if(c)S.pnFm={...(S.pnFm||{}),[c.id]:d.v==='1'};render();return true;}
   if(a==='pnSet'){if(g&&FI_DLG.has(g.kind)){g[d.k]=d.v;if(d.k==='vis'||d.k==='mode')g.err='';S._fiRedraw=true;render();}return true;}
   if(S.visit)return true;
   if(a==='pnEye'){if(!c||c.type!=='PNJ'||!isGest()||isFeal(c))return true;const n=clone(c);let open;
@@ -845,9 +939,14 @@ function pnAct(a,d){
   if(a==='pnPw'){if(!c||!canEditC(c))return true;const P=pnPwOf(c);fiOpenDlg({kind:'pnPw',cid:c.id,pw:P.pw.slice(),cap:P.cap.slice()});render();return true;}
   if(a==='pnPwX'&&g&&g.kind==='pnPw'){if(d.t==='pw'||d.t==='cap')g[d.t]=g[d.t].filter(x=>x!==d.id);S._fiRedraw=true;render();return true;}
   if(a==='pnPwSave'&&g&&g.kind==='pnPw'){const x=S.chars[g.cid];if(!x||!canEditC(x))return true;const n=clone(x);if(g.pw.length||g.cap.length)n.pnpw={pw:g.pw.slice(),cap:g.cap.slice()};else delete n.pnpw;S.dlg=null;pnSaveC(n);setTimeout(()=>toast('Enregistré'),0);return true;}
-  if(a==='pnTxt'){if(!c||!canEditC(c))return true;fiOpenDlg({kind:'pnTxt',cid:c.id,b:d.b,txt:(c.por||{})[d.b]||''});render();return true;}
+  if(a==='pnTxt'){if(!c||!canEditC(c))return true;fiOpenDlg({kind:'pnTxt',cid:c.id,b:d.b,txt:d.b==='desc'?pnDescOf(c):(c.por||{})[d.b]||''});render();return true;}
+  if(a==='pnItem'){if(!c||!canEditC(c))return true;const it=d.i?(c.sait||[]).find(x=>x.id===d.i):null;fiOpenDlg({kind:'pnTxt',cid:c.id,b:'item',iid:it?it.id:'',hid:d.h==='1',txt:it?it.txt:''});render();return true;}
+  if(a==='pnRevIt'){if(!c||!isGest())return true;const n=clone(c),it=(n.sait||[]).find(x=>x.id===d.i);if(!it)return true;it.rev=true;it.revDj=typeof chNow==='function'?chNow():null;pnSaveC(n);setTimeout(()=>toast("Révélé : ajouté à « Ce que l'on sait »"),0);return true;}
   if(a==='pnTxtSave'){const x=g&&S.chars[g.cid];if(!x||!canEditC(x))return true;const ed=document.getElementById('fiEd'),txt=ed?fiSer(ed):(g.txt||'');
-    const n=clone(x);n.por={...(n.por||{}),[g.b]:txt};FI_AT=null;S.dlg=null;pnSaveC(n);return true;}
+    const n=clone(x);if(g.b==='item'){n.sait=(n.sait||[]).slice();if(g.iid){const i=n.sait.findIndex(y=>y.id===g.iid);if(i>=0){if(txt)n.sait[i]={...n.sait[i],txt};else n.sait.splice(i,1);}}else if(txt)n.sait.push({id:fiRid('i'),txt,rev:!(isGest()&&g.hid),cree:new Date().toISOString(),par:ME||''});}
+    else if(g.b==='occ')n.por={...(n.por||{}),occ:(ed?ed.innerText:txt).replace(/\s+/g,' ').trim()};
+    else if(g.b==='desc'){n.por={...(n.por||{}),desc:txt};delete n.por.role;delete n.por.app;delete n.por.car;}
+    else n.por={...(n.por||{}),[g.b]:txt};FI_AT=null;S.dlg=null;pnSaveC(n);return true;}
   if(a==='pnNew'){if(!pnCanNew())return true;const R=pnjRangs();fiOpenDlg({kind:'pnNew',nom:'',race:'',rang:R[0]||'Larbin',pj:'',vis:canEdit()?'prep':'rev'});render();return true;}
   if(a==='pnCreate'){if(!g||g.kind!=='pnNew'||!pnCanNew())return true;const nom=(g.nom||'').trim();if(!nom){g.err='Le nom est obligatoire.';S._fiRedraw=true;render();return true;}
     const nc=pnMake({nom,race:g.race,rang:g.rang,pj:'',vis:canEdit()?(g.vis==='rev'?'rev':'prep'):'rev'});
@@ -903,7 +1002,7 @@ function fi6CharLinks(fid){const out=[];for(const c of fi6CV()){const s=c.situ||
 const fi6ObjsOf=cid=>fiSort(fiAll().filter(o=>o.genre==='objet'&&fiBlkSee(o,'det')&&(o.det||[]).some(x=>x.id===cid)));
 const fi6Unlk=(m,o)=>`<button type="button" class="ibtn" data-act="fi6Unlk" data-m="${m}"${Object.entries(o).map(([k,v])=>` data-${k}="${esc(v)}"`).join('')} aria-label="Retirer ce lien">✕</button>`;
 const fi6Ref=(f,nom)=>{const x=f&&S.fiches[f];return x&&fiSee(x)?lk({t:'fiche',id:x.id},x.nom):`<b>${esc(x?x.nom:(nom||''))}</b>`;};
-const fi6Calc=()=>isGest()?' <span class="muted small">· calculé</span>':'';
+const fi6Calc=()=>''; /* UX2 : « calculé » retiré */
 function fi6Sub(f){if(f.genre!=='objet')return [];const o=[];if(f.uniq)o.push('<span class="tag2 uq">Unique</span>');
   const cr=f.crea||{},p=cr.id&&S.chars[cr.id];if(p||cr.nom)o.push('créé par '+(p&&vis(p)?lk({t:'perso',id:p.id},fiCN(p)):esc(p?fiCN(p):cr.nom)));return o;}
 /* Fief : onglets Fiche | Gestion (Gestion : lot 7) quand un PJ en est détenteur */
@@ -911,32 +1010,34 @@ function fi6Tabs(f){if(!fiIsFief(f)||!fiBlkSee(f,'fief')||!fi6CharLinks(f.id).so
   return `<div class="seg fi6tabs" role="group" aria-label="Onglets du fief">${[['fiche','Fiche'],['gest','Gestion']].map(([v,l])=>`<button type="button" data-act="fi6Tab" data-v="${v}" aria-pressed="${t===v}">${l}</button>`).join('')}</div>`;}
 const fi6Gest=f=>`<div class="card"><b>Gestion du fief</b><div class="muted small" style="margin-top:4px">Arrive au lot 7 : caractéristiques du fief, taille, état économique, traits, ressources et XP de fief.</div></div>`;
 function fi6Blocks(f){const G=isGest(),ed=fiCanEd(f),e=fiEyeOf(f),eye=(k,l)=>G?eyeBtn('fiEye',`data-k="${k}"`,!!e[k],l):'';let h='';
-  const add=(act,lab,x)=>ed?`<div class="radd"><button class="btn" data-act="${act}"${x||''}>+ ${lab}</button></div>`:'';
+  const add=(act,lab,x)=>ed?`<div class="blkplus"><button type="button" class="pbtn" data-act="${act}"${x||''} aria-label="Ajouter : ${esc(lab)}">+</button></div>`:'';const cx=(lab,act,at)=>{if(ed)FI_CX.push([lab,act,at]);};
   const none=t=>`<div class="muted small">${t}</div>`;
   if(f.genre==='lieu'){const L=fi6CharLinks(f.id);
     if(fiIsFief(f)&&fiBlkSee(f,'fief')){const D=L.filter(x=>x.nat==='fief'),fe=((f.fief||{}).feerie||'').trim();
       h+=fiBlk('fief','Fief',D.length?D.length+' détenteur'+(D.length>1?'s':''):'',`<div class="fimg">Détenteurs</div>${D.map(x=>`<div class="srow"><span>${lk({t:'perso',id:x.c.id},fiCN(x.c))}</span>${ed?fi6Unlk('ch',{c:x.c.id,k:x.k,s:x.sid}):''}</div>`).join('')||none('Aucun détenteur.')}${add('fi6Lk','Détenteur',' data-m="fief"')}
         <div class="fimg">Situation féerique</div>${fe?fiRich(fe):none('Rien pour l\'instant.')}${ed?`<div class="radd"><button type="button" class="edl" data-act="fiEd" data-b="feerie">${ICON.crayon} Modifier</button></div>`:''}`,{hid:G&&!e.fief,eye:eye('fief','Fief')});}
     const K=fiSort(fiKidsOf(f.id).filter(fiSee));
-    if(K.length||ed)h+=fiBlk('cont','Lieux contenus'+fi6Calc(),K.length?String(K.length):'',K.map(x=>`<div class="srow"><span>${lk({t:'fiche',id:x.id},x.nom)}${x.type?` <span class="muted">· ${esc(x.type)}</span>`:''}${x.vis!=='rev'?' <span class="tag2">préparé</span>':''}</span></div>`).join('')+(K.length?'':none('Aucun lieu contenu.'))+add('fiNew','Lieu contenu',' data-g="lieu"'),{});
-    if(fiBlkSee(f,'pers')){const P=L.filter(x=>x.nat!=='fief'),grp=(n,t)=>{const R=P.filter(x=>x.nat===n);return R.length?`<div class="fimg">${t}</div>`+R.map(x=>`<div class="srow"><span>${lk({t:'perso',id:x.c.id},fiCN(x.c))}${x.pp?` <span class="muted">· ${esc(x.pp)}</span> <span class="srcb">PP</span>`:''}</span>${ed?fi6Unlk('ch',{c:x.c.id,k:x.k,s:x.sid}):''}</div>`).join(''):'';};
-      h+=fiBlk('pers','Personnages liés'+fi6Calc(),P.length?String(P.length):'',(grp('res','Résidents')+grp('prop','Propriétaires')+grp('autre','Autres')||none('Aucun personnage lié.'))+(ed?`<div class="radd">${[['res','Résident'],['prop','Propriétaire'],['autre','Autre lien']].map(([n,l])=>`<button class="btn" data-act="fi6Lk" data-m="pers" data-n="${n}">+ ${l}</button>`).join(' ')}</div>`:'')+'<div class="muted small" style="margin-top:4px">Repris de la Situation des personnages : un ajout ici s\'y inscrit aussi.</div>',{hid:G&&!e.pers,eye:eye('pers','Personnages liés')});}
-    if(fiBlkSee(f,'orgs')){const O=f.orgs||[];if(O.length||ed)h+=fiBlk('orgs','Organisations et familles',O.length?String(O.length):'',(O.map(x=>`<div class="srow"><span>${fi6Ref(x.f,x.nom)}${x.note?`<span class="d">${esc(x.note)}</span>`:''}</span>${ed?`<button type="button" class="ibtn" data-act="fi6Org" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">✎</button>`:''}</div>`).join('')||none('Aucune pour l\'instant.'))+add('fi6Org','Organisation ou famille'),{hid:G&&!e.orgs,eye:eye('orgs','Organisations et familles')});}
+    if(!K.length)cx('Lieu contenu','fiNew',' data-g="lieu"');if(K.length)h+=fiBlk('cont','Lieux contenus'+fi6Calc(),K.length?String(K.length):'',K.map(x=>`<div class="srow"><span>${lk({t:'fiche',id:x.id},x.nom)}${x.type?` <span class="muted">· ${esc(x.type)}</span>`:''}${x.vis!=='rev'?' <span class="tag2">préparé</span>':''}</span></div>`).join('')+(K.length?'':none('Aucun lieu contenu.'))+add('fiNew','Lieu contenu',' data-g="lieu"'),{});
+    if(fiBlkSee(f,'pers')&&!L.filter(x=>x.nat!=='fief').length)cx('Personnage lié','fi6Lk',' data-m="pers" data-n="res"');
+    if(fiBlkSee(f,'pers')&&L.filter(x=>x.nat!=='fief').length){const P=L.filter(x=>x.nat!=='fief'),grp=(n,t)=>{const R=P.filter(x=>x.nat===n);return R.length?`<div class="fimg">${t}</div>`+R.map(x=>`<div class="srow"><span>${lk({t:'perso',id:x.c.id},fiCN(x.c))}${x.pp?` <span class="muted">· ${esc(x.pp)}</span> <span class="srcb">PP</span>`:''}</span>${ed?fi6Unlk('ch',{c:x.c.id,k:x.k,s:x.sid}):''}</div>`).join(''):'';};
+      h+=fiBlk('pers','Personnages liés'+fi6Calc(),P.length?String(P.length):'',(grp('res','Résidents')+grp('prop','Propriétaires')+grp('autre','Autres')||none('Aucun personnage lié.'))+(ed?`<div class="radd">${[['res','Résident'],['prop','Propriétaire'],['autre','Autre lien']].map(([n,l])=>`<button class="btn" data-act="fi6Lk" data-m="pers" data-n="${n}">+ ${l}</button>`).join(' ')}</div>`:'')+'',{hid:G&&!e.pers,eye:eye('pers','Personnages liés')});}
+    if(fiBlkSee(f,'orgs')){const O=f.orgs||[];if(!O.length)cx('Organisation ou famille','fi6Org','');if(O.length)h+=fiBlk('orgs','Organisations et familles',O.length?String(O.length):'',(O.map(x=>`<div class="srow"><span>${fi6Ref(x.f,x.nom)}${x.note?`<span class="d">${esc(x.note)}</span>`:''}</span>${ed?`<button type="button" class="ibtn" data-act="fi6Org" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">✎</button>`:''}</div>`).join('')||none('Aucune pour l\'instant.'))+add('fi6Org','Organisation ou famille'),{hid:G&&!e.orgs,eye:eye('orgs','Organisations et familles')});}
     if(fiBlkSee(f,'obj')){const O=fiSort(fiAll().filter(o=>o.genre==='objet'&&fiSee(o)&&fiBlkSee(o,'det')&&o.lieu&&o.lieu.f===f.id));
-      if(O.length||ed)h+=fiBlk('obj','Objets présents'+fi6Calc(),O.length?String(O.length):'',O.map(o=>`<div class="srow"><span>${lk({t:'fiche',id:o.id},o.nom)}${o.type?` <span class="muted">· ${esc(o.type)}</span>`:''}</span></div>`).join('')+(O.length?'':none('Aucun objet.'))+'<div class="muted small" style="margin-top:4px">Objets dont l\'emplacement est ce lieu (à indiquer sur la fiche de l\'objet).</div>',{hid:G&&!e.obj,eye:eye('obj','Objets présents')});}
-    if(fiBlkSee(f,'carte')&&!caLieuHasMap(f.id)){const src=illOf('carte',f.id);if(src||ed)h+=fiBlk('carte','Carte','',(src?`<div class="fibigw">${bigImg(illId('carte',f.id),src,'Carte : '+f.nom)}</div>`:none('Pas de carte.'))+(ed?`<div style="margin-top:6px">${illEdit('carte',f.id,'Carte : '+f.nom)}</div>`:''),{hid:G&&!e.carte,eye:eye('carte','Carte')});}}
+      if(O.length)h+=fiBlk('obj','Objets présents'+fi6Calc(),O.length?String(O.length):'',O.map(o=>`<div class="srow"><span>${lk({t:'fiche',id:o.id},o.nom)}${o.type?` <span class="muted">· ${esc(o.type)}</span>`:''}</span></div>`).join('')+(O.length?'':none('Aucun objet.'))+'',{hid:G&&!e.obj,eye:eye('obj','Objets présents')});}
+    if(fiBlkSee(f,'carte')&&!caLieuHasMap(f.id)){const src=illOf('carte',f.id);if(!src&&ed)FI_CX.push(['Carte','','',`<label class="ux2cb" style="cursor:pointer">+ Carte<input type="file" accept="image/*" data-ptrfile="${illId('carte',f.id)}" data-plab="${esc('Carte : '+f.nom)}" hidden></label>`]);if(src)h+=fiBlk('carte','Carte','',(src?`<div class="fibigw">${bigImg(illId('carte',f.id),src,'Carte : '+f.nom)}</div>`:none('Pas de carte.'))+(ed?`<div style="margin-top:6px">${illEdit('carte',f.id,'Carte : '+f.nom)}</div>`:''),{hid:G&&!e.carte,eye:eye('carte','Carte')});}}
   if(f.genre==='objet'){
-    if(fiBlkSee(f,'effet')&&((f.effet||'').trim()||ed))h+=fiBlk('effet','Effet','',(f.effet||'').trim()?fiRich(f.effet):none('Effet non renseigné.'),{edit:ed?'fiEd':'',ea:' data-b="effet"',hid:G&&!e.effet,eye:eye('effet','Effet')});
+    if(!(f.effet||'').trim())cx('Effet','fiEd',' data-b="effet"');
+    if(fiBlkSee(f,'effet')&&(f.effet||'').trim())h+=fiBlk('effet','Effet','',(f.effet||'').trim()?fiRich(f.effet):none('Effet non renseigné.'),{edit:ed?'fiEd':'',ea:' data-b="effet"',hid:G&&!e.effet,eye:eye('effet','Effet')});
     if(fiBlkSee(f,'carac')){const C=f.carac||{},R=[['prix','Prix'],['taille','Taille'],['poids','Poids']].filter(([k])=>(C[k]||'').trim());
-      if(R.length||ed)h+=fiBlk('carac','Caractéristiques','',(R.length?`<div class="ui-kv">${R.map(([k,l])=>`<span>${l}</span><b>${esc(C[k])}</b>`).join('')}</div>`:none('Rien de renseigné.'))+'<div class="muted small" style="margin-top:4px">Prix narratif, sans lien avec la Fortune.</div>',{edit:ed?'fi6Car':'',hid:G&&!e.carac,eye:eye('carac','Caractéristiques')});}
+      if(!R.length)cx('Caractéristiques','fi6Car','');if(R.length)h+=fiBlk('carac','Caractéristiques','',(R.length?`<div class="ui-kv">${R.map(([k,l])=>`<span>${l}</span><b>${esc(C[k])}</b>`).join('')}</div>`:none('Rien de renseigné.'))+'',{edit:ed?'fi6Car':'',hid:G&&!e.carac,eye:eye('carac','Caractéristiques')});}
     if(fiBlkSee(f,'det')){const D=(f.det||[]).map((x,i)=>{const c=x.id&&S.chars[x.id];return `<div class="srow"><span>${c&&vis(c)?lk({t:'perso',id:c.id},fiCN(c)):`<b>${esc(c?fiCN(c):x.nom)}</b>`}</span>${ed?fi6Unlk('det',{i}):''}</div>`;}).join('')
         +fi6CharLinks(f.id).filter(x=>x.k==='pp').map(x=>`<div class="srow"><span>${lk({t:'perso',id:x.c.id},fiCN(x.c))} <span class="muted">· ${esc(x.pp)}</span> <span class="srcb">PP</span></span>${ed?fi6Unlk('ch',{c:x.c.id,k:'pp',s:x.sid}):''}</div>`).join('');
       const lieu=f.lieu&&(f.lieu.f||f.lieu.nom),par=f.parent&&S.fiches[f.parent];
-      h+=fiBlk('det','Détenteur et emplacement','',`<div class="fimg">${f.uniq?'Détenteur':'Détenteurs'}</div>${D||none('Aucun détenteur.')}${add('fi6Lk','Détenteur',' data-m="det"')}
+      if(!D&&!lieu&&!(par&&fiSee(par)))cx('Détenteur ou emplacement','fi6Lk',' data-m="det"');else h+=fiBlk('det','Détenteur et emplacement','',`<div class="fimg">${f.uniq?'Détenteur':'Détenteurs'}</div>${D||none('Aucun détenteur.')}${add('fi6Lk','Détenteur',' data-m="det"')}
         <div class="fimg">Emplacement</div>${lieu?`<div class="srow"><span>${fi6Ref(f.lieu.f,f.lieu.nom)}</span>${ed?fi6Unlk('emp',{}):''}</div>`:none('Non renseigné.')}${ed?`<div class="radd"><button class="btn" data-act="fi6Lk" data-m="emp">${lieu?'Changer l\'emplacement':'+ Emplacement'}</button></div>`:''}
         ${par&&fiSee(par)?`<div class="fimg">Fait partie de</div><div class="srow"><span>${lk({t:'fiche',id:par.id},par.nom)}</span></div>`:''}`,{hid:G&&!e.det,eye:eye('det','Détenteur et emplacement')});}
     const K=fiSort(fiKidsOf(f.id).filter(fiSee));
-    if(K.length||ed)h+=fiBlk('ocont','Objets contenus'+fi6Calc(),K.length?String(K.length):'',K.map(x=>`<div class="srow"><span>${lk({t:'fiche',id:x.id},x.nom)}${x.type?` <span class="muted">· ${esc(x.type)}</span>`:''}${x.vis!=='rev'?' <span class="tag2">préparé</span>':''}</span></div>`).join('')+(K.length?'':none('Aucun objet contenu.'))+add('fiNew','Objet contenu',' data-g="objet"'),{});}
+    if(!K.length)cx('Objet contenu','fiNew',' data-g="objet"');if(K.length)h+=fiBlk('ocont','Objets contenus'+fi6Calc(),K.length?String(K.length):'',K.map(x=>`<div class="srow"><span>${lk({t:'fiche',id:x.id},x.nom)}${x.type?` <span class="muted">· ${esc(x.type)}</span>`:''}${x.vis!=='rev'?' <span class="tag2">préparé</span>':''}</span></div>`).join('')+(K.length?'':none('Aucun objet contenu.'))+add('fiNew','Objet contenu',' data-g="objet"'),{});}
   return h;}
 /* Fenêtre « Nom, type… » d'un objet : Unique, créateur */
 function fi6HeadFields(g){const P=fi6CV().filter(c=>c.type==='PNJ');
@@ -1047,7 +1148,7 @@ function fi6RattAct(a,d){if(!/^fi6Rt/.test(a))return false;if(!isGest()||S.visit
 /* Liste des objets : détenteur ou emplacement sous le nom */
 function fi6Hold(o){if(o.genre!=='objet'||!fiBlkSee(o,'det'))return '';const d=(o.det||[])[0],c=d&&d.id&&S.chars[d.id];
   const h=d?(c?(vis(c)?fiCN(c):''):d.nom):'';const l=o.lieu&&(o.lieu.f?(S.fiches[o.lieu.f]&&fiSee(S.fiches[o.lieu.f])?S.fiches[o.lieu.f].nom:''):o.lieu.nom);
-  return [h,l].filter(Boolean).join(' · ')+((o.det||[]).length>1?' (+'+((o.det||[]).length-1)+')':'')+(o.uniq?' · unique':'');}
+  return [h,l].filter(Boolean).join(' · ')+((o.det||[]).length>1?' (+'+((o.det||[]).length-1)+')':'')+(o.uniq?([h,l].filter(Boolean).length?' · ':'')+'unique':'');}
 
 /* ---------- Lot 5 a (26/11/2026) : Organisations ----------
    Fiche org : rangs [{id, m, f, note}] (du plus haut au plus bas niveau ; f = forme féminine), titres (true : rangs = titres cumulables,
@@ -1081,7 +1182,10 @@ function ogTitles(c){const out=[],T=ogTOrgs();if(!T.length)return out;
 const ogDomN=d=>!d?'':d.f&&S.fiches[d.f]?S.fiches[d.f].nom:(d.nom||'');
 const ogDomH=d=>!d?'':d.f&&S.fiches[d.f]?fi6Ref(d.f,d.nom):esc(d.nom||'');
 /* Libellé d'un titre : « Dame de Sèvres » */
-const ogTitL=(x,c)=>x.t.pp?x.t.nom:ogRL(x.r,c)+(ogDomN(x.t.dom)?' de '+ogDomN(x.t.dom):'');
+/* UX2 : élision « d'Allemagne », « d'Égypte » ; titre réel de la Situation d'abord */
+const elid=t=>String(t||'').replace(/\b(de) ([aeiouyhàâäéèêëîïôöùûüAEIOUYHÀÂÉÈÊÎÔÛ])/g,"d'$2");
+const deN=n=>(/^[aeiouyhàâäéèêëîïôöùûü]/i.test((n||'').trim())?"d'":'de ')+(n||'').trim();
+const ogTitL=(x,c)=>x.t.pp?x.t.nom:((x.t.nom||'').trim()&&!/^(duc|duchesse|baron|baronne|comte|comtesse|marquis|marquise|vicomte|vicomtesse|chevalier|dame|roi|reine)$/i.test((x.t.nom||'').trim())?elid(x.t.nom.trim()):ogRL(x.r,c)+(ogDomN(x.t.dom)?' '+deN(ogDomN(x.t.dom)):''));
 const ogPers=(ref)=>{if(!ref)return '';if(ref.id){const c=S.chars[ref.id];return c?(vis(c)?lk({t:'perso',id:c.id},fiCN(c)):esc(fiCN(c))):esc(ref.nom||'');}return esc(ref.nom||'');};
 const ogPersN=ref=>!ref?'':ref.id&&S.chars[ref.id]?fiCN(S.chars[ref.id]):(ref.nom||'');
 /* Membres d'une organisation */
@@ -1113,7 +1217,7 @@ function ogMRow(o,m,o2){o2=o2||{};const G=isGest(),ed=fiCanEd(o),c=m.c;
     ...(!o.titres&&!o2.tree&&m.sups.filter(x=>isGest()||!(o.mhid||[]).includes(x.id)).length?['sous '+m.sups.filter(x=>isGest()||!(o.mhid||[]).includes(x.id)).map(ogPers).join(', ')]:[]),...(o2.extSup?['sous '+o2.extSup]:[])];
   const tog=o2.kids?`<button type="button" class="ogtg" data-act="fiOOpen" data-k="${esc(o.id+'|'+m.key)}" aria-expanded="${!!o2.open}" aria-label="${o2.open?'Replier':'Déplier'} ${esc(ogMN(m))}">${o2.open?'⌄':'›'}</button>`:(o2.tree?'<span class="ogtg0"></span>':'');
   return `<div class="srow ogm${m.hid?' fihid':''}" style="padding-left:${(o2.d||0)*18}px"><span class="ogmn">${tog}<span>${name}${c&&c.type==='PJ'?' <span class="tag2">PJ</span>':''} ${bits.join(' ')}${o2.kids?` <span class="muted small">· ${o2.kids} sous ${c&&c.genre==='f'?'elle':'lui'}</span>`:''}${sub.length?`<span class="d">${sub.join(' · ')}</span>`:''}</span></span>`
-    +(ed&&(m.x||m.line)?`<button type="button" class="ibtn" data-act="fiOMem" data-k="${esc(m.key)}" aria-label="Modifier ${esc(ogMN(m))}">✎</button>`:'')
+
     +(G?eyeBtn('fiOEyeM',`data-k="${esc(m.key)}"`,!m.hid,'Membre '+ogMN(m)):'')+`</div>`;}
 function ogGrp(o,g,body){const k=o.id+'|'+g.k,fold=!!S.ogFold[k];
   return `<div class="oggrp"><button type="button" class="oggh" data-act="fiOFold" data-k="${esc(k)}" aria-expanded="${!fold}"><span class="c" aria-hidden="true">${fold?'›':'⌄'}</span>${g.n?`<span class="ogrk">${g.n}</span>`:''}<span>${esc(g.t)}</span><span class="n">${g.L.length}</span></button>${fold?'':body}</div>`;}
@@ -1131,7 +1235,7 @@ function ogBlocks(f,t){const G=isGest(),ed=fiCanEd(f),e=fiEyeOf(f),eye=(k,l)=>G?
   const add=(act,lab,x)=>ed?`<div class="radd"><button class="btn" data-act="${act}"${x||''}>+ ${lab}</button></div>`:'';
   if(t==='pres'){
     if(fiBlkSee(f,'rangs')){const R=ogRangs(f);if(R.length||ed)h+=fiBlk('rangs','Rangs internes',R.length?String(R.length):'',
-      (R.length?`<div class="muted small">${f.titres?'Ordre de préséance, du plus haut au plus bas. Titres cumulables (Situation › Titres) : le plus haut l\'emporte.':'Du plus haut au plus bas niveau.'}</div>`+R.map((r,i)=>`<div class="srow"><span><span class="ogrk">${i+1}</span> <b>${esc(r.m)}</b>${(r.f||'').trim()&&r.f.trim()!==r.m?' / <b>'+esc(r.f.trim())+'</b>':''}${r.note?`<span class="d">${esc(r.note)}</span>`:''}</span></div>`).join(''):none('Aucun rang.')),
+      (R.length?`<div class="ux2q"><button type="button" class="qbtn" data-act="xpHelp" data-k="rangs" aria-label="Aide">?</button></div>${(S.xpHelp||{}).rangs?`<div class="qtip2">${f.titres?'Ordre de préséance, du plus haut au plus bas. Titres cumulables (Situation › Titres) : le plus haut l\'emporte.':'Du plus haut au plus bas niveau.'}</div>`:''}`+R.map((r,i)=>`<div class="srow"><span><span class="ogrk">${i+1}</span> <b>${esc(r.m)}</b>${(r.f||'').trim()&&r.f.trim()!==r.m?' / <b>'+esc(r.f.trim())+'</b>':''}${r.note?`<span class="d">${esc(r.note)}</span>`:''}</span></div>`).join(''):none('Aucun rang.')),
       {edit:ed?'fiORangs':'',hid:G&&!e.rangs,eye:eye('rangs','Rangs internes')});}
     if(fiBlkSee(f,'prat')&&((f.prat||'').trim()||ed))h+=fiBlk('prat','Pratiques','',(f.prat||'').trim()?fiRich(f.prat):none('Rien pour l\'instant.'),{edit:ed?'fiEd':'',ea:' data-b="prat"',hid:G&&!e.prat,eye:eye('prat','Pratiques')});}
   if(t==='mem'){
@@ -1150,8 +1254,8 @@ const ogLieux=o=>fiSort(fiAll().filter(l=>l.genre==='lieu'&&fiSee(l)&&fiBlkSee(l
 /* ---------- Situation : Organisations et Titres ---------- */
 function ogSitRows(c,k){const E=canEditC(c),btn=e=>E?`<button type="button" class="ibtn sm" data-act="situEd" data-k="${k}" data-i="${esc(e.id)}" aria-label="Modifier ${esc(e.nom||'')}">✎</button>`:'';
   if(k==='titres'){const T=ogTitles(c).filter(x=>!x.t.pp),ids=new Set(T.map(x=>x.t.id));
-    return T.map(x=>`<div class="srow"><span><b>${esc(ogRL(x.r,c))}</b>${x.t.dom&&ogDomN(x.t.dom)?' de '+ogDomH(x.t.dom):''}${x.t.suz&&ogPersN(x.t.suz)?` <span class="muted">· sous ${ogPers(x.t.suz)}</span>`:''}${ogTOrgs().length>1?` <span class="muted">· ${fi6Ref(x.o.id)}</span>`:''}${x.t.note?`<span class="d">${esc(x.t.note)}</span>`:''}</span>${btn(x.t)}</div>`)
-      .concat(((c.situ||{}).titres||[]).filter(e=>!ids.has(e.id)).map(e=>`<div class="srow"><span><b>${esc(e.nom)}</b>${e.note?`<span class="d">${esc(e.note)}</span>`:''}</span>${btn(e)}</div>`));}
+    return T.map(x=>`<div class="srow"><span><b>${esc(ogRL(x.r,c))}</b>${x.t.dom&&ogDomN(x.t.dom)?' '+deN(ogDomN(x.t.dom)).replace(/(de |d')$|(d'|de ).*/,'$1$2')+ogDomH(x.t.dom):''}${x.t.suz&&ogPersN(x.t.suz)?` <span class="muted">· sous ${ogPers(x.t.suz)}</span>`:''}${ogTOrgs().length>1?` <span class="muted">· ${fi6Ref(x.o.id)}</span>`:''}${x.t.note?`<span class="d">${esc(x.t.note)}</span>`:''}</span>${btn(x.t)}</div>`)
+      .concat(((c.situ||{}).titres||[]).filter(e=>!ids.has(e.id)).map(e=>`<div class="srow"><span><b>${esc(elid(e.nom))}</b>${e.note?`<span class="d">${esc(e.note)}</span>`:''}</span>${btn(e)}</div>`));}
   const L=(c.situ||{}).orgs||[],rows=L.map(e=>{const o=e.f&&S.fiches[e.f],r=o&&ogLineR(o,e),role=(e.role||'').trim(),showRole=role&&!(r&&(!e.rang||ogRFind(o,role)===r));
     return `<div class="srow"><span>${situNm(e)}${r?` <span class="muted">· ${esc(ogRL(r,c))}</span>`:''}${showRole?` <span class="muted">· ${esc(role)}</span>`:''}${e.sup&&ogPersN(e.sup)?` <span class="muted">· sous ${ogPers(e.sup)}</span>`:''}${e.note?`<span class="d">${esc(e.note)}</span>`:''}</span>${btn(e)}</div>`;});
   const T=ogTitles(c),seen=new Set(L.map(e=>e.f).filter(Boolean));
@@ -1328,8 +1432,9 @@ function faMembers(f,all){const G=isGest(),hid=new Set(f.mhid||[]),M=new Set(),o
 function faMRow(f,m){const G=isGest(),ed=fiCanEd(f),c=m.c,nm=c?fiCN(c):m.x.nom,name=c?(vis(c)?lk({t:'perso',id:c.id},nm):`<b>${esc(nm)}</b>`):`<b>${esc(nm)}</b>`;
   const oth=c?((c.situ||{}).familles||[]).map(y=>y.f&&S.fiches[y.f]).filter(x=>x&&x.id!==f.id&&!(m.br&&x.id===m.br.id)&&fiSee(x)&&!faUp(x).some(u=>u.id===f.id)).map(x=>'aussi '+esc(x.nom)):[];
   const note=(m.e||m.x||{}).note,sub=(note?[esc(note)]:[]).concat(oth);
-  return `<div class="srow ogm${m.hid?' fihid':''}"><span class="ogmn"><span>${name}${c&&c.type==='PJ'?' <span class="tag2">PJ</span>':''}${sub.length?`<span class="d">${sub.join(' · ')}</span>`:''}</span></span>`
-    +(ed&&!m.br?`<button type="button" class="ibtn" data-act="faMem" data-k="${esc(m.key)}" aria-label="Modifier ${esc(nm)}">✎</button>`:'')
+  const tit=c&&vis(c)?(((c.situ||{}).titres||[])[0]||{}).nom||'':'';
+  return `<div class="srow ogm${m.hid?' fihid':''}"><span class="ogmn"><span>${name}${c&&c.type==='PJ'?' <span class="tag2">PJ</span>':''}${tit?` <span class="muted small">${esc(tit)}</span>`:''}${sub.length?`<span class="d">${sub.join(' · ')}</span>`:''}</span></span>`
+
     +(G?eyeBtn('fiOEyeM',`data-k="${esc(m.key)}"`,!m.hid,'Membre '+nm):'')+`</div>`;}
 function faBlocks(f){const G=isGest(),ed=fiCanEd(f),e=fiEyeOf(f),eye=(k,l)=>G?eyeBtn('fiEye',`data-k="${k}"`,!!e[k],l):'',none=x=>`<div class="muted small">${x}</div>`;let h='';
   if(fiBlkSee(f,'terr')){const L=ogLieux(f),t=(f.terr||'').trim();
@@ -1338,15 +1443,16 @@ function faBlocks(f){const G=isGest(),ed=fiCanEd(f),e=fiEyeOf(f),eye=(k,l)=>G?ey
       +(!t&&!L.length?none('Non renseigné.'):'')+(ed?`<div class="radd"><button class="btn" data-act="fiOLieu">+ Lieu</button></div>`:''),{edit:ed?'fiEd':'',ea:' data-b="terr"',hid:G&&!e.terr,eye:eye('terr','Territoires')});}
   if(fiBlkSee(f,'mem')){const L=faMembers(f),D=L.filter(m=>!m.br),grs=[];if(D.length)grs.push({k:'dir',t:f.nom,L:D});
     for(const b of faBrs(f).filter(fiSee)){const R=L.filter(m=>m.br===b);if(R.length)grs.push({k:'b'+b.id,t:'Branche · '+b.nom,L:R});}
-    const body=!L.length?none('Aucun membre pour l\'instant.'):grs.length===1&&grs[0].k==='dir'?D.map(m=>faMRow(f,m)).join(''):grs.map(g=>ogGrp(f,g,g.L.map(m=>faMRow(f,m)).join(''))).join('');
-    h+=fiBlk('mem','Membres'+fi6Calc(),L.length?String(L.length):'',body+(ed?`<div class="radd"><button class="btn" data-act="faMem" data-k="">+ Membre</button></div>`:'')
-      +`<div class="muted small" style="margin-top:4px">Repris de la Situation des personnages${faBrs(f).length?', branches comprises':''} ; les membres des familles vassales n'en font pas partie.</div>`,{hid:G&&!e.mem,eye:eye('mem','Membres')});}
+    const all=!!(S.faAll||{})[f.id],cut=g=>{const R=g.L.map(m=>faMRow(f,m));return !all&&R.length>8?R.slice(0,6).join('')+`<button type="button" class="lnk" data-act="faAllT" data-id="${esc(f.id)}">Voir les ${R.length-6} autres</button>`:R.join('');};
+    const body=grs.length===1&&grs[0].k==='dir'?cut(grs[0]):grs.map(g=>ogGrp(f,g,cut(g))).join('');
+    if(L.length)h+=fiBlk('mem','Membres',String(L.length),body,{plus:ed?'faMem':'',pa:' data-k=""'});else if(ed)FI_CX.push(['Membre','faMem',' data-k=""']);}
   if(fiBlkSee(f,'vas')){const K=fiKidsOf(f.id).filter(x=>x.genre==='famille'&&fiSee(x)),Br=fiSort(K.filter(faIsBr)),V=fiSort(K.filter(x=>!faIsBr(x))),X=f.vasx||[];
-    if(K.length||X.length||ed){const row=x=>{const n=faMembers(x).length;return `<div class="srow"><span>${lk({t:'fiche',id:x.id},x.nom)}${x.type&&!faIsBr(x)?` <span class="muted">· ${esc(x.type)}</span>`:''}${x.vis!=='rev'?' <span class="tag2">préparée</span>':''}</span><span class="muted small">${n} membre${n>1?'s':''}</span></div>`;};
+    if(!K.length&&!X.length&&ed)FI_CX.push(['Vassale ou branche','fiNew',' data-g="famille"']);
+    if(K.length||X.length){const row=x=>{const n=faMembers(x).length;return `<div class="srow"><span>${lk({t:'fiche',id:x.id},x.nom)}${x.type&&!faIsBr(x)?` <span class="muted">· ${esc(x.type)}</span>`:''}${x.vis!=='rev'?' <span class="tag2">préparée</span>':''}</span>${n?`<span class="muted small">${n} membre${n>1?'s':''}</span>`:''}</div>`;};
       let b='';if(Br.length)b+='<div class="lab2">Branches</div>'+Br.map(row).join('');if(V.length)b+='<div class="lab2">Vassales</div>'+V.map(row).join('');
       if(X.length)b+='<div class="lab2">Vassales sans fiche</div>'+X.map(x=>`<div class="srow"><span><b>${esc(x.nom)}</b></span>${ed?`<span style="display:flex;gap:4px">${fiCanNew()?`<button type="button" class="btn ghost ui-xs" data-act="faVasF" data-i="${esc(x.id)}">+ Fiche</button>`:''}<button type="button" class="ibtn" data-act="faVasX" data-i="${esc(x.id)}" aria-label="Retirer ${esc(x.nom)}">✕</button></span>`:''}</div>`).join('');
       h+=fiBlk('vas','Vassales et branches'+fi6Calc(),K.length+X.length?String(K.length+X.length):'',(b||none('Aucune.'))
-        +(ed?`<div class="radd"><button class="btn" data-act="fiNew" data-g="famille">+ Nouvelle famille rattachée</button> <button class="btn" data-act="faVas">+ Nom sans fiche</button></div><div class="muted small" style="margin-top:4px">« + Fiche » crée la famille (Mineure, vassale de ${esc(f.nom)}) et retire le nom de la liste.</div>`:''),{hid:G&&!e.vas,eye:eye('vas','Vassales et branches')});}}
+        +(ed?`<details class="ux2menu"><summary class="pbtn" aria-label="Ajouter une vassale ou une branche">+</summary><div class="ux2mi"><button type="button" data-act="fiNew" data-g="famille">Nouvelle famille vassale ou branche</button><button type="button" data-act="faVas">Nom seul (sans fiche)</button></div></details>`:''),{});}}
   return h;}
 /* Situation › Familles : lignes saisies, puis familles mères des branches (ligne calculée) */
 function faSitRows(c){const E=canEditC(c),L=(c.situ||{}).familles||[],have=new Set(L.map(e=>e.f).filter(Boolean));
@@ -2000,7 +2106,7 @@ FI_DLG.add('rgNote');
    Fiche genre « chrono » (règle des fiches) : desc, eres:[{id, nom, deb, fin, col, seances}], els:[{id, era, nom, date, an, txt, rev, cree, par}].
    Frise : ères triées par début, éléments triés par année de tri ; un œil par élément (élément ajouté par la gestion = préparé).
    Ères : gestion en mode édition. Séances de la Chronique : Scénarios et Interscénarios visibles, datés à partir du début de l'ère. */
-FI_G.chrono={pl:'Chronologies',un:'chronologie',nv:'Nouvelle chronologie',cnt:n=>n+' chronologie'+(n>1?'s':''),tl:'Types de chronologie'};
+FI_G.chrono={pl:'Histoire',un:'chronologie',nv:'Nouvelle chronologie',cnt:n=>n+' chronologie'+(n>1?'s':''),tl:'Types de chronologie'}; /* UX2 : « Histoire » */
 FI_IC.chrono='<path d="M4 12h16"/><circle cx="7" cy="12" r="2"/><circle cx="13" cy="12" r="2"/><path d="M19 9v6"/><path d="M7 5v3M13 16v3"/>';
 const CT_COL=[['violet','Violet'],['laiton','Laiton'],['brique','Brique'],['vert','Vert'],['bleu','Bleu'],['gris','Gris']];
 const ctElSee=x=>!!x&&(isGest()||!!x.rev);

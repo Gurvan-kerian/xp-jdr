@@ -70,6 +70,9 @@ function uiAfter(){if(!S._errScroll)return;S._errScroll=false;const sh=document.
   const e=(sh&&sh.querySelector('[role=alert]'))||document.querySelector('#app [role=alert]');if(!e)return;if(sh&&sh.contains(e))inView(sh,e);else e.scrollIntoView({block:'center'});}
 function toast(m){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.setAttribute('role','status');document.body.appendChild(t);}
   t.textContent=m;t.className='on';clearTimeout(toast._t);toast._t=setTimeout(()=>{t.className='';},1800);}
+/* UX2 : toast avec action (ex. « Annuler ») */
+function toastAct(m,lab,act){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.setAttribute('role','status');document.body.appendChild(t);}
+  t.innerHTML=`<span>${esc(m)}</span> <button type="button" class="toastb" data-act="${act}">${esc(lab)}</button>`;t.className='on act';clearTimeout(toast._t);toast._t=setTimeout(()=>{t.className='';t.textContent='';},5000);}
 const refuse=()=>{S._errScroll=true;};
 function renderSheet0(){
   const root=document.getElementById('sheetRoot');

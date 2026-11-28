@@ -47,7 +47,7 @@ if(!docsPath){const app=loadApp(ROOT,['config','engine','modele','migrations','c
   r(`ME='lorenzo';S.edit=true;S.visit=false;S.asPlayer=false;`);
   /* titres */
   ok(r(`ogTitles(S.chars.sloan).map(x=>x.r.id).join()`)==='r5,r7','Sloan : deux titres triés par préséance (Comtesse avant Dame)');
-  ok(r(`ogTitles(S.chars.kerian).map(x=>x.r.id+':'+ogTitL(x,S.chars.kerian)).join()`)==="r7:Chevalier",'Kerian : ancien titre en texte reconnu (« Chevalier de … » → rang Chevalier)');
+  ok(r(`ogTitles(S.chars.kerian).map(x=>x.r.id+':'+ogTitL(x,S.chars.kerian)).join()`)==="r7:Chevalier de Ville d'Avray",'Kerian : ancien titre en texte reconnu (rang Chevalier), titre réel affiché (UX2)');
   ok(r(`ogRFind(S.fiches.mon,'titre de Chevalier sans terre').id`)==='r8','rang reconnu : « Chevalier sans terre » avant « Chevalier »');
   ok(r(`ogRL(ogRById(S.fiches.mon,'r7'),S.chars.sloan)`)==='Dame'&&r(`ogRL(ogRById(S.fiches.mon,'r8'),S.chars.sloan)`)==='Chevalier sans terre','forme féminine selon le genre (vide = masculin)');
   {const L=r(`JSON.stringify(ogMembers(S.fiches.mon).map(m=>[m.key,m.rk&&m.rk.id]))`);
@@ -150,7 +150,7 @@ const DBG=process.env.DBG;
         ok(/Rang/i.test(sh)&&/Supérieur/i.test(sh),'fenêtre Membre : rang, supérieur');
         await fill(page,'rang','dr4');await click(page,'[data-act="fiOMemSave"]');await page.waitForTimeout(300);
         ok(((db.get('chars/kerian').situ||{}).orgs||[]).some(e=>e.f==='dru'&&e.rang==='dr4'),'membre ajouté depuis la fiche : enregistré dans la Situation de Kerian');
-        await click(page,'[data-act="fiOTab"][data-v="ctx"]');await wait(page);t=await txt(page);ok(/Lieux/i.test(t)&&/Avalon/.test(t)&&/Relations/i.test(t)&&/Notes MJ/i.test(t),'Druides › Contexte : lieux, relations, Notes MJ');
+        await click(page,'[data-act="fiOTab"][data-v="ctx"]');await wait(page);t=await txt(page);ok(/Lieux/i.test(t)&&/Avalon/.test(t)&&/Relations/i.test(t)&&!/Notes MJ/i.test(t),'Druides › Contexte : lieux, relations ; Notes MJ retirées (UX2)');
         await page.evaluate(()=>{S.fi='mon';S.fiTab='mem';S.ogView='tree';render();});t=await txt(page);if(DBG)console.log(t);
         ok(/Hiérarchie/.test(t)&&/Duc/i.test(t)&&/Caléïs/.test(t),'Monarchie › Membres : vue Hiérarchie');
         if(process.env.SHOTS){await page.evaluate(()=>{S.ogOpen={'mon|caleis':true};render();});await page.screenshot({path:process.env.SHOTS+'/hier.png',fullPage:true});await page.evaluate(()=>{S.fi='dru';S.fiTab='mem';render();});await page.screenshot({path:process.env.SHOTS+'/mem.png',fullPage:true});await page.evaluate(()=>{S.fiTab='';render();});await page.screenshot({path:process.env.SHOTS+'/pres.png',fullPage:true});await page.evaluate(()=>{S.fi='mon';S.fiTab='mem';S.ogView='tree';render();});}

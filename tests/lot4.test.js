@@ -33,7 +33,7 @@ if(!docsPath){const app=loadApp(ROOT,['config','engine','modele','migrations','c
   r(`S.edit=true;`);ok(r(`canEditC(S.chars.hector)`),'gestion en mode édition : PNJ modifiable');
   ok(r(`JSON.stringify(shTabsOf(S.chars.hector).map(x=>x[0]))`)==='["por","situ","rel"]'&&r(`JSON.stringify(shTabsOf(S.chars.ismael).map(x=>x[0]))`)==='["prog","por","situ","rel"]','onglets : PNJ Portrait · Situation · Relations ; féal : Progrès en premier (UX1)');
   ok(r(`shTabsOf(S.chars.kerian)[0][0]`)==='prog','PJ : onglets inchangés');
-  ok(r(`pnBlkSee(S.chars.hector,'role')&&pnBlkSee(S.chars.hector,'orgs')`)&&r(`(ME='alice',!pnBlkSee(S.chars.hector,'autres')&&pnBlkSee(S.chars.hector,'orgs'))`),'PNJ existant : Portrait et Situation ouverts, Autres PNJ fermé');
+  ok(r(`pnBlkSee(S.chars.hector,'role')&&pnBlkSee(S.chars.hector,'orgs')`)&&r(`(ME='alice',pnBlkSee(S.chars.hector,'autres')&&pnBlkSee(S.chars.hector,'orgs'))`),'PNJ révélé : tous les blocs visibles, un seul œil par fiche (UX2)');
   ok(r(`FI_G.bete&&FI_G.bete.noMj&&!FI_G.creatures`),'genre Bestiaire « bete », sans Notes MJ, distinct de « creatures »');
   ok(r(`(()=>{S.cal={date:{a:1900,m:5,j:9}};const f=chEvAuto({titre:'S12. La nuit des masques',type:'Scénario',pj:['kerian','x']});return f.num==='12.'&&f.nom==='La nuit des masques'&&f.type==='Scénario'&&f.pj.join()==='kerian'&&f.debut.j===9;})()`),'événement prérempli depuis une session (numéro, titre, type, PJ, date du jeu)');}
 
@@ -76,18 +76,18 @@ const DBG=process.env.DBG;
       let t=await page.evaluate(()=>{S.view='univers';S.uni='home';render();return document.getElementById('app').innerText;});ok(/PNJ\s*2 PNJ/.test(t),'Univers : entrée PNJ (2, le préparé ne compte pas) (UX1)');
       await page.evaluate(()=>{S.uni='pnj';render();});await wait(page);t=await txt(page);
       ok(/Hector Durvoy/.test(t)&&/Ismaël/.test(t)&&!/Armand/.test(t),'liste des PNJ : préparé absent');
-      ok(/Cador/.test(t)&&/Féal de Kerian/.test(t),'ligne : rang, féal');
+      ok(!/Cador/.test(t)&&/Féal de Kerian/.test(t),'ligne : féal, sans pastille de rang (UX2)');
       await page.evaluate(()=>{const i=document.querySelector('[data-pnq]');i.value='hec';i.dispatchEvent(new Event('input',{bubbles:true}));});
       t=await page.evaluate(()=>document.getElementById('pnRes').innerText);ok(/Hector/.test(t)&&!/Ismaël/.test(t),'recherche');
       await page.evaluate(()=>{const s=document.querySelector('[data-pnf="orgs"]');s.value='Monarchie';s.dispatchEvent(new Event('change',{bubbles:true}));});await wait(page);
       t=await txt(page);if(DBG)console.log(t);ok(/Monarchie · 1/i.test(t),'filtre Organisation (groupe au nom de la valeur)');
       await page.evaluate(()=>{S.pnF={};S.pnQ='';render();});
       await click(page,'[data-act="sel"][data-id="hector"]');await wait(page);t=await txt(page);
-      ok(/Portrait/.test(t)&&/Situation/.test(t)&&/Relations/.test(t)&&!/Progrès/.test(t)&&!/XP dispo/.test(t),'fiche PNJ : Portrait, Situation, Relations ; ni Progrès ni bandeau XP');
-      if(DBG)console.log(t);ok(/Rang\s*Cador/.test(t)&&/Mentions/i.test(t),'rang dans l\'en-tête, Mentions');
+      ok(/Situation/i.test(t)&&!/Portrait\s*\n\s*Situation\s*\n\s*Relations/.test(t)&&!/Progrès/.test(t)&&!/XP dispo/.test(t),'fiche PNJ sur une page ; ni Progrès ni bandeau XP (UX2)');
+      if(DBG)console.log(t);ok(/Rang\s*Cador/i.test(t),'rang dans la carte d\'identité (UX2)');
       ok(!(await page.$('.pchips')),'pas de rangée de médaillons sur une fiche PNJ non rattaché');
-      await click(page,'[data-act="pnTxt"][data-b="role"]');await page.evaluate(()=>{const e=document.getElementById('fiEd');e.innerText='Espion de la Monarchie';e.dispatchEvent(new Event('input',{bubbles:true}));});
-      await click(page,'[data-act="pnTxtSave"]');await wait(page);ok((db.get('chars/hector').por||{}).role==='Espion de la Monarchie','le joueur renseigne le Rôle d\'un PNJ révélé');
+      await click(page,'[data-act="pnTxt"][data-b="desc"]');await page.evaluate(()=>{const e=document.getElementById('fiEd');e.innerText='Espion de la Monarchie';e.dispatchEvent(new Event('input',{bubbles:true}));});
+      await click(page,'[data-act="pnTxtSave"]');await wait(page);ok((db.get('chars/hector').por||{}).desc==='Espion de la Monarchie','le joueur renseigne la Description d\'un PNJ révélé (UX2)');
       /* création par un joueur */
       await page.evaluate(()=>{S.view='univers';S.uni='pnj';render();});await click(page,'[data-act="pnNew"]');
       ok(!/Préparé/.test(await sheet(page)),'nouveau PNJ (joueur) : pas de choix de visibilité');
@@ -124,14 +124,12 @@ const DBG=process.env.DBG;
       ok(db.get('chars/'+co.id).feal===true,'case « Féal » d\'un PNJ humain non rattaché');
       await page.evaluate(()=>{S.dlg=null;render();});ok(/Humain · féal/.test(await txt(page)),'en-tête : « Humain · féal »');
       /* alias rattaché à Hector */
-      await page.evaluate(()=>{S.sel='hector';S.shTab='por';render();});await click(page,'[data-act="pnFold"][data-k="pn-alias"]');await click(page,'[data-act="pnAlias"]');
+      await page.evaluate(()=>{S.sel='hector';S.shTab='por';render();});await click(page,'.ux2comp [data-act="pnAlias"]');
       await click(page,'[data-act="pnSet"][data-k="mode"][data-v="old"]');await fill(page,'pnj',co.id);await click(page,'[data-act="pnAliasSave"]');await wait(page);
       const co2=db.get('chars/'+co.id);ok(co2.alias==='hector'&&co2.eye.idr===false,'alias rattaché, Identité réelle fermée');
-      t=await txt(page);ok(/Alias/i.test(t)&&/Le Corbeau/.test(t)&&/identité cachée/.test(t),'bloc Alias du PNJ principal (état)');
+      t=await txt(page);ok(/Aussi connu sous/i.test(t)&&/Le Corbeau/.test(t),'« Aussi connu sous » sur le PNJ principal (UX2)');
       /* lien réciproque */
-      await page.evaluate(()=>{S.shTab='rel';render();});await click(page,'[data-act="pnFold"][data-k="pn-autres"]');await click(page,'[data-act="pnLien"]');
-      await fill(page,'pnj','armand');await fill(page,'lab','rival');await click(page,'[data-act="pnLienSave"]');await wait(page);
-      ok((db.get('chars/hector').liens||[]).some(l=>l.pnj==='armand'&&l.rec)&&(db.get('chars/armand').liens||[]).some(l=>l.pnj==='hector'&&l.rec),'lien réciproque inscrit sur les deux fiches');
+      /* UX2 : bloc « Autres PNJ » retiré de l'affichage (données gardées) */
       t=await txt(page);ok(/PJ liés/i.test(t)&&/Kerian/.test(t)&&/Contact/.test(t),'PJ liés calculés depuis les Relations des PJ');
       /* Univers et Bestiaire */
       await page.evaluate(()=>{S.view='univers';S.uni='home';S.fi=null;render();});t=await txt(page);
