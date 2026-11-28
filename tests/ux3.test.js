@@ -159,6 +159,18 @@ const go=(page,js)=>page.evaluate(js=>{eval(js);S._force=true;render();return do
       ok(!/partiToggle/.test(await E(page,()=>document.getElementById('sheetRoot').innerHTML)),'« Parti de la table » réservé au MJ');
       await ctx.close();}
 
+    console.log('8. Pouvoirs, capacités et races ouverts aux joueurs (correctif)');
+    {const {page,errs,ctx}=await open(browser,base,db,'anne');
+      ok(await E(page,()=>canElEd('pw','')&&!canElEd('pw','pw-x')&&canRaceEd(null)),'joueur : créer oui ; pouvoir non visible : non');
+      const t=await go(page,"S.view='univers';S.uni='pouvoirs';S.fi=null");
+      ok(await E(page,()=>!!document.querySelector('.pghead [data-act="elEdit"]')),'« + » de Pouvoirs et capacités pour le joueur');
+      await E(page,()=>{S.dlg=elDraft('pw',null);Object.assign(S.dlg,{nom:'Vol plané',type:'actif',cat:'ordinaire',nat:'m'});elSave();});await page.waitForTimeout(400);
+      const P=db.get('meta/pouvoirs').byId,id=Object.keys(P).find(k=>P[k].nom==='Vol plané');
+      ok(!!id&&P[id].rev===true,'pouvoir créé par un joueur : révélé');
+      ok(await E(page,id=>elSeen('pw',id)&&canElEd('pw',id),id),'visible et modifiable par les joueurs');
+      ok(await E(page,()=>atSigSee({obj:{t:'pouvoir',id:'pw-x'},champ:'Type'})===false),'signalement sur un pouvoir non visible : pas pour le joueur');
+      ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs[0]:''));await ctx.close();}
+
     console.log('7. Ordinateur');
     {const {page,errs,ctx}=await open(browser,base,db,'lorenzo',{width:1280,height:800});
       await go(page,"S.view='home'");

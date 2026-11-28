@@ -22,7 +22,7 @@ document.addEventListener('click',ev=>{
   if(lnkAct(a,d))return; /* lot 4 bis : liens, retour, mode édition */
   if(a==='planHelp'){S.planHelp=!S.planHelp;render();return;}
   const cur=()=>S.chars[S.sheet&&S.sheet.id];
-  if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel|rf2Add|rf2Del|rfChAdd|rfChDel|rfPwUnk|rfFxNew|rfFxDel|rfFxT|rfFxQ|rfFxAdd|rfFxCancel|rfPwOpen|rfNomP)$/.test(a)&&!canEdit())return; /* Référentiel : modification réservée à la gestion */
+  if(/^(rfSave|rfDel|rfDelOk|rfHumSave|rfNew|rfPredAdd|rfPredDel|rfAtAdd|rfAtDel|rfSpAdd|rfSpDel|rf2Add|rf2Del|rfChAdd|rfChDel|rfPwUnk|rfFxNew|rfFxDel|rfFxT|rfFxQ|rfFxAdd|rfFxCancel|rfPwOpen|rfNomP)$/.test(a)&&!canRaceEd(S.rf&&S.rf.id))return; /* correctif UX3 : joueurs sur une race entièrement révélée */ /* Référentiel : modification réservée à la gestion */
   if(S.visit&&!VISIT_OK.has(a))return; /* visiteur : lecture seule */
   const toUni=a==='tab'&&d.v==='univers';
   if(a==='tab'&&d.v==='ref'){d.v='univers';S.uni='creatures';}
@@ -56,8 +56,8 @@ document.addEventListener('click',ev=>{
     if(S.pushSub&&old!==ME){const js=S.pushSub.toJSON(),ep=js.endpoint;for(const pp of Object.values(S.players)){if(pp.id!==ME&&(pp.push||[]).some(x=>x.endpoint===ep)){const n=clone(pp);n.push=n.push.filter(x=>x.endpoint!==ep);savePlayer(n);}}
       const me=S.players[ME];if(me&&!(me.push||[]).some(x=>x.endpoint===ep)){const n=clone(me);n.push=[...(n.push||[]),{endpoint:ep,keys:js.keys}];savePlayer(n);}}}
   else if(a==='pTab'){S.pTab=d.v;}
-  else if(/^fxc/.test(a)){if(!canEdit())return;fxcAct(a,d);}
-  else if(EL_ACTS.has(a)){if(!canEdit()&&a!=='elFilt')return;if(elAct(a,d)===false)return;}
+  else if(/^fxc/.test(a)){if(!canEdit()&&!(S.rf&&canRaceEd(S.rf.id))&&!(S.dlg&&S.dlg.kind==='elEdit'&&canElEd(S.dlg.k,S.dlg.id||'')))return;fxcAct(a,d);}
+  else if(EL_ACTS.has(a)){if(!canEdit()&&a!=='elFilt'&&!(refUser()&&(a!=='elEdit'||canElEd(d.k,d.id||''))&&!(a==='elDelOk'&&S.dlg&&S.dlg.id&&elUses(S.dlg.k,S.dlg.id).some(u=>!elUseSeen(S.dlg.k,u)))))return;if(elAct(a,d)===false)return;}
   else if(a==='pwToggle'){S.pwOpen={...(S.pwOpen||{}),[d.id]:!(S.pwOpen||{})[d.id]};}
   else if(a==='pwPick'){if(!canEditC(S.chars[d.id]))return;S.dlg={kind:'pwPick',id:d.id,i:+d.i};}
   else if(a==='pwPickOk'){pwPickOk();return;}
@@ -212,7 +212,7 @@ document.addEventListener('click',ev=>{
     else{const k=specCost(key,nom);if(k>summary(c0,S.events).dispo)return;c=buySpec(c0,key,nom,k,today());}
     if(a==='spBuyO'&&S.spOther)delete S.spOther[c0.id+'|'+key];saveChar(c);return;}
   else if(a==='rfOpen'){S.dlg=null;S.view='univers';S.uni='creatures';S.rf=rfDraft(d.id);S.rfEd=false;S.rfBlk=null;S.rfPor=null;window.scrollTo(0,0);}
-  else if(a==='rfNew'){if(!canEdit())return;S.rf=rfDraft(null);S.rfEd=true;S.edDirty=false;window.scrollTo(0,0);}
+  else if(a==='rfNew'){if(!canRaceEd(null))return;S.rf=rfDraft(null);S.rfEd=true;S.edDirty=false;window.scrollTo(0,0);}
   else if(a==='raceFull'){if(!isGest())return;const cr=S.creatures.find(c=>c.id===d.id);if(!cr||raceAllOpen(cr))return;S.dlg={kind:'eye',t:'race',id:d.id,k:'all',i:0,open:true,sess:(sessList()[0]||{}).id||''};}
   else if(a==='rfBack'){S.rf=null;S.rfEd=false;S.rfBlk=null;S.rfPor=null;}
   else if(a==='rfFlt'){S.rff=d.v;}
@@ -265,7 +265,7 @@ document.addEventListener('click',ev=>{
   else if(a==='rfSave'){const g=S.rf;delete g.unkOk;const rec=rfRec(g),sing=rec.sing,plur=((g.id&&S.creatures.find(c=>c.id===g.id))||{}).nom||sing;if(!sing)return;rec.pw=pwToIds(rec.pw,g.pwn);if(g.pwx){const ids=pwSlots(rec);let ch=false;const P={...S.pouvoirs};for(const k in g.pwx){const x=g.pwx[k],id=ids[+k];if(x&&x.dirty&&id&&id!=='?'&&P[id]){P[id]={...P[id],desc:(x.desc||'').trim(),fx:clone(x.fx||[])};ch=true;}}if(ch)savePouvoirs(P);}
     if(refRows().some(r=>r.cr.id!==g.id&&nrm(r.x.sing)===nrm(sing))){g.err='Une autre race porte déjà ce nom.';render();return;}
     let list=clone(S.creatures),id=g.id;
-    if(!id){id=creSlug(plur)||('race-'+Date.now().toString(36));if(list.some(c=>c.id===id))id+='-'+Date.now().toString(36);list.push({id,nom:plur,fam:g.fam,done:false});}
+    if(!id){id=creSlug(plur)||('race-'+Date.now().toString(36));if(list.some(c=>c.id===id))id+='-'+Date.now().toString(36);list.push({id,nom:plur,fam:g.fam,done:false});if(!isGest())rec.eye=eyeAll(true); /* créée par un joueur : visible de toute la table */}
     else{const cr=list.find(c=>c.id===id);if(cr){cr.fam=g.fam;}}
     {const pv=S.races[id]||{};for(const k of ['traits','infos','por'])if(pv[k])rec[k]=pv[k];}const old=S.races[id]&&S.races[id].sing;rec.eye=(S.races[id]&&S.races[id].eye)||eyeAll(false);saveRaceView(id,rec);saveCreatures(list);rebuildRaces();
     if(old&&old!==sing)for(const c of Object.values(S.chars))if(c.race===old){const n=clone(c);n.race=sing;saveChar(n);}

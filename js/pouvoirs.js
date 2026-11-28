@@ -59,7 +59,7 @@ const pwDeRace=n=>(/^[aeiouyhàâéèêîôû]/i.test(n||'')?"de l'":'du ')+n;
 function viewUniPw(){const k=S.pcat==='cap'?'cap':'pw',pw=k==='pw',E=canEdit(),M=elMap(k);
   const nAll=kk=>Object.keys(elMap(kk)).filter(id=>E||elSeenUses(kk,id).length).length;
   const F=S.pwF||{},so=S.pwSo||'az',qv=pw?(S.pq||''):(S.cq||''),q=nrm(qv);
-  let h=`<div class="pghead"><h2>Pouvoirs et capacités</h2>${E?`<button type="button" class="pbtn big" data-act="elEdit" data-k="${k}" data-id="" aria-label="${pw?'Nouveau pouvoir':'Nouvelle capacité'}">+</button>`:''}</div>`;
+  let h=`<div class="pghead"><h2>Pouvoirs et capacités</h2>${canElEd(k,'')?`<button type="button" class="pbtn big" data-act="elEdit" data-k="${k}" data-id="" aria-label="${pw?'Nouveau pouvoir':'Nouvelle capacité'}">+</button>`:''}</div>`;
   h+=`<div class="seg" role="group" aria-label="Catalogue" style="margin-bottom:10px">${[['pw','Pouvoirs · '+nAll('pw')],['cap','Capacités naturelles · '+nAll('cap')]].map(([v,l])=>`<button type="button" data-act="pcat" data-v="${v}" aria-pressed="${k===v}">${l}</button>`).join('')}</div>`;
   let R=Object.entries(M).map(([id,el])=>{const u=E?elUses(k,id):elSeenUses(k,id),seen=E?elSeenUses(k,id):u;return {id,el,u,seen,races:[...new Set(u.map(x=>raceNm(raceRec(x.cr))))]};}).filter(r=>E||r.u.length);
   const raceOpts=[...new Set(R.flatMap(r=>r.races))].sort((a,b)=>a.localeCompare(b,'fr'));
@@ -77,7 +77,7 @@ function viewUniPw(){const k=S.pcat==='cap'?'cap':'pw',pw=k==='pw',E=canEdit(),M
   return h+`<div class="card ux2lst">${R.map(row).join('')||`<div class="muted small">${q||nf?'Aucun résultat.':pw?'Aucun pouvoir connu pour l\'instant.':'Aucune capacité connue pour l\'instant.'}</div>`}</div>`;}
 /* Page d'un pouvoir ou d'une capacité (S.uni='pouvoirs', S.fi='pw:<id>' ou 'cap:<id>') */
 function pwPageView(t,id){const pw=t==='pw',el=elFull(elMap(t)[id]||{}),E=canEdit();
-  let h=`<div class="ux2top">${crumb(CR_UNI,['Pouvoirs et capacités','data-act="uni" data-v="pouvoirs"'],[esc(el.nom||'?')])}<span class="ux2sp"></span>${E&&el.nom?`<button type="button" class="ibtn" data-act="pwPgEd" aria-label="Modifier">${ICON.crayon}</button>`:''}</div>`;
+  let h=`<div class="ux2top">${crumb(CR_UNI,['Pouvoirs et capacités','data-act="uni" data-v="pouvoirs"'],[esc(el.nom||'?')])}<span class="ux2sp"></span>${el.nom&&canElEd(t,id)?`<button type="button" class="ibtn" data-act="pwPgEd" aria-label="Modifier">${ICON.crayon}</button>`:''}</div>`;
   if(!el.nom)return h+`<div class="card empty">Élément introuvable.</div>`;
   const uses=elUses(t,id).map(u=>({...u,seen:elUseSeen(t,u)})).filter(u=>E||u.seen);
   const rn=[...new Set(uses.map(u=>raceNm(raceRec(u.cr))))],cat=pw?pwCatK(el):'';
@@ -123,7 +123,7 @@ function elDraft(k,id){const el=id?elFull(elMap(k)[id]||{nom:id}):elFull({});
   for(const f of EL_FIELDS)g[f]=el[f]||'';
   if(k==='pw'){g.cat=id?pwCatK(el):'';g.nat=el.nat||(id?pwNatGuess(id):'');}
   return g;}
-function elEditSheet(g){const k=g.k,pw=k==='pw',u=g.id?elUses(k,g.id):[],races=elRaceNames(u),chs=pw&&g.id?pwCharsUsing(g.id):[],arm=S.confirm==='eldel:'+g.id;
+function elEditSheet(g){const k=g.k,pw=k==='pw',u=g.id?elUses(k,g.id).filter(x=>isGest()||elUseSeen(k,x)):[],races=elRaceNames(u),chs=pw&&g.id?pwCharsUsing(g.id):[],arm=S.confirm==='eldel:'+g.id;
   const seg=(f,opts)=>`<div class="seg" role="group">${opts.map(([v,l])=>`<button data-act="elSeg" data-f="${f}" data-v="${v}" aria-pressed="${g[f]===v}">${l}</button>`).join('')}</div>`;
   const req='<span style="color:var(--bad)">*</span>';
   const rules=(pw?EL_FIELDS:EL_FIELDS.filter(f=>f!=='act'));const RL={act:'Activation',cib:'Cible',dur:'Durée',por:'Portée',zon:"Zone d'effet",res:'Résistance'};
@@ -190,6 +190,7 @@ function elSave(){const g=S.dlg,k=g.k,pw=k==='pw',nom=(g.nom||'').trim();
   const el={...old,nom,desc:(g.desc||'').trim(),type:g.type,prec:!!g.prec,fx:clone(g.fx||[]),var:g.var.map(v=>({id:v.id,nom:v.nom,desc:(oldVar[v.id]&&oldVar[v.id].desc)||'',fx:clone(v.fx||[])}))};
   for(const f of EL_FIELDS)el[f]=(g[f]||'').trim();
   if(pw){el.cat=g.cat;el.nat=g.nat;}
+  if(!g.id&&!isGest())el.rev=true; /* correctif UX3 : créé par un joueur = visible de toute la table */
   const M={...M0,[id]:el};
   /* harmonisation des capacités (choix par race) */
   if(!pw&&g.id){let R=null;const base=elFull(el);
@@ -246,7 +247,7 @@ function consSheet(g){const pw=g.t==='pw',el=elFull(elMap(g.t)[g.id]||{});if(!el
     ${(el.fx||[]).length?`<div class="lab2">Effets${vars.length?' communs':''}</div>${fxL(el.fx)}`:''}
     ${vars.length?`<div class="lab2">Sous-types</div>${vars.map(v=>`<div class="fi${E&&!seenV.has(v.id)?' prep':''}"><b>${esc(v.nom)}</b>${E&&!seenV.has(v.id)?' <span class="prepb">non révélé</span>':''}${fxL(v.fx)}</div>`).join('')}`:''}
     <div class="lab2">Races qui ${pw?'l\'utilisent':'la possèdent'}</div>${uses.length?uses.map(u=>`<div class="lkr${u.seen?'':' prep'}"><span>${lk({t:'race',id:u.cr.id},raceNm(raceRec(u.cr)))}${vn(u)?' <span class="muted">('+esc(vn(u))+')</span>':''}</span><span class="muted small">${u.seen?'':'<span class="prepb">non révélé</span> '}${esc(where(u))}</span></div>`).join(''):'<div class="muted small">Aucune race connue.</div>'}
-    <div class="actions" style="margin-top:12px">${canEdit()?`<button class="btn" data-act="consEdit">${ICON.crayon} Modifier</button>`:''}<button class="btn pri" data-act="closeSheet">Fermer</button></div></div></div>`;
+    <div class="actions" style="margin-top:12px">${canElEd(g.t,g.id)?`<button class="btn" data-act="consEdit">${ICON.crayon} Modifier</button>`:''}<button class="btn pri" data-act="closeSheet">Fermer</button></div></div></div>`;
   return h;}
 
 /* UX2 : filtres et tri de l'écran Pouvoirs et capacités */

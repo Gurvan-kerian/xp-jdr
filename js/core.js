@@ -149,7 +149,13 @@ const crBySing=sing=>!!sing&&(S.creatures||[]).find(x=>raceRec(x).sing===sing);
 /* Un pouvoir ou une capacité est connu de la personne s'il apparaît, visible, sur une race ou un personnage qu'elle voit */
 /* PNJ : bloc « Pouvoirs et capacités » visible (import Kanka fin) */
 const pnPwHas=(c,k,id)=>!!c&&c.type==='PNJ'&&vis(c)&&((c.pnpw||{})[k]||[]).includes(id)&&(typeof pnBlkSee!=='function'||pnBlkSee(c,'pw'));
+/* Correctif UX3 (28/11) : « visible = modifiable » étendu aux races, pouvoirs et capacités. Joueur identifié : race entièrement révélée,
+   pouvoir ou capacité qu'il voit, création ; le MJ et la gestion gardent le mode édition ; les yeux restent au MJ */
+const refUser=()=>isUser()&&!S.visit;
+function canRaceEd(id){if(canEdit())return true;if(!refUser())return false;if(!id)return true;const cr=S.creatures&&S.creatures.find(c=>c.id===id);if(!cr)return false;const x=raceRec(cr);return raceVisible(cr,x)&&eyeFull(eyeOf(cr,x));}
+function canElEd(t,id){if(canEdit())return true;if(!refUser())return false;return !id||elSeen(t,id);}
 function elSeen(t,id){if(isGest())return true;
+  {const M=t==='pw'?S.pouvoirs:S.capacites,e=M&&M[id];if(e&&e.rev)return true;} /* créé par un joueur : visible de toute la table */
   if(Object.values(S.chars).some(c=>pnPwHas(c,t,id)))return true;
   if(t==='pw'){if(Object.values(S.chars).some(c=>vis(c)&&(c.pw||[]).some(o=>o.id===id)))return true;
     return raceCres().some(cr=>{const x=raceRec(cr);return raceVisible(cr,x)&&pwSlots(x).some((v,i)=>v===id&&pwVisible(cr,x,i)&&!pwUnk(x,i));});}
@@ -209,7 +215,7 @@ function navGo(o){if(!lnkOk(o))return false;
   window.scrollTo(0,0);return true;}
 /* Revenir d'un cran sans historique (secours) : restaure l'écran mémorisé et sa position de défilement */
 function navPop(){const s=S.nav.pop();if(!s)return;
-  S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.fi=s.fi||null;S.rf=s.rf;S.rfTab=s.rfTab;S.rfEd=s.rfEd&&canEdit();S.jrOpen=s.jrOpen||null;S.jrSel=s.jrSel||null;S.dlg=s.dlg?{...s.dlg}:null;
+  S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.fi=s.fi||null;S.rf=s.rf;S.rfTab=s.rfTab;S.rfEd=s.rfEd&&canRaceEd(s.rf&&s.rf.id);S.jrOpen=s.jrOpen||null;S.jrSel=s.jrSel||null;S.dlg=s.dlg?{...s.dlg}:null;
   S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;S._force=true;render();
   const y=s.y;requestAnimationFrame(()=>window.scrollTo(0,y));}
 /* « ‹ Retour » : même effet que le retour du téléphone */
@@ -231,7 +237,7 @@ function hxKey(){const v=S.view,u=v==='univers'||v==='ref',g=S.dlg&&S.dlg.nav?S.
   return [v,v==='sheet'?S.sel:'',v==='sheet'?S.jrOpen||'':'',u?S.uni||'':'',u?S.fi||'':'',u?S.sec||'':'',u&&S.rf?(S.rf.id||(S.rf.hum?'hum':'nv')):'',u?S.chPage||'':'',v==='params'?S.ptab||'':'',v==='players'?S.pTab||'':'',v==='rules'?(S.rgTab||'')+':'+(S.rgNote||''):'',v==='crea'?(S.cwId||'')+':'+(S.cwStep||0):'',v==='gains'?S.xpSess||'':'',v==='planning'?S.plDate||'':'',g].join('|');}
 function hxSnap(y){const s=navSnap();s.y=y||0;s.nav=S.nav.slice();s.chPage=S.chPage||null;s.ptab=S.ptab||'';s.pTab=S.pTab||'';s.forme=S.forme;s.chV=S.chV;s.pv=S.plan&&S.plan.view;s.cwId=S.cwId||null;s.cwStep=S.cwStep||0;s.rgTab=S.rgTab||'';s.rgNote=S.rgNote||null;s.xpSess=S.xpSess||null;s.plDate=S.plDate||null;return s;}
 function hxSave(){try{sessionStorage.setItem('xp.hx',JSON.stringify(HX.L.slice(0,HX.cur+1)));}catch(e){}}
-function hxApply(s){S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.fi=s.fi||null;S.rf=s.rf||null;S.rfTab=s.rfTab;S.rfEd=!!s.rfEd&&canEdit();S.rfBlk=null;S.rfPor=null;
+function hxApply(s){S.view=s.view;S.sel=s.sel;S.shTab=s.shTab;S.uni=s.uni;S.sec=s.sec;S.fi=s.fi||null;S.rf=s.rf||null;S.rfTab=s.rfTab;S.rfEd=!!s.rfEd&&canRaceEd(s.rf&&s.rf.id);S.rfBlk=null;S.rfPor=null;
   S.jrOpen=s.jrOpen||null;S.jrSel=s.jrSel||null;S.dlg=s.dlg?{...s.dlg}:null;S.nav=(s.nav||[]).slice();S.chPage=s.chPage||null;S.ptab=s.ptab||'';S.pTab=s.pTab||'';
   if(s.forme)S.forme=s.forme;if(s.chV)S.chV=s.chV;if(s.pv&&S.plan)S.plan.view=s.pv;if(s.view==='crea'){S.cwId=s.cwId;S.cwStep=s.cwStep||0;}S.rgTab=s.rgTab||'';S.rgNote=s.rgNote||null;S.xpSess=s.xpSess||null;S.plDate=s.plDate||null;S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;}
 /* Appelé à la fin de chaque rendu : nouvel écran → nouvelle étape ; même écran → l'étape courante est mise à jour */
@@ -279,11 +285,11 @@ function lnkAct(a,d){
     if(document.querySelector('#app [role="alert"]')||(S.rf&&(S.rf.unkAsk||S.rf.err)))return true;S.edDirty=false;if(q.a==='rfEdOff')rfDiscard();edReplay(q);return true;}
   if(a==='edqSave'){S.edQuit=false;S._force=true;render();const b=document.querySelector('#sheetRoot [data-act="'+[...SAVE_ACTS].join('"],#sheetRoot [data-act="')+'"],#app [data-act="'+[...SAVE_ACTS].join('"],#app [data-act="')+'"]');
     if(b&&!b.disabled)b.click();if(!document.querySelector('#app [role="alert"],#sheetRoot [role="alert"]'))editOff();return true;}
-  if(a==='rfEdOn'){if(!canEdit())return true;S.rfBlk=null;S.rfPor=null;S.rfEd=true;S.edDirty=false;S._force=true;render();window.scrollTo(0,0);return true;}
+  if(a==='rfEdOn'){if(!canRaceEd(S.rf&&S.rf.id))return true;S.rfBlk=null;S.rfPor=null;S.rfEd=true;S.edDirty=false;S._force=true;render();window.scrollTo(0,0);return true;}
   if(a==='rfEdOff'){rfDiscard();S._force=true;render();return true;}
   if(a==='consOpen'){const M=d.k==='cap'?S.capacites:S.pouvoirs;if(!M||!M[d.id])return true;const t=d.k==='cap'?'cap':'pw';if(!navGo({t,id:d.id})){S.nav.push(navSnap());S.dlg=null;S.uni='pouvoirs';S.fi=t+':'+d.id;window.scrollTo(0,0);}S._force=true;render();return true;} /* lot 2 bis ; UX2 : page */
-  if(a==='pwPgEd'){if(!canEdit())return true;const m=/^(pw|cap):(.+)$/.exec(S.fi||'');if(!m)return true;S.dlg=elDraft(m[1],m[2]);S.edDirty=false;S._force=true;render();return true;}
-  if(a==='consEdit'){if(!canEdit())return true;const g=S.dlg;if(!g||g.kind!=='cons')return true;const back={...g};S.dlg=elDraft(g.t,g.id);S.dlg.back=back;S.edDirty=false;S._force=true;render();return true;}
+  if(a==='pwPgEd'){const m=/^(pw|cap):(.+)$/.exec(S.fi||'');if(!m||!canElEd(m[1],m[2]))return true;S.dlg=elDraft(m[1],m[2]);S.edDirty=false;S._force=true;render();return true;}
+  if(a==='consEdit'){const g=S.dlg;if(!g||g.kind!=='cons'||!canElEd(g.t,g.id))return true;const back={...g};S.dlg=elDraft(g.t,g.id);S.dlg.back=back;S.edDirty=false;S._force=true;render();return true;}
   if(a==='secJump'){const el=document.getElementById('seck-'+d.k);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});return true;}
   if(SAVE_ACTS.has(a))setTimeout(()=>{if(!document.querySelector('#app [role="alert"],#sheetRoot [role="alert"]'))S.edDirty=false;},0);
   return false;}

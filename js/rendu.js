@@ -9,9 +9,9 @@ function hmOpen(k,def){if(isWide())return true;const o=hmOpenGet();return o[k]==
 function hmSeenGet(){try{return localStorage.getItem('xp.homeSeen')||'';}catch(e){return '';}}
 /* Points à traiter, selon les droits de chacun : [{rub, txt, sub, attrs}] */
 const AT_RUB=[['rev','Révélations'],['perso','Personnages'],['sess','Sessions'],['sig','Signalements']];
-/* Droit de traiter : référentiel (races, pouvoirs, capacités, éléments de PP) = mode édition → MJ et gestion ; personnage visible → tous ; visibilité d'une race → MJ */
+/* Droit de traiter : éléments de PP → MJ et gestion ; race, pouvoir, capacité ou personnage visibles → tous ; visibilité d'une race → MJ */
 function atSigSee(s){if(!s||!s.obj||s.obj.t==='brouillon')return false;if(isGest())return true;const t=s.obj.t;
-  if(t==='ppel')return isTech();if(['race','pouvoir','capacite'].includes(t))return isTech()&&!!sigOpenAttrs(s.obj);
+  if(t==='ppel')return isTech();if(['race','pouvoir','capacite'].includes(t))return !!sigOpenAttrs(s.obj); /* correctif : modifiables par tous s'ils sont visibles */
   if(t==='perso')return !/^Visibilité/.test(s.champ||'')&&!!sigOpenAttrs(s.obj);return false;}
 function atItems(){if(!isUser())return [];const G=isGest(),out=[],add=(rub,txt,sub,attrs,o)=>out.push({rub,txt,sub,attrs,...(o||{})});
   if(G&&typeof secLot==='function'){const L=secLot();if(L.length)add('rev','Révélations en attente',L.length+' élément'+(L.length>1?'s':'')+' · invisibles des joueurs jusqu\'à la validation','data-act="lotOpen"',{lot:L.length});}
