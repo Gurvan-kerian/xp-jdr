@@ -152,6 +152,31 @@ const go=(page,js)=>page.evaluate(js=>{eval(js);S._force=true;render();return do
       ok(await E(page,()=>S.fiLv==='carte'),'changer de genre');
       ok(!/Renommer ou fusionner<\/button>/.test(await E(page,()=>document.getElementById('app').innerHTML)),'crayon seul par ligne');
       ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs[0]:''));await ctx.close();}
+
+    console.log('6. Ajustements : Compléter en haut, Mentions, intertitres, chemin des lieux');
+    {const {page,errs,ctx}=await open(browser,base,db,'anne');
+      await E(page,()=>{const c=clone(S.chars.wag);c.por={desc:'Voir @[fiche:vda|Ville]'};c.situ={lieux:[{id:'l1',nom:'Cartoucherie',f:'cart',nats:['res']}]};S.chars.wag=c;
+        S.fiches.cart={id:'cart',genre:'lieu',nom:'Cartoucherie',type:'',parent:'vda',vis:'rev',eye:{},desc:'Tenue par @[perso:wag|Henriette]',sait:[],notes:'',par:'lorenzo',cree:'2026-11-01',modif:'2026-11-01'};
+        S.fiches.vda={...S.fiches.vda,desc:'Fief de @[perso:wag|Henriette]'};
+        for(let i=0;i<7;i++)S.fiches['ev'+i]={id:'ev'+i,genre:'evenement',nom:'Év '+i,type:'Scénario',n:i+1,vis:'rev',desc:'Avec @[perso:wag|H]',debut:{a:1900,m:1,j:i+1},pj:[],par:'lorenzo',cree:'2026-11-01',modif:'2026-11-01'};});
+      let t=await go(page,"localStorage.removeItem('xp.mgOpen');navGo({t:'perso',id:'wag'})");
+      ok(await E(page,()=>!!document.querySelector('.ux2top [data-act=compMenu]')),'« + » Compléter dans l\'en-tête');
+      ok(await E(page,()=>{const L=fiMentions('perso','wag').map(m=>m.o.id);return L.includes('vda')&&L.includes('cart');}),'mentions brutes : Ville et Cartoucherie');
+      ok(await E(page,()=>{const m=document.querySelector('#fb-pn-ment');return !!m&&!/Cartoucherie|Ville D'Avray/.test(m.textContent);}),'doublons retirés (lieu de la Situation, lien de la Description)');
+      ok(await E(page,()=>{const d=[...document.querySelectorAll('details.mgrp')];const ev=d.find(x=>x.dataset.mg==='Événements');return !!ev&&!ev.open&&/7/.test(ev.querySelector('summary').textContent);}),'groupe de 7 événements replié, avec son nombre');
+      ok(/Ville D'Avray et Sèvres › Cartoucherie/.test(t)&&await E(page,()=>getComputedStyle(document.querySelector('.lpath .lk'),'::after').content==='none'),'chemin des lieux : un seul chevron');
+      ok(await E(page,()=>getComputedStyle(document.querySelector('#fb-pn-situ .fimg')).color!==getComputedStyle(document.querySelector('.muted')).color),'intertitre en couleur');
+      await page.click('.ux2top [data-act=compMenu]');await page.waitForTimeout(200);
+      ok(await E(page,()=>!!document.querySelector('.ux4cpm')&&/Occupation/.test(document.querySelector('.ux4cpm').textContent)),'menu ouvert : blocs à compléter');
+      ok(await E(page,()=>[...document.querySelectorAll('.ux2comp')].some(c=>/Compléter :/.test(c.textContent))),'barre du bas gardée');
+      await page.click('.ux4cpm [data-act=pnTxt][data-b=occ]');await page.waitForTimeout(200);
+      ok(await E(page,()=>!S.compMenu&&S.dlg&&S.dlg.b==='occ'),'choisir une entrée ferme le menu et ouvre la fenêtre');
+      await E(page,()=>{S.dlg=null;});await go(page,"navGo({t:'perso',id:'wag'})");
+      await page.click('.ux2top [data-act=compMenu]');await page.waitForTimeout(150);await page.click('.ux4cpbg',{position:{x:5,y:600}});await page.waitForTimeout(150);
+      ok(await E(page,()=>!S.compMenu&&!document.querySelector('.ux4cpm')),'clic à côté : menu fermé');
+      await page.click('details.mgrp[data-mg="Événements"] summary');await page.waitForTimeout(150);
+      ok(await E(page,()=>JSON.parse(localStorage.getItem('xp.mgOpen')||'{}')['Événements']===true),'repli mémorisé');
+      ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs[0]:''));await ctx.close();}
   }catch(e){fails++;console.log('  ✗ exception : '+e.message);}
   await browser.close();srv.close();
   console.log(fails?`\n${fails} échec(s)`:'\nTout est vert.');process.exit(fails?1:0);

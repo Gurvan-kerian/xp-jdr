@@ -207,7 +207,7 @@ function navLabel(){const g=S.dlg;
 function navSnap(){const g=S.dlg&&(S.dlg.kind==='cons'||S.dlg.kind==='pl')?{kind:S.dlg.kind,t:S.dlg.t,id:S.dlg.id,nav:S.dlg.nav}:null;
   return {view:S.view,sel:S.sel,shTab:S.shTab,uni:S.uni,sec:S.sec,fi:S.fi,rf:S.rf,rfTab:S.rfTab,rfEd:S.rfEd,jrOpen:S.jrOpen,jrSel:S.jrSel,dlg:g,y:window.scrollY||0,lab:navLabel()};}
 /* Suivre un lien : mémorise l'écran de départ (pour la barre « ‹ Retour ») puis ouvre la cible ; l'étape d'historique est ajoutée par hxTrack */
-function navGo(o){if(!lnkOk(o))return false;
+function navGo(o){if(!lnkOk(o))return false;S.compMenu=false;
   S.nav.push(navSnap());
   S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;
   if(o.t==='perso'){S.dlg=null;S.view='sheet';S.sel=o.id;S.futForm.open=false;}

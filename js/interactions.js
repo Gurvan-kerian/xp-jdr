@@ -11,6 +11,8 @@ document.addEventListener('click',ev=>{
   if(S.gate)return;
   const t=ev.target.closest('[data-act]');if(!t)return;
   let a=t.dataset.act;const d=t.dataset;S._force=true;
+  if(S.compMenu&&a!=='compMenu'){S.compMenu=false;if(a==='compClose'){render();return;}} /* lot 4 : menu « Compléter » de l'en-tête */
+  if(a==='compMenu'){S.compMenu=!S.compMenu;render();return;}
   if((a==='rfUnkKeep'||a==='rfUnkReveal')&&S.rf&&S.rf.unkAsk){if(a==='rfUnkKeep')for(const i of S.rf.unkAsk)S.rf.pw[i][1]=true;S.rf.unkOk=true;delete S.rf.unkAsk;a='rfSave';}
   else if(a==='rfUnkCancel'&&S.rf){delete S.rf.unkAsk;render();return;}
   if(rfLeaveAsk(a,d,ev))return;

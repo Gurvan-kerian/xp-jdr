@@ -133,7 +133,11 @@ function fiMentions(t,id){const out=[];
     for(const e of J.ent||[])if(fiHas(e.txt,t,id))out.push({grp:'Journaux et quêtes',o:{t:'jour',id:J.id,i:e.id},nom:nm,prec:'« '+(e.nom||'Entrée')+' »',d:jrDjIso(e.dj)||e.cree||''});}
   return out.sort((a,b)=>String(a.d).localeCompare(String(b.d)));}
 function fiMentionsHtml(L){if(!L.length)return '<div class="muted small">Aucune mention pour l\'instant.</div>';
-  return FI_MGRP.filter(g=>L.some(m=>m.grp===g)).map(g=>`<div class="fimg">${g}</div>`+L.filter(m=>m.grp===g).map(m=>`<div class="fiml">${lk(m.o,m.nom)}<span class="muted small"> · ${esc(m.prec)}</span></div>`).join('')).join('');}
+  /* Lot 4 : un groupe repliable par type, avec son nombre ; plus de 5 = replié au départ ; état mémorisé (localStorage xp.mgOpen) */
+  const O=mgOpenGet();return FI_MGRP.filter(g=>L.some(m=>m.grp===g)).map(g=>{const R=L.filter(m=>m.grp===g),op=O[g]!==undefined?O[g]:R.length<=5;
+    return `<details class="mgrp" data-mg="${esc(g)}"${op?' open':''}><summary>${g} <span class="n">${R.length}</span><span class="ch" aria-hidden="true">›</span></summary>${R.map(m=>`<div class="fiml">${lk(m.o,m.nom)}<span class="muted small"> · ${esc(m.prec)}</span></div>`).join('')}</details>`;}).join('');}
+function mgOpenGet(){try{return JSON.parse(localStorage.getItem('xp.mgOpen')||'{}')||{};}catch(e){return {};}}
+document.addEventListener('toggle',ev=>{const d=ev.target;if(!d||!d.classList||!d.classList.contains('mgrp'))return;const O=mgOpenGet();O[d.dataset.mg]=d.open;try{localStorage.setItem('xp.mgOpen',JSON.stringify(O));}catch(e){}},true);
 
 /* ---------- Univers : accueil en liste groupée ---------- */
 function fiUniHome(){const G=isGest(),pl=(n,s,p)=>n+' '+(n>1?p:s);
@@ -201,13 +205,19 @@ function fiBlk(k,title,sum,body,o){o=o||{};const fold=fiFolded(k),id='fb-'+k;
 /* UX2 : texte long replié après 6 lignes */
 function fiClamp(key,html){if(html.replace(/<[^>]+>/g,'').length<380)return html;const op=!!(S.fiMore||{})[key];return `<div class="ux2clamp${op?' op':''}">${html}</div><button type="button" class="lnk ux2more" data-act="fiMore" data-k="${esc(key)}">${op?'Réduire':'Lire la suite'}</button>`;}
 /* UX2 : barre « Compléter » (blocs vides) */
-function fiComp(L){L=L.filter(Boolean);if(!L.length)return '';return `<div class="ux2comp"><span class="muted small">Compléter :</span>${L.map(([lab,act,at,raw])=>raw||`<button type="button" class="ux2cb" data-act="${act}"${at||''}>+ ${lab}</button>`).join('')}</div>`;}
+function fiComp(L){L=L.filter(Boolean);
+  /* Lot 4 : menu du « + » de l'en-tête (mêmes entrées que la barre du bas) */
+  const menu=S.compMenu?`<div class="ux4cpbg" data-act="compClose"></div><div class="ux4cpm card" role="menu" aria-label="Compléter la fiche"><div class="muted small ux4cph">Ajouter à la fiche</div>${L.length?L.map(([lab,act,at,raw])=>raw?raw.replace(/class="ux2cb"/,'class="ux4cpi"'):`<button type="button" class="ux4cpi" role="menuitem" data-act="${act}"${at||''}>+ ${lab}</button>`).join(''):'<div class="muted small ux4cph">Rien à compléter : tous les blocs sont remplis.</div>'}</div>`:'';
+  if(!L.length)return menu;return menu+`<div class="ux2comp"><span class="muted small">Compléter :</span>${L.map(([lab,act,at,raw])=>raw||`<button type="button" class="ux2cb" data-act="${act}"${at||''}>+ ${lab}</button>`).join('')}</div>`;}
+const compBtn=()=>`<button type="button" class="pbtn ux4cpb" data-act="compMenu" aria-label="Compléter la fiche" aria-expanded="${!!S.compMenu}">+</button>`;
+/* Lot 4 : Mentions sans ce que la fiche affiche déjà (liens présents plus haut dans la page) */
+function fiMentDedup(M,html){const seen=new Set();String(html||'').replace(/data-t="([a-z]+)" data-id="([^"]+)"/g,(m,t,id)=>{seen.add(t+':'+id);return m;});return M.filter(m=>!(m.o&&seen.has(m.o.t+':'+m.o.id)));}
 /* UX2 : en-tête de fiche commun (fil d'Ariane + œil MJ + crayon + corbeille, image, nom, sous-titre) */
 function fiHeadUX2(f,crumbs,opt){opt=opt||{};const G=isGest(),ed=fiCanEd(f);
   const eye=G?(f.vis==='rev'?`<button type="button" class="ibtn" data-act="fiEye" data-k="fiche" aria-label="Fiche révélée : la préparer (masquer)" title="Fiche révélée">${EYE_O}</button>`:`<button type="button" class="ibtn prepi" data-act="fiEye" data-k="fiche" aria-label="Fiche préparée : la révéler" title="Fiche préparée">${EYE_C}</button>`):'';
   const pen=ed&&!opt.noPen?`<button type="button" class="ibtn" data-act="${opt.penAct||'fiHead'}" aria-label="Modifier la fiche">${ICON.crayon}</button>`:'';
   const del=canEdit()&&!opt.noDel?`<button type="button" class="ibtn del" data-act="fiDelAsk" aria-label="Supprimer la fiche">${ICON.corbeille}</button>`:'';
-  let h=`<div class="ux2top">${crumb(...crumbs)}<span class="ux2sp"></span>${eye}${pen}${del}</div>`;
+  let h=`<div class="ux2top">${crumb(...crumbs)}<span class="ux2sp"></span>${eye}${ed&&!opt.noComp?compBtn():''}${pen}${del}</div>`;
   if(S.fiRevAsk===f.id)h+=`<div class="delconf ux2conf"><div><b>Révéler la fiche ?</b> Elle devient visible de toute la table, avec tous ses blocs. « À révéler » reste caché.</div><div class="acts"><button class="btn" data-act="fiRevNo">Annuler</button><button class="btn pri" data-act="fiRevOk">Révéler</button></div></div>`;
   if(S.fiDelAsk===f.id)h+=`<div class="delconf"><div><b>Supprimer « ${esc(f.nom)} » ?</b> Ses sous-éléments sont rattachés à son parent.</div><div class="acts"><button class="btn" data-act="fiDelNo2">Annuler</button><button class="btn danger" data-act="fiDelOk2">Supprimer</button></div></div>`;
   return h;}
@@ -218,7 +228,7 @@ function fiSpecBlk(f,ed,G){const A=f.spec||[],V=A.filter(fiSpecSee),nr=A.filter(
   return fiBlk('spec','Spécimens connus',G?`${nr} / ${A.length} révélé${nr>1?'s':''}`:String(V.length||''),(rows||'<div class="muted small">Aucun spécimen connu.</div>')+(ed?`<div class="radd"><button class="btn" data-act="fiSpec" data-i="">+ Un spécimen</button></div>`:''));}
 function fiFicheView(f){
   const G=isGest(),E=canEdit(),ed=fiCanEd(f),Gm=FI_G[f.genre]||FI_G.lieu;
-  let h=fiHeadUX2(f,[CR_UNI,[Gm.pl,'data-act="fiBack"']]);
+  let h=fiHeadUX2(f,[CR_UNI,[Gm.pl,'data-act="fiBack"']],{noComp:f.genre==='carte'||(S.fiTab==='gest'&&!!fi6Tabs(f))}); /* lot 4 : « + » de Compléter */
   const img=f.genre==='carte'?'':illOf('fiche',f.id),path=fiPath(f); /* UX2 : la carte n'est pas répétée en tête */
   const sub=[f.type?esc(f.type):'',...fi6Sub(f),...(f.genre==='famille'?faSub(f):[]),...(f.genre==='art'?aoSub(f):[]),path.length&&f.genre!=='famille'?path.map(x=>fiSee(x)?lk({t:'fiche',id:x.id},x.nom):`<span class="nolk">${esc(x.nom)}</span>`).join(' › '):''].filter(Boolean).join(' · ');
   const prep=f.vis!=='rev'?` <span class="ux2prep">${EYE_C}préparée</span>`:'';
@@ -245,7 +255,7 @@ function fiFicheView(f){
   if(f.genre==='famille')h+=faBlocks(f); /* lot 5 b */
   if(OT&&OT!=='ctx')return h+fiComp(comp);
   /* Mentions (UX2 : sans les fiches déjà listées dans la fiche) */
-  const M=fiMentions('fiche',f.id).filter(m=>!(m.o&&m.o.t==='fiche'&&S.fiches[m.o.id]&&S.fiches[m.o.id].parent===f.id)&&!/^Situation · /.test(m.prec||'')); /* UX2 : sans ce que les blocs listent déjà */
+  const M=fiMentDedup(fiMentions('fiche',f.id).filter(m=>!(m.o&&m.o.t==='fiche'&&S.fiches[m.o.id]&&S.fiches[m.o.id].parent===f.id)&&!/^Situation · /.test(m.prec||'')),h); /* UX2 : sans ce que les blocs listent déjà ; lot 4 : ni ce qui est déjà lié plus haut */
   if(M.length)h+=fiBlk('ment','Mentions',String(M.length),fiMentionsHtml(M));
   h+=fiComp(comp);
   return h;}
@@ -814,7 +824,7 @@ const pnVisKeys=c=>(c.alias?['idr']:[]).concat(PN_POR.filter(([k])=>k!=='fm'||pn
 /* ---------- UX2 (28/11/2026) : PNJ sur une page ---------- */
 function pnHeadUX2(c){const G=isGest(),E=canEditC(c);
   const eye=G?(pnRev(c)?`<button type="button" class="ibtn" data-act="pnEye" data-k="fiche" aria-label="Fiche révélée : la préparer">${EYE_O}</button>`:`<button type="button" class="ibtn prepi" data-act="pnEye" data-k="fiche" aria-label="Fiche préparée : la révéler">${EYE_C}</button>`):'';
-  let h=`<div class="ux2top">${crumb(CR_UNI,['PNJ','data-act="pnBack"'])}<span class="ux2sp"></span>${sigBtn('perso',c.id)}${eye}${E?`<button type="button" class="ibtn" data-act="pcOpen" data-id="${esc(c.id)}" aria-label="Modifier l'identité">${ICON.crayon}</button>`:''}</div>`;
+  let h=`<div class="ux2top">${crumb(CR_UNI,['PNJ','data-act="pnBack"'])}<span class="ux2sp"></span>${sigBtn('perso',c.id)}${eye}${E?compBtn():''}${E?`<button type="button" class="ibtn" data-act="pcOpen" data-id="${esc(c.id)}" aria-label="Modifier l'identité">${ICON.crayon}</button>`:''}</div>`;
   const im=portrait(c),inner=im?`<img src="${im}" alt="">`:`<span class="ini">${esc(pnName(c).slice(0,1))}</span>`;
   const med=im?`<button type="button" class="ux2pnav" data-act="fiImg" data-cid="${esc(c.id)}" aria-label="Agrandir le portrait de ${esc(pnName(c))}">${inner}</button>`:canPortrait(c)?`<label class="ux2pnav" aria-label="Ajouter un portrait">${inner}<input type="file" accept="image/*" data-ptrfile="${esc(c.id)}" hidden></label>`:`<span class="ux2pnav">${inner}</span>`;
   const tit=pnSitNames(c,'titres')[0],fam=pnSitNames(c,'familles')[0],age=(typeof chAgeTxt==='function'&&chAgeTxt(c)||{}).age,occ=((c.por||{}).occ||'').trim();
@@ -857,7 +867,7 @@ function pnPage(c){const G=isGest(),E=canEditC(c),comp=[];let h='';
   const fp=isFeal(c)&&vis(S.chars[c.pj])?S.chars[c.pj]:null;
   const P=pjIds().map(i=>S.chars[i]).filter(Boolean).flatMap(pj=>(pj.rel||[]).filter(r=>r.pnj===c.id).concat(relsOf(pj).filter(r=>r.src==='pp'&&r.pnj===c.id)).map(r=>({pj,r})));
   if(P.length)h+=fiBlk('pn-pjl','PJ liés',String(P.length),P.map(({pj,r})=>`<div class="srow"><span>${lk({t:'perso',id:pj.id},pj.court)} <span class="muted">· ${esc(REL_NIV[r.niv]||r.niv||'')}</span>${r.src==='pp'?' <span class="muted small">(PP)</span>':''}</span></div>`).join(''));
-  const M=fiMentions('perso',c.id);if(M.length)h+=fiBlk('pn-ment','Mentions',String(M.length),fiMentionsHtml(M));
+  const M=fiMentDedup(fiMentions('perso',c.id),h);if(M.length)h+=fiBlk('pn-ment','Mentions',String(M.length),fiMentionsHtml(M));
   return h+fiComp(comp);}
 /* ---------- Fiche PNJ : onglets ---------- */
 function pnSheetBody(c,s,id){if(!isFeal(c))return pnPage(c);const tab=shTabOf(c);let h=shTabsBar(c,tab);
@@ -1015,7 +1025,7 @@ const situNatTxt=e=>situNats(e).map(n=>SITU_N3.find(x=>x[0]===n)[2]).concat(situ
 const situNatV=(L,x)=>{const nats=SITU_N3.map(y=>y[0]).filter(n=>(L||[]).includes(n)),natx=(x||'').trim();return {nats,natx,nat:nats[0]||'autre',res:nats.includes('res')};};
 /* Chemin d'un lieu : parents visibles, du plus haut au plus proche */
 function lieuPath(id){const P=[];let p=id&&S.fiches[id],g=0;p=p&&p.parent&&S.fiches[p.parent];while(p&&p.genre==='lieu'&&g++<8){if(fiSee(p))P.unshift(p);p=p.parent&&S.fiches[p.parent];}return P;}
-function lieuPathH(id){const P=lieuPath(id);if(!P.length)return '';const Q=P.length>2?[P[0],null,P[P.length-1]]:P;return `<span class="muted lpath">${Q.map(p=>p?lk({t:'fiche',id:p.id},p.nom):'…').join(' › ')} › </span>`;}
+function lieuPathH(id){const P=lieuPath(id);if(!P.length)return '';const Q=P.length>2?[P[0],null,P[P.length-1]]:P;return `<span class="muted lpath">${Q.map(p=>p?lk({t:'fiche',id:p.id},p.nom):'…').join(' › ')} › </span>`;} /* lot 4 : chevron des liens masqué dans le chemin (CSS .lpath) */
 /* Ligne de Situation d'un lieu : chemin + nom + natures */
 const situLieuH=e=>(e.f&&S.fiches[e.f]?lieuPathH(e.f):'')+situNm(e)+(situNatTxt(e)?` <span class="muted">· ${esc(situNatTxt(e))}</span>`:'');
 const fi6CV=()=>Object.values(S.chars||{}).filter(c=>vis(c)).sort((a,b)=>(a.type===b.type?0:a.type==='PJ'?-1:1)||fiCN(a).localeCompare(fiCN(b),'fr',{sensitivity:'base'}));
@@ -1627,7 +1637,7 @@ function caPage(f){const ed=fiCanEd(f),N=fiCanNew(),R=caReps(f.id),L=caTrajs(f.i
       if((f.desc||'').trim())body+=fiBlk('desc','Description','',fiClamp(f.id+':desc',fiRich(f.desc)),{edit:ed?'fiEd':'',ea:' data-b="desc"'});else if(ed)comp.push(['Description','fiEd',' data-b="desc"']);
       if(lieu)body+=`<div class="srow"><span class="muted small">Lieu associé</span><span>${lk({t:'fiche',id:lieu.id},lieu.nom)}</span></div>`;
       body+=`<div class="srow"><span class="muted small">Échelle</span><span>${mpp?'réglée':'<span class="muted">non réglée</span>'}</span></div>`;
-      const Mn=fiMentions('fiche',f.id);if(Mn.length)body+=fiBlk('ment','Mentions',String(Mn.length),fiMentionsHtml(Mn));
+      const Mn=fiMentDedup(fiMentions('fiche',f.id),body);if(Mn.length)body+=fiBlk('ment','Mentions',String(Mn.length),fiMentionsHtml(Mn));
       body+=fiComp(comp);}
     else body+=`<div class="fisrch"><input type="search" data-caq="1" value="${esc(S.caQ)}" placeholder="Filtrer" aria-label="Filtrer" autocomplete="off"></div><div id="caRes">${caLists(f)}</div>`;}
   h+=`<div class="capan${op?' open':''}"><button type="button" class="capanh" data-act="caPan" aria-expanded="${op}"><span class="capgrip" aria-hidden="true"></span><span>Repères · ${R.length} · Trajets · ${L.length}</span><span class="chev" aria-hidden="true">${op?'⌄':'⌃'}</span></button>${aff}${body}</div></div>`;

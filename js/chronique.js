@@ -200,7 +200,7 @@ function chEvView(f){const ed=chCanEv(),comp=[];
   if(S2.length)h+=fiBlk('ev-xp','Sessions et XP',String(S2.length),S2.map(e=>{const by={};for(const en of e.entries||[]){const c=S.chars[en.perso];if(!c||c.type!=='PJ'||!vis(c)||!en.montant)continue;by[c.id]=(by[c.id]||0)+en.montant;}
     const xp=orderPJ(Object.keys(by)).map(id=>esc(S.chars[id].court)+' <b class="xpn">+'+by[id]+'</b>').join(' · ');
     return `<div class="chses"><div><b>${chSessT(e)}</b><div class="muted small">${[e.date?fmtDate(e.date):e.textuelle?'Session textuelle':'',esc(evType(e))].filter(Boolean).join(' · ')}</div></div><div class="small">${xp||'<span class="muted">pas d\'XP</span>'}</div></div>`;}).join(''));
-  const M=fiMentions('fiche',f.id);
+  const M=fiMentDedup(fiMentions('fiche',f.id),h); /* lot 4 : sans ce qui est déjà lié plus haut */
   if(M.length)h+=fiBlk('ment','Mentions',String(M.length),fiMentionsHtml(M));
   return h+fiComp(comp);}
 const chSessOf=id=>S.events.filter(e=>e.session&&e.evt===id);

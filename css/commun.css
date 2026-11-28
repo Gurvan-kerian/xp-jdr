@@ -1055,3 +1055,19 @@ textarea[data-hmtx]{width:100%;box-sizing:border-box;margin-top:6px}
 .filvg{margin-bottom:10px}
 .srow.capr2>span:first-child{flex:none}
 .srow.capr2>.cmain{flex:1}
+/* UX4 bis : intertitres des blocs, Mentions repliables, menu « Compléter » de l'en-tête */
+.fimg{font-size:13px;color:var(--accent);letter-spacing:.05em;border-bottom:1px solid var(--line);padding-bottom:4px;margin:16px 0 6px}
+.fimg:first-child{margin-top:2px}
+.mgrp{border-top:1px solid var(--surface2);padding:2px 0}.mgrp:first-child{border-top:0}
+.mgrp>summary{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 0;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent)}
+.mgrp>summary::-webkit-details-marker{display:none}
+.mgrp>summary .n{font-weight:400;color:var(--muted);letter-spacing:0}
+.mgrp>summary .ch{margin-left:auto;color:var(--muted);font-size:16px;transition:transform .15s}
+.mgrp[open]>summary .ch{transform:rotate(90deg)}
+.mgrp .fiml{padding:3px 0 3px 10px}
+.ux4cpbg{position:fixed;inset:0;z-index:30;background:transparent}
+.ux4cpm{position:fixed;z-index:31;top:110px;right:max(12px,calc(50vw - 380px));width:250px;max-height:70vh;overflow:auto;padding:6px 0;box-shadow:0 8px 24px rgba(0,0,0,.2);border:1px solid var(--accent2,#b0852f)}
+.ux4cph{padding:6px 14px}
+.ux4cpi{display:block;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--surface2);padding:11px 14px;font:inherit;font-size:15px;color:var(--accent);cursor:pointer}
+.ux4cpi:hover{background:var(--surface2)}
+.lpath .lk::after{content:none}
