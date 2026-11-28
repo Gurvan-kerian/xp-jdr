@@ -3,11 +3,26 @@
 const kankaBtn=()=>''; /* UX1 : liens Kanka retirés de l'affichage (identifiants gardés en base) */
 /* ---------- UX1 (28/11/2026) : liste des personnages ---------- */
 function teamStage(c){const p=rangInfo(c);if(!p||p.done||!actif(c))return '';return `<span class="muted small">${esc(p.next)}${p.blocked?' : hors de portée':p.ready?' : pouvoir à acquérir':' dans '+p.total+' XP'}</span>`;}
+/* Correctif recette lot 1 (28/11) : titre de profil le plus proche (XP pour atteindre 22 points de compétences, PP manquants) */
+function titrePath(c,pr){if(c.type!=='PJ'||ppBought(c).some(a=>a.ppel.id==='titre:'+pr.nom))return null;
+  const cs=(pr.comps||[]).map(x=>({nom:x.nom,cur:x.cur||0,max:x.max,from:x.cur||0,k:0}));let sum=cs.reduce((t,x)=>t+x.cur,0),cost=0;
+  while(sum<PPT_PTS){let b=null;for(const x of cs){if(x.max!=null&&x.cur>=x.max)continue;const k=lvlCost('comp',x.cur+1);if(!b||k<b.k)b={x,k};}if(!b)return null;cost+=b.k;b.x.k+=b.k;b.x.cur++;sum++;}
+  return{prof:pr.nom,nom:prOf(pr.nom).titre.nom,cost,pp:Math.max(0,PPT_COST-ppHave(pr)),have:ppHave(pr),steps:cs.filter(x=>x.cur>x.from)};}
+function titreBest(c){let b=null;for(const pr of c.profils||[]){const t=titrePath(c,pr);if(t&&(!b||t.cost<b.cost||(t.cost===b.cost&&t.pp<b.pp)))b=t;}return b;}
+function titreTxt(t){return t.cost?`dans ${t.cost} XP${t.pp?' + '+ppFmt(t.pp)+' PP':''}`:t.pp?`: il manque ${ppFmt(t.pp)} PP`:': à acheter';}
+function teamTitre(c){if(!actif(c))return '';const t=titreBest(c);return t?`<span class="muted small">${esc(t.nom)} ${esc(titreTxt(t))}</span>`:'';}
+function titreBlock(c){const t=titreBest(c);if(!t)return '';const k=c.id+'|titre',open=!!(S.rkOpen&&S.rkOpen[k]);
+  let h=`<button class="goal" data-act="rkOpen" data-k="${esc(k)}" aria-expanded="${open}"><span><b>${esc(t.nom)}</b> ${esc(titreTxt(t))} ›</span><span class="gg">${esc(profLab(t.prof,c))} ${open?'▴':'▾'}</span></button>`;
+  if(!open)return h;
+  h+=`<div class="card goald">${t.steps.length?`<ul class="rkpath" style="margin-left:0;list-style:none">${t.steps.map(x=>`<li style="display:flex;justify-content:space-between;gap:8px"><span>${esc(x.nom)} ${x.from} → ${x.cur}</span><span class="num">${x.k} XP</span></li>`).join('')}</ul>`:''}
+  <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)"><span>Points de compétences</span><b class="num">${PPT_PTS} / ${PPT_PTS}${t.cost?' · '+t.cost+' XP':''}</b></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span>PP ${esc(profLab(t.prof,c))} : ${esc(ppFmt(t.have))} / ${PPT_COST}</span><button type="button" class="lnk" data-act="ppOpen" data-prof="${esc(t.prof)}">Achats en PP ›</button></div></div>`;
+  return h;}
 function teamCard(c){
   const s=summary(c,S.events),off=!actif(c),img=portrait(c),o=owners(c);
   const sub=[c.race,rangOf(c),o.length?o.map(p=>p.nom).join(', '):''].filter(Boolean).map(esc).join(' · ');
   const fe=off?'':pnjOf(c).filter(vis).map(f=>`<button type="button" class="tfeal" data-act="sel" data-id="${f.id}"><span>Féal · ${esc(f.court)}</span><span class="muted small">${summary(f,S.events).dispo} XP</span></button>`).join('');
-  return `<div class="tcw"><button type="button" class="tcard${off?' off':''}" data-act="sel" data-id="${c.id}"><span class="tph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span class="tmain"><span class="nm">${esc(c.court)}</span><span class="muted small">${sub}${c.cache?' · masqué aux autres':''}${off?' · '+esc(STATUTS[c.statut]||''):''}</span>${off?'':`<span class="tpl">${s.manque?`<span class="pill bad">Il manque ${s.manque} XP</span>`:''}${teamStage(c)}</span>`}</span><span class="txp"><b class="num">${s.dispo}</b><small>XP</small></span></button>${fe}</div>`;}
+  return `<div class="tcw"><button type="button" class="tcard${off?' off':''}" data-act="sel" data-id="${c.id}"><span class="tph">${img?`<img src="${img}" alt="">`:`<span class="ini">${esc((c.court||'?').slice(0,1))}</span>`}</span><span class="tmain"><span class="nm">${esc(c.court)}</span><span class="muted small">${sub}${c.cache?' · masqué aux autres':''}${off?' · '+esc(STATUTS[c.statut]||''):''}</span>${off?'':`<span class="tpl">${teamStage(c)}</span>${teamTitre(c)}`}</span><span class="txp"><b class="num">${s.dispo}</b><small>XP</small></span></button>${fe}</div>`;}
 function cwCard(b){const I=(b.d||{}).ident||{},st=crSteps(b),n=Math.min(b.etape||0,st.length-1),own=S.players[b.par];
   return `<div class="tcw"><button type="button" class="tcard" data-act="cwOpen" data-id="${esc(b.id)}"><span class="tph"><span class="ini">+</span></span><span class="tmain"><span class="nm">${esc((I.court||'').trim()||(b.kind==='feal'?'Nouveau féal':'Nouveau PJ'))} <span class="pill ${b.statut==='attente'?'acc':'plan'}">${b.statut==='attente'?'En attente':'Brouillon'}</span></span><span class="muted small">${b.kind==='feal'?'Féal':'PJ'}${b.d&&b.d.race?' · '+esc(b.d.race):''} · étape ${n+1} / ${st.length}${isTech()&&own?' · par '+esc(own.nom):''}</span>${b.com&&b.statut==='brouillon'?`<span class="small bad">Renvoyé par le MJ</span>`:''}</span></button><button type="button" class="lnk cwtdel" data-act="cwDelAsk" data-id="${esc(b.id)}" aria-label="Supprimer le brouillon">Supprimer</button></div>`;}
 function heritageRow(){const n=starCount(S.events);return `<button type="button" class="crow hrrow" data-act="herOpen"><span class="cmain"><span class="t">Rang d'héritage ${esc(S.heritage.score||'–')}</span></span><span class="hst">★ ${n} / ${STARS}</span><span class="chev" aria-hidden="true">›</span></button>`;}
@@ -102,7 +117,7 @@ function viewProg(c,s,id){let h='';
   const PJ=c.type==='PJ',card=(t,inner,k,sum)=>PJ?cBlk('pg-'+k,t,sum==null?'':sum,inner||none):`<h2>${t}</h2><div class="card">${inner||none}</div>`;
   const nMax=keys=>keys.filter(k=>{const r=ref(c,k);return r&&r.max!=null&&(r.o.cur||0)>=r.max;}).length,mxS=keys=>{const n=nMax(keys);return n?n+' au max':'';};
   const L1=[],L2=[];
-  if(PJ){for(const pr of c.profils||[])if(ppHave(pr)>0)h+=`<button type="button" class="ppban" data-act="ppOpen" data-prof="${esc(pr.nom)}"><b>${esc(ppFmt(ppHave(pr)))} PP</b> · profil ${esc(profLab(pr.nom,c))} <span aria-hidden="true">›</span></button>`;}
+  if(PJ)h+=titreBlock(c); /* correctif recette lot 1 : chemin vers le titre de profil le plus proche (remplace le bandeau des PP) */
   h+=`<div class="flt">${PJ?`<span class="muted small">♥ = prévu</span><button type="button" class="qbtn" data-act="xpHelp" data-k="prog" aria-label="Aide">?</button><span style="flex:1"></span>`:''}<span>Achetable maintenant</span><button class="tgb" data-act="onlyBuy" role="switch" aria-checked="${OB}" aria-label="Afficher seulement ce qui est achetable maintenant"><span class="tg${OB?' on':''}"></span></button></div>${PJ&&(S.xpHelp||{}).prog?`<div class="qtip2">♡ prévoit un niveau (le coût s'ajoute aux XP prévus). « +n » achète un niveau pour n XP ; grisé quand les XP disponibles ne suffisent pas. ★ max : valeur au maximum.</div>`:''}`;
   if(c.type==='PJ'){
     const fe=ir('feerie');

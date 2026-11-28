@@ -105,7 +105,11 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
       ok(await E(page,()=>!!document.querySelector('.shtop .crumb')),'fiche : fil d\'Ariane');
       ok(/Carnets/.test(t),'onglet « Carnets »');
       await E(page,()=>{S.shFold={...(S.shFold||{}),'pg-comp':false};const c=S.chars.kerian;c.profils[0].note=3;S._force=true;render();});
-      ok(await E(page,()=>!!document.querySelector('.ppban')&&!!document.querySelector('.ppgold')),'PP disponibles mis en évidence');
+      ok(await E(page,()=>!document.querySelector('.ppban')&&!!document.querySelector('.ppgold')),'PP : bouton doré sur le profil, plus de bandeau');
+      t=await E(page,()=>document.getElementById('app').innerText);ok(/Titre d.\S+ (dans \d+ XP|: il manque|: à acheter)/.test(t),'Progrès : ligne vers le titre de profil');
+      await page.click('.goal[data-k="kerian|titre"]');await wait(page,200);ok(/Points de compétences/.test(await txt(page))&&/Achats en PP/.test(await txt(page)),'chemin vers le titre déplié');
+      t=await E(page,()=>{S.view='team';S._force=true;render();return document.getElementById('app').innerText;});ok(!/Il manque \d+ XP/.test(t)&&/Titre d.\S+/.test(t),'carte : titre le plus proche, plus de « Il manque »');
+      await E(page,()=>{S.view='sheet';S.sel='kerian';S.shTab='prog';S._force=true;render();});
       t=await E(page,()=>{S.shTab='situ';S._force=true;render();return document.getElementById('app').innerText;});
       ok(/Titres et fiefs/i.test(t)&&await E(page,()=>!!document.querySelector('.sfief')),'Situation : fief sous son titre');
       await ctx.close();ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));}
