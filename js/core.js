@@ -182,6 +182,7 @@ function navLabel(){const g=S.dlg;
   if(S.view==='univers'&&S.uni==='creatures'&&S.rf){if(S.rf.hum)return HUMAIN;const cr=crById(S.rf.id);return cr?raceNm(raceRec(cr)):'Races';}
   if(S.view==='univers'&&S.uni==='creatures')return 'Races';
   if(S.view==='univers'&&S.fi&&S.fiches&&S.fiches[S.fi])return S.fiches[S.fi].nom;
+  if(S.view==='univers'&&S.uni==='pouvoirs'&&/^(pw|cap):/.test(S.fi||'')){const m=/^(pw|cap):(.+)$/.exec(S.fi),e=((m[1]==='pw'?S.pouvoirs:S.capacites)||{})[m[2]];return e?e.nom:'Pouvoirs et capacités';}
   if(S.view==='univers'&&typeof FI_G!=='undefined'&&FI_G[S.uni])return FI_G[S.uni].pl;
   if(S.view==='univers'&&S.sec)return 'Secret '+(ROMAN[S.sec-1]||S.sec);
   if(S.view==='univers'&&S.uni==='secrets')return 'Secrets';
@@ -202,7 +203,7 @@ function navGo(o){if(!lnkOk(o))return false;
   else if(o.t==='race'){S.dlg=null;S.view='univers';S.uni='creatures';S.fi=null;S.rf=rfDraft(o.id);S.rfTab='por';S.rfEd=false;}
   else if(o.t==='secret'){S.dlg=null;S.view='univers';S.uni='secrets';S.fi=null;S.sec=+o.n;S.secHl=o.k?{k:o.k,i:+o.i||0}:null;}
   else if(o.t==='joueur'){S.dlg={kind:'pl',id:o.id,nav:true};return true;}
-  else if(o.t==='pw'||o.t==='cap'){S.dlg={kind:'cons',t:o.t,id:o.id,nav:true};return true;}
+  else if(o.t==='pw'||o.t==='cap'){S.dlg=null;S.view='univers';S.uni='pouvoirs';S.fi=o.t+':'+o.id;S.sec=null;S.rf=null;} /* UX2 : page */
   window.scrollTo(0,0);return true;}
 /* Revenir d'un cran sans historique (secours) : restaure l'écran mémorisé et sa position de défilement */
 function navPop(){const s=S.nav.pop();if(!s)return;
@@ -278,7 +279,8 @@ function lnkAct(a,d){
     if(b&&!b.disabled)b.click();if(!document.querySelector('#app [role="alert"],#sheetRoot [role="alert"]'))editOff();return true;}
   if(a==='rfEdOn'){if(!canEdit())return true;S.rfBlk=null;S.rfPor=null;S.rfEd=true;S.edDirty=false;S._force=true;render();window.scrollTo(0,0);return true;}
   if(a==='rfEdOff'){rfDiscard();S._force=true;render();return true;}
-  if(a==='consOpen'){const M=d.k==='cap'?S.capacites:S.pouvoirs;if(!M||!M[d.id])return true;S.dlg={kind:'cons',t:d.k==='cap'?'cap':'pw',id:d.id};S._force=true;render();return true;} /* lot 2 bis */
+  if(a==='consOpen'){const M=d.k==='cap'?S.capacites:S.pouvoirs;if(!M||!M[d.id])return true;const t=d.k==='cap'?'cap':'pw';if(!navGo({t,id:d.id})){S.nav.push(navSnap());S.dlg=null;S.uni='pouvoirs';S.fi=t+':'+d.id;window.scrollTo(0,0);}S._force=true;render();return true;} /* lot 2 bis ; UX2 : page */
+  if(a==='pwPgEd'){if(!canEdit())return true;const m=/^(pw|cap):(.+)$/.exec(S.fi||'');if(!m)return true;S.dlg=elDraft(m[1],m[2]);S.edDirty=false;S._force=true;render();return true;}
   if(a==='consEdit'){if(!canEdit())return true;const g=S.dlg;if(!g||g.kind!=='cons')return true;const back={...g};S.dlg=elDraft(g.t,g.id);S.dlg.back=back;S.edDirty=false;S._force=true;render();return true;}
   if(a==='secJump'){const el=document.getElementById('seck-'+d.k);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});return true;}
   if(SAVE_ACTS.has(a))setTimeout(()=>{if(!document.querySelector('#app [role="alert"],#sheetRoot [role="alert"]'))S.edDirty=false;},0);

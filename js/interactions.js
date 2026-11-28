@@ -158,7 +158,7 @@ document.addEventListener('click',ev=>{
   else if(a==='creSave'){const g=S.dlg,nom=(g.nom||'').trim();if(!nom||S.creatures.some(c=>c.id!==g.id&&c.nom.toLowerCase()===nom.toLowerCase()))return;S.dlg=null;saveCreatures(clone(S.creatures).map(c=>c.id===g.id&&!c.done?{...c,nom,fam:g.fam}:c));render();return;}
   else if(a==='creDel'){S.dlg.confirm=true;}
   else if(a==='creDelOk'){const id=S.dlg.id,cr=S.creatures.find(c=>c.id===id);S.dlg=null;if(cr&&playedBy(raceRec(cr).sing).length){alert('Cette race est jouée par un personnage : elle ne peut pas être supprimée.');return;}saveCreatures(S.creatures.filter(c=>!(c.id===id&&!c.done)));if(cr&&!cr.done&&S.races&&S.races[id]){const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}render();return;}
-  else if(a==='uni'){S.uni=d.v;S.sec=null;S.rf=null;}
+  else if(a==='uni'){S.uni=d.v;S.sec=null;S.rf=null;if(/^(pw|cap):/.test(S.fi||''))S.fi=null;}
   else if(a==='secFilter'){S.secFilter=d.v;}
   else if(a==='secOpen'){S.sec=+d.n;window.scrollTo(0,0);}
   else if(a==='secBack'){S.sec=null;}
@@ -176,6 +176,14 @@ document.addEventListener('click',ev=>{
   else if(a==='rvPick'){if(S.dlg&&S.dlg.kind==='rv')S.dlg.pick=d.v;}
   else if(a==='rvChg'){if(S.dlg&&S.dlg.kind==='rv')S.dlg.chg=true;}
   else if(a==='rvOk'){propReveal();return;}
+  else if(a==='secRevAsk'){if(!isGest())return;S.dlg={kind:'lotw',n:+d.n,k:d.k,i:+d.i||0};}
+  else if(a==='lotAdd'){const g=S.dlg;if(!isGest()||!g||g.kind!=='lotw')return;const L=inLot(g.n,g.k,g.i)?secLot():[...secLot(),{id:'lt'+Date.now().toString(36),n:g.n,k:g.k,i:g.i}];
+    S.dlg=d.v==='go'?{kind:'lotr',sess:(sessList()[0]||{}).id||'',chg:false}:null;saveLot(L);if(d.v!=='go')setTimeout(()=>toast('Ajouté aux révélations en attente'),0);return;}
+  else if(a==='lotOpen'){if(!isGest())return;S.dlg={kind:'lotr',sess:(sessList()[0]||{}).id||'',chg:false};}
+  else if(a==='lotChg'){if(S.dlg&&S.dlg.kind==='lotr')S.dlg.chg=true;}
+  else if(a==='lotRm'){if(!isGest())return;const L=secLot().filter(x=>x.id!==d.id);if(!L.length)S.dlg=null;saveLot(L);return;}
+  else if(a==='lotClr'){if(!isGest())return;saveLot([]);setTimeout(()=>toast('Révélations en attente annulées'),0);return;}
+  else if(a==='lotOk'){lotApply();return;}
   else if(a==='secEntry'){if(!canEdit())return;const s=secById(S.sec);if(!s)return;const x=d.k==='titre'?s.titre:(s.slots[d.k][+d.i]||{}).txt;const ev0=secEv(s.n,d.k,+d.i);S.dlg={kind:'se',n:s.n,k:d.k,i:+d.i,txt:x||'',confirm:false,sess:ev0?(ev0.sessionId||''):''};}
   else if(a==='seSave'){if(!canEdit())return;const g=S.dlg,txt=(g.txt||'').trim();S.dlg=null;if(!txt){render();return;}
     const ev0=secEv(g.n,g.k,g.i);if(ev0&&(ev0.sessionId||'')!==(g.sess||'')){const sid=g.sess&&sessById(g.sess)?g.sess:undefined;

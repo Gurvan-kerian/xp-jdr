@@ -219,11 +219,11 @@ function fiSpecBlk(f,ed,G){const A=f.spec||[],V=A.filter(fiSpecSee),nr=A.filter(
 function fiFicheView(f){
   const G=isGest(),E=canEdit(),ed=fiCanEd(f),Gm=FI_G[f.genre]||FI_G.lieu;
   let h=fiHeadUX2(f,[CR_UNI,[Gm.pl,'data-act="fiBack"']]);
-  const img=illOf('fiche',f.id),path=fiPath(f);
+  const img=f.genre==='carte'?'':illOf('fiche',f.id),path=fiPath(f); /* UX2 : la carte n'est pas répétée en tête */
   const sub=[f.type?esc(f.type):'',...fi6Sub(f),...(f.genre==='famille'?faSub(f):[]),...(f.genre==='art'?aoSub(f):[]),path.length&&f.genre!=='famille'?path.map(x=>fiSee(x)?lk({t:'fiche',id:x.id},x.nom):`<span class="nolk">${esc(x.nom)}</span>`).join(' › '):''].filter(Boolean).join(' · ');
   const prep=f.vis!=='rev'?` <span class="ux2prep">${EYE_C}préparée</span>`:'';
-  h+=`<div class="ux2hero${img?' img':''}">${img?`<button type="button" class="ux2heroimg" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${img}" alt=""></button>`:''}<div class="ux2herot"><h2 class="finm">${esc(f.nom)}</h2>${sub||prep?`<div class="muted small">${sub}${prep}</div>`:''}${f.genre==='famille'?faHeadKv(f):''}${!img&&ed?`<button type="button" class="lnk" data-act="fiHead">+ Image</button>`:''}</div></div>`;
-  if(f.genre==='carte')h+=caFicheBlocks(f); /* lot Cartes */
+  h+=`<div class="ux2hero${img?' img':''}">${img?`<button type="button" class="ux2heroimg" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${img}" alt=""></button>`:''}<div class="ux2herot"><h2 class="finm">${esc(f.nom)}</h2>${sub||prep?`<div class="muted small">${sub}${prep}</div>`:''}${f.genre==='famille'?faHeadKv(f):''}${!img&&ed&&f.genre!=='carte'?`<button type="button" class="lnk" data-act="fiHead">+ Image</button>`:''}</div></div>`;
+  if(f.genre==='carte')return h+caPage(f); /* lot Cartes ; UX2 : carte en premier, panneau */
   const T6=fi6Tabs(f);if(T6){h+=T6;if(S.fiTab==='gest')return h+(typeof fgView==='function'?fgView(f):fi6Gest(f));} /* lot 6 : Fief rattaché à un PJ */
   const OT=f.genre==='org'?ogTab():'';if(OT)h+=ogTabsBar(OT); /* lot 5 a : onglets de l'organisation */
   const comp=FI_CX=[];const pres=!OT||OT==='pres';
@@ -1542,13 +1542,13 @@ const caTyLab=ty=>(CA_TY.find(x=>x[0]===ty)||[,''])[1];
 function caListSub(f,K){const n=fiAll().filter(x=>x.genre==='rep'&&x.carte===f.id&&caRepSee(x)).length,t=fiAll().filter(x=>x.genre==='traj'&&x.carte===f.id&&caTrSee(x)).length;
   return [f.type,K&&K.length?K.length+' sous-carte'+(K.length>1?'s':''):'',n+' repère'+(n>1?'s':''),t?t+' trajet'+(t>1?'s':''):'',caMpp(f)?'échelle':'sans échelle'].filter(Boolean).join(' · ');}
 /* ---------- Vue de la carte ---------- */
-function caFit(c){const W=Math.min(880,window.innerWidth||390)-(S.caFull?0:26),H=S.caFull?(window.innerHeight||700)-120:Math.round(Math.min(560,Math.max(300,(window.innerHeight||700)*.58)));
+function caFit(c){const W0=Math.min(880,window.innerWidth||390)-(S.caFull?0:26),W=!S.caFull&&(window.innerWidth||390)>=1024?Math.round(W0*.64):W0,H=S.caFull?(window.innerHeight||700)-120:Math.round(Math.min(560,Math.max(300,(window.innerHeight||700)*.58)));
   const z=Math.min(W/caIW(c),H/caIH(c));return {W,H,z,x:(W-caIW(c)*z)/2,y:(H-caIH(c)*z)/2};}
 function caView(c){let v=CA_V[c.id];const F=caFit(c);if(!v||v.full!==S.caFull){v=CA_V[c.id]={z:F.z,x:F.x,y:F.y,full:S.caFull,min:F.z*.8};}
   if(S.caFocus&&S.caFocus.cid===c.id){const z=Math.max(F.z*2.5,v.z);v.z=Math.min(z,4);v.x=F.W/2-S.caFocus.x*caIW(c)*v.z;v.y=F.H/2-S.caFocus.y*caIH(c)*v.z;S.caSel=S.caFocus.rid||S.caSel;S.caFocus=null;}
   return {v,F};}
 function caBar(c,z){const mpp=caMpp(c);if(!mpp)return '';const m=110/z*mpp,p=Math.pow(10,Math.floor(Math.log10(m))),n=[1,2,5,10].map(k=>k*p).filter(k=>k<=m).pop()||p,px=n/mpp*z;return `<div class="cabar" aria-hidden="true"><span style="width:${Math.round(px)}px"></span>${caDist(n)}</div>`;}
-function caMapHtml(c){const {v,F}=caView(c),iw=caIW(c),ih=caIH(c),ill=illId('fiche',c.id),src=illOf('fiche',c.id),M=S.caMode&&S.caTmp&&S.caTmp.cid===c.id?S.caMode:null,T=S.caTmp||{};
+function caMapHtml(c,tools){const {v,F}=caView(c),iw=caIW(c),ih=caIH(c),ill=illId('fiche',c.id),src=illOf('fiche',c.id),M=S.caMode&&S.caTmp&&S.caTmp.cid===c.id?S.caMode:null,T=S.caTmp||{};
   const R=caReps(c.id).filter(r=>!S.caHid[r.cat||caCfg().cats[0].id]),L=caTrajs(c.id),sel=R.find(r=>r.id===S.caSel);
   const pl=(P,col,cls,dash)=>P.length>1?`<polyline points="${P.map(p=>(p[0]*iw).toFixed(1)+','+(p[1]*ih).toFixed(1)).join(' ')}" fill="none" stroke="${esc(col)}" stroke-width="${cls?3:4}" stroke-linecap="round" stroke-linejoin="round"${dash?' stroke-dasharray="8 6"':''} vector-effect="non-scaling-stroke"/>`:'';
   let svg=L.filter(t=>!(M==='traj'&&T.tid===t.id)).map(t=>pl(t.pts||[],t.coul||'#1d6b66','',true)).join('');
@@ -1562,13 +1562,13 @@ function caMapHtml(c){const {v,F}=caView(c),iw=caIW(c),ih=caIH(c),ill=illId('fic
   return `<div class="camap${S.caFull?' full':''}${M?' mode':''}" id="caMap" data-cid="${esc(c.id)}" style="height:${F.H}px" role="application" aria-label="Carte ${esc(c.nom)} : glisser pour se déplacer, molette ou deux doigts pour zoomer">
     <div class="cain" style="width:${iw}px;height:${ih}px;transform:translate(${v.x}px,${v.y}px) scale(${v.z});--k:${(1/v.z).toFixed(4)}">${img}<svg class="casvg" width="${iw}" height="${ih}" viewBox="0 0 ${iw} ${ih}" aria-hidden="true">${svg}</svg>${pins}${pts}${bub}</div>
     ${src?'':`<div class="caempty muted small">Pas encore d'image${fiCanEd(c)?' : ✎ ci-dessus pour en ajouter une':''}.</div>`}
-    <div class="cactl"><button type="button" class="ibtn" data-act="caZoom" data-v="1" aria-label="Zoomer">+</button><button type="button" class="ibtn" data-act="caZoom" data-v="-1" aria-label="Dézoomer">−</button><button type="button" class="ibtn" data-act="caFull" aria-label="${S.caFull?'Quitter le plein écran':'Plein écran'}">${S.caFull?'✕':'⛶'}</button></div>${bar}</div>`;}
+    <div class="cactl"><button type="button" class="ibtn" data-act="caZoom" data-v="1" aria-label="Zoomer">+</button><button type="button" class="ibtn" data-act="caZoom" data-v="-1" aria-label="Dézoomer">−</button><button type="button" class="ibtn" data-act="caFull" aria-label="${S.caFull?'Quitter le plein écran':'Plein écran'}">${S.caFull?'✕':'⛶'}</button></div>${bar}${tools||''}</div>`;}
 function caBubble(c,r){const ty=caCibTy(r),o=caCibO(r),cat=caCat(r.cat),ed=caCanEd(r);
   return `<div class="cabub" style="left:${(r.x*caIW(c)).toFixed(1)}px;top:${(r.y*caIH(c)).toFixed(1)}px"><div class="cabin">
     <div class="cabh"><b>${esc(r.nom)}</b><button type="button" class="cabx" data-act="caSel" data-id="" aria-label="Fermer">✕</button></div>
     <div class="muted small">${esc(caTyLab(ty))} · <span class="cadotc" style="background:${esc(cat.coul)}"></span>${esc(cat.nom)}${r.vis!=='rev'?' · <i>préparé</i>':''}</div>
     ${(r.note||'').trim()?`<div class="small" style="margin-top:4px">${fiRich(r.note)}</div>`:''}
-    <div class="cabact">${o?(ty==='carte'?`<button type="button" class="btn" data-act="caGo" data-id="${esc(o.id)}">Ouvrir la sous-carte</button>`:lk(o,caCibNom(r))):''}${ed?`<button type="button" class="ibtn" data-act="caRepEd" data-id="${esc(r.id)}" aria-label="Modifier ${esc(r.nom)}">✎</button><button type="button" class="ibtn" data-act="caMove" data-id="${esc(r.id)}" aria-label="Déplacer ${esc(r.nom)}" title="Déplacer">✥</button>`:''}</div></div></div>`;}
+    <div class="cabact">${o?(ty==='carte'?`<button type="button" class="btn" data-act="caGo" data-id="${esc(o.id)}">Ouvrir la sous-carte</button>`:lk(o,'Ouvrir la fiche')):''}${ed?`<button type="button" class="ibtn" data-act="caRepEd" data-id="${esc(r.id)}" aria-label="Modifier ${esc(r.nom)}">✎</button><button type="button" class="ibtn" data-act="caMove" data-id="${esc(r.id)}" aria-label="Déplacer ${esc(r.nom)}" title="Déplacer">✥</button>`:''}</div></div></div>`;}
 /* Bandeau des modes (pose d'un repère, trajet, règle, échelle) */
 function caModeBar(c){const M=S.caMode,T=S.caTmp||{};if(!M||T.cid!==c.id)return '';
   const ann=`<button type="button" class="btn" data-act="caCancel">Annuler</button>`;
@@ -1582,6 +1582,24 @@ function caTrPanel(c){const T=S.caTmp||{};if(S.caMode!=='traj'||T.cid!==c.id)ret
   return `<div class="card catrp"><div class="catrh"><span class="muted small">${n} point${n>1?'s':''}</span><b class="num">${mpp?(m!=null?caDist(m):'—'):'<span class="muted small">carte sans échelle</span>'}</b></div>
     ${mpp&&m!=null?caDurs(m).map(([nm,vv,d])=>`<div class="srow"><span>${esc(nm)} <span class="muted small">(${esc(String(vv))} km/h)</span></span><b>${d}</b></div>`).join(''):''}
     <div class="actions" style="justify-content:flex-start"><button type="button" class="btn" data-act="caUndo"${n?'':' disabled'}>↶ Dernier point</button><button type="button" class="btn pri" data-act="caTrEnd"${n>1?'':' disabled'}>Terminer</button></div></div>`;}
+/* UX2 (28/11/2026) : carte en premier, outils posés sur la carte, panneau Repères / Trajets / Fiche */
+function caPage(f){const ed=fiCanEd(f),N=fiCanNew(),R=caReps(f.id),L=caTrajs(f.id),mpp=caMpp(f),M=S.caMode;
+  const tools=M?'':`<div class="catl">${N?`<button type="button" class="catb pri" data-act="caAdd">+ Repère</button><button type="button" class="catb" data-act="caTrNew">Trajet</button>`:''}<button type="button" class="catb" data-act="caRegle">Règle</button>${canEdit()?`<button type="button" class="catb" data-act="caEchGo">Échelle${mpp?' ✓':''}</button>`:''}</div>`;
+  let h=`<div class="calay"><div class="camw">${caModeBar(f)}${caMapHtml(f,tools)}${caTrPanel(f)}</div>`;
+  const used=new Set(R.map(r=>r.cat||caCfg().cats[0].id)),C=caCfg().cats.filter(c=>used.has(c.id));
+  const aff=C.length?`<div class="caaff"><span class="muted small">Afficher :</span>${C.map(c=>`<button type="button" class="chip${S.caHid[c.id]?' off':''}" data-act="caCatTog" data-id="${esc(c.id)}" aria-pressed="${!S.caHid[c.id]}"><span class="cadotc" style="background:${esc(c.coul)}"></span>${esc(c.nom)}</button>`).join('')}</div>`:'';
+  const op=S.caPan!==false&&S.caPan!==undefined?!!S.caPan:(window.innerWidth||390)>=1024,pt=S.caPt||'rep';
+  let body='';
+  if(op){body+=`<div class="seg capseg" role="group" aria-label="Panneau">${[['rep','Repères'],['traj','Trajets'],['fiche','Fiche']].map(([v,l])=>`<button type="button" data-act="caPt" data-v="${v}" aria-pressed="${pt===v}">${l}</button>`).join('')}</div>`;
+    if(pt==='fiche'){const comp=[],lieu=f.lieu&&S.fiches[f.lieu];
+      if((f.desc||'').trim())body+=fiBlk('desc','Description','',fiClamp(f.id+':desc',fiRich(f.desc)),{edit:ed?'fiEd':'',ea:' data-b="desc"'});else if(ed)comp.push(['Description','fiEd',' data-b="desc"']);
+      if(lieu)body+=`<div class="srow"><span class="muted small">Lieu associé</span><span>${lk({t:'fiche',id:lieu.id},lieu.nom)}</span></div>`;
+      body+=`<div class="srow"><span class="muted small">Échelle</span><span>${mpp?'réglée':'<span class="muted">non réglée</span>'}</span></div>`;
+      const Mn=fiMentions('fiche',f.id);if(Mn.length)body+=fiBlk('ment','Mentions',String(Mn.length),fiMentionsHtml(Mn));
+      body+=fiComp(comp);}
+    else body+=`<div class="fisrch"><input type="search" data-caq="1" value="${esc(S.caQ)}" placeholder="Filtrer" aria-label="Filtrer" autocomplete="off"></div><div id="caRes">${caLists(f)}</div>`;}
+  h+=`<div class="capan${op?' open':''}"><button type="button" class="capanh" data-act="caPan" aria-expanded="${op}"><span class="capgrip" aria-hidden="true"></span><span>Repères · ${R.length} · Trajets · ${L.length}</span><span class="chev" aria-hidden="true">${op?'⌄':'⌃'}</span></button>${aff}${body}</div></div>`;
+  return h;}
 function caFicheBlocks(f){if(!caIsMap(f))return '';const ed=fiCanEd(f),N=fiCanNew(),C=caCfg().cats,R=caReps(f.id),L=caTrajs(f.id),mpp=caMpp(f);
   let h=caModeBar(f)+caMapHtml(f)+caTrPanel(f);
   if(!S.caMode)h+=`<div class="catool">${N?`<button type="button" class="btn pri" data-act="caAdd">+ Repère</button><button type="button" class="btn" data-act="caTrNew">Trajet</button>`:''}<button type="button" class="btn" data-act="caRegle">Règle</button>${canEdit()?`<button type="button" class="btn" data-act="caEchGo">Échelle${mpp?' ✓':''}</button>`:''}</div>`;
@@ -1589,12 +1607,12 @@ function caFicheBlocks(f){if(!caIsMap(f))return '';const ed=fiCanEd(f),N=fiCanNe
   h+=`<div class="fisrch"><input type="search" data-caq="1" value="${esc(S.caQ)}" placeholder="Rechercher un repère ou un trajet" aria-label="Rechercher un repère ou un trajet" autocomplete="off"></div><div id="caRes">${caLists(f)}</div>`;
   return h;}
 function caLists(f){const q=nrm(S.caQ),R=caReps(f.id).filter(r=>!q||nrm(r.nom).includes(q)||nrm(caCibNom(r)).includes(q)),L=caTrajs(f.id).filter(t=>!q||nrm(t.nom).includes(q));
-  const who=x=>{const p=x.par&&S.players[x.par];return p?' · '+esc(p.nom):'';};
-  const rr=r=>{const ty=caCibTy(r),o=caCibO(r);return `<div class="srow carow${r.vis!=='rev'?' fihid':''}">${caDot(r)}<button type="button" class="cali" data-act="caSel" data-id="${esc(r.id)}"><b>${esc(r.nom)}</b><small>${esc(caTyLab(ty))}${o&&caCibNom(r)!==r.nom?' · '+esc(caCibNom(r)):''} · ${esc(caCat(r.cat).nom)}${who(r)}${r.vis!=='rev'?' · préparé':''}</small></button>${o&&ty!=='carte'?lk(o,'Fiche'):''}</div>`;};
+  const who=()=>''; /* UX2 : lignes sans l'auteur */
+  const rr=r=>{const ty=caCibTy(r),o=caCibO(r);return `<div class="srow carow${r.vis!=='rev'?' fihid':''}">${caDot(r)}<button type="button" class="cali" data-act="caSel" data-id="${esc(r.id)}"><b>${esc(r.nom)}</b><small>${esc(caTyLab(ty))}${o&&caCibNom(r)!==r.nom?' · '+esc(caCibNom(r)):''} · ${esc(caCat(r.cat).nom)}${who(r)}${r.vis!=='rev'?' · préparé':''}</small></button>${o&&ty!=='carte'?`<button type="button" class="ibtn sm" ${lnkAttrs(o)} aria-label="Fiche de ${esc(caCibNom(r))}">›</button>`:''}</div>`;};
   const tr=t=>{const m=caLen(f,t.pts),D=m!=null?caDurs(m):[],best=D.length?D[D.length-1]:null;
     return `<div class="srow carow${t.vis!=='rev'?' fihid':''}"><svg width="24" height="10" aria-hidden="true"><line x1="1" y1="5" x2="23" y2="5" stroke="${esc(t.coul||'#1d6b66')}" stroke-width="3" stroke-dasharray="5 3"/></svg><button type="button" class="cali" data-act="caTrSel" data-id="${esc(t.id)}"><b>${esc(t.nom)}</b><small>${m!=null?caDist(m)+(D.length?' · '+esc(D[0][0].toLowerCase())+' '+D[0][2]+(best&&best!==D[0]?' · '+esc(best[0].toLowerCase())+' '+best[2]:''):''):'distance inconnue (carte sans échelle)'}${(t.note||'').trim()?' · '+esc(t.note):''}${who(t)}</small></button>${caCanEd(t)?`<button type="button" class="ibtn" data-act="caTrEd" data-id="${esc(t.id)}" aria-label="Modifier ${esc(t.nom)}">✎</button>`:''}</div>`;};
-  return fiBlk('carep','Repères',String(R.length),R.length?R.map(rr).join(''):'<div class="muted small">Aucun repère'+(q?' ne correspond':'')+'.</div>')
-    +fiBlk('catraj','Trajets',String(L.length),L.length?L.map(tr).join(''):'<div class="muted small">Aucun trajet'+(q?' ne correspond':'')+'.</div>');}
+  if((S.caPt||'rep')==='traj')return `<div class="calst">${L.length?L.map(tr).join(''):'<div class="muted small">Aucun trajet'+(q?' ne correspond':'')+'.</div>'}</div>`;
+  return `<div class="calst">${R.length?R.map(rr).join(''):'<div class="muted small">Aucun repère'+(q?' ne correspond':'')+'.</div>'}</div>`;}
 /* ---------- « Sur la carte » : fiches visées par un repère (et cartes d'un lieu) ---------- */
 function caThumb(c,x,y){const iw=caIW(c),ih=caIH(c),src=illOf('fiche',c.id),ill=illId('fiche',c.id),s=Math.max(.35,260/Math.max(iw,ih)*1.6);
   return `<span class="cathumb" aria-hidden="true">${src?`<img src="${bigSrc(ill,src)}" data-big="${esc(ill)}" alt="" style="width:${(iw*s).toFixed(0)}px;height:${(ih*s).toFixed(0)}px;left:calc(50% - ${(x*iw*s).toFixed(0)}px);top:calc(50% - ${(y*ih*s).toFixed(0)}px)">`:''}</span>`;}
@@ -1677,6 +1695,8 @@ function caAct(a,d){if(/^caPd/.test(a))return caParamAct(a,d);const f=S.fi&&S.fi
   if(a==='caTrSel'){const t=S.fiches[d.id];if(t&&c&&(t.pts||[]).length){const xs=t.pts.map(p=>p[0]),ys=t.pts.map(p=>p[1]);S.caFocus={cid:c.id,x:(Math.min(...xs)+Math.max(...xs))/2,y:(Math.min(...ys)+Math.max(...ys))/2};const el=document.getElementById('caMap');if(el)el.scrollIntoView({block:'nearest'});}render();return true;}
   if(a==='caZoom'){if(c)caZoomBy(c,+d.v>0?1.4:1/1.4);return true;}
   if(a==='caFull'){S.caFull=!S.caFull;document.body.classList.toggle('cafull',S.caFull);render();return true;}
+  if(a==='caPan'){const op=S.caPan!==false&&S.caPan!==undefined?!!S.caPan:(window.innerWidth||390)>=1024;S.caPan=!op;render();return true;}
+  if(a==='caPt'){S.caPt=d.v||'rep';S.caPan=true;render();return true;}
   if(a==='caCatTog'){S.caHid={...S.caHid,[d.id]:!S.caHid[d.id]};render();return true;}
   if(a==='caRegle'){if(c)caStart('regle',c);return true;}
   if(a==='caCancel'){S.caMode=null;S.caTmp=null;render();return true;}
@@ -1796,7 +1816,7 @@ function caHeadFields(g){const L=fiSort(fiAll().filter(x=>x.genre==='lieu'&&fiSe
    et textes (descriptions, « Ce que l'on sait », spécimens, Notes MJ pour la gestion, Portrait des PNJ, journaux, pouvoirs).
    Sans tenir compte des accents ni des majuscules ; résultats dès 2 lettres. Filtre par genre gardé pendant la session.
    Recherches récentes et fiches ouvertes depuis la recherche : propres à ce navigateur (localStorage xp.srch). */
-const SR_G=[['perso','Personnages'],['lieu','Lieux'],['org','Organisations'],['famille','Familles'],['objet','Objets'],['bete','Bestiaire'],['carte','Cartes'],['evenement','Chronique'],['chrono','Chronologies'],['jour','Journaux et quêtes'],['race','Races'],['pw','Pouvoirs et capacités'],['art','Arts obscurs'],['secret','Secrets']];
+const SR_G=[['perso','Personnages'],['lieu','Lieux'],['org','Organisations'],['famille','Familles'],['objet','Objets'],['bete','Bestiaire'],['carte','Cartes'],['evenement','Chronique'],['chrono','Histoire'],['jour','Journaux et quêtes'],['race','Races'],['pw','Pouvoirs et capacités'],['art','Arts obscurs'],['secret','Secrets']];
 const SR_LAB=Object.fromEntries(SR_G);
 const cap1=t=>t?t[0].toUpperCase()+t.slice(1):t;
 const srState=()=>S.srch||(S.srch={q:'',g:'all',more:false});
@@ -1825,7 +1845,7 @@ function srRun(q0){const q=srQ(q0),N=[],T=[],G=isGest();if(q.length<2)return {N,
     const L=[[ev?'Résumé':'Description',fiBlkSee(f,'desc')&&f.desc]];
     for(const it of f.sait||[])if(fiItSee(f,it))L.push(["Ce que l'on sait",it.txt]);
     for(const x of f.spec||[])if(fiSpecSee(x))L.push(['Spécimens connus',(x.nom||'')+' : '+(x.txt||'')]);
-    for(const x of f.els||[])if(ctElSee(x))L.push(['Chronologie',(x.nom||'')+' : '+(x.txt||'')]); /* chronologies */
+    for(const x of f.els||[])if(ctElSee(x))L.push(['Histoire',(x.nom||'')+' : '+(x.txt||'')]); /* chronologies */
     if(f.effet&&fiBlkSee(f,'effet'))L.push(['Effet',f.effet]);
     if(G&&f.notes)L.push(['Notes MJ',f.notes]);
     for(const [w,t] of L)if(t&&tx(f.genre,o,nom,sub,w,t))break;}
@@ -2116,7 +2136,7 @@ const ctEls=(f,eid)=>((f&&f.els)||[]).filter(x=>x.era===eid).sort((a,b)=>((a.an=
 const ctYr=v=>v===''||v==null||isNaN(+v)?'':String(+v);
 const ctSpan=e=>{const a=ctYr(e.deb),b=ctYr(e.fin);return a&&b?a+' – '+b:a?'depuis '+a:b?"jusqu'à "+b:'';};
 function ctSeances(e){const a=+e.deb,b=e.fin===''||e.fin==null?null:+e.fin;
-  return chEvs().filter(f=>fiSee(f)&&(f.type==='Scénario'||f.type==='Interscénario')&&chOk(f.debut)&&(isNaN(a)||f.debut.a>=a)&&(b==null||isNaN(b)||f.debut.a<b))
+  return chEvs().filter(f=>fiSee(f)&&f.type==='Scénario'&&chOk(f.debut)&&(isNaN(a)||f.debut.a>=a)&&(b==null||isNaN(b)||f.debut.a<b))
     .sort((x,y)=>chKey(x.debut)-chKey(y.debut)||String(chNumOf(x)).localeCompare(String(chNumOf(y)),'fr',{numeric:true}));}
 function ctBlocks(f,ed,G){const E=canEdit(),R=ctEras(f),op=S.ctOpen||{};let h='';
   const ids=(f.els||[]).filter(ctElSee).filter(x=>(x.txt||'').trim()).map(x=>x.id);
@@ -2125,7 +2145,7 @@ function ctBlocks(f,ed,G){const E=canEdit(),R=ctEras(f),op=S.ctOpen||{};let h=''
     const sum=[ctSpan(e),V.length?V.length+' élément'+(V.length>1?'s':''):'',SE.length?SE.length+' séance'+(SE.length>1?'s':''):''].filter(Boolean).join(' · ');
     const rows=V.map(x=>{const has=!!(x.txt||'').trim(),o=has&&op[x.id];
       return `<div class="ctel${x.rev?'':' fihid'}"><span class="ctdot" aria-hidden="true"></span><div class="ctbd">${has?`<button type="button" class="ctt" data-act="ctTog" data-i="${esc(x.id)}" aria-expanded="${!!o}">`:'<div class="ctt">'}<span class="ctx">${(x.date||'').trim()?`<span class="ctd">${esc(x.date)}</span>`:''}<b>${esc(x.nom)}</b></span>${has?`<span class="chev" aria-hidden="true">${o?'⌄':'›'}</span></button>`:'</div>'}${o?fiRich(x.txt):''}</div>${ed?`<button type="button" class="fiedi" data-act="ctEl" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">${ICON.crayon}</button>`:''}${G?eyeBtn('ctEye',`data-i="${esc(x.id)}"`,!!x.rev,'Élément '+x.nom):''}</div>`;}).join('');
-    const ses=SE.length?`<div class="ctsh">Séances de la Chronique</div>`+SE.map(s=>{const n=chNumOf(s),d=s.debut;return `<div class="ctses"><span class="chsq ${CH_TCL[s.type]||'in'}">${esc(n||'—')}</span><span class="ctsn">${lk({t:'fiche',id:s.id},s.nom)}</span><span class="muted small">${esc(chRangeShort(d,s.duree))}</span></div>`;}).join(''):'';
+    const ses=SE.length?`<details class="ctsd"><summary>Séances de la Chronique · ${SE.length}</summary>`+SE.map(s=>{const n=chNumOf(s),d=s.debut;return `<div class="ctses"><span class="chpil ${chCl(s)}">${esc(n||'')}</span><span class="ctsn">${lk({t:'fiche',id:s.id},s.nom)}</span><span class="muted small">${esc(chRangeShort(d,s.duree))}</span></div>`;}).join('')+'</details>':''; /* UX2 : repliées, Scénarios seulement */
     const body=(rows||(ses?'':'<div class="muted small">Aucun élément.</div>'))+ses+(ed?`<div class="radd"><button class="btn" data-act="ctEl" data-i="" data-e="${esc(e.id)}">+ Un élément</button></div>`:'');
     h+=`<section class="rblk ctera ctc-${esc(col)}"><div class="rbh"><button type="button" class="rbt" data-act="fiFold" data-k="${esc(k)}" aria-expanded="${!fold}" aria-controls="fb-${esc(k)}"><span class="tt"><span class="t">${esc(e.nom)}</span>${sum?`<span class="n">${esc(sum)}</span>`:''}</span><span class="chev" aria-hidden="true">${fold?'›':'⌄'}</span></button>${E?`<button type="button" class="edl" data-act="ctEra" data-i="${esc(e.id)}">${ICON.crayon} Ère</button>`:''}</div>${fold?'':`<div class="rbb" id="fb-${esc(k)}">${body}</div>`}</section>`;}
   if(!R.length)h+=`<div class="card empty">Aucune ère pour l'instant.</div>`;

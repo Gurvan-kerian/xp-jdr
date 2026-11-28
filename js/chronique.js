@@ -7,10 +7,12 @@
    Calendrier : document meta/calendrier : {date:{a,m,j}, fetes:[{id, nom, mode:'fixe'|'calc', m, j, calc (0 à 3), nbj, desc, vis, surch:{<année>:{m,j}}}]}
    Personnage : naiss {a, m?, j?, env?}, ageLib (PNJ). Session du journal d'XP : evt (identifiant de l'événement).
    Vrai calendrier grégorien ; lune : cycle synodique moyen ; solstices et équinoxes : formule de Meeus (années 1000 à 3000). */
-S.cal=null;S.calReady=false;S.chV='liste';S.chTy='tout';S.chPj=[];S.chM=null;S.chDay=null;S.chPage=null;S.chRat=null;
+S.cal=null;S.calReady=false;S.chV='liste';S.chTy='tout';S.chTs=[];S.chFo=false;S.chPj=[];S.chM=null;S.chDay=null;S.chPage=null;S.chRat=null;
 
 /* ---------- Dates ---------- */
-const CH_TYPES=['Scénario','Interscénario','Vie du fief'];
+const CH_TYPES=['Scénario','Interscénario','Vie du fief','Autre']; /* UX2 : type Autre ; Rendez-vous = genre agenda */
+const chCl=f=>CH_TCL[f.type]||'au';
+const CH_TF=[['sc','Scénarios'],['in','Interscénarios'],['fi','Vie du fief'],['au','Autres'],['ag','Rendez-vous']];
 const CH_TCL={'Scénario':'sc','Interscénario':'in','Vie du fief':'fi'};
 /* Numérotation affichée (26/11) : numéro seul, la couleur dit le type (Scénario 2 chiffres, autres 3) */
 const chPad=(t,n)=>String(n).padStart(t==='Scénario'?2:3,'0');
@@ -85,14 +87,14 @@ function chAgeTxt(c){const n=c.naiss,now=chNow();if(n&&n.a>0){const y=chAge(n,no
 const chAnnivChars=()=>Object.values(S.chars).filter(c=>c&&vis(c)&&c.naiss&&c.naiss.a>0&&c.naiss.m&&c.naiss.j);
 
 /* Éléments du calendrier sur une période [d1, d2] (clés incluses) : événements, agenda, fêtes, anniversaires */
-function chItems(o){o=o||{};const out=[],k1=o.from?chKey(o.from):-Infinity,k2=o.to?chKey(o.to):Infinity,ty=S.chTy||'tout',pj=S.chPj||[];
+function chItems(o){o=o||{};const out=[],k1=o.from?chKey(o.from):-Infinity,k2=o.to?chKey(o.to):Infinity,T=S.chTs||[],ty=T.length?'x':'tout',pj=S.chPj||[];
   const inR=(d,e)=>{const a=chKey(d),b=chKey(e);return b>=k1&&a<=k2;};
-  for(const f of chEvs()){if(ty!=='tout'&&CH_TCL[f.type]!==ty)continue;if(pj.length&&!(f.pj||[]).some(x=>pj.includes(x)))continue;
+  for(const f of chEvs()){if(T.length&&!T.includes(chCl(f)))continue;if(pj.length&&!(f.pj||[]).some(x=>pj.includes(x)))continue;
     if(!chOk(f.debut)){if(o.nodate)out.push({k:'ev',f,d:null});continue;}
     const d=f.debut,e=d.j?chEnd(d,f.duree):{a:d.a,m:d.m,j:chDim(d.a,d.m)},s=d.j?d:{a:d.a,m:d.m,j:1};if(inR(s,e))out.push({k:'ev',f,d,e,s,flou:!d.j});}
-  if(pj.length||(ty!=='tout'&&ty!=='ag'))return out;
+  if(pj.length||(T.length&&!T.includes('ag')))return out;
   for(const f of chAgs()){if(!chOk(f.debut)||!f.debut.j)continue;const e=chEnd(f.debut,f.duree);if(inR(f.debut,e))out.push({k:'ag',f,d:f.debut,e,s:f.debut});}
-  if(ty==='ag'||!o.from||!o.to)return out;
+  if(T.length||!o.from||!o.to)return out;
   for(let a=o.from.a;a<=o.to.a;a++){
     for(const fe of chFetes()){if(!chFeSee(fe))continue;const d=chFeDate(fe,a),e=chEnd(d,fe.nbj);if(inR(d,e))out.push({k:'fe',fe,d,e,s:d,a});}
     for(const c of chAnnivChars()){const n=c.naiss;if(n.a>a)continue;const d={a,m:n.m,j:Math.min(n.j,chDim(a,n.m))};if(inR(d,d))out.push({k:'an',c,d,e:d,s:d,age:a-n.a});}}
@@ -108,9 +110,9 @@ const chAv=id=>{const c=S.chars[id];if(!c||!vis(c))return '';const im=portrait(c
 const chPJs=()=>pjIds().map(i=>S.chars[i]).filter(c=>c&&actif(c));
 function chRow(it){
   if(it.k==='ev'){const f=it.f,d=it.d;
-    return `<button type="button" class="chrow" data-act="chOpen" data-id="${esc(f.id)}"><span class="chdd">${d?(d.j?`<small>${CH_JSC[chDow(d)]}</small><b>${d.j}</b>`:`<small>${esc(chMo(d.m).slice(0,4))}.</small><b>—</b>`):'<b>?</b>'}</span><span class="chtx"><b>${chNumOf(f)?`<span class="chnum">${esc(chNumOf(f))}</span> `:''}${esc(f.nom)}</b><small>${chEvTag(f)} ${esc(d?chRangeShort(d,f.duree):'sans date')}${(f.pj||[]).length?` <span class="chavs">${(f.pj||[]).map(chAv).join('')}</span>`:''}</small></span></button>`;}
+    return `<button type="button" class="chrow ux2ch" data-act="chOpen" data-id="${esc(f.id)}"><span class="chdd">${d?(d.j?`<small>${CH_JSC[chDow(d)]}</small><b>${d.j}</b>`:`<small>${esc(chMo(d.m).slice(0,4))}.</small><b>—</b>`):'<b>?</b>'}</span><span class="chpil ${chCl(f)}" title="${esc(f.type||'Événement')}">${esc(chNumOf(f)||'')}</span><span class="chtx"><b>${esc(f.nom)}</b><small>${esc(d?chRangeShort(d,f.duree):'sans date')}</small></span></button>`;}
   if(it.k==='ag'){const f=it.f,p=S.players[f.par];
-    return `<button type="button" class="chrow ag" data-act="chOpen" data-id="${esc(f.id)}"><span class="chdd"><small>${CH_JSC[chDow(it.d)]}</small><b>${it.d.j}</b></span><span class="chtx"><b>${esc(f.nom)}</b> ${chTag('ag','Agenda')}<small>${esc((f.duree||1)>1?chRangeShort(it.d,f.duree)+' · ':'')}${p?'Ajouté par '+esc(p.nom):''}</small></span></button>`;}
+    return `<button type="button" class="chrow ag" data-act="chOpen" data-id="${esc(f.id)}"><span class="chdd"><small>${CH_JSC[chDow(it.d)]}</small><b>${it.d.j}</b></span><span class="chpil ag" title="Rendez-vous"></span><span class="chtx"><b>${esc(f.nom)}</b><small>${esc((f.duree||1)>1?chRangeShort(it.d,f.duree):'Rendez-vous')}</small></span></button>`;}
   if(it.k==='fe'){const fe=it.fe;
     return `<button type="button" class="chrow fe${fe.vis===false?' prep':''}" data-act="chFeOpen" data-id="${esc(fe.id)}" data-a="${it.a}"><span class="chdd"><small>${CH_JSC[chDow(it.d)]}</small><b>${it.d.j}</b></span><span class="chtx"><b>${esc(fe.nom)}</b> ${chTag('fe','Fête')}<small>${esc(chRangeShort(it.d,fe.nbj))}</small></span></button>`;}
   if(it.k==='an'){const c=it.c;
@@ -126,28 +128,27 @@ function chUniView(){
   if(S.chPage==='ratt'&&canEdit())return chRattView();
   S.chPage=null;return chView();}
 function chNowLine(){const n=chNow(),E=canEdit();
-  if(!n&&!E)return '';
-  return `<div class="chnow"><span class="chnowi" aria-hidden="true">${FI_SVG(FI_IC.chron,20)}</span><span>${n?`Nous sommes le <b>${esc(chDateTxt(n))}</b>`:'<span class="muted">Date du jeu pas encore réglée</span>'}</span>${E?`<button type="button" class="edl" data-act="chNowEd">${ICON.crayon} Régler</button>`:''}</div>`;}
+  return `<div class="chnow ux2now"><span>${n?`Nous sommes le <b>${esc(chDateTxt(n))}</b>`:E?'<span class="muted">Date du jeu pas encore réglée</span>':''}</span>${E?`<button type="button" class="ibtn sm" data-act="chNowEd" aria-label="Régler la date du jeu">${ICON.crayon}</button>`:''}<span class="ux2sp"></span><button type="button" class="lnk" data-act="chPage" data-v="fetes">Fêtes ›</button></div>`;}
 function chView(){
-  let h=fiUniBack()+`<h2 style="margin-top:2px">Chronique</h2>`;
+  let h=fiUniBack()+`<div class="pghead"><h2>Chronique</h2>${chCanEv()?`<button type="button" class="pbtn big" data-act="chEvNew" aria-label="Ajouter à la Chronique">+</button>`:''}</div>`;
   if(!S.fichesReady)return h+`<div class="card empty">Chargement…</div>`;
   h+=chNowLine();
-  /* Actions en haut de page (retour du 24/11) : pas besoin de descendre sous une liste qui s'allonge */
-  const nw=[];if(chCanEv())nw.push(`<button class="btn pri" data-act="chEvNew">+ Événement</button>`,`<button class="btn" data-act="chAgNew">+ Agenda</button>`);
-  h+=`<div class="chact">${nw.join('')}<button type="button" class="lk chfl" data-act="chPage" data-v="fetes">Fêtes</button></div>`;
   if(canEdit()){const n=chRattProps().filter(r=>r.ev).length;if(n)h+=`<button type="button" class="chratt" data-act="chPage" data-v="ratt">Rattachements à vérifier <span class="bdg">${n}</span></button>`;}
-  h+=`<div class="seg chsw" role="group" aria-label="Affichage">${[['liste','Liste'],['mois','Mois']].map(([v,l])=>`<button type="button" data-act="chV" data-v="${v}" aria-pressed="${S.chV===v}">${l}</button>`).join('')}</div>`;
-  const flt=`<div class="chips chchips">${[['tout','Tout'],['sc','Scénarios'],['in','Interscénarios'],['fi','Vie du fief'],['ag','Agenda']].map(([v,l])=>`<button class="chip" data-act="chTy" data-v="${v}" aria-pressed="${(S.chTy||'tout')===v}">${l}</button>`).join('')}</div>`
-    +`<div class="chpcs" role="group" aria-label="Filtrer par PJ">${chPJs().map(c=>chMed(c,(S.chPj||[]).includes(c.id),'chPj')).join('')}</div>`;
-  if(S.chV==='mois')h+=chMonth()+`<details class="chfltd"${(S.chTy!=='tout'||(S.chPj||[]).length)?' open':''}><summary>Filtres</summary>${flt}</details>`;
-  else h+=flt+chList();
+  const T=S.chTs||[],P=S.chPj||[],nf=T.length+P.length;
+  const nEv=chItems({nodate:true}).filter(it=>it.k==='ev'||it.k==='ag').length;
+  h+=`<div class="ux2tb chbar"><div class="seg chsw" role="group" aria-label="Affichage">${[['liste','Liste'],['mois','Mois']].map(([v,l])=>`<button type="button" data-act="chV" data-v="${v}" aria-pressed="${S.chV===v}">${l}</button>`).join('')}</div>
+    <details class="ux2flt chflt"${S.chFo?' open':''}><summary class="${nf?'on':''}">Filtres${nf?' · '+nf:''} ▾</summary><div class="ux2fltb">
+      <div class="fimg">Types</div><div class="chtys">${CH_TF.map(([v,l])=>`<label class="chtyc"><input type="checkbox" data-chty="${v}"${T.includes(v)?' checked':''}><span class="chpil ${v}"></span>${l}</label>`).join('')}</div>
+      <div class="fimg">PJ présents</div><div class="chpcs" role="group" aria-label="Filtrer par PJ">${chPJs().map(c=>chMed(c,P.includes(c.id),'chPj')).join('')}</div>
+      <div class="acts"><button type="button" class="btn" data-act="chFltOff">Tout effacer</button><button type="button" class="btn pri" data-act="chFltGo">Voir ${nEv} élément${nEv>1?'s':''}</button></div></div></details></div>`;
+  h+=S.chV==='mois'?chMonth():chList();
   return h;}
-function chList(){const now=chNow(),ty=S.chTy||'tout',pjf=(S.chPj||[]).length;
+function chList(){const now=chNow(),ty=(S.chTs||[]).length?'x':'tout',pjf=(S.chPj||[]).length;
   let from=null,to=null;if(now){from={a:now.a,m:now.m,j:1};const nx=chAddM(from,1);to={a:nx.a,m:nx.m,j:chDim(nx.a,nx.m)};}
   const all=chItems({nodate:true}).filter(it=>it.k==='ev'||it.k==='ag');
-  const extra=from&&!pjf&&ty==='tout'?chItems({from,to}).filter(it=>it.k==='fe'||it.k==='an'):[];
+  const extra=from&&!pjf&&!(S.chTs||[]).length?chItems({from,to}).filter(it=>it.k==='fe'||it.k==='an'):[];
   const L=[...all,...extra],nd=L.filter(it=>!it.d),D=L.filter(it=>it.d).sort(chSortDesc);
-  if(!L.length)return `<div class="card empty">${ty!=='tout'||pjf?'Rien ne correspond à ces filtres.':'Aucun événement pour l\'instant.'+(chCanEv()?' Ajoute le premier avec « + Événement ».':'')}</div>`;
+  if(!L.length)return `<div class="card empty">${ty!=='tout'||pjf?'Rien ne correspond à ces filtres.':'Aucun événement pour l\'instant.'+(chCanEv()?' Ajoute le premier avec « + ».':'')}</div>`;
   const G=[];for(const it of D){const k=it.d.a*100+it.d.m;let g=G.find(x=>x.k===k);if(!g){g={k,a:it.d.a,m:it.d.m,L:[]};G.push(g);}g.L.push(it);}
   const nk=now?now.a*100+now.m:null;if(now&&!G.some(g=>g.k===nk)){G.push({k:nk,a:now.a,m:now.m,L:[]});G.sort((x,y)=>y.k-x.k);}
   const nowKey=now?chKey(now):null,line=`<div class="chnowl" role="separator"><span>aujourd'hui · ${esc(CH_JSC[chDow(now||{a:2000,m:1,j:1})]+' '+(now?now.j:''))}</span></div>`;
@@ -171,12 +172,12 @@ function chMonth(){const now=chNow();if(!S.chM){const b=now||chLast()&&chLast().
   for(let i=0;i<cells;i++){const d=chAdd(start,i),k=chKey(d),out=d.m!==M.m,we=i%7>=5,ph=chPhase(d),wk=i%7===0;
     const here=span.filter(it=>chKey(it.s)<=k&&chKey(it.e)>=k),maxl=here.reduce((m,it)=>Math.max(m,it.l),-1);
     let bars='';for(let l=0;l<=Math.min(maxl,2);l++){const it=here.find(x=>x.l===l);if(!it){bars+='<i class="chb vide"></i>';continue;}
-      const st=chKey(it.s)===k,en=chKey(it.e)===k,lab=st||wk;const t=it.k==='ev'?(CH_TCL[it.f.type]||'in'):it.k;
+      const st=chKey(it.s)===k,en=chKey(it.e)===k,lab=st||wk;const t=it.k==='ev'?chCl(it.f):it.k;
       const nm=it.k==='ev'?(chNumOf(it.f)||it.f.nom):it.k==='ag'?it.f.nom:it.k==='fe'?it.fe.nom:(it.c.court||'');
       bars+=`<i class="chb ${t}${st?' st':''}${en?' en':''}">${lab?esc(nm):'&nbsp;'}</i>`;}
     if(maxl>2)bars+=`<i class="chmore">+${here.filter(x=>x.l>2).length}</i>`;
     h+=`<button type="button" class="chc${out?' o':''}${we?' we':''}${k===nk?' now':''}${k===sel?' sel':''}" data-act="chDay" data-v="${k}" aria-label="${esc(chDateTxt(d))}${here.length?', '+here.length+' élément'+(here.length>1?'s':''):''}"><span class="chn">${d.j}</span>${ph?`<span class="chph" title="${ph[2]}" aria-hidden="true">${ph[1]}</span>`:''}${bars}</button>`;}
-  h+=`</div><div class="chleg"><span><i class="sc"></i>Scénario</span><span><i class="in"></i>Interscénario</span><span><i class="fi"></i>Vie du fief</span><span><i class="ag"></i>Agenda</span><span><i class="fe"></i>Fête</span><span><i class="an"></i>Anniversaire</span><span>○ ◐ ● ◑ lune</span></div>`;
+  h+=`</div><div class="chleg"><span><i class="sc"></i>Scénario</span><span><i class="in"></i>Interscénario</span><span><i class="fi"></i>Vie du fief</span><span><i class="au"></i>Autre</span><span><i class="ag"></i>Rendez-vous</span><span><i class="fe"></i>Fête</span><span><i class="an"></i>Anniversaire</span><span>○ ◐ ● ◑ lune</span></div>`;
   if(flou.length)h+=`<div class="chmo"><span>Courant ${esc(chMo(M.m))}</span><small>${flou.length}</small></div><div class="chlst">${flou.map(chRow).join('')}</div>`;
   const sk=sel;
   if(sk){const L=span.filter(it=>chKey(it.s)<=sk&&chKey(it.e)>=sk),d={a:Math.floor(sk/10000),m:Math.floor(sk/100)%100,j:sk%100},ph=chPhase(d);
@@ -184,30 +185,29 @@ function chMonth(){const now=chNow();if(!S.chM){const b=now||chLast()&&chLast().
   return h;}
 
 /* ---------- Fiche Événement ---------- */
-function chEvView(f){const G=isGest(),ed=chCanEv();
-  let h=crumb(CR_UNI,['Chronique','data-act="chBack"'],[esc(f.nom)]);
-  const P=(f.pj||[]).map(id=>S.chars[id]).filter(Boolean).map(c=>lk({t:'perso',id:c.id},c.court||c.nom)).join(', ');
-  const im=illOf('fiche',f.id); /* lot 8 b : image et lien Kanka de l'événement */
-  h+=`<div class="card fihead chhead">${im?`<div class="chimg">${im?`<button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${im}" alt=""></button>`:''}${f.kanka?kankaBtn(f.kanka,f.nom,'Fiche Kanka : '+f.nom):''}</div>`:''}<div class="chhm">${chNumOf(f)?`<span class="chnum">${esc(chNumOf(f))}</span>`:''}${chEvTag(f)}</div><h2 class="finm">${esc(f.nom)}</h2>
-    <div class="small">${esc(chRangeTxt(f.debut,f.duree))}${chOk(f.debut)&&f.debut.j&&(f.duree||1)>1?' · '+f.duree+' jours':''}</div>
-    <div class="chkv">${P?`<span>PJ</span><div>${P}</div>`:''}${(f.lieux||'').trim()?`<span>Lieux</span><div>${fiInline(f.lieux)}</div>`:''}</div>
-    ${ed?`<div style="margin-top:8px"><button type="button" class="edl" data-act="chEvEd">${ICON.crayon} Numéro, titre, type, dates, PJ, lieux</button></div>`:''}</div>`;
-  h+=fiBlk('ev-desc','Résumé','',(f.desc||'').trim()?fiRich(f.desc):'<div class="muted small">Pas encore de résumé.</div>',{edit:ed?'chTxt':'',ea:' data-b="desc"'});
-  h+=caOnMap('fiche',f.id); /* lot Cartes */
+function chEvView(f){const ed=chCanEv(),comp=[];
+  let h=`<div class="ux2top">${crumb(CR_UNI,['Chronique','data-act="chBack"'],[esc(f.nom)])}<span class="ux2sp"></span>${ed?`<button type="button" class="ibtn" data-act="chEvEd" aria-label="Modifier l'événement">${ICON.crayon}</button>`:''}</div>`;
+  const P=(f.pj||[]).map(id=>S.chars[id]).filter(c=>c&&vis(c));
+  const im=illOf('fiche',f.id);
+  h+=`<div class="card fihead chhead">${im?`<div class="chimg"><button type="button" class="fithumb" data-act="fiImg" data-id="${esc(illId('fiche',f.id))}" aria-label="Agrandir l'image de ${esc(f.nom)}"><img src="${im}" alt=""></button></div>`:''}<div class="chhm"><span class="chpil ${chCl(f)}">${esc(chNumOf(f)||'')}</span><span class="muted small">${esc(f.type||'Événement')}</span></div><h2 class="finm">${esc(f.nom)}</h2>
+    <div class="small">${esc(chRangeTxt(f.debut,f.duree))}</div>
+    ${P.length?`<div class="chpjs">${P.map(c=>{const ip=portrait(c);return `<button type="button" class="chpjp" data-act="lnk" data-t="perso" data-id="${esc(c.id)}">${ip?`<img src="${ip}" alt="">`:''}${esc(c.court||c.nom)}</button>`;}).join('')}</div>`:''}
+    ${(f.lieux||'').trim()?`<div class="chkv"><span>Lieux</span><div>${fiInline(f.lieux)}</div></div>`:''}</div>`;
+  if((f.desc||'').trim())h+=fiBlk('ev-desc','Résumé','',fiClamp(f.id+':desc',fiRich(f.desc)),{edit:ed?'chTxt':'',ea:' data-b="desc"'});else if(ed)comp.push(['Résumé','chTxt',' data-b="desc"']);
+  h+=caOnMap('fiche',f.id);
   const S2=chSessOf(f.id);
-  h+=fiBlk('ev-xp','Séances et XP',S2.length?String(S2.length):'',S2.length?S2.map(e=>{const by={};for(const en of e.entries||[]){const c=S.chars[en.perso];if(!c||c.type!=='PJ'||!vis(c)||!en.montant)continue;by[c.id]=(by[c.id]||0)+en.montant;}
+  if(S2.length)h+=fiBlk('ev-xp','Sessions et XP',String(S2.length),S2.map(e=>{const by={};for(const en of e.entries||[]){const c=S.chars[en.perso];if(!c||c.type!=='PJ'||!vis(c)||!en.montant)continue;by[c.id]=(by[c.id]||0)+en.montant;}
     const xp=orderPJ(Object.keys(by)).map(id=>esc(S.chars[id].court)+' <b class="xpn">+'+by[id]+'</b>').join(' · ');
-    return `<div class="chses"><div><b>${chSessT(e)}</b><div class="muted small">${[e.date?fmtDate(e.date):e.textuelle?'Session textuelle':'',esc(evType(e))].filter(Boolean).join(' · ')}</div></div><div class="small">${xp||'<span class="muted">pas d\'XP</span>'}</div></div>`;}).join(''):'<div class="muted small">Aucune session rattachée.</div>');
+    return `<div class="chses"><div><b>${chSessT(e)}</b><div class="muted small">${[e.date?fmtDate(e.date):e.textuelle?'Session textuelle':'',esc(evType(e))].filter(Boolean).join(' · ')}</div></div><div class="small">${xp||'<span class="muted">pas d\'XP</span>'}</div></div>`;}).join(''));
   const M=fiMentions('fiche',f.id);
-  h+=fiBlk('ment','Mentions',M.length?M.length+' · mises à jour automatiquement':'',fiMentionsHtml(M));
-  if(G)h+=fiBlk('notes','Notes MJ','jamais révélées',(f.notes||'').trim()?fiRich(f.notes):'<div class="muted small">Aucune note.</div>',{edit:'chTxt',ea:' data-b="notes"',hid:true});
-  return h;}
+  if(M.length)h+=fiBlk('ment','Mentions',String(M.length),fiMentionsHtml(M));
+  return h+fiComp(comp);}
 const chSessOf=id=>S.events.filter(e=>e.session&&e.evt===id);
 function chAgView(f){const p=S.players[f.par];
-  let h=crumb(CR_UNI,['Chronique','data-act="chBack"'],[esc(f.nom)]);
-  h+=`<div class="card fihead chhead"><div class="chhm">${chTag('ag','Agenda')}</div><h2 class="finm">${esc(f.nom)}</h2><div class="small">${esc(chRangeTxt(f.debut,f.duree))}</div>${p?`<div class="muted small" style="margin-top:4px">Ajouté par ${esc(p.nom)}</div>`:''}
+  let h=`<div class="ux2top">${crumb(CR_UNI,['Chronique','data-act="chBack"'],[esc(f.nom)])}<span class="ux2sp"></span>${chCanAg(f)?`<button type="button" class="ibtn" data-act="chAgEd" aria-label="Modifier le rendez-vous">${ICON.crayon}</button>`:''}</div>`;
+  h+=`<div class="card fihead chhead"><div class="chhm"><span class="chpil ag"></span><span class="muted small">Rendez-vous</span></div><h2 class="finm">${esc(f.nom)}</h2><div class="small">${esc(chRangeTxt(f.debut,f.duree))}</div>${p?`<div class="muted small" style="margin-top:4px">Ajouté par ${esc(p.nom)}</div>`:''}
     ${(f.desc||'').trim()?`<div style="margin-top:8px">${fiRich(f.desc)}</div>`:''}
-    ${chCanAg(f)?`<div style="margin-top:8px"><button type="button" class="edl" data-act="chAgEd">${ICON.crayon} Modifier ou supprimer</button></div>`:''}</div>`;
+</div>`;
   return h;}
 
 /* ---------- Fêtes ---------- */
@@ -289,9 +289,9 @@ const chErr=g=>g.err?`<div class="small" role="alert" style="color:var(--bad)">$
 const chSeg=(k,v,opts,l)=>`<div class="field"><span class="flab">${l}</span><div class="seg" role="group" aria-label="${esc(l)}">${opts.map(([o,t])=>`<button type="button" data-act="chSet" data-k="${k}" data-v="${esc(o)}" aria-pressed="${String(v)===String(o)}">${t}</button>`).join('')}</div></div>`;
 function chSheet(g){
   if(g.kind==='chEv'){const f=g.id&&S.fiches[g.id];if(!chCanEv()||(g.id&&!f))return null;const pjs=Object.values(S.chars).filter(c=>c.type==='PJ'&&((vis(c)&&actif(c))||g.pj.includes(c.id)));
-    return fiShell(g,f?'Modifier l\'événement':'Nouvel événement',`<h2>${f?'Modifier l\'événement':'Nouvel événement'}</h2>
+    return fiShell(g,f?'Modifier l\'événement':'Ajouter à la Chronique',`<h2>${f?'Modifier l\'événement':'Ajouter à la Chronique'}</h2>
       <div class="chnf"><div class="field"><label for="chNum">Numéro</label><input id="chNum" type="text" data-fin="num" value="${esc(g.num)}" placeholder="[025]" autocomplete="off"></div><div class="field"><label for="jrNm">Titre</label><input id="jrNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div></div>
-      ${chSeg('type',g.type,CH_TYPES.map(t=>[t,t]),'Type')}
+      ${chSeg('type',g.type,CH_TYPES.concat(f?[]:['Rendez-vous']).map(t=>[t,t]),'Type')}
       ${chDateFields(g,'d','Début <span class="muted">— le jour peut rester vide (période floue)</span>','')}
       <div class="field"><label for="chDu">Durée en jours</label><div class="chdu"><input id="chDu" type="number" min="1" inputmode="numeric" data-fin="duree" value="${esc(g.duree)}"><span class="muted small" data-chprev="fin">${esc(chFinTxt(g))}</span></div></div>
       <div class="field"><span class="flab">PJ impliqués</span><div class="jrparts">${pjs.map(c=>{const on=g.pj.includes(c.id);return `<button type="button" class="jrpc${on?' on':''}" data-act="chPjT" data-v="${esc(c.id)}" aria-pressed="${on}">${esc(c.court||c.nom)}</button>`;}).join('')}</div></div>
@@ -306,7 +306,7 @@ function chSheet(g){
       <div class="muted small">Tape <b>@</b> puis quelques lettres pour lier une fiche ; une ligne qui commence par « - » devient une liste.</div>
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="chTxtSave">Enregistrer</button></div>`);}
   if(g.kind==='chAg'){const f=g.id&&S.fiches[g.id];if(g.id?!chCanAg(f):!chCanEv())return null;
-    return fiShell(g,f?'Agenda':'Ajouter à l\'agenda',`<h2>${f?'Modifier l\'agenda':'Ajouter à l\'agenda'}</h2>
+    return fiShell(g,f?'Rendez-vous':'Nouveau rendez-vous',`<h2>${f?'Modifier le rendez-vous':'Ajouter à la Chronique'}</h2>${f?'':chSeg('type','Rendez-vous',CH_TYPES.concat('Rendez-vous').map(t=>[t,t]),'Type')}
       <div class="field"><label for="jrNm">Titre</label><input id="jrNm" type="text" data-fin="nom" value="${esc(g.nom)}" autocomplete="off"></div>
       ${chDateFields(g,'d','Date','Jour, mois et année')}
       ${chSeg('plus',g.plus?'1':'',[['','Un jour'],['1','Plusieurs jours']],'Durée')}
@@ -364,6 +364,8 @@ function chAct(a,d){
   if(a==='chHome'){navClear();S.view='univers';S.uni='chron';S.fi=null;S.chPage=null;S.chV='mois';S.chM=null;S.chDay=chNow()?chKey(chNow()):null;window.scrollTo(0,0);render();return true;}
   if(a==='chV'){S.chV=d.v==='mois'?'mois':'liste';if(S.chV==='mois'&&!S.chDay&&chNow())S.chDay=chKey(chNow());render();return true;}
   if(a==='chTy'){S.chTy=d.v||'tout';render();return true;}
+  if(a==='chFltOff'){S.chTs=[];S.chPj=[];render();return true;}
+  if(a==='chFltGo'){S.chFo=false;render();return true;}
   if(a==='chPj'){const L=S.chPj||[];S.chPj=L.includes(d.v)?L.filter(x=>x!==d.v):[...L,d.v];render();return true;}
   if(a==='chMo'){const n=+d.v;if(n===0){S.chM=null;S.chDay=chNow()?chKey(chNow()):null;}else{const x=chAddM({a:S.chM.a,m:S.chM.m,j:1},n);S.chM={a:x.a,m:x.m};S.chDay=null;}render();return true;}
   if(a==='chDay'){const k=+d.v;S.chDay=S.chDay===k?null:k;render();return true;}
@@ -372,6 +374,9 @@ function chAct(a,d){
   if(a==='chPage'){S.chPage=d.v||null;if(S.chPage==='ratt')S.chRat=null;window.scrollTo(0,0);render();return true;}
   if(a==='chFeOpen'){fiOpenDlg({kind:'chFeV',id:d.id,a:+d.a||(chNow()||{a:new Date().getFullYear()}).a});render();return true;}
   if(S.visit)return true;
+  if(a==='chSet'&&g&&d.k==='type'&&!g.id&&(g.kind==='chEv'||g.kind==='chAg')){
+    if(g.kind==='chEv'&&d.v==='Rendez-vous'){S.dlg={kind:'chAg',id:'',nom:g.nom||'',dj:g.dj||'',dm:g.dm||'',da:g.da||'',plus:'',fj:'',fm:'',fa:'',txt:''};redraw();return true;}
+    if(g.kind==='chAg'&&d.v!=='Rendez-vous'){S.dlg={kind:'chEv',id:'',num:'',nom:g.nom||'',type:d.v,dj:g.dj||'',dm:g.dm||'',da:g.da||'',duree:'1',pj:[],txt:''};redraw();return true;}}
   if(a==='chSet'){if(g&&/^ch/.test(g.kind)){g[d.k]=d.v;if(d.k==='confirm')g.confirm=!!d.v;redraw();}return true;}
   /* Événements */
   if(a==='chEvNew'){if(!chCanEv())return true;const n=chNow();fiOpenDlg({kind:'chEv',id:'',num:'',nom:'',type:'Interscénario',dj:n?String(n.j):'',dm:n?String(n.m):'',da:n?String(n.a):'',duree:'1',pj:[],txt:''});render();return true;}
@@ -407,8 +412,8 @@ function chAct(a,d){
     let du=1;if(g.plus){const fe=chDateOf(g,'f');if(!fe||!fe.j||fe.j>chDim(fe.a,fe.m)){g.err='Date de fin : jour, mois et année.';redraw();return true;}du=chDays(db,fe)+1;if(du<1){g.err='La date de fin est avant le début.';redraw();return true;}}
     const ed=document.getElementById('fiEd'),txt=ed?fiSer(ed):(g.txt||'');
     const f=x?clone(x):{id:fiRid('f-'),genre:'agenda',vis:'rev',eye:{desc:true,sait:true},par:ME||'',cree:now};f.nom=nom;f.debut=db;f.duree=du;f.desc=txt;
-    S.dlg=null;FI_AT=null;fiSave(f);setTimeout(()=>toast(x?'Enregistré':'Ajouté à l\'agenda'),0);return true;}
-  if(a==='chAgDelOk'){if(!g||g.kind!=='chAg')return true;const x=S.fiches[g.id];if(!chCanAg(x))return true;S.dlg=null;S.fi=null;S.uni='chron';fiRemove(x.id);render();setTimeout(()=>toast('Retiré de l\'agenda'),0);return true;}
+    S.dlg=null;FI_AT=null;fiSave(f);setTimeout(()=>toast(x?'Enregistré':'Rendez-vous ajouté'),0);return true;}
+  if(a==='chAgDelOk'){if(!g||g.kind!=='chAg')return true;const x=S.fiches[g.id];if(!chCanAg(x))return true;S.dlg=null;S.fi=null;S.uni='chron';fiRemove(x.id);render();setTimeout(()=>toast('Rendez-vous supprimé'),0);return true;}
   /* Date du jeu */
   if(a==='chNowEd'){if(!canEdit())return true;const n=chNow()||{};fiOpenDlg({kind:'chNow',dj:String(n.j||''),dm:String(n.m||''),da:String(n.a||'')});render();return true;}
   if(a==='chNowAdd'){if(!g||g.kind!=='chNow')return true;let x=chDateOf(g,'d');if(d.v==='last'){const l=chLastEnd();if(l)x=l.d;}else if(x&&x.j){x=d.v==='m'?chAddM(x,1):chAdd(x,+d.v);}
@@ -445,3 +450,7 @@ function chAct(a,d){
     for(const r of R){const id=r.e.id,sel=id in st.sel?st.sel[id]:(r.ev?r.ev.id:''),chk=id in st.chk?st.chk[id]:!!r.ev;if(chk&&sel&&S.fiches[sel])m[id]=sel;}
     const n=Object.keys(m).length;if(!n)return true;S.chRat=null;S.chPage=null;saveEvents(S.events.map(e=>m[e.id]?{...e,evt:m[e.id]}:e));setTimeout(()=>toast(n+' session'+(n>1?'s':'')+' rattachée'+(n>1?'s':'')),0);return true;}
   return true;}
+
+/* UX2 : filtres de la Chronique (types à cocher ; volet gardé ouvert d'un rendu à l'autre) */
+document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.chty===undefined)return;const v=t.dataset.chty,L=S.chTs||[];S.chTs=t.checked?[...new Set([...L,v])]:L.filter(x=>x!==v);S.chFo=true;render();});
+document.addEventListener('toggle',ev=>{const t=ev.target;if(t&&t.classList&&t.classList.contains('chflt'))S.chFo=t.open;},true);

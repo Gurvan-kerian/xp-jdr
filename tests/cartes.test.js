@@ -55,7 +55,7 @@ console.log('1. Calculs');
     ok(r(`caReps('cp').map(x=>x.id).join()`)==='r1,r4,r5','joueur : repère préparé et repère vers une fiche cachée masqués');
     ok(!r(`fiSee(S.fiches.cz)`)&&!r(`caRepSee(S.fiches.r6)`),'joueur : carte préparée et ses repères invisibles');
     r(`S.fiTree={cp:true};`);ok(!/Carte préparée/.test(r(`fiListBody('carte')`))&&/Montmartre/.test(r(`fiListBody('carte')`)),'joueur : liste des cartes');
-    r(`S.fi='cp';S.uni='carte';`);{const h=r(`fiFicheView(S.fiches.cp)`);
+    r(`S.fi='cp';S.uni='carte';S.caPan=true;S.caPt='traj';`);{const h=r(`fiFicheView(S.fiches.cp)`);
       ok(/id="caMap"/.test(h)&&/data-capin="r1"/.test(h)&&!/data-capin="r2"/.test(h)&&/Ligne droite/.test(h)&&/2,5 km/.test(h),'fiche Carte : visionneuse, pastilles, trajet avec distance');
       ok(/data-act="caAdd"/.test(h)&&/data-act="caTrNew"/.test(h)&&/data-act="caRegle"/.test(h)&&!/data-act="caEchGo"/.test(h),'joueur : + Repère, Trajet, Règle ; pas d\'Échelle');}
     r(`S.caSel='r5';`);ok(/Ouvrir la sous-carte/.test(r(`caMapHtml(S.fiches.cp)`))&&/data-act="caRepEd"/.test(r(`caMapHtml(S.fiches.cp)`)),'bulle d\'un repère vers une sous-carte ; ✎ pour le joueur');r(`S.caSel=null;`);
@@ -147,7 +147,7 @@ const SHOTS=process.env.SHOTS;
       {const {page,errs,ctx}=await open(browser,base,db,'anne');
         await page.evaluate(()=>{S.view='univers';S.uni='home';render();});ok(/Cartes/.test(await txt(page)),'Univers : entrée Cartes');
         await page.evaluate(()=>{S.uni='carte';S.fi=null;S.fiTree={cp:true};render();});let t=await txt(page);ok(/Paris/.test(t)&&/Montmartre/.test(t)&&!/Carte préparée/.test(t),'liste des cartes (joueur)');
-        await page.evaluate(()=>{S.fi='cp';render();});t=await txt(page);ok(/Repères/i.test(t)&&/Trajets/i.test(t)&&/Ligne droite/.test(t),'fiche Carte : listes');
+        await page.evaluate(()=>{S.fi='cp';S.caPan=true;S.caPt='traj';render();});t=await txt(page);ok(/Repères/i.test(t)&&/Trajets/i.test(t)&&/Ligne droite/.test(t),'fiche Carte : panneau Repères / Trajets (UX2)');await page.evaluate(()=>{S.caPt='rep';render();});
         const BOX=()=>page.evaluate(()=>{const b=document.querySelector('#caMap .cain').getBoundingClientRect(),m=document.getElementById('caMap').getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height,mw:m.width,mh:m.height,mx:m.x,my:m.y};});let box=await BOX();
         ok(box.mh>=290&&box.mw>300,'visionneuse affichée ('+Math.round(box.mw)+' × '+Math.round(box.mh)+')');
         const v0=await page.evaluate(()=>JSON.stringify(CA_V.cp));

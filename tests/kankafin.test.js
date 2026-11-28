@@ -104,7 +104,7 @@ const SHOTS=process.env.SHOTS;
         ok(!/Judicaëlle devient régente/.test(t),'textes repliés par défaut');
         await click(page,'[data-act="ctAll"][data-v="1"]');await wait(page);t=await txt(page);ok(/Judicaëlle devient régente/.test(t)&&/Monarchie/.test(t),'Tout déplier');
         ok(await page.evaluate(()=>!!document.querySelector('.ctel .lk[data-id="mon"]')),'lien « @ » vers la Monarchie');
-        ok(/01[\s\S]*À la vie, à la mort[\s\S]*001[\s\S]*La ronce/.test(t)&&!/Une visite/.test(t)&&!/Avant/.test(t),'séances de la Chronique : Scénarios et Interscénarios de l\'ère, dans l\'ordre');
+        await page.evaluate(()=>document.querySelectorAll('details.ctsd').forEach(d=>d.open=true));t=await txt(page);ok(/01[\s\S]*À la vie, à la mort/.test(t)&&!/La ronce/.test(t)&&!/Une visite/.test(t)&&!/Avant/.test(t),'séances de la Chronique : Scénarios seuls de l\'ère, repliées (UX2)');
         ok(await page.evaluate(()=>getComputedStyle(document.querySelector('.ctera.ctc-violet .ctdot')).backgroundColor)==='rgb(107, 79, 134)','couleur de l\'ère sur les points');
         ok(/\+ Un élément/.test(t)&&!/\+ Une ère/.test(t),'joueur : élément oui (fiche révélée), ère non');
         await click(page,'[data-act="ctTog"][data-i="e7"]');await wait(page);ok(!/Swen est déclarée Reine/.test(await txt(page)),'toucher un titre replie son texte');

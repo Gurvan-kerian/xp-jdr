@@ -182,7 +182,8 @@ function refRead(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr
   const items=(l,k,sign)=>{const L=(l||[]).filter(a=>a&&a[0]);return L.length?L.map(a=>`<div class="rit">${sign?`<span class="pm ${sign}" aria-hidden="true">${sign==='p'?'+':'−'}</span>`:''}<div><b>${k==='cap'?capLk(a):esc(a[0])}</b>${a[1]?`<div class="d">${esc(a[1])}</div>`:''}${fxs(k,a[0])}</div></div>`).join(''):none;};
   /* en-tête */
   let h=`<div class="rtop">${crumb(CR_UNI,['Races','data-act="rfBack"'],[''])}${E?`<button class="btn" style="white-space:nowrap" data-act="rfEdOn">${ICON.crayon} Modifier toute la fiche</button>`:''}</div>
-  <div class="card rhead">${illOf('race',cr.id)?`<div class="fibigw">${bigImg(illId('race',cr.id),illOf('race',cr.id),raceNm(x))}</div>`:''}<div class="rhd2"><div style="flex:1;min-width:0"><h2 class="rn2">${esc(raceNm(x))}<small>${esc(raceNmOther(x))}</small></h2><div class="muted small">${F[cr.fam]||''}${cr.done?' · <span class="rdot">✓ fiche complète</span>':''}${mine?' · ta race':''}${pjs.length?' · '+pjs.map(c=>lk({t:'perso',id:c.id},c.court)).join(', '):''}</div></div>${kankaBtn(x.kanka,x.sing,'Fiche Kanka : '+x.sing)}</div>
+  <div class="card rhead"><div class="rhd2"><div style="flex:1;min-width:0"><h2 class="rn2">${esc(raceNm(x))}<small>${esc(raceNmOther(x))}</small></h2><div class="muted small">${F[cr.fam]||''}${cr.done?' · <span class="rdot">✓ fiche complète</span>':''}${mine?' · ta race':''}${pjs.length?' · '+pjs.map(c=>lk({t:'perso',id:c.id},c.court)).join(', '):''}</div></div>${kankaBtn(x.kanka,x.sing,'Fiche Kanka : '+x.sing)}</div>
+  ${tab==='por'&&illOf('race',cr.id)?`<div class="fibigw rimg40">${bigImg(illId('race',cr.id),illOf('race',cr.id),raceNm(x))}</div>`:''}
   ${pv&&(por.acc||'').trim()?`<div class="racc">${esc(por.acc)}</div>`:''}${E?`<div style="margin-top:6px"><button type="button" class="edl" data-act="rfEdBlk" data-b="id">${ICON.crayon} Nom, famille, Kanka</button></div>`:''}`;
   if(G)h+=`<div class="hd2" style="margin-top:8px"><div class="vis ${e.fiche?'v':'c'}" style="display:flex;align-items:center;gap:6px">${eyeBtn('eye',`data-id="${esc(cr.id)}" data-k="fiche"`,e.fiche,'Fiche '+x.sing)} ${e.fiche?'Fiche visible par la table':'Fiche cachée aux joueurs'}</div><button class="cpl${raceAllOpen(cr)?' on':''}" data-act="raceFull" data-id="${esc(cr.id)}" role="switch" aria-checked="${raceAllOpen(cr)}"${raceAllOpen(cr)?' aria-disabled="true"':''}><span class="tg${raceAllOpen(cr)?' on':''}"></span><small>Fiche complète</small></button></div>
     <div class="rgau"><span>Visibilité</span><span class="gau"><i style="width:${Math.round(100*n/t)}%"></i></span><b>${n} / ${t}</b></div>`;
@@ -195,9 +196,9 @@ function refRead(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr
     else{const kv=(l,v)=>(v||'').trim()?`<div class="rkv"><span>${l}</span><div>${esc(v)}</div></div>`:'';
       const desc=kv('Apparence',por.app)+kv('Taille',por.tai)+kv('Sexe',por.sexe)+kv('Reproduction',por.rep)+kv('Habitat privilégié',por.hab);
       const ed={edit:'por'};
-      h+=rBlk('desc','Description','',desc||none,ed)+rBlk('carac','Caractère','',(por.car||'').trim()?`<div class="small" style="white-space:pre-line">${esc(por.car)}</div>`:none,ed);
+      if(desc||E)h+=rBlk('desc','Description','',desc||none,ed);if((por.car||'').trim()||E)h+=rBlk('carac','Caractère','',(por.car||'').trim()?`<div class="small" style="white-space:pre-line">${esc(por.car)}</div>`:none,ed); /* UX2 : blocs vides masqués */
       const cel=(por.cel||'').split(/\s*;\s*/).map(s=>s.trim()).filter(Boolean);
-      h+=rBlk('cel','Figures célèbres',cel.length?String(cel.length):'',cel.length?`<ul class="rdl">${cel.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>`:none,ed);}
+      if(cel.length||E)h+=rBlk('cel','Figures célèbres',cel.length?String(cel.length):'',cel.length?`<ul class="rdl">${cel.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>`:none,ed);}
     const I=(r.infos||[]).filter(i=>G||!i.cache);
     if(E)h+=rBlk('inf','Informations complémentaires',String((r.infos||[]).length),rInfEdit(r));
     else if(I.length)h+=rBlk('inf','Informations complémentaires',String(I.length),I.map(i=>`<div class="fi"><b>${esc(i.lab||'')}</b>${i.cache?' <span class="tag2">masquée</span>':''}<div class="s">${esc(i.txt||'')}</div></div>`).join(''));

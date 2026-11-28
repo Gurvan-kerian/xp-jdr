@@ -47,42 +47,84 @@ function viewUnivers(){
   if(S.uni==='pnj')return fiUniBack()+pnListView(); /* UX1 : PNJ dans l'Univers */
   if(FI_G[S.uni])return fiUniView();
   if(S.uni==='chron'||S.uni==='evenement'||S.uni==='agenda')return chUniView(); /* lot 3 */
-  if(S.uni==='pouvoirs')return fiUniBack()+`<h2 style="margin-top:2px">Pouvoirs et capacités</h2>`+viewUniPw(); /* lot 2 bis */
+  if(S.uni==='pouvoirs'){const m=/^(pw|cap):(.+)$/.exec(S.fi||'');return m?pwPageView(m[1],m[2]):fiUniBack()+viewUniPw();} /* lot 2 bis ; UX2 : page */
   if(S.uni==='creatures')return (S.rf?'':fiUniBack()+`<h2 style="margin-top:2px">Races</h2>`)+viewRaces();
   if(!S.secretsReady)return fiUniBack()+`<div class="card empty">Chargement des secrets…</div>`;
   const s=S.sec!=null&&secById(S.sec);
   return s?viewSecret(s):fiUniBack()+`<h2 style="margin-top:2px">Secrets</h2>`+viewSecretList();
 }
+/* ---------- UX2 (28/11/2026) : lot de révélations — meta/secrets.lot = [{id, n, k, i (-1 = nouvel élément), txt, prop?}] ---------- */
+const secLot=()=>(S.secretsDoc&&Array.isArray(S.secretsDoc.lot))?S.secretsDoc.lot:[];
+function saveLot(L){S.secretsDoc={...(S.secretsDoc||{}),list:S.secrets,props:S.secretProps||[],lot:L};persist('meta/secrets',S.secretsDoc);render();}
+const inLot=(n,k,i)=>secLot().some(x=>x.n===n&&x.k===k&&x.i===i);
+const lotOfSec=n=>secLot().filter(x=>x.n===n).length;
+function lotLab(x){const s=secById(x.n),K=SKIND[x.k];const t=x.k==='titre'?(x.txt||(s&&s.titre)||''):(x.i>=0?((s&&s.slots[x.k][x.i])||{}).txt:x.txt)||'';return {sec:'Secret '+(ROMAN[x.n-1]||x.n),k:K.nom,t};}
+/* XP du lot, bonus compris : simulation sur une copie des secrets */
+function lotXp(L){const list=clone(S.secrets);let xp=0;
+  for(const x of L){const s=list.find(y=>y.n===x.n);if(!s)continue;
+    if(x.k==='titre'){if(!titreVis(s)){xp+=s.titrePts||SKIND.titre.pts;s.titre=s.titre||x.txt;delete s.titreHid;}continue;}
+    const a=s.slots[x.k]||[];let i=x.i;if(i<0){i=a.findIndex(y=>!y);if(i<0)continue;a[i]={txt:x.txt,pts:SKIND[x.k].pts};}else if(!a[i]||!a[i].hid)continue;else delete a[i].hid;
+    xp+=a[i].pts||SKIND[x.k].pts;if(x.k==='vm'&&!s.bonus&&secComplete(s)){s.bonus=true;xp+=SEC_BONUS;}}
+  return xp;}
+function lotBanner(){if(!isGest())return '';const L=secLot();if(!L.length)return '';
+  return `<div class="lotban" role="status"><span><b>Révélations en attente (${L.length})</b></span><span class="ux2sp"></span><button type="button" class="btn sm pri" data-act="lotOpen">Valider</button><button type="button" class="btn sm" data-act="lotClr">Tout annuler</button></div>`;}
+function lotApply(){const g=S.dlg;if(!isGest()||!g)return;const L=secLot(),sid=g.sess||'';if(!L.length){S.dlg=null;render();return;}
+  const xp=lotXp(L),props=clone(S.secretProps||[]);S.dlg=null;
+  for(const x of L){const s=secById(x.n);if(!s)continue;
+    if(x.prop){const p=props.find(y=>y.id===x.prop);if(p){p.st='ok';p.dec=today();p.i=x.i<0?0:x.i;}}
+    if(x.k==='titre'){if(s.titre&&s.titreHid){if(x.txt&&x.txt!==s.titre)secEdit(s.n,'titre',0,x.txt);secEyeSet(s.n,'titre',0,true,sid);}else if(!s.titre&&x.txt)secConsign(s.n,'titre',x.txt,sid,false);}
+    else if(x.i<0)secConsign(s.n,x.k,x.txt,sid,false);
+    else secEyeSet(s.n,x.k,x.i,true,sid);}
+  S.secretProps=props;saveLot([]);
+  notify({kind:'secRev',lot:L.map(x=>({n:x.n,k:x.k})),xp,from:ME});
+  setTimeout(()=>toast(L.length+' révélation'+(L.length>1?'s':'')+' validée'+(L.length>1?'s':'')+' · +'+xp+' XP de groupe'),0);}
+function lotWinSheet(g){const s=secById(g.n);if(!s)return null;const x=g.k==='titre'?{txt:s.titre}:(s.slots[g.k]||[])[g.i];if(!x)return null;const n=secLot().length+1;
+  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Révéler"><div class="in"><div><h2>Révéler ${g.k==='titre'?'le titre':'cet élément'}</h2><div class="muted small">${esc(secLabel(s,true))} · ${SKIND[g.k].nom}</div></div>
+    <div class="xpbox" style="background:var(--surface2)">${esc(x.txt||'')}</div>
+    <div class="muted small">Les révélations s'ajoutent à un lot : la table est notifiée une seule fois, à la validation.</div>
+    <div class="lotbtns"><button class="btn pri" data-act="lotAdd" data-v="go">Valider (${n}) et notifier</button><button class="btn" data-act="lotAdd" data-v="more">Ajouter des révélations</button><button class="btn ghost" data-act="closeSheet">Annuler (cet élément seulement)</button></div></div></div>`;}
+function lotRecapSheet(g){const L=secLot();if(!L.length)return null;const xp=lotXp(L),np=allPJ().length,ses=sessById(g.sess),SL=sessList();
+  const rows=L.map(x=>{const b=lotLab(x);return `<div class="lotrow"><div><span class="muted small">${esc(b.sec)} · ${esc(b.k)}</span><div>${esc(b.t.length>90?b.t.slice(0,90)+'…':b.t)}</div></div><button type="button" class="ibtn sm" data-act="lotRm" data-id="${esc(x.id)}" aria-label="Retirer du lot">✕</button></div>`;}).join('');
+  const sess=SL.length?(g.chg?`<div class="field"><label for="sxs">Session de rattachement</label><select id="sxs" data-sxs="1">${sessOptions(g.sess,true)}</select></div>`:`<div class="rvs">Rattaché à : <b>${ses?sessLabel(ses):'—'}</b> <button class="lnk" data-act="lotChg">changer</button></div>`):'<div class="muted small">Aucune session : les révélations ne seront rattachées à aucune session.</div>';
+  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Révélations en attente"><div class="in"><div><h2>Révélations en attente (${L.length})</h2></div>${rows}
+    <div class="xpbox">★ La table gagne ${xp} XP de groupe (${np} PJ actif${np>1?'s':''}), bonus compris.</div>${sess}
+    <div class="actions"><button class="btn" data-act="closeSheet">Fermer</button><button class="btn pri" data-act="lotOk">Valider et notifier</button></div></div></div>`;}
+/* Événement de découverte : celui de la session de rattachement */
+function secFoundEv(n,k,i){const e=secEv(n,k,i),ss=e&&e.sessionId&&sessById(e.sessionId),f=ss&&ss.evt&&S.fiches[ss.evt];if(!f||!fiSee(f))return '';
+  return `<span class="secev"><span class="chpil ${chCl(f)}">${esc(chNumOf(f)||'')}</span><span class="secevt">${lk({t:'fiche',id:f.id},f.nom)}</span><span class="secevd">· ${esc(chOk(f.debut)?chRangeShort(f.debut,f.duree):'')}</span></span>`;}
 function viewSecretList(){
-  const L=S.secrets,tot=L.reduce((a,s)=>a+secPts(s),0),nt=L.filter(titreVis).length,nb=L.filter(s=>s.bonus).length,f=S.secFilter||'all';
-  let h=`<div class="card secsum"><div style="display:flex;align-items:baseline;gap:10px"><span class="big num">${tot}</span><span>XP de groupe<br>issue des secrets</span></div><div class="muted small" style="text-align:right">${nt}/${L.length} titres<br>${nb} bonus de secret complété</div></div>`;
-  h+=`<div class="chips" style="margin-top:12px">${[['all','Tous',L.length],['open','Révélés',nt],['sealed','Scellés',L.length-nt]].map(([k,l,n])=>`<button class="chip" data-act="secFilter" data-v="${k}" aria-pressed="${f===k}">${l} · ${n}</button>`).join('')}</div>`;
-  h+=`<div class="legend"><span><span class="g-vm">◆</span> vérité majeure +3</span><span><span class="g-vmin">●</span> mineure +2</span><span><span class="g-h">■</span> indice +1</span><span>titre +1 · bonus +${SEC_BONUS}</span></div>`;
+  const L=S.secrets,tot=L.reduce((a,s)=>a+secPts(s),0),nt=L.filter(titreVis).length,nb=L.filter(s=>s.bonus).length,f=S.secFilter||'all',hp=(S.xpHelp||{}).sec;
+  let h=lotBanner()+`<div class="secsum2"><span><b class="num">${tot} XP</b> · ${nt}/${L.length} titres · ${nb} bonus</span><button type="button" class="qbtn" data-act="xpHelp" data-k="sec" aria-label="Barème" aria-expanded="${!!hp}">?</button></div>`;
+  if(hp)h+=`<div class="qtip2 legend"><span><span class="g-vm">◆</span> vérité majeure +3</span><span><span class="g-vmin">●</span> mineure +2</span><span><span class="g-h">■</span> indice +1</span><span>titre +1 · secret complété +${SEC_BONUS}</span></div>`;
+  h+=`<div class="seg secseg" role="group" aria-label="Filtre">${[['all','Tous'],['open','Révélés'],['sealed','Scellés']].map(([k,l])=>`<button type="button" data-act="secFilter" data-v="${k}" aria-pressed="${f===k}">${l}</button>`).join('')}</div>`;
   const shown=L.filter(s=>f==='all'||(f==='open'?titreVis(s):!titreVis(s)));
   h+=`<div class="secgrid">`+shown.map(s=>{
     const row=k=>{const [a,t]=secCount(s,k);return `<span class="pp"><span class="g-${k}" aria-hidden="true">${secPips(s,k)}</span><span class="muted">${t?a+'/'+t:''}</span></span>`;};
-    const nh=isGest()?['vm','vmin','h'].reduce((a,k)=>a+secHid(s,k),0)+(s.titre&&s.titreHid?1:0):0,tv=titreVis(s)||(isGest()&&s.titre);
-    return `<button class="card sec${titreVis(s)?'':' sealed'}" data-act="secOpen" data-n="${s.n}" aria-label="${esc(secLabel(s))}, ${secPts(s)} XP"><span class="hd"><span class="rn">${ROMAN[s.n-1]}${isGest()&&propsOf(s.n).some(p=>p.st==='att')?`<span class="bdg" aria-label="proposition en attente">${propsOf(s.n).filter(p=>p.st==='att').length}</span>`:''}</span><span class="num">${secPts(s)} XP</span></span><span class="tt">${tv?esc(s.titre)+(titreVis(s)?'':' <span class="muted small">(caché)</span>'):'Titre à découvrir'}</span>${row('vm')}${row('vmin')}${row('h')}${s.bonus?'<span class="small done">Bonus remporté</span>':''}${nh?`<span class="small muted">${EYE_C} ${nh} élément${nh>1?'s':''} préparé${nh>1?'s':''}, caché${nh>1?'s':''}</span>`:''}</button>`;
+    const G=isGest(),nh=G?['vm','vmin','h'].reduce((a,k)=>a+secHid(s,k),0)+(s.titre&&s.titreHid?1:0):0,tv=titreVis(s)||(G&&s.titre),nl=G?lotOfSec(s.n):0,np=G?propsOf(s.n).filter(p=>p.st==='att'&&!secLot().some(x=>x.prop===p.id)).length:0;
+    return `<button class="card sec${titreVis(s)?'':' sealed'}" data-act="secOpen" data-n="${s.n}" aria-label="${esc(secLabel(s))}, ${secPts(s)} XP"><span class="hd"><span class="rn">${ROMAN[s.n-1]}${np?`<span class="bdg" aria-label="proposition en attente">${np}</span>`:''}</span><span class="num">${secPts(s)} XP</span></span><span class="tt">${tv?esc(s.titre)+(titreVis(s)?'':' <span class="muted small">(à révéler)</span>'):'Titre à découvrir'}</span>${row('vm')}${row('vmin')}${row('h')}${s.bonus?'<span class="small done">Bonus remporté</span>':''}${nl?`<span class="small lotn">${nl} en attente</span>`:nh?`<span class="small muted">${nh} à révéler</span>`:''}</button>`;
   }).join('')+`</div>`;
   return h;
 }
 function viewSecret(s){
-  const [vf,vt]=secCount(s,'vm');
-  let h=crumb(CR_UNI,['Secrets','data-act="secBack"'],['Secret '+ROMAN[s.n-1]]);
-  h+=`<div class="sechead" id="seck-titre"><div><div class="rn">SECRET ${ROMAN[s.n-1]}</div><h2>${titreVis(s)||(isGest()&&s.titre)?esc(s.titre):'<span class="muted">Titre à découvrir</span>'}</h2></div><span class="pts num">${secPts(s)} XP</span></div>`;
-  const tEye=isGest()&&s.titre?eyeBtn('eye',`data-t="sec" data-n="${s.n}" data-k="titre" data-i="0"`,!s.titreHid,'Titre du secret'):'';
-  h+=titreVis(s)||(isGest()&&s.titre)?`<div class="fwrap${s.titreHid?' hid':''}"><${canEdit()?'button':'div'} class="found" style="padding-top:2px"${canEdit()?' data-act="secEntry" data-k="titre" data-i="0"':''}><span class="muted small">${s.titreHid?'Titre préparé, caché · +'+(s.titrePts||1)+' XP au dévoilement':'Titre découvert · +'+(s.titrePts||1)+' XP'}</span></${canEdit()?'button':'div'}>${tEye}</div>`:`<div class="muted small">Le titre n'est pas encore connu (+1 XP).</div>`;
+  const [vf,vt]=secCount(s,'vm'),G=isGest(),E=canEdit();
+  let h=crumb(CR_UNI,['Secrets','data-act="secBack"'],['Secret '+ROMAN[s.n-1]])+lotBanner();
+  const revB=(k,i)=>inLot(s.n,k,i)?'<span class="lotn small">en attente</span>':`<button type="button" class="btn sm ux2rvb" data-act="secRevAsk" data-n="${s.n}" data-k="${k}" data-i="${i}">Révéler</button>`;
+  h+=`<div class="sechead" id="seck-titre"><div><div class="rn">SECRET ${ROMAN[s.n-1]}</div><h2>${titreVis(s)?esc(s.titre):'<span class="muted">Titre à découvrir</span>'}</h2></div><span class="pts num">${secPts(s)} XP</span></div>`;
+  if(G&&s.titre&&s.titreHid)h+=`<div class="secarev"><div><span class="muted small">Titre à révéler</span><div>${esc(s.titre)}</div></div>${revB('titre',0)}</div>`;
+  else if(titreVis(s)){const ev=secFoundEv(s.n,'titre',0);if(ev||(E&&G))h+=`<div class="fwrap secfnd">${ev}${E?`<button type="button" class="ibtn sm" data-act="secEntry" data-k="titre" data-i="0" aria-label="Modifier le titre">${ICON.crayon}</button>`:''}${G&&E?eyeBtn('eye',`data-t="sec" data-n="${s.n}" data-k="titre" data-i="0"`,true,'Titre du secret'):''}</div>`;}
   h+=propBlocks(s);
-  if(vt){h+=`<div class="card" style="margin-top:14px"><div class="prof-head"><b>Bonus du secret complété</b><span class="pill ${s.bonus?'good':'plan'}">+${SEC_BONUS}</span></div><div class="bgauge" style="grid-template-columns:repeat(${vt},minmax(0,1fr))">${Array.from({length:vt},(_,i)=>`<i class="${i<vf?'on':''}"></i>`).join('')}</div><div class="muted small">${s.bonus?'Remporté : toutes les vérités majeures sont découvertes.':`${vf} vérité${vf>1?'s':''} majeure${vf>1?'s':''} sur ${vt}. Encore ${vt-vf} pour remporter le bonus.`}</div></div>`;}
+  if(vt)h+=`<div class="secbg"><span class="muted small">${s.bonus?`Bonus remporté (+${SEC_BONUS})`:`Bonus +${SEC_BONUS} · ${vf}/${vt}`}</span><div class="bgauge" style="grid-template-columns:repeat(${vt},minmax(0,1fr))">${Array.from({length:vt},(_,i)=>`<i class="${i<vf?'on':''}"></i>`).join('')}</div></div>`;
   for(const k of ['vm','vmin','h']){
     const a=s.slots[k]||[];if(!a.length)continue;const [f,t]=secCount(s,k),K=SKIND[k];
-    h+=`<div class="sk" id="seck-${k}"><h3><span class="g-${k}">${K.g}</span> ${K.pl}</h3><span class="muted small">${f}/${t} · ${K.pts} XP ${k==='h'?'chacun':'chacune'}</span></div>`;
-    const G=isGest(),E=canEdit(),found=a.map((x,i)=>x&&(G||!x.hid)?`<div class="fwrap${x.hid?' hid':''}" id="secel-${k}-${i}"><${E?'button':'div'} class="found"${E?` data-act="secEntry" data-k="${k}" data-i="${i}"`:''}>${esc(x.txt)}<small>${x.hid?'Caché · +'+x.pts+' XP au dévoilement':'+'+x.pts+' XP'+(x.date?' · '+fmtDate(x.date):'')}</small></${E?'button':'div'}>${G?eyeBtn('eye',`data-t="sec" data-n="${s.n}" data-k="${k}" data-i="${i}"`,!x.hid,K.nom):''}</div>`:'').join('');
-    if(found)h+=`<div class="card" style="padding:2px 12px">${found}</div>`;
-    const sl=G?a.filter(x=>!x).length:t-f;
-    if(sl)h+=`<div class="sealedbox">${sl===1?`${k==='h'?'1 indice encore scellé':'1 '+K.nom.toLowerCase()+' encore scellée'}`:`${sl} ${K.pl.toLowerCase()} encore ${k==='h'?'scellés':'scellées'}`}</div>`;
+    h+=`<div class="sk" id="seck-${k}"><h3><span class="g-${k}">${K.g}</span> ${K.pl}</h3><span class="muted small">${f}/${t}</span></div>`;
+    const rows=a.map((x,i)=>{if(!x)return '';
+      if(x.hid)return G?`<div class="secarev" id="secel-${k}-${i}"><div>${esc(x.txt)}</div>${revB(k,i)}</div>`:'';
+      return `<div class="fwrap" id="secel-${k}-${i}"><div class="found">${esc(x.txt)}${secFoundEv(s.n,k,i)}</div>${E?`<button type="button" class="ibtn sm" data-act="secEntry" data-k="${k}" data-i="${i}" aria-label="Modifier">${ICON.crayon}</button>`:''}${G&&E?eyeBtn('eye',`data-t="sec" data-n="${s.n}" data-k="${k}" data-i="${i}"`,true,K.nom):''}</div>`;}).join('');
+    if(rows)h+=`<div class="card" style="padding:2px 12px">${rows}</div>`;
+    const sl=a.filter(x=>!x).length+(G?0:a.filter(x=>x&&x.hid).length);
+    if(sl)h+=`<div class="secseal g-${k}" aria-label="${sl} encore scellé${sl>1?'s':''}">${K.o.repeat(sl)}</div>`;
   }
-  if(isGest()){const any=['titre','vm','vmin','h'].some(k=>secFree(s,k));
+  if(G){const any=['titre','vm','vmin','h'].some(k=>secFree(s,k));
     h+=`<button class="btn pri cta" data-act="secAdd"${any?'':' disabled'}>${any?'+ Consigner une découverte':'Tout est consigné'}</button>`;}
   else{const ks=propKinds(s);h+=`<button class="btn pri cta" data-act="propNew"${ks.length&&ME&&!S.visit?'':' disabled'}>${ks.length?'+ Proposer une découverte':'Plus rien à proposer'}</button>`;}
   return h;
@@ -99,7 +141,7 @@ const plNom=id=>(S.players[id]&&S.players[id].nom)||'Quelqu\'un';
 const fmtAt=iso=>{if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';return 'Le '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+' à '+d.getHours()+' h '+String(d.getMinutes()).padStart(2,'0');};
 function saveProps(list){S.secretProps=list;S.secretsDoc={...(S.secretsDoc||{}),list:S.secrets,props:list};persist('meta/secrets',S.secretsDoc);render();}
 function propBlocks(s){const G=isGest(),L=propsOf(s.n);let h='';
-  if(G){for(const p of L.filter(x=>x.st==='att'))h+=`<div class="card propc" role="group" aria-label="Proposition en attente"><div class="lab2" style="margin-top:0">Proposition en attente</div><div><b>${esc(plNom(p.by))}</b> propose <button type="button" class="lk" data-act="secJump" data-k="${p.k==='titre'?'titre':'h'}">${PROP_K[p.k]}</button> :</div><div class="propt">« ${esc(p.txt)} »</div><div class="muted small">${fmtAt(p.at)}</div><div class="actions"><button class="btn" data-act="propRej" data-id="${esc(p.id)}">Rejeter</button><button class="btn pri" data-act="propOk" data-id="${esc(p.id)}">Confirmer</button></div></div>`;}
+  if(G){for(const p of L.filter(x=>x.st==='att'&&!secLot().some(y=>y.prop===x.id)))h+=`<div class="card propc" role="group" aria-label="Proposition en attente"><div class="lab2" style="margin-top:0">Proposition en attente</div><div><b>${esc(plNom(p.by))}</b> propose <button type="button" class="lk" data-act="secJump" data-k="${p.k==='titre'?'titre':'h'}">${PROP_K[p.k]}</button> :</div><div class="propt">« ${esc(p.txt)} »</div><div class="muted small">${fmtAt(p.at)}</div><div class="actions"><button class="btn" data-act="propRej" data-id="${esc(p.id)}">Rejeter</button><button class="btn pri" data-act="propOk" data-id="${esc(p.id)}">Confirmer</button></div></div>`;}
   else if(ME){for(const p of L.filter(x=>x.by===ME&&(x.st==='att'||x.st==='rej')))h+=`<div class="card propc${p.st==='rej'?' rej':''}"><div class="lab2" style="margin-top:0">${p.st==='att'?'Ta proposition est en attente':'Ta proposition a été rejetée'}</div><div class="small">${p.k==='titre'?'Titre':'Indice'} proposé ${p.at?'le '+fmtDate((p.at||'').slice(0,10)):''} : « ${esc(p.txt)} »</div>${p.st==='rej'?`<div class="actions"><button class="btn ghost" data-act="propHide" data-id="${esc(p.id)}">Effacer</button></div>`:''}</div>`;}
   return h;}
 function propSheet(g){const s=secById(g.n);if(!s)return null;const ks=propKinds(s);if(!ks.includes(g.k))g.k=ks[0];if(!g.k)return null;
@@ -115,22 +157,20 @@ function revSheet(g){const p=(S.secretProps||[]).find(x=>x.id===g.id),s=p&&secBy
   else{const a=s.slots.h||[],hid=a.map((x,i)=>[x,i]).filter(([x])=>x&&x.hid),free=a.some(x=>!x);
     body=`<div class="field"><label>Indice à dévoiler (${a.filter(x=>!sVis(x)).length} encore scellé${a.filter(x=>!sVis(x)).length>1?'s':''})</label><div class="rvl">`+hid.map(([x,i])=>`<button class="rvo" data-act="rvPick" data-v="${i}" aria-pressed="${g.pick===String(i)}"><span class="rd" aria-hidden="true"></span><span>Indice ${i+1} · ${esc(x.txt.length>60?x.txt.slice(0,60)+'…':x.txt)}</span></button>`).join('')+(free?`<button class="rvo" data-act="rvPick" data-v="new" aria-pressed="${g.pick==='new'}"><span class="rd" aria-hidden="true"></span><span>Nouvel indice, avec le texte du joueur</span></button>`:'')+`</div></div>${g.pick==='new'?`<div class="field"><label for="rvt">Texte de l'indice</label><textarea id="rvt" data-rvt="1">${esc(g.txt)}</textarea></div>`:''}`;}
   const pts=SKIND[p.k].pts,ok=(p.k==='titre'||g.pick)&&(p.k!=='titre'&&g.pick!=='new'||(g.txt||'').trim());
-  const sess=L.length?(g.chg?`<div class="field"><label for="sxs">Session de rattachement</label><select id="sxs" data-sxs="1">${sessOptions(g.sess,true)}</select></div>`:`<div class="rvs">Rattaché à : <b>${ses?sessLabel(ses):'—'}</b> <button class="lnk" data-act="rvChg">changer</button></div>`):'<div class="muted small">Aucune session : la découverte ne sera rattachée à aucune session.</div>';
+  const sess='<div class="muted small">La révélation rejoint le lot en attente : session et notification à la validation du lot.</div>';
   return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Révéler"><div class="in"><div><h2>Révéler ${p.k==='titre'?'le titre':'un indice'}</h2><div class="muted small">${esc(secLabel(s,true))}</div></div>
     <div class="xpbox" style="background:var(--surface2)">${esc(plNom(p.by))} propose : « ${esc(p.txt)} ».</div>${body}${sess}
     <div class="xpbox">★ La table gagne ${pts} XP de groupe (${np} PJ actif${np>1?'s':''}).</div>
-    <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="rvOk"${ok?'':' disabled'}>Révéler</button></div></div></div>`;}
+    <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="rvOk"${ok?'':' disabled'}>Ajouter au lot</button></div></div></div>`;}
 function propSend(){const g=S.dlg,s=g&&secById(g.n),txt=((g&&g.txt)||'').trim();if(!s||!txt||!ME||!propKinds(s).includes(g.k))return;
   const p={id:'pr'+Date.now().toString(36)+Math.floor(Math.random()*1e3),n:s.n,k:g.k,txt,by:ME,at:new Date().toISOString(),st:'att'};
   S.dlg=null;saveProps([...(S.secretProps||[]),p]);notify({kind:'secProp',propId:p.id,from:ME});}
 function propReject(id){if(!isGest())return;const L=clone(S.secretProps||[]),p=L.find(x=>x.id===id);if(!p||p.st!=='att')return;p.st='rej';p.dec=today();saveProps(L);notify({kind:'secRej',propId:id,from:ME});}
-function propReveal(){const g=S.dlg;if(!isGest()||!g)return;const L=clone(S.secretProps||[]),p=L.find(x=>x.id===g.id),s=p&&secById(p.n);if(!s||p.st!=='att')return;
-  const txt=(g.txt||'').trim(),sid=g.sess||'';let i=0;
-  if(p.k==='titre'){if(!txt)return;}else{if(!g.pick)return;if(g.pick==='new'){if(!txt)return;i=(s.slots.h||[]).findIndex(x=>!x);if(i<0)return;}else i=+g.pick;}
-  p.st='ok';p.dec=today();p.i=i;S.secretProps=L;S.dlg=null;
-  if(p.k==='titre'){if(s.titre&&s.titreHid){if(txt!==s.titre)secEdit(s.n,'titre',0,txt);secEyeSet(s.n,'titre',0,true,sid);}else if(!s.titre)secConsign(s.n,'titre',txt,sid,false);else saveProps(L);}
-  else if(g.pick==='new')secConsign(s.n,'h',txt,sid,false);else secEyeSet(s.n,'h',i,true,sid);
-  notify({kind:'secRev',propId:p.id,from:ME,xp:SKIND[p.k].pts});}
+function propReveal(){const g=S.dlg;if(!isGest()||!g)return;const p=(S.secretProps||[]).find(x=>x.id===g.id),s=p&&secById(p.n);if(!s||p.st!=='att')return;
+  const txt=(g.txt||'').trim();let i=0;
+  if(p.k==='titre'){if(!txt)return;}else{if(!g.pick)return;if(g.pick==='new'){if(!txt)return;i=-1;}else i=+g.pick;}
+  S.dlg=null;saveLot([...secLot(),{id:'lt'+Date.now().toString(36),n:s.n,k:p.k,i,txt,prop:p.id}]); /* UX2 : la confirmation entre dans le lot */
+  setTimeout(()=>toast('Ajouté aux révélations en attente'),0);}
 function secGainPreview(s,k){const p=SKIND[k].pts;const bonus=k==='vm'&&!s.bonus&&secCount(s,'vm')[1]-secCount(s,'vm')[0]===1;return{p,bonus,total:p+(bonus?SEC_BONUS:0)};}
 function secSheet(g){
   const s=secById(g.n);if(!s)return null;

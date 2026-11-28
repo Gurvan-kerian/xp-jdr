@@ -53,20 +53,51 @@ function elUseSeen(k,u){const x=raceRec(u.cr);if(!x)return false;const e=eyeOf(u
 const elSeenUses=(k,id)=>elUses(k,id).filter(u=>elUseSeen(k,u));
 function uniPwSum(){if(!S.pouvoirsReady&&!S.pouvoirs)return 'chargement…';const n=k=>Object.keys(elMap(k)).filter(id=>canEdit()||elSeenUses(k,id).length).length;
   return canEdit()?`${n('pw')} pouvoirs · ${n('cap')} capacités`:`${n('pw')} pouvoirs · ${n('cap')} capacités connus`;}
-function viewUniPw(){const k=S.pcat==='cap'?'cap':'pw',pw=k==='pw',E=canEdit();
-  let h=`<div class="seg" role="group" aria-label="Catalogue" style="margin-bottom:10px">${[['pw','Pouvoirs'],['cap','Capacités naturelles']].map(([v,l])=>`<button type="button" data-act="pcat" data-v="${v}" aria-pressed="${k===v}">${l}</button>`).join('')}</div>`;
-  if(E)return h+viewElCat(k);
-  const M=elMap(k),qv=pw?(S.pq||''):(S.cq||''),q=nrm(qv),f=pw?(S.pwf||'all'):'all';
-  const L=Object.entries(M).map(([id,el])=>({id,el,u:elSeenUses(k,id)})).filter(r=>r.u.length)
-    .filter(r=>(!q||nrm(r.el.nom).includes(q)||r.u.some(u=>nrm(raceNm(raceRec(u.cr))).includes(q)))&&(f==='all'||pwCatK(r.el)===f)).sort((a,b)=>a.el.nom.localeCompare(b.el.nom,'fr'));
+/* UX2 (28/11/2026) : un seul écran (joueurs et MJ), page de pouvoir au lieu de la fenêtre */
+const pwRaceSum=L=>L.length>2?L.length+' races':L.join(', ');
+const pwDeRace=n=>(/^[aeiouyhàâéèêîôû]/i.test(n||'')?"de l'":'du ')+n;
+function viewUniPw(){const k=S.pcat==='cap'?'cap':'pw',pw=k==='pw',E=canEdit(),M=elMap(k);
+  const nAll=kk=>Object.keys(elMap(kk)).filter(id=>E||elSeenUses(kk,id).length).length;
+  const F=S.pwF||{},so=S.pwSo||'az',qv=pw?(S.pq||''):(S.cq||''),q=nrm(qv);
+  let h=`<div class="pghead"><h2>Pouvoirs et capacités</h2>${E?`<button type="button" class="pbtn big" data-act="elEdit" data-k="${k}" data-id="" aria-label="${pw?'Nouveau pouvoir':'Nouvelle capacité'}">+</button>`:''}</div>`;
+  h+=`<div class="seg" role="group" aria-label="Catalogue" style="margin-bottom:10px">${[['pw','Pouvoirs · '+nAll('pw')],['cap','Capacités naturelles · '+nAll('cap')]].map(([v,l])=>`<button type="button" data-act="pcat" data-v="${v}" aria-pressed="${k===v}">${l}</button>`).join('')}</div>`;
+  let R=Object.entries(M).map(([id,el])=>{const u=E?elUses(k,id):elSeenUses(k,id),seen=E?elSeenUses(k,id):u;return {id,el,u,seen,races:[...new Set(u.map(x=>raceNm(raceRec(x.cr))))]};}).filter(r=>E||r.u.length);
+  const raceOpts=[...new Set(R.flatMap(r=>r.races))].sort((a,b)=>a.localeCompare(b,'fr'));
+  R=R.filter(r=>(!q||nrm(r.el.nom).includes(q)||r.races.some(n=>nrm(n).includes(q)))&&(!F.cat||!pw||pwCatK(r.el)===F.cat)&&(!F.nat||!pw||pwNat(r.id)===F.nat)&&(!F.race||r.races.includes(F.race))&&(!F.prep||!r.seen.length));
+  R.sort((a,b)=>so==='cat'&&pw?(['ordinaire','profond','legendaire'].indexOf(pwCatK(a.el))-['ordinaire','profond','legendaire'].indexOf(pwCatK(b.el)))||a.el.nom.localeCompare(b.el.nom,'fr'):a.el.nom.localeCompare(b.el.nom,'fr'));
+  const sel=(key,lab,opts)=>`<label class="ux2dd"><span>${lab}</span><select class="ux2sel" data-pwf="${key}"><option value="">Tous</option>${opts.map(([v,l])=>`<option value="${esc(v)}"${F[key]===v?' selected':''}>${esc(l)}</option>`).join('')}</select></label>`;
+  const nf=['cat','nat','race','prep'].filter(x=>F[x]).length;
+  h+=`<div class="ux2tb"><input type="search" data-pq="${k}" value="${esc(qv)}" placeholder="Filtrer" aria-label="Filtrer"><label class="ux2dd"><span>Tri</span><select class="ux2sel" data-pwso="1"><option value="az"${so==='az'?' selected':''}>A-Z</option>${pw?`<option value="cat"${so==='cat'?' selected':''}>Catégorie</option>`:''}</select></label></div>
+    <details class="ux2flt"${nf?' open':''}><summary class="${nf?'on':''}">Filtres${nf?' · '+nf:''} ▾</summary><div class="ux2fltb">${pw?sel('cat','Catégorie',Object.entries(CAT_L))+sel('nat','Forme',Object.entries(NAT_L)):''}${sel('race','Race',raceOpts.map(n=>[n,n]))}${E?`<label class="chtyc"><input type="checkbox" data-pwf="prep"${F.prep?' checked':''}> Préparés seulement</label>`:''}</div></details>`;
   const row=r=>{const el=r.el,meta=[];if(pw){meta.push(CAT_L[pwCatK(el)]);const n=pwNat(r.id);if(n)meta.push(NAT_L[n]);}else if(el.type)meta.push(TYPE_L[el.type]||el.type);
-    const races=[...new Set(r.u.map(u=>raceNm(raceRec(u.cr))))];
-    return `<div class="lrw">${illOf(k,r.id)?illThumb(k,r.id,36):`<span class="illslot" style="width:36px;height:36px"></span>`}<button class="lrow" data-act="consOpen" data-k="${k}" data-id="${esc(r.id)}"><span class="lm"><span class="lt">${esc(el.nom)}</span><span class="ls">${meta.filter(Boolean).map(esc).join(' · ')}${races.length?' · '+races.map(esc).join(' · '):''}</span></span><span class="chev">›</span></button></div>`;};
-  return h+`<div class="card"><h3 class="rs" style="margin-top:0">${pw?'Pouvoirs connus':'Capacités naturelles connues'} <span class="muted small" style="text-transform:none;letter-spacing:0">${Object.keys(M).filter(id=>elSeenUses(k,id).length).length}</span></h3>
-    ${pw?`<div class="seg" style="margin-bottom:8px" role="group" aria-label="Catégorie">${[['all','Tous'],['ordinaire','Ordinaires'],['profond','Profonds'],['legendaire','Légendaires']].map(([v,l])=>`<button data-act="elFilt" data-v="${v}" aria-pressed="${f===v}">${l}</button>`).join('')}</div>`:''}
-    <input type="search" data-pq="${k}" value="${esc(qv)}" placeholder="${pw?'Rechercher un pouvoir, une race…':'Rechercher une capacité, une race…'}" aria-label="${pw?'Rechercher un pouvoir':'Rechercher une capacité'}" style="width:100%;margin-bottom:6px">
-    ${L.map(row).join('')||`<div class="muted small">${q||f!=='all'?'Aucun résultat.':pw?'Aucun pouvoir connu pour l\'instant.':'Aucune capacité connue pour l\'instant.'}</div>`}</div>
-    <div class="muted small" style="margin-top:8px">Seuls les ${pw?'pouvoirs':'capacités'} révélé${pw?'s':'es'} pour au moins une race apparaissent, avec ces races seulement.</div>`;}
+    if(r.races.length)meta.push(pwRaceSum(r.races));
+    const prep=E&&!r.seen.length,fx=E?(el.fx||[]).length:0,warn=[];
+    if(E){const todo=[];if(pw&&!pwNat(r.id))todo.push('nature');if(!el.type)todo.push('type');if(todo.length)warn.push(todo.join(' et ')+' à compléter');const miss=elMissing(k,r.id,el);if(miss.length)warn.push('sous-type manquant ('+miss.join(', ')+')');}
+    return `<button type="button" class="ux2row pwrow${prep?' prep':''}" data-act="consOpen" data-k="${k}" data-id="${esc(r.id)}">${illOf(k,r.id)?`<img class="pwth" src="${illOf(k,r.id)}" alt="">`:''}<span class="fitx"><b>${esc(el.nom)}${prep?' <span class="ux2prep">préparé</span>':''}</b><small>${meta.map(esc).join(' · ')}${fx?' · '+fx+' effet'+(fx>1?'s':''):''}</small>${warn.length?`<small style="color:var(--bad)">${warn.map(esc).join(' · ')}</small>`:''}</span><span class="chev" aria-hidden="true">›</span></button>`;};
+  return h+`<div class="card ux2lst">${R.map(row).join('')||`<div class="muted small">${q||nf?'Aucun résultat.':pw?'Aucun pouvoir connu pour l\'instant.':'Aucune capacité connue pour l\'instant.'}</div>`}</div>`;}
+/* Page d'un pouvoir ou d'une capacité (S.uni='pouvoirs', S.fi='pw:<id>' ou 'cap:<id>') */
+function pwPageView(t,id){const pw=t==='pw',el=elFull(elMap(t)[id]||{}),E=canEdit();
+  let h=`<div class="ux2top">${crumb(CR_UNI,['Pouvoirs et capacités','data-act="uni" data-v="pouvoirs"'],[esc(el.nom||'?')])}<span class="ux2sp"></span>${E&&el.nom?`<button type="button" class="ibtn" data-act="pwPgEd" aria-label="Modifier">${ICON.crayon}</button>`:''}</div>`;
+  if(!el.nom)return h+`<div class="card empty">Élément introuvable.</div>`;
+  const uses=elUses(t,id).map(u=>({...u,seen:elUseSeen(t,u)})).filter(u=>E||u.seen);
+  const rn=[...new Set(uses.map(u=>raceNm(raceRec(u.cr))))],cat=pw?pwCatK(el):'';
+  const own=pw&&cat!=='ordinaire'&&rn.length===1?uses[0]:null; /* pouvoir profond ou légendaire propre à une race */
+  const RL={act:'Activation',cib:'Cible',dur:'Durée',por:'Portée',zon:"Zone d'effet",res:'Résistance'},rules=(pw?EL_FIELDS:EL_FIELDS.filter(f=>f!=='act')).filter(f=>(el[f]||'').trim());
+  const tags=[];if(pw){if(!own)tags.push(CAT_L[cat]);const n=pwNat(id);if(n)tags.push(NAT_L[n]);if((el.act||'').trim())tags.push(el.act.trim());}else{tags.push('Capacité naturelle');if(el.type)tags.push(TYPE_L[el.type]||el.type);}
+  h+=`<div class="pwpg"><h2 class="finm pwnm">${esc(el.nom)}</h2>`;
+  if(own)h+=`<div class="pwown">Pouvoir ${cat==='legendaire'?'légendaire':'profond'} ${/^[aeiouyhàâéèêîôû]/i.test(rn[0])?"de l'":'du '}${lk({t:'race',id:own.cr.id},rn[0])}</div>`;
+  h+=`<div class="tg3">${tags.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`;
+  const im=illOf(pw?'pw':'cap',id);if(im)h+=`<div class="fibigw pwimg">${bigImg(illId(pw?'pw':'cap',id),im,el.nom)}</div>`;
+  if(el.desc)h+=fiBlk('pw-desc','Description','',fiClamp(t+id+':d',`<div style="white-space:pre-line">${esc(el.desc)}</div>`));
+  if(rules.length)h+=fiBlk('pw-rg','Règles','',`<div class="rg2">${rules.map(f=>`<div><small>${RL[f]}</small>${esc(el[f])}</div>`).join('')}</div>`);
+  const fxL=L=>(L||[]).length?`<div class="fxl">${L.map(e=>fxChip(e)).join('')}</div>`:'';
+  const seenVar=new Set(uses.map(u=>u.vid).filter(Boolean)),vars=(el.var||[]).filter(v=>E||seenVar.has(v.id));
+  if((el.fx||[]).length||vars.length)h+=fiBlk('pw-fx','Effets','',((el.fx||[]).length?fxL(el.fx):'')+vars.map(v=>`<div class="fi"><b>${esc(v.nom)}</b>${fxL(v.fx)}</div>`).join(''));
+  const vn=u=>{const v=u.vid&&varOf(el,u.vid);return v?v.nom:(u.vnom||'');};
+  const where=u=>pw?(PW_LAB[u.i]||'').toLowerCase()+(u.i<6?' '+(u.i<4?u.i+1:u.i-3):''):u.choix?'choix définitif':'';
+  if(!own&&uses.length)h+=fiBlk('pw-races','Races',String(rn.length),uses.map(u=>`<div class="srow${u.seen?'':' fihid'}"><span>${lk({t:'race',id:u.cr.id},raceNm(raceRec(u.cr)))}${vn(u)?' <span class="muted">('+esc(vn(u))+')</span>':''}</span><span class="muted small">${u.seen?'':'<span class="ux2prep">préparé</span> '}${esc(where(u))}</span></div>`).join(''));
+  h+='</div>';
+  return h;}
 /* ---------- Catalogue complet (gestion en mode édition, Univers › Pouvoirs et capacités) ---------- */
 function viewElCat(k){if(!canEdit())return `<div class="card"><div class="muted">Réservé aux personnes ayant les droits de gestion.</div></div>`;
   const pw=k==='pw',M=elMap(k),qv=pw?(S.pq||''):(S.cq||''),q=nrm(qv),f=pw?(S.pwf||'all'):'all';
@@ -217,3 +248,8 @@ function consSheet(g){const pw=g.t==='pw',el=elFull(elMap(g.t)[g.id]||{});if(!el
     <div class="lab2">Races qui ${pw?'l\'utilisent':'la possèdent'}</div>${uses.length?uses.map(u=>`<div class="lkr${u.seen?'':' prep'}"><span>${lk({t:'race',id:u.cr.id},raceNm(raceRec(u.cr)))}${vn(u)?' <span class="muted">('+esc(vn(u))+')</span>':''}</span><span class="muted small">${u.seen?'':'<span class="prepb">non révélé</span> '}${esc(where(u))}</span></div>`).join(''):'<div class="muted small">Aucune race connue.</div>'}
     <div class="actions" style="margin-top:12px">${canEdit()?`<button class="btn" data-act="consEdit">${ICON.crayon} Modifier</button>`:''}<button class="btn pri" data-act="closeSheet">Fermer</button></div></div></div>`;
   return h;}
+
+/* UX2 : filtres et tri de l'écran Pouvoirs et capacités */
+document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset)return;
+  if(t.dataset.pwf!==undefined){const k=t.dataset.pwf;S.pwF={...(S.pwF||{}),[k]:t.type==='checkbox'?t.checked:t.value};S._force=true;render();}
+  else if(t.dataset.pwso!==undefined){S.pwSo=t.value;S._force=true;render();}});

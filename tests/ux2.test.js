@@ -23,7 +23,8 @@ function demoDocs(){const ch=(id,court,o)=>({...GEN.run(`newChar(${JSON.stringif
     'fiches/f-prep':fi('f-prep','lieu','Phéacie',{vis:'prep',desc:'Secret.'}),
     'fiches/f-mon':fi('f-mon','org','Monarchie',{type:'Gouvernement'}),
     'fiches/f-fam':fi('f-fam','famille','Frédon',{type:'Majeure'}),
-    'gains/all':{events:[]}};
+    'gains/all':{events:[{id:'s1',session:true,titre:'Partie',type:'Scénario',date:'2026-11-20',entries:[]}]},
+    'meta/secrets':{list:[{n:1,titre:'Alliance',titrePts:1,slots:{vm:[{txt:'Vérité A',pts:3,hid:true},{txt:'Vérité B',pts:3,date:'2026-11-01'}],vmin:[],h:[null]}}],props:[]}};
   for(let i=1;i<=10;i++)D['chars/m'+i]=pnj('m'+i,'Membre '+i,{situ:{familles:[{id:'fa'+i,f:'f-fam',nom:'Frédon'}]}});
   return D;}
 const DOCS=demoDocs();
@@ -95,6 +96,30 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
       ok(/Révéler la fiche \?/.test(await txt(page)),'révéler une fiche : confirmation en ligne');
       await E(page,()=>document.querySelector('[data-act="fiRevOk"]').click());await wait(page,200);
       ok(await E(page,()=>S.fiches['f-prep'].vis)==='rev','fiche révélée');
+      ok(!errs.length,'aucune erreur ('+errs.join(' | ')+')');await ctx.close();}
+    console.log('6. Chronique (MJ) : un seul « + », Rendez-vous');
+    {const {page,errs,ctx}=await open(browser,base,db,'lorenzo');
+      let t=await E(page,()=>{S.view='univers';S.uni='chron';S.fi=null;S._force=true;render();return document.getElementById('app').innerText;});
+      ok(await E(page,()=>!!document.querySelector('.pghead [data-act="chEvNew"]')&&!document.querySelector('[data-act="chAgNew"]')),'un seul « + » dans l\'en-tête');
+      ok(/Filtres/.test(t)&&/Fêtes/.test(t),'« Filtres ▾ » et « Fêtes › »');
+      await E(page,()=>document.querySelector('.pghead [data-act="chEvNew"]').click());await wait(page,150);
+      ok(await E(page,()=>!!document.querySelector('[data-act="chSet"][data-k="type"][data-v="Rendez-vous"]')),'type Rendez-vous dans la fenêtre');
+      await E(page,()=>document.querySelector('[data-act="chSet"][data-k="type"][data-v="Rendez-vous"]').click());await wait(page,150);
+      ok(await E(page,()=>S.dlg&&S.dlg.kind==='chAg'),'Rendez-vous : fenêtre de rendez-vous');
+      await E(page,()=>{S.dlg=null;render();});
+      console.log('7. Lot de révélations');
+      await E(page,()=>{window._n=[];notify=p=>window._n.push(p);S.view='univers';S.uni='secrets';S.sec=1;S._force=true;render();});
+      ok(/Vérité A/.test(await txt(page))&&await E(page,()=>!!document.querySelector('[data-act="secRevAsk"]')),'MJ : élément préparé avec « Révéler »');
+      await E(page,()=>document.querySelector('[data-act="secRevAsk"]').click());await wait(page,150);
+      ok(/Valider \(1\) et notifier/.test(await E(page,()=>document.getElementById('sheetRoot').innerText)),'fenêtre à 3 boutons');
+      await E(page,()=>document.querySelector('[data-act="lotAdd"][data-v="more"]').click());await wait(page,300);
+      ok(await E(page,()=>secLot().length===1&&!!document.querySelector('.lotban')),'élément en attente, bandeau');
+      ok(await E(page,()=>S.secrets[0].slots.vm[0].hid===true),'en attente : toujours invisible des joueurs');
+      await E(page,()=>document.querySelector('[data-act="lotOpen"]').click());await wait(page,150);
+      ok(/7 XP/.test(await E(page,()=>document.getElementById('sheetRoot').innerText)),'récapitulatif : total d\'XP, bonus du secret complété compris');
+      await E(page,()=>document.querySelector('[data-act="lotOk"]').click());await wait(page,400);
+      ok(await E(page,()=>!S.secrets[0].slots.vm[0].hid&&secLot().length===0&&S.events.some(e=>e.secret&&e.secret.n===1&&e.secret.k==='vm')),'validation : révélé, XP au journal, lot vidé');
+      ok(await E(page,()=>window._n.length===1&&window._n[0].kind==='secRev'&&Array.isArray(window._n[0].lot)),'une seule notification « secRev » pour le lot');
       ok(!errs.length,'aucune erreur ('+errs.join(' | ')+')');await ctx.close();}
   }catch(e){fails++;console.log('ERREUR',e);}
   await browser.close();srv.close();

@@ -60,6 +60,16 @@ Deno.serve(async (req) => {
       body: `${nom(d.by)} propose ${jour(d.date, d.sl)}${d.type ? " (" + d.type + ")" : ""}. Tu viens ?`,
       tag: "prop-" + d.id, url: APP_URL + "#dates",
     };
+  } else if (p.kind === "valid") {
+    // UX1 (28/11/2026) : date validée, toute la table est prévenue
+    const d = dates.find((x) => x.id === p.dateId);
+    if (!d || d.status !== "valid") return json({ error: "date introuvable" }, 404);
+    exclude = p.from || null;
+    msg = {
+      title: "Date validée",
+      body: `Partie le ${jour(d.date, d.sl)}${d.type ? " (" + d.type + ")" : ""}.`,
+      tag: "valid-" + d.id, url: APP_URL + "#dates",
+    };
   } else if (p.kind === "reminder") {
     const dm = demainParis();
     const d = dates.filter((x) => x.status === "valid" && x.date === dm).sort((a, b) => a.sl.localeCompare(b.sl))[0];
@@ -68,6 +78,18 @@ Deno.serve(async (req) => {
       title: "Partie demain !",
       body: `Rappel : ${jour(d.date, d.sl)}${d.type ? " (" + d.type + ")" : ""}.`,
       tag: "rappel-" + d.id, url: APP_URL + "#dates",
+    };
+  } else if (p.kind === "secRev" && Array.isArray(p.lot)) {
+    // UX2 (28/11/2026) : lot de révélations validé par le MJ, une seule notification pour toute la table
+    const L: any[] = p.lot.filter((x: any) => x && x.n);
+    if (!L.length) return json({ error: "lot vide" }, 400);
+    const ns = [...new Set(L.map((x: any) => x.n | 0))].sort((a, b) => a - b).map((n) => "Secret " + (ROMAN[n - 1] || String(n)));
+    const xp = Number(p.xp) || 0;
+    exclude = p.from || null;
+    msg = {
+      title: L.length > 1 ? "Révélations sur les secrets" : "Découverte révélée",
+      body: `${L.length > 1 ? L.length + " découvertes révélées" : "Une découverte révélée"} : ${ns.join(", ")}.${xp ? ` La table gagne ${xp} XP de groupe.` : ""}`,
+      tag: "lot-" + Date.now(), url: APP_URL + "#secrets",
     };
   } else if (p.kind === "secProp" || p.kind === "secRej" || p.kind === "secRev") {
     // Lot 2 : propositions de découverte des secrets
