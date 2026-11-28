@@ -111,7 +111,7 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
       t=await E(page,()=>{S.view='team';S._force=true;render();return document.getElementById('app').innerText;});ok(!/Il manque \d+ XP/.test(t)&&/Titre d.\S+/.test(t),'carte : titre le plus proche, plus de « Il manque »');
       await E(page,()=>{S.view='sheet';S.sel='kerian';S.shTab='prog';S._force=true;render();});
       t=await E(page,()=>{S.shTab='situ';S._force=true;render();return document.getElementById('app').innerText;});
-      ok(/Titres et fiefs/i.test(t)&&await E(page,()=>!!document.querySelector('.sfief')),'Situation : fief sous son titre');
+      ok(/Titres et fiefs/i.test(t)&&await E(page,()=>!!document.querySelector('#cb-titres .sfd')),'Situation : fief sous son titre (lot 4 : « Fief : … » sur la ligne du titre)');
       await ctx.close();ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs.join(' | '):''));}
     console.log('5. Joueur');
     {const {page,errs,ctx}=await open(browser,base,db,'anne');

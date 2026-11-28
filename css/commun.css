@@ -1036,3 +1036,22 @@ textarea[data-hmtx]{width:100%;box-sizing:border-box;margin-top:6px}
 .plk{color:var(--muted)}.plk.no{color:var(--bad)}
 .plgone{margin-top:12px}.plgone>summary{cursor:pointer;color:var(--muted);font-weight:600;padding:6px 2px}
 .plmj{display:flex;align-items:center;gap:8px;margin-top:10px}
+/* ===== UX4 (lot 4 Finitions, 28/11/2026) ===== */
+.ui-sigb{color:var(--bad)}
+.ui-sigb svg{width:18px;height:18px}
+.srow.capr2{display:flex;align-items:center;justify-content:flex-start;gap:10px}
+.capr2 .cmain{flex:1;min-width:0;display:flex;flex-direction:column}
+.capr2 .cmain b{overflow-wrap:anywhere}
+.capr2 .cmain small{font-size:12.5px}
+.cadrag{cursor:grab;color:var(--muted);font-size:18px;letter-spacing:-2px;padding:6px 4px;touch-action:none;user-select:none}
+.cadot{width:18px;height:18px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.15)}
+.capr2.drag{opacity:.55}
+.capr2.over{box-shadow:0 -3px 0 var(--accent) inset}
+.jrent .eh{display:flex;align-items:center;gap:4px}
+.jrent .eh .jreh{flex:1;min-width:0}
+.jrmv{display:flex;gap:2px}
+.jrman{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sfd{display:flex;align-items:center;gap:4px}
+.filvg{margin-bottom:10px}
+.srow.capr2>span:first-child{flex:none}
+.srow.capr2>.cmain{flex:1}

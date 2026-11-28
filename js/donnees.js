@@ -22,10 +22,18 @@ function sigAuto(){if(!modelV1())return [];const out=[],add=(t,id,champ,statut,n
   return out;}
 const sigStored=()=>((S.signalDoc&&S.signalDoc.list)||[]);
 const sigAll=()=>[...sigAuto(),...sigStored()];
-const sigOpenFor=(t,id)=>canEdit()?sigAll().filter(s=>!s.ok&&s.obj&&s.obj.t===t&&s.obj.id===id):[];
+/* Lot 4 : signalements ouverts d'un élément, pour qui peut les traiter (règle de « À traiter » : atSigSee), sans mode édition */
+const sigOpenFor=(t,id)=>isUser()&&typeof atSigSee==='function'?sigAll().filter(s=>!s.ok&&s.obj&&s.obj.t===t&&s.obj.id===id&&atSigSee(s)):[];
 /* Picto d'alerte, à côté de l'élément concerné (gestion seulement) */
 function sigPicto(t,id){const L=sigOpenFor(t,id);if(!L.length)return '';
   return `<span class="ui-sig" role="img" title="${esc(L.map(s=>s.champ+' : '+SIG_ST[s.statut]).join(' · '))}" aria-label="${L.length} signalement${L.length>1?'s':''} : ${esc(L.map(s=>s.champ).join(', '))}">${SIG_ICO}</span>`;}
+/* Lot 4 : ⚠ cliquable (en-tête de fiche) → encart des signalements de l'élément */
+function sigBtn(t,id){const L=sigOpenFor(t,id);if(!L.length)return '';
+  return `<button type="button" class="ibtn ui-sigb" data-act="sigPop" data-t="${esc(t)}" data-id="${esc(id)}" aria-label="${L.length} signalement${L.length>1?'s':''} à traiter">${SIG_ICO}</button>`;}
+function sigPopSheet(g){const L=sigOpenFor(g.t,g.id);if(!L.length)return '';
+  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Signalements"><div class="in"><div class="blkhd"><h2 style="flex:1;margin:0"><span class="ui-sig">${SIG_ICO}</span> ${esc(sigObjName({t:g.t,id:g.id}))}</h2><button type="button" class="ibtn sm" data-act="closeSheet" aria-label="Fermer">✕</button></div>
+    ${L.map(s=>`<div class="srow"><span><b>${esc(s.champ)}</b> · ${esc(SIG_ST[s.statut]||'')}${s.note?`<span class="d">${esc(s.note)}</span>`:''}</span></div>`).join('')}
+    <div class="actions"><button class="btn pri" data-act="sigGo">Ouvrir dans « À traiter »</button></div></div></div>`;}
 function sigObjName(o){if(!o)return '';if(o.t==='race'){const cr=(S.creatures||[]).find(c=>c.id===o.id),r=S.races&&S.races[o.id];return (r&&r.sing)||(cr&&cr.nom)||o.id;}
   if(o.t==='pouvoir')return (S.pouvoirs&&S.pouvoirs[o.id]&&S.pouvoirs[o.id].nom)||o.id;if(o.t==='capacite')return (capOf(o.id)||{}).nom||o.id;
   if(o.t==='perso')return (S.chars[o.id]&&S.chars[o.id].court)||o.id;if(o.t==='ppel'){const e=ppEls()[o.id];return e?e.nom:o.id;}if(o.t==='brouillon'){const b=S.brouillons&&S.brouillons[o.id];return (b&&((b.d||{}).ident||{}).court)||'Nouveau personnage';}return o.id;}
@@ -71,6 +79,8 @@ function socleAct(a,d){
   if(!/^sig/.test(a))return false;
   if(!isUser())return true; /* UX3 : chacun traite les signalements qu'il voit (atSigSee) */
   if(['sigNew','sigAdd','sigCancel'].includes(a)&&!isTech())return true;
+  if(a==='sigPop'){S.dlg={kind:'sigPop',t:d.t,id:d.id};return true;}
+  if(a==='sigGo'){S.dlg=null;S.atF='sig';S.view='todo';window.scrollTo(0,0);return true;}
   if(a==='sigF'){const f=S.sigF=S.sigF||{st:'',t:'',res:false};if(d.k==='res')f.res=!!d.v;else f[d.k]=d.v;}
   else if(a==='sigNew'){S.sigNew={t:'race',id:'',champ:'',statut:'completer',note:'',err:''};}
   else if(a==='sigCancel'){S.sigNew=null;}

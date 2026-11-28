@@ -341,10 +341,11 @@ function fiSheet(g){
 /* ---------- Paramètres › Référentiel › Listes de valeurs ---------- */
 const fiGm=g=>g==='jour'?JR_G:FI_G[g];
 function fiListes(){const g=FI_G[S.fiLv]||S.fiLv==='jour'?S.fiLv:'lieu',T=fiTypes(g,true),E=canEdit(),R=FI_RES[g]||[],Gm=fiGm(g);
-  let h=`<div class="seg fiseg" role="group" aria-label="Liste de valeurs">${[...Object.entries(FI_G),['jour',JR_G]].map(([k,x])=>`<button type="button" data-act="fiLv" data-v="${k}" aria-pressed="${g===k}">${x.pl}</button>`).join('')}</div>`;
+  /* Lot 4 : menu « Genre : … ▾ » à la place des onglets */
+  let h=`<label class="ux2dd filvg"><span>Genre :</span><select class="ux2sel" data-filv="1" aria-label="Genre">${[...Object.entries(FI_G),['jour',JR_G]].map(([k,x])=>`<option value="${k}"${g===k?' selected':''}>${esc(x.pl)}</option>`).join('')}</select></label>`;
   h+=`<div class="card"><h3 class="rs" style="margin-top:0">${esc(Gm.tl)} <span class="muted small">${T.length}</span></h3>`;
-  h+=T.length?`<div class="filv">${T.map(([t,n])=>`<div class="filvr"><span><b>${esc(t)}</b><small>${n} ${n>1?Gm.pl.toLowerCase():Gm.un}${R.includes(t)?' · type spécial':''}</small></span>${E&&!R.includes(t)?`<button type="button" class="edl" data-act="fiTyp" data-g="${g}" data-v="${esc(t)}">${ICON.crayon} Renommer ou fusionner</button>`:''}</div>`).join('')}</div>`:(g==='jour'?'<div class="muted small">Aucun type pour l\'instant : les types se créent avec les journaux.</div>':'<div class="muted small">Aucun type pour l\'instant : les types se créent avec les fiches.</div>');
-  return h+`</div><div class="muted small" style="margin-top:10px">Renommer ou fusionner met à jour ${g==='jour'?'tous les journaux concernés. Un type sans journal disparaît de la liste (les types de départ restent proposés à la saisie).':'toutes les fiches concernées. Un type sans fiche disparaît de la liste.'}${g==='lieu'?' « Fief » est réservé : il servira au bloc Fief (lot 7).':''}</div>`;}
+  h+=T.length?`<div class="filv">${T.map(([t,n])=>`<div class="filvr"><span><b>${esc(t)}</b><small>${n} ${n>1?Gm.pl.toLowerCase():Gm.un}${R.includes(t)?' · type spécial':''}</small></span>${E&&!R.includes(t)?`<button type="button" class="ibtn" data-act="fiTyp" data-g="${g}" data-v="${esc(t)}" aria-label="Renommer ou fusionner ${esc(t)}">${ICON.crayon}</button>`:''}</div>`).join('')}</div>`:(g==='jour'?'<div class="muted small">Aucun type pour l\'instant : les types se créent avec les journaux.</div>':'<div class="muted small">Aucun type pour l\'instant : les types se créent avec les fiches.</div>');
+  return h+`</div><div class="muted small" style="margin-top:10px">Le crayon renomme le type ou le fusionne dans un autre. Renommer ou fusionner met à jour ${g==='jour'?'tous les journaux concernés. Un type sans journal disparaît de la liste (les types de départ restent proposés à la saisie).':'toutes les fiches concernées. Un type sans fiche disparaît de la liste.'}${g==='lieu'?' « Fief » est réservé : il servira au bloc Fief (lot 7).':''}</div>`;}
 
 /* ---------- Visionneur d'image plein écran (vignettes de fiche et portraits) ---------- */
 const FI_BIG={};
@@ -564,7 +565,8 @@ function jrDjTxt(dj){if(!dj||!dj.a||!dj.m)return '';const mo=JR_MOIS[dj.m-1]||''
   const w=new Date(Date.UTC(dj.a,dj.m-1,dj.j)).getUTCDay();return JR_JS[w]+' '+(dj.j===1?'1er':dj.j)+' '+mo+' '+dj.a;}
 const jrDjIso=dj=>dj&&dj.a&&dj.m?`${dj.a}-${String(dj.m).padStart(2,'0')}-${String(dj.j||1).padStart(2,'0')}`:'';
 /* Entrées : par date du jeu (la plus ancienne en haut), puis celles sans date dans l'ordre d'ajout */
-function jrEntSorted(j){return (j.ent||[]).map((e,i)=>({e,i,k:jrDjKey(e.dj)})).sort((a,b)=>a.k!=null&&b.k!=null?a.k-b.k||a.i-b.i:a.k!=null?-1:b.k!=null?1:a.i-b.i).map(x=>x.e);}
+function jrEntSorted(j){if(j.man)return (j.ent||[]).slice(); /* lot 4 : ordre manuel */
+  return (j.ent||[]).map((e,i)=>({e,i,k:jrDjKey(e.dj)})).sort((a,b)=>a.k!=null&&b.k!=null?a.k-b.k||a.i-b.i:a.k!=null?-1:b.k!=null?1:a.i-b.i).map(x=>x.e);}
 function jrSave(j,quiet){j=clone(j);j.modif=new Date().toISOString();S.jour={...(S.jour||{}),[j.id]:j};persist('journaux/'+j.id,j);if(!quiet)render();return j;}
 /* Modification à partir de la ligne la plus récente reçue (quête de groupe : plusieurs auteurs) */
 function jrUpd(id,fn){const x=S.jour&&S.jour[id];if(!x)return null;const n=clone(x);if(fn(n)===false)return null;return jrSave(n);}
@@ -597,10 +599,10 @@ function jrView(c){const L=jrOf(c).concat(jrAideOf(c)),E=canEditC(c),open=S.jrOp
 /* Entrées repliables (24/11) : par défaut seule la plus récente est dépliée ; choix gardé pendant la session (S.jrEo) */
 if(!S.jrEo)S.jrEo={};
 const jrEntOpen=(e,last)=>e.id in S.jrEo?!!S.jrEo[e.id]:e.id===last;
-function jrEntHtml(c,j,e,hl,open){const meta=[jrDjTxt(e.dj)],au=(e.auteur||'').trim(),pc=e.pc&&S.chars[e.pc];
+function jrEntHtml(c,j,e,hl,open,mv){const meta=[jrDjTxt(e.dj)],au=(e.auteur||'').trim(),pc=e.pc&&S.chars[e.pc];
   if(pc)meta.push('par '+(pc.court||pc.nom));if(au)meta.push('auteur : '+au); /* UX1 : entrée signée du PJ */
   if(e.ecrit)meta.push('écrite le '+fmtDate(e.ecrit));const m=meta.filter(Boolean).join(' · ');
-  return `<div class="jrent${hl?' hlx':''}${open?'':' fold'}" id="jre-${esc(e.id)}"><div class="eh"><button type="button" class="jreh" data-act="jrEo" data-e="${esc(e.id)}" aria-expanded="${!!open}"><span class="chev" aria-hidden="true">${open?'⌄':'›'}</span><span class="en">${esc(e.nom||'Entrée')}</span></button>${S._jrEm&&jrEntEd(j,e)?`<button type="button" class="ibtn sm" data-act="jrEnt" data-j="${esc(j.id)}" data-e="${esc(e.id)}" aria-label="Modifier l'entrée ${esc(e.nom||'')}">${ICON.crayon}</button>`:''}</div>${m?`<div class="em">${esc(m)}</div>`:''}${open&&e.txt?fiRich(e.txt):''}</div>`;}
+  return `<div class="jrent${hl?' hlx':''}${open?'':' fold'}" id="jre-${esc(e.id)}"><div class="eh"><button type="button" class="jreh" data-act="jrEo" data-e="${esc(e.id)}" aria-expanded="${!!open}"><span class="chev" aria-hidden="true">${open?'⌄':'›'}</span><span class="en">${esc(e.nom||'Entrée')}</span></button>${mv?`<span class="jrmv"><button type="button" class="ibtn sm" data-act="jrMv" data-j="${esc(j.id)}" data-e="${esc(e.id)}" data-v="-1" aria-label="Monter ${esc(e.nom||'')}"${mv.i?'':' disabled'}>↑</button><button type="button" class="ibtn sm" data-act="jrMv" data-j="${esc(j.id)}" data-e="${esc(e.id)}" data-v="1" aria-label="Descendre ${esc(e.nom||'')}"${mv.i<mv.n-1?'':' disabled'}>↓</button></span>`:''}${S._jrEm&&jrEntEd(j,e)?`<button type="button" class="ibtn sm" data-act="jrEnt" data-j="${esc(j.id)}" data-e="${esc(e.id)}" aria-label="Modifier l'entrée ${esc(e.nom||'')}">${ICON.crayon}</button>`:''}</div>${m?`<div class="em">${esc(m)}</div>`:''}${open&&e.txt?fiRich(e.txt):''}</div>`;}
 function jrOpenView(c,j){const q=j.genre==='quete',E=jrCanEd(j),k='jr-'+j.id,st=j.statut||'cours';
   const P=q&&j.type==='groupe'?`<div class="jrparts">${jrParts(j).map(id=>S.chars[id]).filter(Boolean).map(x=>`<span class="jrpc${x.id===c.id?' me':''}">${lk({t:'perso',id:x.id},x.court||x.nom)}</span>`).join('')}</div>`:'';
   const A=jrAides(j).map(id=>S.chars[id]).filter(x=>x&&vis(x)),H=S.chars[j.perso];
@@ -616,8 +618,9 @@ function jrOpenView(c,j){const q=j.genre==='quete',E=jrCanEd(j),k='jr-'+j.id,st=
       E&&!J?`<div class="relbtns"><button type="button" class="addl" data-act="jrJgNew" data-j="${esc(j.id)}">+ Jauge de recherche</button></div>`:'');}
   const ents=jrEntSorted(j),hl=S.jrHl,last=ents.length?ents[ents.length-1].id:'';if(hl)S.jrEo[hl]=true;
   const nOpen=ents.filter(e=>jrEntOpen(e,last)).length,all=ents.length>1?`<div class="jrall"><button type="button" class="lk" data-act="jrEoAll" data-j="${esc(j.id)}" data-v="${nOpen===ents.length?'0':'1'}">${nOpen===ents.length?'Tout replier':'Tout déplier'}</button></div>`:'';
-  const em=!!(S.jrEm&&S.jrEm[j.id]);S._jrEm=em;
-  h+=jrBlkP(k+'-e','Entrées',String(ents.length),(ents.length?all+ents.map(e=>jrEntHtml(c,j,e,hl===e.id,jrEntOpen(e,last))).join(''):'<div class="muted small">Aucune entrée.</div>')+(E&&!j.jauge&&q&&!(j.jaugesFinies||[]).length?`<div class="relbtns"><button type="button" class="addl" data-act="jrJgNew" data-j="${esc(j.id)}">+ Jauge de recherche</button></div>`:''),
+  const em=!!(S.jrEm&&S.jrEm[j.id]);S._jrEm=em;const MV=em&&E&&ents.length>1;
+  const man=j.man&&ents.length>1?`<div class="jrall jrman"><span class="muted small">Ordre manuel</span>${E?`<button type="button" class="lk" data-act="jrSortD" data-j="${esc(j.id)}">Trier par date</button>`:''}</div>`:'';
+  h+=jrBlkP(k+'-e','Entrées',String(ents.length),(ents.length?man+all+ents.map((e,i)=>jrEntHtml(c,j,e,hl===e.id,jrEntOpen(e,last),MV?{i,n:ents.length}:null)).join(''):'<div class="muted small">Aucune entrée.</div>')+(E&&!j.jauge&&q&&!(j.jaugesFinies||[]).length?`<div class="relbtns"><button type="button" class="addl" data-act="jrJgNew" data-j="${esc(j.id)}">+ Jauge de recherche</button></div>`:''),
     E?`${ents.length?`<button type="button" class="ibtn sm" data-act="jrEm" data-j="${esc(j.id)}" aria-pressed="${em}" aria-label="Modifier les entrées">${ICON.crayon}</button>`:''}<button type="button" class="pbtn" data-act="jrEnt" data-j="${esc(j.id)}" aria-label="Nouvelle entrée">+</button>`:'');
   if(hl){S.jrHl=null;setTimeout(()=>{const el=document.getElementById('jre-'+hl);if(el&&el.scrollIntoView)el.scrollIntoView({block:'center'});},60);}
   return h;}
@@ -678,6 +681,10 @@ function jrAct(a,d){
   if(a==='jrStat'){const j=S.jour[d.j];if(!jrCanEd(j)||!JR_ST.some(x=>x[0]===d.v))return true;jrUpd(j.id,x=>{x.statut=d.v;});return true;}
   if(a==='jrNew'){if(!c||!canEditC(c))return true;fiOpenDlg({kind:'jrHead',cid:c.id,id:'',genre:d.g==='quete'?'quete':'journal',nom:'',type:'',qt:'perso',parts:[c.id],txt:'',pub:false,jg:false});render();return true;}
   if(a==='jrEd'){const j=S.jour[d.j];if(!c||!jrCanEd(j))return true;fiOpenDlg({kind:'jrHead',cid:c.id,id:j.id,genre:j.genre,nom:j.nom||'',type:j.genre==='journal'?(j.type||''):'',qt:j.type==='groupe'?'groupe':'perso',parts:jrParts(j).slice(),aides:jrAides(j).slice(),hold:j.perso||jrParts(j)[0]||c.id,txt:j.desc||'',pub:!!j.pub});render();return true;}
+  if(a==='jrMv'||a==='jrSortD'){const j0=S.jour&&S.jour[d.j];if(!j0||!jrCanEd(j0))return true; /* lot 4 : ordre manuel des entrées */
+    if(a==='jrSortD'){const n=clone(j0);delete n.man;jrSave(n);return true;}
+    const L=jrEntSorted(j0),i=L.findIndex(e=>e.id===d.e),t=i+(+d.v);if(i<0||t<0||t>=L.length)return true;[L[i],L[t]]=[L[t],L[i]];
+    const n=clone(j0);n.ent=clone(L);n.man=true;jrSave(n);return true;}
   if(a==='jrEm'){S.jrEm={...(S.jrEm||{}),[d.j]:!(S.jrEm||{})[d.j]};render();return true;}
   if(a==='jrAide'){if(g&&g.kind==='jrHead'&&d.v!==(g.hold||g.cid)){const L=g.aides||[];g.aides=L.includes(d.v)?L.filter(x=>x!==d.v):[...L,d.v];redraw();}return true;}
   if(a==='jrSet'){if(g&&(g.kind==='jrHead')){g[d.k]=d.k==='pub'?d.v==='1':d.v;if(d.k==='qt'&&d.v==='groupe'&&!g.parts.includes(g.cid))g.parts=[g.cid,...g.parts];redraw();}return true;}
@@ -743,6 +750,7 @@ const PN_EYE0={role:true,app:true,car:true,fm:true,pw:true,titres:true,familles:
 const pnEye=c=>(c&&c.eye)||PN_EYE0;
 const pnBlkSee=(c,k)=>!!c&&vis(c)&&(isGest()||isFeal(c)||k!=='pw'||!!pnEye(c)[k]); /* UX2 : un seul œil par fiche, sauf le bloc Pouvoirs et capacités */
 const pnMain=c=>c&&c.alias&&S.chars[c.alias]&&S.chars[c.alias].type==='PNJ'?S.chars[c.alias]:null;
+const pnAkaTxt=c=>String((c&&c.aka)||'').split(',').map(x=>x.trim()).filter(Boolean); /* lot 4 : alias en texte libre, sans fiche */
 const pnAliases=c=>Object.values(S.chars).filter(x=>x.type==='PNJ'&&x.alias===c.id&&x.id!==c.id).sort((a,b)=>(a.court||'').localeCompare(b.court||'','fr'));
 const pnCanNew=()=>!S.visit&&(canEdit()||(!isGest()&&!!ME));
 const pnHasFm=c=>!!c.race&&c.race!==HUMAIN;
@@ -776,13 +784,13 @@ function pnListView(){const G=isGest(),F=S.pnF||{},all=ids().map(i=>S.chars[i]).
 function pnListBody(){const G=isGest(),F=S.pnF||{},q=nrm(S.pnQ||'');
   let L=ids().map(i=>S.chars[i]).filter(c=>c.type==='PNJ');
   if(!L.length)return `<div class="card empty">Aucun PNJ pour l'instant.</div>`;
-  L=L.filter(c=>(!q||nrm(c.court).includes(q)||nrm(c.nom).includes(q)||nrm(c.surnom||'').includes(q))&&(!G||!S.pnPrep||!pnRev(c))&&['familles','orgs','lieux'].every(k=>!F[k]||pnSitNames(c,k).includes(F[k]))&&(!F.rang||rangOf(c)===F.rang)&&(!F.race||c.race===F.race));
+  L=L.filter(c=>(!q||nrm(c.court).includes(q)||nrm(c.nom).includes(q)||nrm(c.surnom||'').includes(q)||nrm(c.aka||'').includes(q))&&(!G||!S.pnPrep||!pnRev(c))&&['familles','orgs','lieux'].every(k=>!F[k]||pnSitNames(c,k).includes(F[k]))&&(!F.rang||rangOf(c)===F.rang)&&(!F.race||c.race===F.race));
   if(!L.length)return `<div class="card empty">Aucun PNJ ne correspond.</div>`;
   L.sort((a,b)=>pnName(a).localeCompare(pnName(b),'fr',{sensitivity:'base'}));
   const row=c=>{const m=pnMain(c),org=pnSitNames(c,'orgs')[0]||'',res=pnRes(c);
     const sub=G&&m?`<small class="pnreal">alias de ${esc(pnName(m))}${org?' · '+esc(org):''}</small>`:`<small>${esc([pnRaceTxt(c),isFeal(c)?'Féal de '+pnName(S.chars[c.pj]):org,res].filter(Boolean).join(' · '))}</small>`;
     const rk=!actif(c)?`<span class="pndead">${c.statut==='mort'?'† '+(c.genre==='f'?'morte':'mort'):esc(STATUTS[c.statut]||'')}</span>`:!pnRev(c)?`<span class="ux2prep">${EYE_C}préparé</span>`:'';
-    return `<button type="button" class="pnli${pnRev(c)?'':' prep'}" data-act="sel" data-id="${esc(c.id)}">${pnAv(c)}<span class="pntx"><b>${esc(pnName(c))}${(c.surnom||'').trim()?` <i class="pnsur">« ${esc(c.surnom.trim())} »</i>`:''}</b>${sub}</span>${rk}</button>`;};
+    return `<button type="button" class="pnli${pnRev(c)?'':' prep'}" data-act="sel" data-id="${esc(c.id)}">${pnAv(c)}<span class="pntx"><b>${esc(pnName(c))}${(c.surnom||'').trim()?` <i class="pnsur">« ${esc(c.surnom.trim())} »</i>`:''}${sigPicto('perso',c.id)}</b>${sub}</span>${rk}</button>`;};
   const fk=['familles','orgs','lieux','rang','race'].find(k=>F[k]);
   if(fk)return `<div class="pgrp">${esc(F[fk])} · ${L.length}</div><div class="plst pnlst">${L.map(row).join('')}</div>`;
   const grp={};for(const c of L){const k=(nrm(pnName(c))[0]||'#').toUpperCase();(grp[k]=grp[k]||[]).push(c);}
@@ -806,14 +814,19 @@ const pnVisKeys=c=>(c.alias?['idr']:[]).concat(PN_POR.filter(([k])=>k!=='fm'||pn
 /* ---------- UX2 (28/11/2026) : PNJ sur une page ---------- */
 function pnHeadUX2(c){const G=isGest(),E=canEditC(c);
   const eye=G?(pnRev(c)?`<button type="button" class="ibtn" data-act="pnEye" data-k="fiche" aria-label="Fiche révélée : la préparer">${EYE_O}</button>`:`<button type="button" class="ibtn prepi" data-act="pnEye" data-k="fiche" aria-label="Fiche préparée : la révéler">${EYE_C}</button>`):'';
-  let h=`<div class="ux2top">${crumb(CR_UNI,['PNJ','data-act="pnBack"'])}<span class="ux2sp"></span>${eye}${E?`<button type="button" class="ibtn" data-act="pcOpen" data-id="${esc(c.id)}" aria-label="Modifier l'identité">${ICON.crayon}</button>`:''}</div>`;
+  let h=`<div class="ux2top">${crumb(CR_UNI,['PNJ','data-act="pnBack"'])}<span class="ux2sp"></span>${sigBtn('perso',c.id)}${eye}${E?`<button type="button" class="ibtn" data-act="pcOpen" data-id="${esc(c.id)}" aria-label="Modifier l'identité">${ICON.crayon}</button>`:''}</div>`;
   const im=portrait(c),inner=im?`<img src="${im}" alt="">`:`<span class="ini">${esc(pnName(c).slice(0,1))}</span>`;
   const med=im?`<button type="button" class="ux2pnav" data-act="fiImg" data-cid="${esc(c.id)}" aria-label="Agrandir le portrait de ${esc(pnName(c))}">${inner}</button>`:canPortrait(c)?`<label class="ux2pnav" aria-label="Ajouter un portrait">${inner}<input type="file" accept="image/*" data-ptrfile="${esc(c.id)}" hidden></label>`:`<span class="ux2pnav">${inner}</span>`;
   const tit=pnSitNames(c,'titres')[0],fam=pnSitNames(c,'familles')[0],age=(typeof chAgeTxt==='function'&&chAgeTxt(c)||{}).age,occ=((c.por||{}).occ||'').trim();
-  const aka=pnAliases(c).filter(a=>G||(vis(a)&&pnBlkSee(a,'idr'))).map(a=>pnName(a));
+  const aka=pnAkaTxt(c).concat(pnAliases(c).filter(a=>G||(vis(a)&&pnBlkSee(a,'idr'))).map(a=>pnName(a)));
   const kv=[['Race',c.race?raceLk(c)+(pnFeal(c)?' · féal':''):''],['Titre',tit?esc(elid(tit)):''],['Famille',fam?esc(fam):''],['Occupation',occ?esc(occ):''],['Rang',esc(rangOf(c))],['Âge',age?esc(age):''],['Statut',(c.statut||'actif')!=='actif'?esc(STATUTS[c.statut]||''):'']].filter(x=>x[1]);
   h+=`<section class="ux2pnid"><div class="ux2pnhd">${med}<div style="flex:1;min-width:0"><h2 class="finm">${esc(c.nom||c.court)}${(c.surnom||'').trim()?` <i class="pnsur">« ${esc(c.surnom.trim())} »</i>`:''}</h2>${aka.length?`<div class="muted small">Aussi connu sous : ${aka.map(esc).join(', ')}</div>`:''}${!pnRev(c)?`<span class="ux2prep">${EYE_C}préparé</span>`:''}</div></div><div class="pnkv ux2kv">${kv.map(([a,b])=>`<span>${a}</span><b>${b}</b>`).join('')}</div></section>`;
   return h;}
+/* PJ actif du joueur qui commente (le premier), pour la signature « Anne (Sloan) » */
+const pnComPc=()=>{const P=S.players[ME];const L=((P&&P.persos)||[]).map(i=>S.chars[i]).filter(x=>x&&x.type==='PJ'&&actif(x));return L.length?L[0].id:'';};
+const pnComCan=x=>isUser()&&(isGest()||(x&&x.par===ME));
+function pnComRow(x){const P=S.players[x.par],pc=x.pc&&S.chars[x.pc],who=(P?P.nom:'?')+(pc?' ('+(pc.court||pc.nom)+')':''),dt=x.cree?fmtDate(String(x.cree).slice(0,10)):'';
+  return `<div class="fiit ux2it"><div class="fiitx">${fiRich(x.txt)}<div class="ux2itm">${esc(who)}${dt?' · '+esc(dt):''}</div></div>${pnComCan(x)?`<button type="button" class="fiedi" data-act="pnCom" data-i="${esc(x.id)}" aria-label="Modifier le commentaire">${ICON.crayon}</button>`:''}</div>`;}
 function pnDescOf(c){const p=c.por||{};return (p.desc||'').trim()||[p.role,p.app,p.car].map(x=>(x||'').trim()).filter(Boolean).join('\n\n');}
 function pnPage(c){const G=isGest(),E=canEditC(c),comp=[];let h='';
   const m=pnMain(c);if(m&&pnBlkSee(c,'idr'))h+=fiBlk('pn-idr','Identité réelle','',`Alias de ${lk({t:'perso',id:m.id},pnName(m))}`+(E?`<div class="relbtns"><button type="button" class="addl" data-act="pnAliasOff">Détacher de ${esc(pnName(m))}</button></div>`:''));
@@ -823,6 +836,9 @@ function pnPage(c){const G=isGest(),E=canEditC(c),comp=[];let h='';
   const A=c.sait||[],V=A.filter(it=>it.rev),Hd=A.filter(it=>!it.rev);
   if(V.length)h+=fiBlk('pn-sait',"Ce que l'on sait",String(V.length),V.map(it=>fiItRow(c,it,E).replace(/data-act="fiItem"/g,'data-act="pnItem"')).join(''),{plus:E?'pnItem':'',pa:' data-i="" data-h="0"'});else if(E)comp.push(["Ce que l'on sait",'pnItem',' data-i="" data-h="0"']);
   if(G){if(Hd.length)h+=fiBlk('pn-arev','À révéler',String(Hd.length),`<div class="ux2arh">${EYE_C}Invisible des joueurs · un élément révélé passe dans « Ce que l'on sait »</div>`+Hd.map(it=>fiItRow(c,it,E,true).replace(/data-act="fiItem"/g,'data-act="pnItem"').replace(/data-act="fiRevIt"/g,'data-act="pnRevIt"')).join(''),{plus:'pnItem',pa:' data-i="" data-h="1"',cls:'ux2arev'});else comp.push(['À révéler','pnItem',' data-i="" data-h="1"']);}
+  /* Lot 4 : commentaires personnels, visibles de toute la table, signés ; chacun modifie les siens, le MJ tous */
+  const CM=c.com||[],cmU=isUser();
+  if(CM.length)h+=fiBlk('pn-com','Commentaires personnels',String(CM.length),CM.map(x=>pnComRow(x)).join(''),{plus:cmU?'pnCom':'',pa:' data-i=""'});else if(cmU)comp.push(['Commentaire personnel','pnCom',' data-i=""']);
   /* Forme : démasquée / masquée */
   const fm=((c.por||{}).fm||'').trim(),im=portrait(c);
   if(pnHasFm(c)&&fm){const msk=!!(S.pnFm||{})[c.id];
@@ -890,10 +906,10 @@ const pnSeg=(k,v,L,lab)=>`<div class="field"><label>${lab}</label><div class="se
 const pnErr=g=>g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:'';
 function pnSheet(g){
   if(g.kind==='pnPw')return pnPwSheet(g); /* pouvoirs et capacités */
-  if(g.kind==='pnTxt'){const c=S.chars[g.cid];if(!c||!canEditC(c))return null;const tt=({occ:'Occupation',desc:'Description',item:g.hid?'À révéler':"Ce que l'on sait"})[g.b]||(PN_POR.find(x=>x[0]===g.b)||[,''])[1];
+  if(g.kind==='pnTxt'){const c=S.chars[g.cid];if(!c||!(g.b==='com'?isUser()&&vis(c):canEditC(c)))return null;const tt=({com:'Commentaire personnel',occ:'Occupation',desc:'Description',item:g.hid?'À révéler':"Ce que l'on sait"})[g.b]||(PN_POR.find(x=>x[0]===g.b)||[,''])[1];
     return fiShell(g,'Modifier : '+tt,`<div><h2>Modifier : ${esc(tt)}</h2><div class="muted small">${esc(pnName(c))}</div></div>
       <div class="fiedw"><div id="fiEd" class="fied" contenteditable="true" role="textbox" aria-multiline="true" aria-label="${esc(tt)}" spellcheck="true">${fiEdHtml(g.txt)}</div><div id="fiSug" class="fisug" role="listbox" hidden></div></div>
-      <div class="muted small">Tape <b>@</b> puis quelques lettres pour lier une fiche ; une ligne qui commence par « - » devient une liste.</div>
+      <div class="muted small">Tape <b>@</b> puis quelques lettres pour lier une fiche ; une ligne qui commence par « - » devient une liste.${g.b==='com'?' Visible de toute la table, signé de ton nom.'+(g.iid?' Vider le texte supprime le commentaire.':''):''}</div>
       <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="pnTxtSave">Enregistrer</button></div>`);}
   if(g.kind==='pnNew'){if(!pnCanNew())return null;const gest=canEdit();
     return fiShell(g,'Nouveau PNJ',`<h2>Nouveau PNJ</h2>${g.main?`<div class="muted small">Alias de ${esc(pnName(S.chars[g.main]||{}))}</div>`:''}
@@ -940,10 +956,12 @@ function pnAct(a,d){
   if(a==='pnPwX'&&g&&g.kind==='pnPw'){if(d.t==='pw'||d.t==='cap')g[d.t]=g[d.t].filter(x=>x!==d.id);S._fiRedraw=true;render();return true;}
   if(a==='pnPwSave'&&g&&g.kind==='pnPw'){const x=S.chars[g.cid];if(!x||!canEditC(x))return true;const n=clone(x);if(g.pw.length||g.cap.length)n.pnpw={pw:g.pw.slice(),cap:g.cap.slice()};else delete n.pnpw;S.dlg=null;pnSaveC(n);setTimeout(()=>toast('Enregistré'),0);return true;}
   if(a==='pnTxt'){if(!c||!canEditC(c))return true;fiOpenDlg({kind:'pnTxt',cid:c.id,b:d.b,txt:d.b==='desc'?pnDescOf(c):(c.por||{})[d.b]||''});render();return true;}
+  if(a==='pnCom'){if(!c||!isUser())return true;const x=d.i?(c.com||[]).find(y=>y.id===d.i):null;if(x&&!pnComCan(x))return true;fiOpenDlg({kind:'pnTxt',cid:c.id,b:'com',iid:x?x.id:'',txt:x?x.txt:''});render();return true;}
   if(a==='pnItem'){if(!c||!canEditC(c))return true;const it=d.i?(c.sait||[]).find(x=>x.id===d.i):null;fiOpenDlg({kind:'pnTxt',cid:c.id,b:'item',iid:it?it.id:'',hid:d.h==='1',txt:it?it.txt:''});render();return true;}
   if(a==='pnRevIt'){if(!c||!isGest())return true;const n=clone(c),it=(n.sait||[]).find(x=>x.id===d.i);if(!it)return true;it.rev=true;it.revDj=typeof chNow==='function'?chNow():null;pnSaveC(n);setTimeout(()=>toast("Révélé : ajouté à « Ce que l'on sait »"),0);return true;}
-  if(a==='pnTxtSave'){const x=g&&S.chars[g.cid];if(!x||!canEditC(x))return true;const ed=document.getElementById('fiEd'),txt=ed?fiSer(ed):(g.txt||'');
-    const n=clone(x);if(g.b==='item'){n.sait=(n.sait||[]).slice();if(g.iid){const i=n.sait.findIndex(y=>y.id===g.iid);if(i>=0){if(txt)n.sait[i]={...n.sait[i],txt};else n.sait.splice(i,1);}}else if(txt)n.sait.push({id:fiRid('i'),txt,rev:!(isGest()&&g.hid),cree:new Date().toISOString(),par:ME||''});}
+  if(a==='pnTxtSave'){const x=g&&S.chars[g.cid];if(!x||!(g.b==='com'?isUser()&&vis(x):canEditC(x)))return true;const ed=document.getElementById('fiEd'),txt=ed?fiSer(ed):(g.txt||'');
+    const n=clone(x);if(g.b==='com'){n.com=(n.com||[]).slice();if(g.iid){const i=n.com.findIndex(y=>y.id===g.iid);if(i>=0&&pnComCan(n.com[i])){if(txt)n.com[i]={...n.com[i],txt,modif:new Date().toISOString()};else n.com.splice(i,1);}}else if(txt)n.com.push({id:fiRid('cm'),txt,par:ME||'',pc:pnComPc(),cree:new Date().toISOString()});}
+    else if(g.b==='item'){n.sait=(n.sait||[]).slice();if(g.iid){const i=n.sait.findIndex(y=>y.id===g.iid);if(i>=0){if(txt)n.sait[i]={...n.sait[i],txt};else n.sait.splice(i,1);}}else if(txt)n.sait.push({id:fiRid('i'),txt,rev:!(isGest()&&g.hid),cree:new Date().toISOString(),par:ME||''});}
     else if(g.b==='occ')n.por={...(n.por||{}),occ:(ed?ed.innerText:txt).replace(/\s+/g,' ').trim()};
     else if(g.b==='desc'){n.por={...(n.por||{}),desc:txt};delete n.por.role;delete n.por.app;delete n.por.car;}
     else n.por={...(n.por||{}),[g.b]:txt};FI_AT=null;S.dlg=null;pnSaveC(n);return true;}
@@ -1025,7 +1043,7 @@ function fi6Blocks(f){const G=isGest(),ed=fiCanEd(f),e=fiEyeOf(f),eye=(k,l)=>G?e
   const none=t=>`<div class="muted small">${t}</div>`;
   if(f.genre==='lieu'){const L=fi6CharLinks(f.id);
     if(fiIsFief(f)&&fiBlkSee(f,'fief')){const D=L.filter(x=>x.nat==='fief'),fe=((f.fief||{}).feerie||'').trim();
-      h+=fiBlk('fief','Fief',D.length?D.length+' détenteur'+(D.length>1?'s':''):'',`<div class="fimg">Détenteurs</div>${D.map(x=>`<div class="srow"><span>${lk({t:'perso',id:x.c.id},fiCN(x.c))}</span>${ed?fi6Unlk('ch',{c:x.c.id,k:x.k,s:x.sid}):''}</div>`).join('')||none('Aucun détenteur.')}${add('fi6Lk','Détenteur',' data-m="fief"')}
+      h+=fiBlk('fief','Fief',D.length?D.length+' détenteur'+(D.length>1?'s':''):'',`<div class="fimg">Détenteurs</div>${D.map(x=>{const se=((x.c.situ||{}).fiefs||[]).find(e=>e.id===x.sid),tl=se&&se.titre&&x.c.type==='PJ'?situTitreLib(x.c,se.titre):'';return `<div class="srow"><span>${lk({t:'perso',id:x.c.id},fiCN(x.c))}${tl?` <span class="muted">· ${esc(tl)}</span>`:''}</span>${ed?fi6Unlk('ch',{c:x.c.id,k:x.k,s:x.sid}):''}</div>`;}).join('')||none('Aucun détenteur.')}${add('fi6Lk','Détenteur',' data-m="fief"')}
         <div class="fimg">Situation féerique</div>${fe?fiRich(fe):none('Rien pour l\'instant.')}${ed?`<div class="radd"><button type="button" class="edl" data-act="fiEd" data-b="feerie">${ICON.crayon} Modifier</button></div>`:''}`,{hid:G&&!e.fief,eye:eye('fief','Fief')});}
     const K=fiSort(fiKidsOf(f.id).filter(fiSee));
     if(!K.length)cx('Lieu contenu','fiNew',' data-g="lieu"');if(K.length)h+=fiBlk('cont','Lieux contenus'+fi6Calc(),K.length?String(K.length):'',K.map(x=>`<div class="srow"><span>${lk({t:'fiche',id:x.id},x.nom)}${x.type?` <span class="muted">· ${esc(x.type)}</span>`:''}${x.vis!=='rev'?' <span class="tag2">préparé</span>':''}</span></div>`).join('')+(K.length?'':none('Aucun lieu contenu.'))+add('fiNew','Lieu contenu',' data-g="lieu"'),{});
@@ -1764,6 +1782,7 @@ function caAct(a,d){if(/^caPd/.test(a))return caParamAct(a,d);const f=S.fi&&S.fi
     S.dlg=null;S.caMode=null;S.caTmp=null;fiSave(n);setTimeout(()=>toast('Échelle enregistrée'),0);return true;}
   if(a==='caEchDel'){if(g.kind!=='caEch'||!canEdit())return true;const cc=S.fiches[g.cid];if(!cc)return true;const n=clone(cc);delete n.ech;S.dlg=null;S.caMode=null;S.caTmp=null;fiSave(n);return true;}
   return true;}
+document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.filv){S.fiLv=t.value;render();}});
 function caCfgSave(n){S.caCfg=n;persist('meta/cartes',n);}
 /* Suppressions : repères et trajets d'une carte supprimés avec elle ; repères visant une fiche supprimée devenus libres */
 function caUnlink(t,id){const f=t==='fiche'?S.fiches[id]:null;
@@ -1797,22 +1816,44 @@ document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset)retur
   if(t.dataset.cap!==undefined&&S.caPd){caPdInput(t);}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&S.caFull&&!S.dlg){S.caFull=false;document.body.classList.remove('cafull');render();}});
 /* ---------- Paramètres › Règles › Cartes ---------- */
+const caCatUsed=()=>{const u={};for(const r of fiAll())if(r.genre==='rep'){const k=r.cat||caCfg().cats[0].id;u[k]=(u[k]||0)+1;}return u;};
+/* Lot 4 : fenêtre d'une catégorie de repère (brouillon S.caPd, enregistré par la barre de la page) */
+function caCatSheet(g){const P=S.caPd,c=P&&P.cats[g.i];if(!c||!canEdit())return '';const n=caCatUsed()[c.id]||0;
+  return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Catégorie ${esc(c.nom)}"><div class="in"><div class="blkhd"><div style="flex:1;min-width:0"><h2 style="margin:0">${esc(c.nom)}</h2><div class="muted small">Catégorie de repère · ${n} repère${n>1?'s':''}</div></div>${n?'':`<button type="button" class="ibtn del" data-act="caPdCatDel" aria-label="Supprimer la catégorie">${ICON.corbeille}</button>`}</div>
+    <div class="field"><label for="caCn">Nom</label><input id="caCn" type="text" data-cap="nom" data-i="${g.i}" value="${esc(c.nom)}" autocomplete="off"></div>
+    <div class="field"><label for="caCc">Couleur</label><input id="caCc" type="color" data-cap="coul" data-i="${g.i}" value="${esc(c.coul)}" style="width:64px;height:40px"></div>
+    ${P.cats.length>1?`<div class="field"><label for="caCi">Fusionner dans…</label><select id="caCi" data-cap="into" data-i="${g.i}"><option value="">— choisir une catégorie —</option>${P.cats.filter(x=>x.id!==c.id).map(x=>`<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select><div class="muted small">${n?`Les ${n} repère${n>1?'s':''} passent dans la catégorie choisie ; celle-ci disparaît.`:'Cette catégorie disparaît.'}</div></div>`:''}
+    <div class="field"><label>Ordre</label><span style="display:flex;gap:6px"><button type="button" class="ibtn" data-act="caPdMv" data-v="-1" aria-label="Monter"${g.i?'':' disabled'}>↑</button><button type="button" class="ibtn" data-act="caPdMv" data-v="1" aria-label="Descendre"${g.i<P.cats.length-1?'':' disabled'}>↓</button></span></div>
+    ${n?'<div class="muted small">Corbeille : seulement quand aucun repère n\'utilise la catégorie.</div>':''}
+    <div class="muted small">Les changements s'appliquent avec « Enregistrer » en bas de la page.</div>
+    <div class="actions"><button class="btn pri" data-act="closeSheet">OK</button></div></div></div>`;}
 function caParams(){const G=canEdit();if(!S.caPd)S.caPd=clone(caCfg());const P=S.caPd,used={};for(const r of fiAll())if(r.genre==='rep'){const k=r.cat||caCfg().cats[0].id;used[k]=(used[k]||0)+1;}
-  const cats=P.cats.map((c,i)=>`<div class="srow capr"><input type="color" data-cap="coul" data-i="${i}" value="${esc(c.coul)}" aria-label="Couleur de ${esc(c.nom)}"${G?'':' disabled'}><input type="text" data-cap="nom" data-i="${i}" value="${esc(c.nom)}" aria-label="Nom de la catégorie"${G?'':' disabled'}><span class="muted small">${used[c.id]||0}</span>${G?`<button type="button" class="ibtn" data-act="caPdUp" data-k="cats" data-i="${i}" aria-label="Monter ${esc(c.nom)}"${i?'':' disabled'}>↑</button><select data-cap="into" data-i="${i}" aria-label="Fusionner ${esc(c.nom)} dans"><option value="">${used[c.id]?'Fusionner…':'Supprimer…'}</option>${used[c.id]?P.cats.filter(x=>x.id!==c.id).map(x=>`<option value="${esc(x.id)}">dans ${esc(x.nom)}</option>`).join(''):'<option value="__del">Supprimer</option>'}</select>`:''}</div>`).join('');
+  /* Lot 4 : nom en entier, nombre de repères, ordre par glisser ⋮⋮ ; le crayon ouvre la catégorie (nom, couleur, fusion, suppression) */
+  const cats=P.cats.map((c,i)=>`<div class="srow capr2" data-capi="${i}">${G?`<span class="cadrag" data-cadrag="${i}" title="Glisser pour changer l'ordre" aria-hidden="true">⋮⋮</span>`:''}<span class="cadot" style="background:${esc(c.coul)}" aria-hidden="true"></span><span class="cmain"><b>${esc(c.nom)}</b><small class="muted">${used[c.id]||0} repère${(used[c.id]||0)>1?'s':''}</small></span>${G?`<button type="button" class="ibtn" data-act="caPdCat" data-i="${i}" aria-label="Modifier ${esc(c.nom)}">${ICON.crayon}</button>`:''}</div>`).join('');
   const moy=P.moy.map((m,i)=>`<div class="srow capr"><input type="text" data-cap="mnom" data-i="${i}" value="${esc(m.nom)}" aria-label="Moyen de déplacement"${G?'':' disabled'}><input type="number" min="0" step="any" data-cap="v" data-i="${i}" value="${esc(String(m.v))}" aria-label="Vitesse de ${esc(m.nom)} en km/h" style="width:80px"${G?'':' disabled'}><span class="muted small">km/h</span>${G?`<button type="button" class="ibtn" data-act="caPdUp" data-k="moy" data-i="${i}" aria-label="Monter ${esc(m.nom)}"${i?'':' disabled'}>↑</button><button type="button" class="ibtn" data-act="caPdDel" data-i="${i}" aria-label="Retirer ${esc(m.nom)}">✕</button>`:''}</div>`).join('');
   return `${G?'':'<div class="rolock">Lecture seule : réservé à la gestion, en mode édition.</div>'}
-    ${cBlk('ca-cat','Catégories de repère',String(P.cats.length),cats+(G?`<div class="radd"><button class="btn" data-act="caPdAdd" data-k="cats">+ Catégorie</button></div>`:'')+'<div class="muted small" style="margin-top:6px">La couleur de la pastille vient de la catégorie. Les joueurs peuvent créer une catégorie en posant un repère. Une catégorie utilisée ne se supprime qu\'en la fusionnant dans une autre.</div>')}
+    ${cBlk('ca-cat','Catégories de repère',String(P.cats.length),cats+(G?`<div class="radd"><button class="btn" data-act="caPdAdd" data-k="cats">+ Catégorie</button></div>`:'')+`<div class="muted small" style="margin-top:6px">${G?'Glisser ⋮⋮ pour changer l\'ordre ; le crayon ouvre la catégorie (nom, couleur, fusion, suppression). ':''}La couleur de la pastille vient de la catégorie. Les joueurs peuvent créer une catégorie en posant un repère.</div>`)}
     ${cBlk('ca-pic','Pictogrammes','fixes',`<div class="capics">${CA_TY.map(([k,l])=>`<span>${FI_SVG(CA_SVG[k],20)}<small>${l}</small></span>`).join('')}</div><div class="muted small">Le picto suit le type de la fiche rattachée.</div>`)}
     ${cBlk('ca-moy','Moyens de déplacement',String(P.moy.length),moy+(G?`<div class="radd"><button class="btn" data-act="caPdAdd" data-k="moy">+ Moyen de déplacement</button></div>`:'')+'<div class="muted small" style="margin-top:6px">Durée d\'un trajet = distance ÷ vitesse (sans relief ni arrêts). Le premier de la liste sert à la règle.</div>')}
     ${G?`<div class="actions" style="margin-top:10px"><button class="btn" data-act="caPdReset">Annuler les changements</button><button class="btn pri" data-act="caPdSave">Enregistrer</button></div>`:''}`;}
 function caPdInput(t){const P=S.caPd,i=+t.dataset.i,k=t.dataset.cap;if(!P)return;
   if(k==='coul'||k==='nom'){if(P.cats[i])P.cats[i][k]=t.value;}else if(k==='mnom'){if(P.moy[i])P.moy[i].nom=t.value;}else if(k==='v'){if(P.moy[i])P.moy[i].v=parseFloat(String(t.value).replace(',','.'))||0;}}
 document.addEventListener('change',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.cap!=='into'||!S.caPd||!canEdit())return;const P=S.caPd,i=+t.dataset.i,c=P.cats[i];if(!c||!t.value)return;
-  if(t.value!=='__del'){P.merge=(P.merge||[]).concat([[c.id,t.value]]);}P.cats.splice(i,1);render();});
+  if(t.value!=='__del'){P.merge=(P.merge||[]).concat([[c.id,t.value]]);}P.cats.splice(i,1);if(S.dlg&&S.dlg.kind==='caCat')S.dlg=null;render();});
+/* Lot 4 : glisser ⋮⋮ pour changer l'ordre des catégories (souris et doigt) */
+let CA_DR=null;
+document.addEventListener('pointerdown',ev=>{const h=ev.target&&ev.target.closest&&ev.target.closest('[data-cadrag]');if(!h||!S.caPd||!canEdit())return;ev.preventDefault();CA_DR={i:+h.dataset.cadrag,t:+h.dataset.cadrag};const r=h.closest('.capr2');if(r)r.classList.add('drag');try{h.setPointerCapture(ev.pointerId);}catch(e){}});
+document.addEventListener('pointermove',ev=>{if(!CA_DR)return;const R=[...document.querySelectorAll('.capr2')];let t=R.length-1;for(let k=0;k<R.length;k++){const b=R[k].getBoundingClientRect();if(ev.clientY<b.top+b.height/2){t=k;break;}}
+  CA_DR.t=t;R.forEach((r,k)=>r.classList.toggle('over',k===t&&t!==CA_DR.i));});
+document.addEventListener('pointerup',()=>{if(!CA_DR)return;const {i,t}=CA_DR;CA_DR=null;const P=S.caPd;document.querySelectorAll('.capr2').forEach(r=>r.classList.remove('drag','over'));
+  if(P&&t!==i&&P.cats[i]){const [c]=P.cats.splice(i,1);P.cats.splice(t,0,c);}render();});
 function caParamAct(a,d){if(!canEdit())return true;const P=S.caPd;if(!P)return true;
   if(a==='caPdAdd'){if(d.k==='cats')P.cats.push({id:uid('cat'),nom:'Nouvelle catégorie',coul:'#4d7a2a'});else P.moy.push({id:uid('m'),nom:'Nouveau moyen',v:10});render();return true;}
   if(a==='caPdUp'){const L=P[d.k],i=+d.i;if(L&&i>0){[L[i-1],L[i]]=[L[i],L[i-1]];}render();return true;}
   if(a==='caPdDel'){P.moy.splice(+d.i,1);render();return true;}
+  if(a==='caPdCat'){if(!P.cats[+d.i])return true;S.dlg={kind:'caCat',i:+d.i};render();return true;}
+  if(a==='caPdMv'){const g=S.dlg,i=g&&g.kind==='caCat'?g.i:+d.i,t=i+(+d.v);if(t<0||t>=P.cats.length)return true;[P.cats[i],P.cats[t]]=[P.cats[t],P.cats[i]];if(g&&g.kind==='caCat')g.i=t;render();return true;}
+  if(a==='caPdCatDel'){const g=S.dlg;if(!g||g.kind!=='caCat')return true;const c=P.cats[g.i];if(!c||caCatUsed()[c.id])return true;P.cats.splice(g.i,1);S.dlg=null;render();return true;}
   if(a==='caPdReset'){S.caPd=null;render();return true;}
   if(a==='caPdSave'){const M=P.merge||[],ok=new Set(P.cats.map(c=>c.id));
     const to=id=>{let x=id,n=0;while(!ok.has(x)&&n++<20){const m=M.find(y=>y[0]===x);if(!m)break;x=m[1];}return ok.has(x)?x:(P.cats[0]||{}).id;};
@@ -1851,7 +1892,7 @@ function srRun(q0){const q=srQ(q0),N=[],T=[],G=isGest();if(q.length<2)return {N,
   const nm=(g,o,noms,sub,img,prep)=>{const P=noms[0]||'';for(const x of noms.filter(Boolean)){const r=srIdx(x,q);if(r){N.push({g,o,nom:P,hi:x===P?srMark(x,r):esc(P),alt:x===P?'':'« '+srMark(x,r)+' » · ',sub,img,prep,st:r.a===0?0:1});return true;}}return false;};
   const tx=(g,o,nom,sub,where,txt)=>{const ex=srExtract(txt,q);if(ex)T.push({g,o,nom,sub,where,ex});return !!ex;};
   for(const c of Object.values(S.chars||{})){if(!vis(c))continue;const o={t:'perso',id:c.id},sub=c.type==='PJ'?'PJ':'PNJ'+(c.race?' · '+c.race:'');
-    nm('perso',o,[c.court||c.nom,c.nom!==c.court?c.nom:'',c.surnom],sub,S.ptr&&S.ptr[c.id]);
+    nm('perso',o,[c.court||c.nom,c.nom!==c.court?c.nom:'',c.surnom,...(c.type==='PNJ'?pnAkaTxt(c):[])],sub,S.ptr&&S.ptr[c.id]);
     if(c.type==='PNJ')for(const [k,l] of PN_POR)if(pnBlkSee(c,k)&&tx('perso',o,fiCN(c),sub,'Portrait › '+l,(c.por||{})[k]))break;}
   for(const f of fiAll()){if(!fiSee(f)||!SR_LAB[f.genre])continue;const o={t:'fiche',id:f.id},ev=f.genre==='evenement',nom=ev&&(f.num||'').trim()?f.num.trim()+' · '+f.nom:f.nom;
     const sub=(f.type||cap1((FI_G[f.genre]||{}).un||(ev?'événement':f.genre==='carte'?'carte':'fiche')))+(f.parent&&S.fiches[f.parent]&&fiSee(S.fiches[f.parent])?' · '+S.fiches[f.parent].nom:'');

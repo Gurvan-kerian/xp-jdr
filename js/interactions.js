@@ -468,7 +468,7 @@ document.addEventListener('change',ev=>{
   else if(t.dataset.cf==='kanka'){if(!canEdit())return;const c=clone(S.chars[t.dataset.id]);const v=t.value.trim();if(v&&!/^https?:\/\//.test(v)){render();return;}c.kanka=v;saveChar(c);}
   else if(t.dataset.cfeal){const c0=S.chars[t.dataset.cfeal];if(!c0||!canEditC(c0))return;const c=clone(c0);if(t.checked)c.feal=true;else delete c.feal;saveChar(c);} /* lot 4 : PNJ humain féal non rattaché */
   else if(t.dataset.cf==='pj'){const c=clone(S.chars[t.dataset.id]);const v=t.value||null;if(v!==(c.pj||null)){c.pj=v;c.pjDate=v?today():null;}saveChar(c);}
-  else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'||k==='genre'?t.value:k==='surnom'||k==='idm'?t.value.trim():(t.value.trim()||c[k]);saveChar(c);} /* lot 8 : surnom et identité masquée effaçables */
+  else if(t.dataset.cf){const c=clone(S.chars[t.dataset.id]);const k=t.dataset.cf;c[k]=k==='statut'||k==='genre'?t.value:k==='aka'?t.value.split(',').map(x=>x.trim()).filter(Boolean).join(', '):k==='surnom'||k==='idm'?t.value.trim():(t.value.trim()||c[k]);saveChar(c);} /* lot 8 : surnom et identité masquée effaçables */
   else if(t.dataset.np==='role'){render();}
 });
 document.addEventListener('focusout',()=>{setTimeout(()=>{if(S.dirty&&!(document.activeElement&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))){S._force=true;render();}},60);});
