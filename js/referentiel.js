@@ -2,7 +2,7 @@
 /* --- Référentiel › Races --- */
 function viewRef(){if(!S.creaturesReady||!S.racesReady||!S.pouvoirsReady)return `<div class="card empty">Chargement…</div>`;if(!S.rf)return viewRaces();
   /* Lot 4 bis : consultation par défaut ; l'éditeur seulement en mode édition (« Modifier la fiche ») ou pour une nouvelle race */
-  if(!S.rf.hum&&S.rf.id&&!(canRaceEd(S.rf.id)&&S.rfEd))return refRead();
+  if(!S.rf.hum&&S.rf.id&&!(S.rfEd&&(S.rfBlk?rfBlkCan(S.rf.id,S.rfBlk):canRaceFull(S.rf.id))))return refRead();
   if(!S.rf.hum&&!canRaceEd(S.rf.id)){S.rf=null;S.rfEd=false;return viewRaces();}
   let h=S.rf.hum?refHum():S.rf.id&&S.rfBlk?rfBlkOnly(refSheet(),S.rfBlk):refSheet();
   if(!S.rf.hum&&S.rf.id)h=h.replace('data-act="rfBack">Races</button>','data-act="rfBack">Races</button><button class="btn ghost" style="white-space:nowrap" data-act="rfEdOff">Terminer la modification</button>');
@@ -53,9 +53,9 @@ function refSheet(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id),rec=r
     <h3 class="rs">Spécialités de prédilection</h3><div class="muted small">Offertes à la création d'un personnage de cette race. Un nom contenant « au choix » est précisé par le joueur.</div>
     ${[['sp','Utiles'],['spf','Futiles']].map(([k,l])=>`<div class="small" style="margin:8px 0 4px"><b>${l}</b></div><div class="rgrid" style="grid-template-columns:1.3fr 1fr 1fr auto">${(g[k]||[]).map((e,i)=>`<input type="text" data-rfsp="${k}" data-i="${i}" data-p="0" value="${esc(e[0])}" placeholder="Spécialité" aria-label="Spécialité ${l.toLowerCase()} ${i+1}">${k==='sp'?`<select data-rfsp="sp" data-i="${i}" data-p="1" aria-label="Compétence de la spécialité ${i+1}">${copt(e[1],'— compétence —')}</select>`:`<input type="text" data-rfsp="spf" data-i="${i}" data-p="1" value="${esc(e[1])}" placeholder="Compétence futile" aria-label="Compétence futile de la spécialité ${i+1}">`}<input type="text" data-rfsp="${k}" data-i="${i}" data-p="2" value="${esc(e[2])}" placeholder="Note (facultatif)" aria-label="Note de la spécialité ${i+1}"><button class="x" data-act="rfSpDel" data-k="${k}" data-i="${i}" aria-label="Retirer la spécialité">✕</button>`).join('')||'<span class="muted small" style="grid-column:1/-1">Aucune.</span>'}</div><button class="btn ghost" style="margin-top:4px;padding:4px 10px" data-act="rfSpAdd" data-k="${k}">+ Ajouter</button>`).join('')}
     ${rfNewBlocks(g)}
-    ${g.unkAsk?rfUnkBox(g):''}<div class="actions" style="margin-top:14px">${(g.sing.trim()||(g.fem||'').trim())?'':'<div class="bad small" role="status" style="flex-basis:100%">Renseigne au moins un nom (masculin ou féminin) pour enregistrer.</div>'}<button class="btn pri" data-act="rfSave"${(g.sing.trim()||(g.fem||'').trim())?'':' disabled'}>Enregistrer la race</button>${g.id?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="rfDelOk">Confirmer la suppression</button>`:`<button class="btn ghost" data-act="rfDel">Supprimer</button>`):''}</div>
+    ${g.unkAsk?rfUnkBox(g):''}<div class="actions" style="margin-top:14px">${(g.sing.trim()||(g.fem||'').trim())?'':'<div class="bad small" role="status" style="flex-basis:100%">Renseigne au moins un nom (masculin ou féminin) pour enregistrer.</div>'}<button class="btn pri" data-act="rfSave"${(g.sing.trim()||(g.fem||'').trim())?'':' disabled'}>Enregistrer la race</button>${g.id&&canRaceFull(g.id)?(g.confirm?`<button class="btn" style="color:var(--bad)" data-act="rfDelOk">Confirmer la suppression</button>`:`<button class="btn ghost" data-act="rfDel">Supprimer</button>`):''}</div>
     ${g.err?`<div class="small" role="alert" style="color:var(--bad);margin-top:6px">${esc(g.err)}</div>`:''}</div>`;
-  return g.id&&cr?rfEyes(h,cr):h;}
+  return g.id&&cr&&isGest()?rfEyes(h,cr):h;} /* yeux : MJ seulement (le joueur peut modifier un bloc) */
 function viewCreatures(){
   if(!S.creaturesReady)return `<div class="card empty">Chargement des races…</div>`;
   const L=S.creatures,n=L.filter(c=>c.done).length;
@@ -167,12 +167,12 @@ const RFOLD0={cel:true,pcs:true};
 const rfFolded=k=>{const f=(S.rfFold||{})[k];return f==null?!!RFOLD0[k]:f;};
 /* Un bloc : en-tête (titre, résumé, « Modifier » en mode édition, œil pour la gestion) et contenu repliable */
 function rBlk(k,title,sum,body,o){o=o||{};const fold=rfFolded(k),id='rb-'+k;
-  const ed=o.edit&&canRaceEd(S.rf&&S.rf.id)?`<button type="button" class="edl" data-act="rfEdBlk" data-b="${o.edit}">${ICON.crayon} Modifier</button>`:'';
+  const ed=o.edit&&rfBlkCan(S.rf&&S.rf.id,o.edit)?`<button type="button" class="edl" data-act="rfEdBlk" data-b="${o.edit}">${ICON.crayon} Modifier</button>`:'';
   return `<section class="rblk"><div class="rbh"><button type="button" class="rbt" data-act="rfFold" data-k="${k}" aria-expanded="${!fold}" aria-controls="${id}"><span class="tt"><span class="t">${title}</span>${sum?`<span class="n">${sum}</span>`:''}</span><span class="chev" aria-hidden="true">${fold?'›':'⌄'}</span></button>${ed}${o.eye||''}</div>${fold?'':`<div class="rbb" id="${id}">${body}</div>`}</section>`;}
 function refRead(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr){S.rf=null;return viewRaces();}
   const x=raceRec(cr),r=S.races[cr.id]||{},F={trad:'Fée traditionnelle',mod:'Fée moderne',exo:'Fée exotique'},mine=myRace(x.sing);
   if(!raceVisible(cr,x)){S.rf=null;return viewRaces();}
-  const G=isGest(),E=canEdit(),e=eyeOf(cr,x),full=eyeFull(e),[n,t]=eyeCount(e),tab=rTab();
+  const G=isGest(),E=canEdit(),ET=canRaceEd(cr.id),EP=rfBlkCan(cr.id,'por'),e=eyeOf(cr,x),full=eyeFull(e),[n,t]=eyeCount(e),tab=rTab(); /* correctif : traits et portrait modifiables par les joueurs */
   const seal='<div class="sealedbox">Pas encore découvert.</div>',none='<span class="muted small">—</span>';
   const eyeK=(k,lab)=>G?eyeBtn('eye',`data-id="${esc(cr.id)}" data-k="${k}"`,eyeIsOpen(e,k,0),lab):'';
   const vis=k=>blockVisible(cr,x,k),por=r.por||{},pv=porVisible(cr,x);
@@ -181,7 +181,7 @@ function refRead(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr
   const fxs=(k,nm)=>{const L=(x.fx&&x.fx[fxKey(k,nm)])||[];return L.length?`<div class="fxl">${L.map(f=>fxChip(f)).join('')}</div>`:'';};
   const items=(l,k,sign)=>{const L=(l||[]).filter(a=>a&&a[0]);return L.length?L.map(a=>`<div class="rit">${sign?`<span class="pm ${sign}" aria-hidden="true">${sign==='p'?'+':'−'}</span>`:''}<div><b>${k==='cap'?capLk(a):esc(a[0])}</b>${a[1]?`<div class="d">${esc(a[1])}</div>`:''}${fxs(k,a[0])}</div></div>`).join(''):none;};
   /* en-tête */
-  let h=`<div class="rtop">${crumb(CR_UNI,['Races','data-act="rfBack"'],[''])}${canRaceEd(cr.id)?`<button class="btn" style="white-space:nowrap" data-act="rfEdOn">${ICON.crayon} Modifier toute la fiche</button>`:''}</div>
+  let h=`<div class="rtop">${crumb(CR_UNI,['Races','data-act="rfBack"'],[''])}${canRaceFull(cr.id)?`<button class="btn" style="white-space:nowrap" data-act="rfEdOn">${ICON.crayon} Modifier toute la fiche</button>`:''}</div>
   <div class="card rhead"><div class="rhd2"><div style="flex:1;min-width:0"><h2 class="rn2">${esc(raceNm(x))}<small>${esc(raceNmOther(x))}</small></h2><div class="muted small">${F[cr.fam]||''}${cr.done?' · <span class="rdot">✓ fiche complète</span>':''}${mine?' · ta race':''}${pjs.length?' · '+pjs.map(c=>lk({t:'perso',id:c.id},c.court)).join(', '):''}</div></div>${kankaBtn(x.kanka,x.sing,'Fiche Kanka : '+x.sing)}</div>
   ${tab==='por'&&illOf('race',cr.id)?`<div class="fibigw rimg40">${bigImg(illId('race',cr.id),illOf('race',cr.id),raceNm(x))}</div>`:''}
   ${pv&&(por.acc||'').trim()?`<div class="racc">${esc(por.acc)}</div>`:''}${canRaceEd(cr.id)?`<div style="margin-top:6px"><button type="button" class="edl" data-act="rfEdBlk" data-b="id">${ICON.crayon} Nom, famille, Kanka</button></div>`:''}`;
@@ -191,14 +191,14 @@ function refRead(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr
   /* onglets */
   if(tab==='por'){
     if(G)h+=`<div class="rporv">${eyeBtn('eye',`data-id="${esc(cr.id)}" data-k="por"`,!!e.por,'Portrait')} <span class="small">${e.por?'Portrait visible par la table':'Portrait caché aux joueurs'} <span class="muted">(sans effet sur l'XP)</span></span></div>`;
-    if(E&&S.rfPor)h+=rPorForm();
+    if(EP&&S.rfPor)h+=rPorForm();
     else if(!pv)h+=seal;
     else{const kv=(l,v)=>(v||'').trim()?`<div class="rkv"><span>${l}</span><div>${esc(v)}</div></div>`:'';
       const desc=kv('Apparence',por.app)+kv('Taille',por.tai)+kv('Sexe',por.sexe)+kv('Reproduction',por.rep)+kv('Habitat privilégié',por.hab);
       const ed={edit:'por'};
-      if(desc||E)h+=rBlk('desc','Description','',desc||none,ed);if((por.car||'').trim()||E)h+=rBlk('carac','Caractère','',(por.car||'').trim()?`<div class="small" style="white-space:pre-line">${esc(por.car)}</div>`:none,ed); /* UX2 : blocs vides masqués */
+      if(desc||EP)h+=rBlk('desc','Description','',desc||none,ed);if((por.car||'').trim()||EP)h+=rBlk('carac','Caractère','',(por.car||'').trim()?`<div class="small" style="white-space:pre-line">${esc(por.car)}</div>`:none,ed); /* UX2 : blocs vides masqués */
       const cel=(por.cel||'').split(/\s*;\s*/).map(s=>s.trim()).filter(Boolean);
-      if(cel.length||E)h+=rBlk('cel','Figures célèbres',cel.length?String(cel.length):'',cel.length?`<ul class="rdl">${cel.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>`:none,ed);}
+      if(cel.length||EP)h+=rBlk('cel','Figures célèbres',cel.length?String(cel.length):'',cel.length?`<ul class="rdl">${cel.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>`:none,ed);}
     const I=(r.infos||[]).filter(i=>G||!i.cache);
     if(E)h+=rBlk('inf','Informations complémentaires',String((r.infos||[]).length),rInfEdit(r));
     else if(I.length)h+=rBlk('inf','Informations complémentaires',String(I.length),I.map(i=>`<div class="fi"><b>${esc(i.lab||'')}</b>${i.cache?' <span class="tag2">masquée</span>':''}<div class="s">${esc(i.txt||'')}</div></div>`).join(''));
@@ -217,7 +217,7 @@ function refRead(){const g=S.rf,cr=g.id&&S.creatures.find(c=>c.id===g.id);if(!cr
   else{/* Création */
     const C=x.car;h+=rBlk('car','Caractéristiques','min – max',vis('car')?(C?`<div class="rcg">${CARCOL.map(k=>{const v=C[k]||['',''];return `<div><span>${k}</span><b>${esc(v[0])} – ${esc(v[1])}</b></div>`;}).join('')}</div>`:none):seal,{edit:'car',eye:eyeK('car','Caractéristiques')});
     const T=r.traits||[];
-    h+=rBlk('tr','Traits de caractère de la race',T.length?'1 à choisir':'',(T.length?`<div class="rtl">${T.map((t2,i)=>`<div class="rtr"><i aria-hidden="true"></i><span>${esc(t2)}</span>${E?`<button class="lnk-bad" data-act="rfTrDel" data-i="${i}" aria-label="Retirer ${esc(t2)}">✕</button>`:''}</div>`).join('')}</div><div class="muted small">Le trait de race du personnage est pris dans cette liste.</div>`:none)+(E?`<div class="radd"><input type="text" data-rftr="1" value="${esc(S.rfTrNew||'')}" placeholder="Nouveau trait…" aria-label="Nouveau trait"><button class="btn" data-act="rfTrAdd">Ajouter</button></div>`:''));
+    h+=rBlk('tr','Traits de caractère de la race',T.length?'1 à choisir':'',(T.length?`<div class="rtl">${T.map((t2,i)=>`<div class="rtr"><i aria-hidden="true"></i><span>${esc(t2)}</span>${ET?`<button class="lnk-bad" data-act="rfTrDel" data-i="${i}" aria-label="Retirer ${esc(t2)}">✕</button>`:''}</div>`).join('')}</div><div class="muted small">Le trait de race du personnage est pris dans cette liste.</div>`:none)+(ET?`<div class="radd"><input type="text" data-rftr="1" value="${esc(S.rfTrNew||'')}" placeholder="Nouveau trait…" aria-label="Nouveau trait"><button class="btn" data-act="rfTrAdd">Ajouter</button></div>`:''));
     h+=rBlk('comp','Compétences de prédilection','par profil',rCompBlock(x,G,vis),{edit:'comp',eye:eyeK('comp','Compétences de prédilection')});
     const at=(x.at||[]).filter(a=>a&&a[0]),ty=(x.typ||[]).filter(t2=>t2&&t2[0]);
     let ab=vis('at')?at.map(a=>`<div class="rit"><div><b>${esc(a[0])}</b>${a[1]?`<div class="d">${esc(a[1])}</div>`:''}${fxs('at',a[0])}</div></div>`).join(''):seal;
@@ -299,7 +299,7 @@ const RI_ACTS=new Set(['rfTab','rfTrAdd','rfTrDel','rfInfAdd','rfInfDel','riEye'
 function raceInfoSave(id,fn){const r0=S.races[id];if(!r0)return false;const r=clone(r0);fn(r);saveRaces({...S.races,[id]:r});return true;}
 function riAct(a,d){const g=S.rf;if(!g)return false;if(a==='rfTab'){S.rfTab=d.v;return;}
   if(a==='rfFold'){S.rfFold={...(S.rfFold||{}),[d.k]:!rfFolded(d.k)};return;}
-  if(!canRaceEd(g.id)||((a==='riEye'||a==='riEyeOk')&&!isGest()))return false;const id=g.id;
+  if(!canRaceEd(g.id)||((a==='riEye'||a==='riEyeOk')&&!isGest())||((a==='rfInfAdd'||a==='rfInfDel')&&!canEdit())||(a==='rfEdBlk'&&!rfBlkCan(g.id,d.b))||((a==='rfPorSave')&&!rfBlkCan(g.id,'por')))return false;const id=g.id;
   if(a==='rfEdBlk'){if(d.b==='por'){S.rfPor={...((S.races[id]||{}).por||{})};S.edDirty=false;return;}S.rf=rfDraft(id);S.rfEd=true;S.rfBlk=d.b;S.edDirty=false;window.scrollTo(0,0);return;}
   if(a==='rfPorCancel'){S.rfPor=null;S.edDirty=false;return;}
   if(a==='rfPorSave'){const d2=S.rfPor||{},o={};for(const [k] of POR_F){const v=(d2[k]||'').trim();if(v)o[k]=v;}raceInfoSave(id,r=>{r.por=o;});S.rfPor=null;setTimeout(()=>toast('Enregistré'),0);return;}

@@ -152,7 +152,14 @@ const pnPwHas=(c,k,id)=>!!c&&c.type==='PNJ'&&vis(c)&&((c.pnpw||{})[k]||[]).inclu
 /* Correctif UX3 (28/11) : « visible = modifiable » étendu aux races, pouvoirs et capacités. Joueur identifié : race entièrement révélée,
    pouvoir ou capacité qu'il voit, création ; le MJ et la gestion gardent le mode édition ; les yeux restent au MJ */
 const refUser=()=>isUser()&&!S.visit;
-function canRaceEd(id){if(canEdit())return true;if(!refUser())return false;if(!id)return true;const cr=S.creatures&&S.creatures.find(c=>c.id===id);if(!cr)return false;const x=raceRec(cr);return raceVisible(cr,x)&&eyeFull(eyeOf(cr,x));}
+/* Races (correctif du 28/11, 16 h 22) : le joueur modifie toute race visible, bloc par bloc (blocs visibles seulement) ; « Modifier toute la fiche » : race entièrement révélée */
+function raceCx(id){const cr=S.creatures&&S.creatures.find(c=>c.id===id);return cr?{cr,x:raceRec(cr)}:null;}
+function canRaceEd(id){if(canEdit())return true;if(!refUser())return false;if(!id)return true;const R=raceCx(id);return !!R&&raceVisible(R.cr,R.x);}
+function canRaceFull(id){if(canEdit())return true;if(!refUser())return false;if(!id)return true;const R=raceCx(id);return !!R&&raceVisible(R.cr,R.x)&&eyeFull(eyeOf(R.cr,R.x));}
+const RF_BLK_EYE={car:['car'],cap:['cap'],av:['av'],dv:['dv'],comp:['pred','fut','sp'],atyp:['at','typ']};
+function rfBlkCan(id,b){if(canEdit())return true;if(!canRaceEd(id))return false;if(canRaceFull(id))return true;const R=raceCx(id);if(!R)return true; /* nouvelle race */
+  const e=eyeOf(R.cr,R.x);if(b==='id')return true;if(b==='por')return porVisible(R.cr,R.x);if(b==='pw')return [0,1,2,3,4,5,6,7].every(i=>pwVisible(R.cr,R.x,i));
+  const K=RF_BLK_EYE[b];return !!K&&K.every(k=>blockVisible(R.cr,R.x,k));}
 function canElEd(t,id){if(canEdit())return true;if(!refUser())return false;return !id||elSeen(t,id);}
 function elSeen(t,id){if(isGest())return true;
   {const M=t==='pw'?S.pouvoirs:S.capacites,e=M&&M[id];if(e&&e.rev)return true;} /* créé par un joueur : visible de toute la table */
@@ -285,7 +292,7 @@ function lnkAct(a,d){
     if(document.querySelector('#app [role="alert"]')||(S.rf&&(S.rf.unkAsk||S.rf.err)))return true;S.edDirty=false;if(q.a==='rfEdOff')rfDiscard();edReplay(q);return true;}
   if(a==='edqSave'){S.edQuit=false;S._force=true;render();const b=document.querySelector('#sheetRoot [data-act="'+[...SAVE_ACTS].join('"],#sheetRoot [data-act="')+'"],#app [data-act="'+[...SAVE_ACTS].join('"],#app [data-act="')+'"]');
     if(b&&!b.disabled)b.click();if(!document.querySelector('#app [role="alert"],#sheetRoot [role="alert"]'))editOff();return true;}
-  if(a==='rfEdOn'){if(!canRaceEd(S.rf&&S.rf.id))return true;S.rfBlk=null;S.rfPor=null;S.rfEd=true;S.edDirty=false;S._force=true;render();window.scrollTo(0,0);return true;}
+  if(a==='rfEdOn'){if(!canRaceFull(S.rf&&S.rf.id))return true;S.rfBlk=null;S.rfPor=null;S.rfEd=true;S.edDirty=false;S._force=true;render();window.scrollTo(0,0);return true;}
   if(a==='rfEdOff'){rfDiscard();S._force=true;render();return true;}
   if(a==='consOpen'){const M=d.k==='cap'?S.capacites:S.pouvoirs;if(!M||!M[d.id])return true;const t=d.k==='cap'?'cap':'pw';if(!navGo({t,id:d.id})){S.nav.push(navSnap());S.dlg=null;S.uni='pouvoirs';S.fi=t+':'+d.id;window.scrollTo(0,0);}S._force=true;render();return true;} /* lot 2 bis ; UX2 : page */
   if(a==='pwPgEd'){const m=/^(pw|cap):(.+)$/.exec(S.fi||'');if(!m||!canElEd(m[1],m[2]))return true;S.dlg=elDraft(m[1],m[2]);S.edDirty=false;S._force=true;render();return true;}

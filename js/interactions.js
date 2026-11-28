@@ -256,6 +256,7 @@ document.addEventListener('click',ev=>{
   else if(a==='rfHum'){S.dlg=null;S.view='univers';S.uni='creatures';const x=humRec(),car={};for(const k of CARCOL){const v=x.car&&x.car[k];car[k]=[v?v[0]:'',v?v[1]:''];}S.rf={hum:true,car};window.scrollTo(0,0);}
   else if(a==='rfHumSave'){const g=S.rf,car={};for(const k of CARCOL){const v=g.car[k];car[k]=[v[0]===''?1:+v[0],v[1]===''?6:+v[1]];}S.races={...S.races,[HUM_ID]:{sing:HUMAIN,hum:true,car}};persist('meta/races',{byId:S.races});g.saved=true;}
   else if(a==='rfAtDel'){S.rf.at.splice(+d.i,1);}
+  else if((a==='rfDel'||a==='rfDelOk')&&!canRaceFull(S.rf&&S.rf.id))return; /* race en partie masquée : suppression au MJ et à la gestion */
   else if(a==='rfDel'){const g=S.rf,cr=S.creatures.find(c=>c.id===g.id);if(cr&&cr.done){g.err='Cette fiche de race est complète : elle ne peut pas être supprimée.';}else if(playedBy(raceRec(cr||{}).sing||'').length){g.err='Cette race est jouée par un personnage : elle ne peut pas être supprimée.';}else{g.err='';g.confirm=true;}}
   else if(a==='rfDelOk'){const id=S.rf.id;S.rf=null;saveCreatures(S.creatures.filter(c=>c.id!==id));const m={...S.races};delete m[id];S.races=m;persist('meta/races',{byId:m});rebuildRaces();}
   else if(a==='rfSave'&&S.rf&&!S.rf.hum&&rfPwCheck(S.rf)){S.rf.err='Enregistrement impossible. '+rfPwCheck(S.rf);refuse();}

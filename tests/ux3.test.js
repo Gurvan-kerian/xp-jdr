@@ -25,6 +25,8 @@ function demoDocs(){const ch=(id,court,o)=>({...GEN.run(`newChar(${JSON.stringif
     'meta/planning':{dates:[{id:'d1',date:'2026-11-21',sl:'S',status:'valid',type:'Scénario',by:'lorenzo'}],ecartes:[]},
     'meta/pouvoirs':{byId:{'pw-x':{nom:'Lévitation',desc:''}}},
     'gains/all':{events:[]},
+    'meta/creatures':{list:[{id:'elfes',nom:'Elfes',fam:'trad',done:false}]},
+    'meta/races':{byId:{elfes:{sing:'Elfe',plur:'Elfes',car:{},cap:[],traits:['Hautain'],eye:{fiche:true,por:true,car:true,cap:false,av:true,dv:true,pred:true,fut:true,sp:true,at:true,typ:true,pw:[true,true,true,true,true,true,true,true]}}}},
     'meta/secrets':{list:[{n:1,titre:'Alliance',titrePts:1,slots:{vm:[{txt:'Vérité A',pts:3,hid:true}],vmin:[],h:[]}}],props:[],lot:[{id:'l1',n:1,k:'vm',i:0}]}};}
 const DOCS=demoDocs();
 const TYPES={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.json':'application/json','.jpg':'image/jpeg'};
@@ -169,6 +171,13 @@ const go=(page,js)=>page.evaluate(js=>{eval(js);S._force=true;render();return do
       ok(!!id&&P[id].rev===true,'pouvoir créé par un joueur : révélé');
       ok(await E(page,id=>elSeen('pw',id)&&canElEd('pw',id),id),'visible et modifiable par les joueurs');
       ok(await E(page,()=>atSigSee({obj:{t:'pouvoir',id:'pw-x'},champ:'Type'})===false),'signalement sur un pouvoir non visible : pas pour le joueur');
+      ok(await E(page,()=>canRaceEd('elfes')&&!canRaceFull('elfes')&&rfBlkCan('elfes','car')&&!rfBlkCan('elfes','cap')),'race en partie masquée : blocs visibles seulement');
+      let r=await go(page,"S.view='univers';S.uni='creatures';S.fi=null;S.rf=rfDraft('elfes');S.rfEd=false");
+      await E(page,()=>{[...document.querySelectorAll('[data-act="rfTab"]')].find(b=>/Création/.test(b.textContent)).click();});await page.waitForTimeout(300);
+      ok(!await E(page,()=>!!document.querySelector('[data-act="rfEdOn"]'))&&await E(page,()=>!!document.querySelector('[data-act="rfEdBlk"][data-b="car"]')),'pas de « Modifier toute la fiche », crayon du bloc visible');
+      await E(page,()=>{const b=document.querySelector('[data-act="rfEdBlk"][data-b="car"]');b.click();});await page.waitForTimeout(300);
+      r=await E(page,()=>document.getElementById('app').innerText);
+      ok(/Caractéristiques/i.test(r)&&!/^Capacités naturelles$/mi.test(r)&&!/éléments sur/.test(r)&&!/Supprimer/.test(r),'édition du bloc seul, sans yeux ni suppression');
       ok(!errs.length,'aucune erreur'+(errs.length?' : '+errs[0]:''));await ctx.close();}
 
     console.log('7. Ordinateur');
