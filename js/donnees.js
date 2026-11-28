@@ -585,9 +585,9 @@ const TX_DET=[
         for(const e of r.cap||[]){const L=take('Capacité : '+((W.cap[e.id]||{}).nom||e.id));if(L)e.fx=L;else if(!(Array.isArray(e.fx)&&!e.fx.length))delete e.fx;}}
       for(const k of Object.keys(G))if(!used.has(k))w(`rattachement « ${G[k].length&&M.find(m=>nrm(m.c['Rattachement'])===k).c['Rattachement']} » inconnu : effets ignorés`);}},
   {sh:'PNJ – Situation',gs:['pnj'],own:['ID PNJ','PNJ'],kh:'ID ligne',vals:['Rubrique','Nom','Fiche liée','Rang','Rôle','Nature','Domaine','Suzerain ou supérieur','Note'],
-    lists:{'Rubrique':TX_SIT.map(x=>x[1]),'Nature':Object.values(SITU_NAT)},w:{'Nom':30,'Fiche liée':22,'Note':30},
+    lists:{'Rubrique':TX_SIT.map(x=>x[1])},w:{'Nom':30,'Fiche liée':22,'Note':30},
     rows:(W,g,c)=>{const out=[],s=c.situ||{};for(const [k,lab] of TX_SIT)for(const e of s[k]||[]){const org=(k==='titres'||k==='orgs')&&W.fi[e.f],rg=org&&(org.rangs||[]).find(x=>x.id===e.rang);
-        out.push({key:e.id,c:{'Rubrique':lab,'Nom':e.nom||'','Fiche liée':txFiN(W,e.f),'Rang':rg?(c.genre==='f'&&rg.f?rg.f:rg.m):(e.rang||''),'Rôle':k==='orgs'?e.role||'':'','Nature':k==='lieux'?SITU_NAT[situNat(e)]||'':'',
+        out.push({key:e.id,c:{'Rubrique':lab,'Nom':e.nom||'','Fiche liée':txFiN(W,e.f),'Rang':rg?(c.genre==='f'&&rg.f?rg.f:rg.m):(e.rang||''),'Rôle':k==='orgs'?e.role||'':'','Nature':k==='lieux'?situNatTxt(e):'',
           'Domaine':k==='titres'&&e.dom?(e.dom.f?txFiN(W,e.dom.f)||e.dom.nom:e.dom.nom)||'':'','Suzerain ou supérieur':k==='titres'?txRefG(W,e.suz):k==='orgs'?txRefG(W,e.sup):'','Note':e.note||''}});}
       return out;},
     build:(W,g,c,M,w)=>{const s0=c.situ||{},old=[].concat(...TX_SIT.map(([k])=>s0[k]||[])),N={};
@@ -598,7 +598,7 @@ const TX_DET=[
         if(k==='titres'||k==='orgs'){const v=x['Rang'],org=e.f&&W.fi[e.f];if(v){const r=org&&(org.rangs||[]).find(y=>nrm(y.m)===nrm(v)||nrm(y.f)===nrm(v)||y.id===v);if(r)e.rang=r.id;else w(`rang « ${v} » introuvable dans ${org?org.nom:'l\'organisation'}`);}else delete e.rang;}
         if(k==='orgs'){if(x['Rôle'])e.role=x['Rôle'];else delete e.role;if(x['Suzerain ou supérieur'])e.sup=txRefS(W,x['Suzerain ou supérieur']);else delete e.sup;}
         if(k==='titres'){const d=x['Domaine'];if(d){const l=txFiBy(W,'lieu',d);e.dom=l?{f:l.id,nom:l.nom}:{nom:d};}else delete e.dom;if(x['Suzerain ou supérieur'])e.suz=txRefS(W,x['Suzerain ou supérieur']);else delete e.suz;}
-        if(k==='lieux'){const n=Object.keys(SITU_NAT).find(y=>nrm(SITU_NAT[y])===nrm(x['Nature'])||y===x['Nature'])||(x['Nature']?(w(`nature « ${x['Nature']} » inconnue : autre lieu`),'autre'):situNat(e));e.nat=n;e.res=n==='res';}
+        if(k==='lieux'){if(x['Nature']){const T=String(x['Nature']).split(',').map(t=>t.trim()).filter(Boolean),L=[],X=[];for(const t of T){const n=SITU_N3.find(y=>nrm(y[2])===nrm(t)||y[0]===t);if(n)L.push(n[0]);else if(!['autre lieu','autre'].includes(nrm(t)))X.push(t);}Object.assign(e,situNatV(L,X.join(', ')));}else Object.assign(e,situNatV(situNats(e),situNatX(e)));}
         if(x['Note'])e.note=x['Note'];else delete e.note;(N[k]=N[k]||[]).push(e);}
       const s={...s0};for(const [k] of TX_SIT){if(N[k])s[k]=N[k];else delete s[k];}c.situ=s;}},
   {sh:'Ce que l\'on sait',gs:['lieu','objet','famille','org'],glab:{lieu:'Lieu',objet:'Objet',famille:'Famille',org:'Organisation'},own:['ID fiche','Fiche'],kh:'ID entrée',vals:['Texte','Révélé'],lists:{'Révélé':TX_YN},w:{'Texte':70,'Révélé':10},

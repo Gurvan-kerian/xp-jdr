@@ -831,7 +831,7 @@ function pnPage(c){const G=isGest(),E=canEditC(c),comp=[];let h='';
   const PB=pnPwBlk(c,E,G,pnEye(c));if(PB&&!PB.e)h+=PB.h;else if(PB&&E)comp.push(['Pouvoirs et capacités','pnPw','']);
   /* Situation : organisations, titres, familles, lieux */
   const parts=[];for(const [k,l] of [['orgs','Organisations'],['titres','Titres'],['familles','Familles'],['lieux','Lieux']]){if(!pnBlkSee(c,k))continue;const OG=k==='orgs'||k==='titres'?ogSitRows(c,k):k==='familles'?faSitRows(c):null,R=OG||pnSitRows(c,k);if(!R.length)continue;
-    const rows=OG?OG.join(''):R.map(x=>`<div class="srow"><span>${situNm(x)}${x._k==='lieux'&&situNat(x)!=='autre'?` <span class="muted">· ${SITU_NAT[situNat(x)]}</span>`:''}${x._k==='fiefs'?' <span class="muted">· fief</span>':''}${x.note?`<span class="d">${esc(x.note)}</span>`:''}</span>${E?`<button type="button" class="ibtn sm" data-act="situEd" data-k="${x._k}" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">${ICON.crayon}</button>`:''}</div>`).join('');
+    const rows=OG?OG.join(''):R.map(x=>`<div class="srow"><span>${x._k==='lieux'?situLieuH(x):situNm(x)}${x._k==='fiefs'?' <span class="muted">· fief</span>':''}${x.note?`<span class="d">${esc(x.note)}</span>`:''}</span>${E?`<button type="button" class="ibtn sm" data-act="situEd" data-k="${x._k}" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">${ICON.crayon}</button>`:''}</div>`).join('');
     parts.push(`<div class="fimg">${l}</div>${rows}`);}
   const adds=E?`<div class="ux2comp">${[['orgs','Organisation'],['titres','Titre'],['familles','Famille'],['lieux','Lieu']].map(([k,l])=>`<button type="button" class="ux2cb" data-act="situEd" data-k="${k}">+ ${l}</button>`).join('')}</div>`:'';
   if(parts.length)h+=fiBlk('pn-situ','Situation','',parts.join('')+adds);else if(E)comp.push(['Situation','situEd',' data-k="orgs"']);
@@ -867,7 +867,7 @@ function pnPortrait(c){const G=isGest(),E=canEditC(c),e=pnEye(c);let h='';
   return h;}
 function pnSitu(c){const G=isGest(),E=canEditC(c),e=pnEye(c),B=[];
   for(const [k,l] of PN_SIT){if(!pnBlkSee(c,k))continue;const OG=k==='orgs'||k==='titres'?ogSitRows(c,k):k==='familles'?faSitRows(c):null; /* lot 5 a ; lot 5 b */const R=OG||pnSitRows(c,k),nO=k==='poss'?fi6ObjsOf(c.id).length:0;if(!R.length&&!nO&&!E&&!G)continue;
-    const rows=OG?OG.join(''):(k==='poss'?situObjRows(c).join(''):'')+R.map(x=>`<div class="srow"><span>${situNm(x)}${x._k==='orgs'&&x.role?` <span class="muted">· ${esc(x.role)}</span>`:''}${x._k==='lieux'&&situNat(x)!=='autre'?` <span class="muted">· ${SITU_NAT[situNat(x)]}</span>`:''}${x._k==='fiefs'?' <span class="muted">· fief</span>':''}${x.note?`<span class="d">${esc(x.note)}</span>`:''}</span>${E?`<button type="button" class="ibtn" data-act="situEd" data-k="${x._k}" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">✎</button>`:''}</div>`).join('');
+    const rows=OG?OG.join(''):(k==='poss'?situObjRows(c).join(''):'')+R.map(x=>`<div class="srow"><span>${x._k==='lieux'?situLieuH(x):situNm(x)}${x._k==='orgs'&&x.role?` <span class="muted">· ${esc(x.role)}</span>`:''}${x._k==='fiefs'?' <span class="muted">· fief</span>':''}${x.note?`<span class="d">${esc(x.note)}</span>`:''}</span>${E?`<button type="button" class="ibtn" data-act="situEd" data-k="${x._k}" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">✎</button>`:''}</div>`).join('');
     const add=E?`<div class="relbtns"><button type="button" class="addl" data-act="situEd" data-k="${k}">+ ${({titres:'Titre',familles:'Famille',orgs:'Organisation',lieux:'Lieu',poss:'Possession'})[k]}</button></div>`:'';
     B.push({e:!R.length&&!nO,h:pnBlk('pn-'+k,l,R.length+nO?String(R.length+nO):'',(rows||shNone)+add,{empty:!R.length&&!nO,hid:G&&!isFeal(c)&&!e[k],eye:pnEyeB(c,k,l)})});}
   return shOrder(B)||(G?'':`<div class="card"><span class="muted small">Rien de connu pour l'instant.</span></div>`);}
@@ -989,12 +989,23 @@ const fiEyeKeys=f=>(f&&f.genre==='chrono'?['desc']:['desc','sait']).concat((FI6_
 const fiCN=c=>c?(c.type==='PNJ'&&typeof pnName==='function'?pnName(c):(c.court||c.nom||'?')):'?';
 const SITU_NAT={res:'résidence',prop:'propriétaire',autre:'autre lieu'};
 const situNat=e=>e.nat||(e.res?'res':'autre');
+/* 28/11 (lot 2 bis) : natures cumulables (Résidence, Propriétaire, Travail) + texte libre ; e.nat / e.res gardés pour compatibilité */
+const SITU_N3=[['res','Résidence','résidence'],['prop','Propriétaire','propriétaire'],['trav','Travail','travail']];
+const situNats=e=>Array.isArray(e.nats)?e.nats.filter(n=>SITU_N3.some(x=>x[0]===n)):(n=>n==='autre'?[]:[n])(situNat(e));
+const situNatX=e=>(e.natx||'').trim();
+const situNatTxt=e=>situNats(e).map(n=>SITU_N3.find(x=>x[0]===n)[2]).concat(situNatX(e)?[situNatX(e)]:[]).join(', ');
+const situNatV=(L,x)=>{const nats=SITU_N3.map(y=>y[0]).filter(n=>(L||[]).includes(n)),natx=(x||'').trim();return {nats,natx,nat:nats[0]||'autre',res:nats.includes('res')};};
+/* Chemin d'un lieu : parents visibles, du plus haut au plus proche */
+function lieuPath(id){const P=[];let p=id&&S.fiches[id],g=0;p=p&&p.parent&&S.fiches[p.parent];while(p&&p.genre==='lieu'&&g++<8){if(fiSee(p))P.unshift(p);p=p.parent&&S.fiches[p.parent];}return P;}
+function lieuPathH(id){const P=lieuPath(id);if(!P.length)return '';const Q=P.length>2?[P[0],null,P[P.length-1]]:P;return `<span class="muted lpath">${Q.map(p=>p?lk({t:'fiche',id:p.id},p.nom):'…').join(' › ')} › </span>`;}
+/* Ligne de Situation d'un lieu : chemin + nom + natures */
+const situLieuH=e=>(e.f&&S.fiches[e.f]?lieuPathH(e.f):'')+situNm(e)+(situNatTxt(e)?` <span class="muted">· ${esc(situNatTxt(e))}</span>`:'');
 const fi6CV=()=>Object.values(S.chars||{}).filter(c=>vis(c)).sort((a,b)=>(a.type===b.type?0:a.type==='PJ'?-1:1)||fiCN(a).localeCompare(fiCN(b),'fr',{sensitivity:'base'}));
 /* Un joueur ne voit le lien d'un PNJ que si le bloc correspondant de sa fiche est révélé */
 const fi6CSee=(c,k)=>c.type!=='PNJ'||typeof pnBlkSee!=='function'||pnBlkSee(c,k);
 /* Liens d'un personnage vers une fiche (Situation, éléments de PP) */
 function fi6CharLinks(fid){const out=[];for(const c of fi6CV()){const s=c.situ||{};
-    if(fi6CSee(c,'lieux')){for(const e of s.lieux||[])if(e.f===fid)out.push({c,nat:situNat(e),k:'lieux',sid:e.id,lab:SITU_NAT[situNat(e)]});
+    if(fi6CSee(c,'lieux')){for(const e of s.lieux||[])if(e.f===fid)out.push({c,nat:situNat(e),k:'lieux',sid:e.id,lab:situNatTxt(e)||'lieu'});
       for(const e of s.fiefs||[])if(e.f===fid)out.push({c,nat:'fief',k:'fiefs',sid:e.id,lab:'fief'});}
     if(fi6CSee(c,'poss'))for(const [a,x] of Object.entries(c.ppLk||{}))if(x===fid){const b=(c.achats||[]).find(y=>y.id===a);if(b&&b.ppel)out.push({c,nat:'prop',k:'pp',sid:a,lab:b.ppel.nom,pp:b.ppel.nom});}}
   return out;}
@@ -1018,9 +1029,9 @@ function fi6Blocks(f){const G=isGest(),ed=fiCanEd(f),e=fiEyeOf(f),eye=(k,l)=>G?e
         <div class="fimg">Situation féerique</div>${fe?fiRich(fe):none('Rien pour l\'instant.')}${ed?`<div class="radd"><button type="button" class="edl" data-act="fiEd" data-b="feerie">${ICON.crayon} Modifier</button></div>`:''}`,{hid:G&&!e.fief,eye:eye('fief','Fief')});}
     const K=fiSort(fiKidsOf(f.id).filter(fiSee));
     if(!K.length)cx('Lieu contenu','fiNew',' data-g="lieu"');if(K.length)h+=fiBlk('cont','Lieux contenus'+fi6Calc(),K.length?String(K.length):'',K.map(x=>`<div class="srow"><span>${lk({t:'fiche',id:x.id},x.nom)}${x.type?` <span class="muted">· ${esc(x.type)}</span>`:''}${x.vis!=='rev'?' <span class="tag2">préparé</span>':''}</span></div>`).join('')+(K.length?'':none('Aucun lieu contenu.'))+add('fiNew','Lieu contenu',' data-g="lieu"'),{});
-    if(fiBlkSee(f,'pers')&&!L.filter(x=>x.nat!=='fief').length)cx('Personnage lié','fi6Lk',' data-m="pers" data-n="res"');
-    if(fiBlkSee(f,'pers')&&L.filter(x=>x.nat!=='fief').length){const P=L.filter(x=>x.nat!=='fief'),grp=(n,t)=>{const R=P.filter(x=>x.nat===n);return R.length?`<div class="fimg">${t}</div>`+R.map(x=>`<div class="srow"><span>${lk({t:'perso',id:x.c.id},fiCN(x.c))}${x.pp?` <span class="muted">· ${esc(x.pp)}</span> <span class="srcb">PP</span>`:''}</span>${ed?fi6Unlk('ch',{c:x.c.id,k:x.k,s:x.sid}):''}</div>`).join(''):'';};
-      h+=fiBlk('pers','Personnages liés'+fi6Calc(),P.length?String(P.length):'',(grp('res','Résidents')+grp('prop','Propriétaires')+grp('autre','Autres')||none('Aucun personnage lié.'))+(ed?`<div class="radd">${[['res','Résident'],['prop','Propriétaire'],['autre','Autre lien']].map(([n,l])=>`<button class="btn" data-act="fi6Lk" data-m="pers" data-n="${n}">+ ${l}</button>`).join(' ')}</div>`:'')+'',{hid:G&&!e.pers,eye:eye('pers','Personnages liés')});}
+    if(fiBlkSee(f,'pers')&&!L.filter(x=>x.nat!=='fief').length)cx('Personnage lié','fi6Lk',' data-m="pers" data-n=""');
+    if(fiBlkSee(f,'pers')&&L.filter(x=>x.nat!=='fief').length){const P=L.filter(x=>x.nat!=='fief').sort((a,b)=>fiCN(a.c).localeCompare(fiCN(b.c),'fr',{sensitivity:'base'}));
+      h+=fiBlk('pers','Personnages liés'+fi6Calc(),P.length?String(P.length):'',(P.map(x=>`<div class="srow"><span>${lk({t:'perso',id:x.c.id},fiCN(x.c))}${x.pp?` <span class="muted">· propriétaire · ${esc(x.pp)}</span> <span class="srcb">PP</span>`:x.lab&&x.lab!=='lieu'?` <span class="muted">· ${esc(x.lab)}</span>`:''}</span>${ed?fi6Unlk('ch',{c:x.c.id,k:x.k,s:x.sid}):''}</div>`).join('')||none('Aucun personnage lié.'))+(ed?`<div class="radd"><button class="btn" data-act="fi6Lk" data-m="pers" data-n="">+ Personnage lié</button></div>`:'')+'',{hid:G&&!e.pers,eye:eye('pers','Personnages liés')});}
     if(fiBlkSee(f,'orgs')){const O=f.orgs||[];if(!O.length)cx('Organisation ou famille','fi6Org','');if(O.length)h+=fiBlk('orgs','Organisations et familles',O.length?String(O.length):'',(O.map(x=>`<div class="srow"><span>${fi6Ref(x.f,x.nom)}${x.note?`<span class="d">${esc(x.note)}</span>`:''}</span>${ed?`<button type="button" class="ibtn" data-act="fi6Org" data-i="${esc(x.id)}" aria-label="Modifier ${esc(x.nom)}">✎</button>`:''}</div>`).join('')||none('Aucune pour l\'instant.'))+add('fi6Org','Organisation ou famille'),{hid:G&&!e.orgs,eye:eye('orgs','Organisations et familles')});}
     if(fiBlkSee(f,'obj')){const O=fiSort(fiAll().filter(o=>o.genre==='objet'&&fiSee(o)&&fiBlkSee(o,'det')&&o.lieu&&o.lieu.f===f.id));
       if(O.length)h+=fiBlk('obj','Objets présents'+fi6Calc(),O.length?String(O.length):'',O.map(o=>`<div class="srow"><span>${lk({t:'fiche',id:o.id},o.nom)}${o.type?` <span class="muted">· ${esc(o.type)}</span>`:''}</span></div>`).join('')+(O.length?'':none('Aucun objet.'))+'',{hid:G&&!e.obj,eye:eye('obj','Objets présents')});}
@@ -1048,13 +1059,15 @@ function fi6HeadApply(n,g){n.uniq=!!g.uniq;const id=g.creaId&&S.chars[g.creaId]?
   if(n.uniq&&(n.det||[]).length>1)n.det=n.det.slice(-1);}
 /* ---------- Fenêtres ---------- */
 ['fi6Lk','fi6Org','fi6Car'].forEach(k=>FI_DLG.add(k));
+/* Champ « Nature du lien » : 3 cases cumulables + texte libre (28/11) */
+function situNatField(L,x,act,attr){return `<div class="field"><label>Nature du lien</label><div class="seg" role="group" aria-label="Nature du lien">${SITU_N3.map(([v,l])=>`<button type="button" data-act="${act}" data-v="${v}" aria-pressed="${L.includes(v)}">${l}</button>`).join('')}</div><input type="text" ${attr} value="${esc(x||'')}" placeholder="autre, à préciser" aria-label="Autre nature, à préciser" autocomplete="off" style="margin-top:6px"><div class="muted small" style="margin-top:4px">Cases cumulables ; le texte libre s'ajoute ou les remplace.</div></div>`;}
 const FI6_LK={pers:'Lien avec un personnage',fief:'Détenteur du fief',det:'Détenteur',emp:'Emplacement'};
 function fi6Sheet(g){const f=S.fiches[g.fid];if(!f||!fiCanEd(f))return null;const sel=(k,L,v,lab,emp)=>`<div class="field"><label for="fi6-${k}">${lab}</label><select id="fi6-${k}" data-fin="${k}"><option value="">${emp||'— choisir —'}</option>${L.map(([o,t])=>`<option value="${esc(o)}"${o===v?' selected':''}>${esc(t)}</option>`).join('')}</select></div>`;
   const txt=(k,v,lab,ph)=>`<div class="field"><label for="fi6-${k}">${lab}</label><input id="fi6-${k}" type="text" data-fin="${k}" value="${esc(v||'')}"${ph?` placeholder="${esc(ph)}"`:''} autocomplete="off"></div>`;
   const foot=(ok,del)=>`${g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:''}<div class="actions">${del?`<button class="btn ghost" style="margin-right:auto;color:var(--bad)" data-act="${del}">${g.conf?'Confirmer le retrait':'Retirer'}</button>`:''}<button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="${ok}">Enregistrer</button></div>`;
   const CH=fi6CV().map(c=>[c.id,fiCN(c)+' · '+(c.type==='PJ'?'PJ':'PNJ')]);
   if(g.kind==='fi6Lk'){const t=FI6_LK[g.m];let b='';
-    if(g.m==='pers')b=sel('cid',CH,g.cid,'Personnage')+`<div class="field"><label>Nature du lien</label><div class="seg" role="group" aria-label="Nature du lien">${[['res','Résidence'],['prop','Propriétaire'],['autre','Autre']].map(([v,l])=>`<button type="button" data-act="fi6Nat" data-v="${v}" aria-pressed="${g.nat===v}">${l}</button>`).join('')}</div></div><div class="muted small">Le lien s'inscrit aussi dans la Situation du personnage.</div>`;
+    if(g.m==='pers')b=sel('cid',CH,g.cid,'Personnage')+`${situNatField(g.nats||[],g.natx||'','fi6Nat','data-fin="natx"')}<div class="muted small">Le lien s'inscrit aussi dans la Situation du personnage.</div>`;
     if(g.m==='fief')b=sel('cid',CH,g.cid,'Personnage')+`<div class="muted small">Le fief s'inscrit aussi dans la Situation du personnage.</div>`;
     if(g.m==='det'){const cur=(f.det||[])[0],cn=cur&&(cur.id?fiCN(S.chars[cur.id]):cur.nom);
       b=sel('cid',CH,g.cid,'Personnage','— aucun (texte libre) —')+txt('nom',g.nom,'Ou en texte libre')+(f.uniq&&cur?`<div class="muted small">Objet unique : ${esc(cn||'')} ne le détiendra plus.</div>`:'');}
@@ -1070,8 +1083,8 @@ function fi6Act(a,d){if(/^fi6Rt/.test(a))return fi6RattAct(a,d);const f=S.fi&&S.
   if(a==='fi6Tab'){S.fiTab=d.v==='gest'?'gest':'';render();return true;}
   if(a==='fi6Uq'){S.fiUq=!S.fiUq;render();return true;}
   if(S.visit)return true;
-  if(a==='fi6Nat'){if(g&&g.kind==='fi6Lk'){g.nat=d.v;S._fiRedraw=true;render();}return true;}
-  if(a==='fi6Lk'){if(!fiCanEd(f))return true;fiOpenDlg({kind:'fi6Lk',fid:f.id,m:d.m,nat:d.n||'res',cid:'',nom:'',lid:(f.lieu||{}).f||'',err:''});if(d.m==='emp'&&f.lieu&&!f.lieu.f)S.dlg.nom=f.lieu.nom||'';render();return true;}
+  if(a==='fi6Nat'){if(g&&g.kind==='fi6Lk'){const L=g.nats||[];g.nats=L.includes(d.v)?L.filter(x=>x!==d.v):L.concat([d.v]);S._fiRedraw=true;render();}return true;}
+  if(a==='fi6Lk'){if(!fiCanEd(f))return true;fiOpenDlg({kind:'fi6Lk',fid:f.id,m:d.m,nats:d.n&&d.n!=='autre'?[d.n]:[],natx:'',cid:'',nom:'',lid:(f.lieu||{}).f||'',err:''});if(d.m==='emp'&&f.lieu&&!f.lieu.f)S.dlg.nom=f.lieu.nom||'';render();return true;}
   if(a==='fi6Org'){if(!fiCanEd(f))return true;const x=d.i&&(f.orgs||[]).find(y=>y.id===d.i);fiOpenDlg({kind:'fi6Org',fid:f.id,i:x?x.id:'',oid:x&&x.f||'',nom:x&&!x.f?x.nom:'',note:x?x.note||'':'',err:''});render();return true;}
   if(a==='fi6Car'){if(!fiCanEd(f))return true;const C=f.carac||{};fiOpenDlg({kind:'fi6Car',fid:f.id,prix:C.prix||'',taille:C.taille||'',poids:C.poids||''});render();return true;}
   const x=g&&S.fiches[g.fid];
@@ -1082,9 +1095,10 @@ function fi6Act(a,d){if(/^fi6Rt/.test(a))return fi6RattAct(a,d);const f=S.fi&&S.
     const v={f:o?o.id:'',nom,note:(g.note||'').trim()},i=n.orgs.findIndex(y=>y.id===g.i);if(i>=0)n.orgs[i]={...n.orgs[i],...v};else n.orgs.push({id:uid('o'),...v});S.dlg=null;fiSave(n);return true;}
   if(a==='fi6LkSave'){if(!x||!fiCanEd(x))return true;const err=t=>{g.err=t;S._fiRedraw=true;render();return true;};
     if(g.m==='pers'||g.m==='fief'){const c=g.cid&&S.chars[g.cid];if(!c||!vis(c))return err('Choisis un personnage.');
-      const k=g.m==='fief'?'fiefs':'lieux',nat=g.nat||'res';
-      if(((c.situ||{})[k]||[]).some(e=>e.f===x.id&&(k==='fiefs'||situNat(e)===nat)))return err('Ce lien existe déjà.');
-      fi6SetC(c.id,n=>{const s=n.situ={...(n.situ||{})};s[k]=(s[k]||[]).concat([{id:uid('s'),date:today(),nom:x.nom,f:x.id,...(k==='lieux'?{nat,res:nat==='res'}:{})}]);});
+      const k=g.m==='fief'?'fiefs':'lieux',nv=situNatV(g.nats,g.natx);
+      if(((c.situ||{})[k]||[]).some(e=>e.f===x.id))return err('Ce lien existe déjà : modifie-le depuis la Situation du personnage.');
+      if(k==='lieux'&&!nv.nats.length&&!nv.natx)return err('Coche au moins une nature ou précise le lien.');
+      fi6SetC(c.id,n=>{const s=n.situ={...(n.situ||{})};s[k]=(s[k]||[]).concat([{id:uid('s'),date:today(),nom:x.nom,f:x.id,...(k==='lieux'?nv:{})}]);});
       S.dlg=null;render();setTimeout(()=>toast('Lien ajouté'),0);return true;}
     if(g.m==='det'){const c=g.cid&&S.chars[g.cid],nom=(g.nom||'').trim();if(!c&&!nom)return err('Choisis un personnage ou écris un nom.');
       const n=clone(x),v=c?{id:c.id}:{nom};if((n.det||[]).some(y=>c?y.id===c.id:y.nom===nom))return err('Déjà détenteur.');n.det=n.uniq?[v]:(n.det||[]).concat([v]);S.dlg=null;fiSave(n);return true;}
@@ -1119,7 +1133,7 @@ const situObjRows=c=>fi6ObjsOf(c.id).map(o=>`<div class="srow"><span>${lk({t:'fi
 /* Enregistrement d'une ligne de Situation avec fiche (fenêtre situEd) : renvoie true si traité ici */
 function situSaveF(cc,g){const fx=g.f.f&&S.fiches[g.f.f];if(!fx||!['poss','possN'].includes(g.k))return false;
   if(fx.genre==='objet'){const n=clone(fx);if(!(n.det||[]).some(y=>y.id===cc.id))n.det=n.uniq?[{id:cc.id}]:(n.det||[]).concat([{id:cc.id}]);fiSave(n,true);}
-  else{const n=clone(cc),s=n.situ={...(n.situ||{})};if(!(s.lieux||[]).some(e=>e.f===fx.id&&situNat(e)==='prop'))s.lieux=(s.lieux||[]).concat([{id:uid('s'),date:today(),nom:fx.nom,f:fx.id,nat:'prop',res:false}]);saveChar(n);}
+  else{const n=clone(cc),s=n.situ={...(n.situ||{})};const ex=(s.lieux||[]).find(e=>e.f===fx.id);if(ex){if(!situNats(ex).includes('prop'))s.lieux=s.lieux.map(e=>e===ex?{...e,...situNatV(situNats(e).concat(['prop']),situNatX(e))}:e);}else s.lieux=(s.lieux||[]).concat([{id:uid('s'),date:today(),nom:fx.nom,f:fx.id,...situNatV(['prop'],'')}]);saveChar(n);}
   if(g.i){const n=clone(S.chars[cc.id]),s=n.situ={...(n.situ||{})};s[g.k]=(s[g.k]||[]).filter(e=>e.id!==g.i);saveChar(n);}
   return true;}
 

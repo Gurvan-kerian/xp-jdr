@@ -54,7 +54,7 @@ if(!docsPath){const app=loadApp(ROOT,['config','engine','modele','migrations','c
   r(`ME='alice';S.edit=false;S.fi='paris';fi6Act('fi6Lk',{m:'pers',n:'prop'});S.dlg.cid='hector';fi6Act('fi6LkSave',{});`);
   const hl=r(`JSON.stringify((S.chars.hector.situ||{}).lieux||[])`);
   ok(/"f":"paris"/.test(hl)&&/"nat":"prop"/.test(hl),'joueur : « + Propriétaire » sur Paris inscrit le lien dans la Situation d\'Hector');
-  ok(r(`fi6CharLinks('paris').some(x=>x.c.id==='hector'&&x.nat==='prop')`)&&/Propriétaires/.test(r(`fi6Blocks(S.fiches.paris)`)),'fiche Paris : Hector dans Personnages liés › Propriétaires');
+  ok(r(`fi6CharLinks('paris').some(x=>x.c.id==='hector'&&x.nat==='prop')`)&&/propriétaire/.test(r(`fi6Blocks(S.fiches.paris)`)),'fiche Paris : Hector dans Personnages liés (propriétaire)');
   ok(/Hector Durvoy/.test(r(`fiMentionsHtml(fiMentions('fiche','paris'))`)),'Mentions de Paris : Hector (Situation)');
   r(`fi6Act('fi6Lk',{m:'pers',n:'res'});`);ok(!r(`fi6CV().some(c=>c.id==='armand')`)&&!/Armand/.test(r(`fiSheet(S.dlg)`)),'joueur : PNJ préparé non proposé');r(`S.dlg=null;`);
   {const sid=r(`S.chars.hector.situ.lieux[0].id`);r(`fi6Act('fi6Unlk',{m:'ch',c:'hector',k:'lieux',s:${JSON.stringify(sid)}})`);ok(!r(`fi6CharLinks('paris').length`),'retrait du lien depuis le lieu : retiré de la Situation');}
@@ -118,8 +118,8 @@ const DBG=process.env.DBG;
         ok(/Paris/.test(t)&&/La cave secrète/.test(t)&&!/Bateau-Lavoir/.test(t),'liste des lieux (joueur) : préparé absent, enfant remonté');
         await page.evaluate(()=>{S.fi='paris';render();});t=await txt(page);if(DBG)console.log(t);
         ok(/Lieux contenus/i.test(t)&&/Compléter/.test(t)&&/Personnage lié/i.test(t)&&!/Objets présents/i.test(t)&&!/Pas de carte/.test(t)&&!/Notes MJ/i.test(t),'fiche Lieu (joueur) : blocs remplis, vides dans « Compléter », sans Notes MJ (UX2)');
-        await click(page,'[data-act="fi6Lk"][data-m="pers"][data-n="res"]');await fill(page,'cid','kerian');await click(page,'[data-act="fi6LkSave"]');await page.waitForTimeout(300);
-        ok(((db.get('chars/kerian').situ||{}).lieux||[]).some(e=>e.f==='paris'&&e.nat==='res'),'joueur : « + Résident » enregistré dans la Situation de Kerian');
+        await click(page,'[data-act="fi6Lk"][data-m="pers"]');await fill(page,'cid','kerian');await click(page,'[data-act="fi6Nat"][data-v="res"]');await click(page,'[data-act="fi6LkSave"]');await page.waitForTimeout(300);
+        ok(((db.get('chars/kerian').situ||{}).lieux||[]).some(e=>e.f==='paris'&&e.nat==='res'),'joueur : « + Personnage lié » (Résidence) enregistré dans la Situation de Kerian');
         await page.evaluate(()=>{S.view='sheet';S.sel='kerian';S.shTab='situ';render();});t=await txt(page);if(DBG)console.log(t);
         ok(/Résidence et lieux/i.test(t)&&/Paris/.test(t)&&/· résidence/.test(t),'Situation de Kerian : Résidence et lieux (Paris, résidence)');
         await page.evaluate(()=>{S.view='univers';S.uni='objet';S.fi=null;render();});t=await txt(page);
