@@ -132,7 +132,7 @@ const DBG=process.env.DBG;
         await page.evaluate(()=>{S.edit=true;S.view='univers';S.uni='lieu';S.fi='fva';render();});let t=await txt(page);if(DBG)console.log(t);
         ok(/Fief/i.test(t)&&/Situation féerique/i.test(t)&&!/sur 7 visibles/i.test(t),'fief (gestion) : bloc Fief ; un seul œil de fiche (UX2)');
         await page.evaluate(()=>{S.fi='lavoir';render();});t=await txt(page);ok(await page.evaluate(()=>!!document.querySelector('.ibtn.prepi[data-act="fiEye"][data-k="fiche"]')),'lieu préparé : œil barré dans l\'en-tête (UX2)');
-        await page.evaluate(()=>{S.view='params';S.ptab='donnees';render();});t=await txt(page);ok(/Rattachement par nom/i.test(t),'Paramètres › Données : rattachement par nom');
+        await page.evaluate(()=>{S.view='todo';S.atF='';S._force=true;render();});t=await txt(page);ok(/Rattachement par nom/i.test(t),'« À traiter » : rattachement par nom (UX3)');
         ok(errs.length===0,'aucune erreur JavaScript'+(errs.length?' : '+errs.join(' | '):''));await ctx.close();}
     }
     console.log('4. Tour des écrans (gestion puis joueur)');

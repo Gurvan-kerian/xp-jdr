@@ -158,6 +158,7 @@ function lnkOk(o){if(!o)return false;
   if(o.t==='perso'){const c=S.chars[o.id];return !!c&&vis(c);}
   if(o.t==='race'){const cr=crById(o.id);return !!cr&&raceVisible(cr,raceRec(cr));}
   if(o.t==='joueur')return !!S.players[o.id];
+  if(o.t==='regles')return true; /* UX3 : section des Règles */
   if(o.t==='fiche')return typeof fiSee==='function'&&fiSee(S.fiches&&S.fiches[o.id]);
   if(o.t==='jour'){const j=S.jour&&S.jour[o.id];return typeof jrCanRead==='function'&&jrCanRead(j)&&!!jrHost(j);} /* lot 2 : journal ou quête */
   if(o.t==='pw')return !!(S.pouvoirs&&S.pouvoirs[o.id])&&elSeen('pw',o.id);
@@ -198,6 +199,7 @@ function navGo(o){if(!lnkOk(o))return false;
   S.sheet=null;S.asheet=null;S.confirm=null;S.secHl=null;
   if(o.t==='perso'){S.dlg=null;S.view='sheet';S.sel=o.id;S.futForm.open=false;}
   else if(o.t==='fiche'&&S.fiches[o.id].genre==='regle'){S.dlg=null;S.view='rules';S.rgTab='img';S.rgNote=o.id;} /* règles en images */
+  else if(o.t==='regles'){S.dlg=null;S.view='rules';S.rgNote=null;S.shFold={...(S.shFold||{}),[o.k]:false};setTimeout(()=>{const el=document.getElementById('sec-'+o.k);if(el)el.scrollIntoView({block:'start'});},60);}
   else if(o.t==='fiche'){S.dlg=null;S.view='univers';S.uni=S.fiches[o.id].genre;S.fi=o.id;S.sec=null;S.rf=null;}
   else if(o.t==='jour'){const j=S.jour[o.id];S.dlg=null;S.view='sheet';S.sel=jrHost(j).id;S.shTab='jour';S.jrSel=j.genre==='quete'?'q':'j';S.jrOpen=j.id;S.jrHl=o.i||null;S.futForm.open=false;}
   else if(o.t==='race'){S.dlg=null;S.view='univers';S.uni='creatures';S.fi=null;S.rf=rfDraft(o.id);S.rfTab='por';S.rfEd=false;}
@@ -258,7 +260,7 @@ const EDIT_DLG=new Set(['elEdit','pfEd','ppEl','se','ce']);
 const SAVE_ACTS=new Set(['rfSave','rfPorSave','rfHumSave','elSave','pfSave','ppElSave','seSave','creSave','pSave']);
 const editorOpen=()=>!!((S.rfEd&&S.rf)||(S.rfPor&&S.rf)||(S.dlg&&EDIT_DLG.has(S.dlg.kind)));
 function editOff(){S.edit=false;S.rfEd=false;S.rfBlk=null;S.rfPor=null;S.edDirty=false;S.edQuit=false;if(S.dlg&&EDIT_DLG.has(S.dlg.kind))S.dlg=null;if(S.view==='params')S.view='home';S._force=true;render();}
-function editToggle(){if(!isGest()||S.visit)return;if(!S.edit){S.edit=true;S.edDirty=false;S._force=true;render();return;}
+function editToggle(){if(!isTech()||S.visit)return; /* UX3 : mode édition = MJ et gestion */if(!S.edit){S.edit=true;S.edDirty=false;S._force=true;render();return;}
   if(editorOpen()&&S.edDirty){S.edQuit=true;S._force=true;render();return;}editOff();}
 /* Quitter l'éditeur de race (Terminer, ‹ Races, retour, onglet, lien) avec des changements non enregistrés : même question */
 const RF_LEAVE=new Set(['rfEdOff','rfBack','tab','navBack','lnk','rfOpen','rfHum','rfNew']);

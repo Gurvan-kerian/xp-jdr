@@ -29,7 +29,8 @@ function start(){
     on('meta/signalements',x=>{S.signalDoc=x||null;});
     on('meta/imports',x=>{S.kkImp=x||null;});
     on('meta/cartes',x=>{S.caCfg=x||null;});
-    on('meta/fiefs',x=>{S.fgCfg=x||null;}); /* lot 7 : réglages des fiefs */ /* lot Cartes : catégories et moyens de déplacement */ /* lot 8 : comptes rendus d'import Kanka */
+    on('meta/fiefs',x=>{S.fgCfg=x||null;if(S.paramsReady)applyParams();});
+    on('meta/accueil',x=>{S.accueil=x||null;}); /* UX3 : texte d'accueil */ /* lot 7 : réglages des fiefs */ /* lot Cartes : catégories et moyens de déplacement */ /* lot 8 : comptes rendus d'import Kanka */
     on('meta/creatures',x=>{S.creatures=(x&&Array.isArray(x.list))?x.list:[];S.creaturesReady=true;});
     on('meta/profils',x=>{S.profils=x&&x.byId?x:null;S.profilsReady=true;applyProfils();});
     on('meta/races',x=>{S.races=(x&&x.byId)||{};S.racesReady=true;});

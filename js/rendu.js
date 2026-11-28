@@ -1,20 +1,112 @@
 /* La belle appli — accueil, « Qui es-tu ? », notifications, fenêtres et rendu */
-/* ---------- Accueil ---------- */
+/* ---------- Accueil (UX3, 28/11/2026) : tableau de bord personnel ----------
+   Temps · À traiter · Mon personnage · Nouveautés · texte d'accueil ; blocs repliables mémorisés (localStorage xp.homeOpen) */
+const ACC_DEF='La belle appli aide à gérer les éléments ludiques des Héritiers : personnages, XP, univers et organisation des parties.';
+const accTxt=()=>S.accueil&&typeof S.accueil.txt==='string'?S.accueil.txt:ACC_DEF;
+const isWide=()=>typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(min-width: 900px)').matches;
+function hmOpenGet(){try{return JSON.parse(localStorage.getItem('xp.homeOpen')||'{}')||{};}catch(e){return {};}}
+function hmOpen(k,def){if(isWide())return true;const o=hmOpenGet();return o[k]==null?def:!!o[k];}
+function hmSeenGet(){try{return localStorage.getItem('xp.homeSeen')||'';}catch(e){return '';}}
+/* Points à traiter, selon les droits de chacun : [{rub, txt, sub, attrs}] */
+const AT_RUB=[['rev','Révélations'],['perso','Personnages'],['sess','Sessions'],['sig','Signalements']];
+/* Droit de traiter : référentiel (races, pouvoirs, capacités, éléments de PP) = mode édition → MJ et gestion ; personnage visible → tous ; visibilité d'une race → MJ */
+function atSigSee(s){if(!s||!s.obj||s.obj.t==='brouillon')return false;if(isGest())return true;const t=s.obj.t;
+  if(t==='ppel')return isTech();if(['race','pouvoir','capacite'].includes(t))return isTech()&&!!sigOpenAttrs(s.obj);
+  if(t==='perso')return !/^Visibilité/.test(s.champ||'')&&!!sigOpenAttrs(s.obj);return false;}
+function atItems(){if(!isUser())return [];const G=isGest(),out=[],add=(rub,txt,sub,attrs,o)=>out.push({rub,txt,sub,attrs,...(o||{})});
+  if(G&&typeof secLot==='function'){const L=secLot();if(L.length)add('rev','Révélations en attente',L.length+' élément'+(L.length>1?'s':'')+' · invisibles des joueurs jusqu\'à la validation','data-act="lotOpen"',{lot:L.length});}
+  if(G)for(const b of Object.values(S.brouillons||{}))if(b&&b.statut==='attente'){const I=(b.d||{}).ident||{};add('perso','Brouillon à valider · '+(((I.court||'').trim())||'?'),(b.kind==='feal'?'Féal':'PJ')+' · envoyé par '+((S.players[b.par]||{}).nom||'?'),`data-act="cwOpen" data-id="${esc(b.id)}"`);}
+  if(G&&typeof propsAtt==='function')for(const p of propsAtt()){const sc=secById(p.n);const by=(S.players[p.by]||{}).nom;add('perso','Proposition de découverte',(by?by+' · ':'')+'Secret n° '+p.n+(sc&&sc.titre?' · '+sc.titre:''),lnkAttrs({t:'secret',n:p.n}));}
+  if(typeof plPast==='function')for(const x of plPast())add('sess','Créer la session du '+fmtLong(x.date).replace(/^./,c=>c.toLowerCase()),'Date validée passée · '+(x.type||'Scénario'),'',{plan:x.id});
+  if(typeof chRattProps==='function'){const n=chRattProps().filter(r=>r.ev).length;if(n)add('sess','Rattachements à vérifier',n+' session'+(n>1?'s':'')+' sans événement','data-act="atRatt"');}
+  if(G&&typeof fi6RattCands==='function'){const n=fi6RattCands().length;if(n)add('sess','Rattachement par nom',n+' ligne'+(n>1?'s':'')+' de Situation à relier à une fiche','data-act="atF" data-v="sess"',{r6:n});}
+  if(typeof sigAll==='function')for(const sg of sigAll())if(!sg.ok&&atSigSee(sg))add('sig',(SIG_OBJ[sg.obj.t]||'')+' · '+sigObjName(sg.obj)+' › '+sg.champ,(SIG_ST[sg.statut]||'')+(sg.note?' · '+sg.note:''),sigOpenAttrs(sg.obj),{sg});
+  return out;}
+function atRowH(x){if(x.plan)return `<div class="atrow"><span class="cmain"><b>${esc(x.txt)}</b><small>${esc(x.sub)}</small></span><span class="acts"><button type="button" class="btn pri" data-act="plMkSess" data-id="${esc(x.plan)}">Créer</button><button type="button" class="btn ghost" data-act="plEcart" data-id="${esc(x.plan)}">Écarter</button></span></div>`;
+  return x.attrs?`<button type="button" class="atrow" ${x.attrs}><span class="cmain"><b>${esc(x.txt)}</b><small>${esc(x.sub)}</small></span><span class="chev" aria-hidden="true">›</span></button>`:`<div class="atrow"><span class="cmain"><b>${esc(x.txt)}</b><small>${esc(x.sub)}</small></span></div>`;}
+/* Mes personnages : PJ, féaux, brouillons, fiefs */
+function hmMine(){if(!isUser()||!ME)return [];const out=[],fiefs=new Set();
+  const pjs=pjIds().map(i=>S.chars[i]).filter(c=>c&&actif(c)&&owners(c).some(p=>p.id===ME)).sort((a,b)=>(a.court||'').localeCompare(b.court||'','fr'));
+  for(const c of pjs){const t=typeof titreBest==='function'?titreBest(c):null,rg=typeof rangInfo==='function'?rangInfo(c):null;
+    const obj=t?t.nom+' '+titreTxt(t):rg&&!rg.done?rg.next+(rg.blocked?' : hors de portée':rg.ready?' : pouvoir à acquérir':' dans '+rg.total+' XP'):'';
+    out.push({k:'pj',c,obj,xp:summary(c,S.events).dispo});
+    for(const f of Object.values(S.chars))if(f&&f.type==='PNJ'&&f.pj===c.id&&actif(f)&&typeof isFeal==='function'&&isFeal(f))out.push({k:'feal',c:f,xp:summary(f,S.events).dispo});
+    if(typeof fgFiefsOf==='function')for(const fid of fgFiefsOf(c))fiefs.add(fid);}
+  for(const b of Object.values(S.brouillons||{}))if(b&&b.par===ME&&(b.statut==='brouillon'||b.statut==='attente'))out.push({k:'br',b});
+  for(const fid of fiefs){const f=S.fiches[fid];if(f&&fiSee(f))out.push({k:'fief',f,xp:fgXp(fid).solde});}
+  return out;}
+function hmMineRow(x){const av=c=>{const im=portrait(c);return `<span class="hmav">${im?`<img src="${im}" alt="">`:esc((c.court||'?').slice(0,1))}</span>`;};
+  if(x.k==='pj')return `<button type="button" class="hmrow" data-act="hmGo" data-k="prog" data-id="${esc(x.c.id)}">${av(x.c)}<span class="cmain"><b>${esc(x.c.court||x.c.nom)}</b>${x.obj?`<small>${esc(x.obj)}</small>`:''}</span><span class="hmxp"><b>${x.xp}</b><small>XP à dépenser</small></span></button>`;
+  if(x.k==='feal')return `<button type="button" class="hmrow sub" data-act="hmGo" data-k="prog" data-id="${esc(x.c.id)}"><span class="cmain">Féal · ${esc(x.c.court||x.c.nom)}</span><span class="hmxp"><b>${x.xp}</b> XP</span></button>`;
+  if(x.k==='br'){const I=(x.b.d||{}).ident||{},st=crSteps(x.b),n=Math.min(x.b.etape||0,st.length-1);return `<button type="button" class="hmrow" data-act="cwOpen" data-id="${esc(x.b.id)}"><span class="hmav br">+</span><span class="cmain"><b>${esc((I.court||'').trim()||(x.b.kind==='feal'?'Nouveau féal':'Nouveau PJ'))}</b> <span class="pill ${x.b.statut==='attente'?'acc':'plan'}">${x.b.statut==='attente'?'En attente':'Brouillon'}</span><small>Étape ${n+1} sur ${st.length}</small></span><span class="hmgo">${x.b.statut==='attente'?'Voir':'Reprendre'} ›</span></button>`;}
+  return `<button type="button" class="hmrow" data-act="hmGo" data-k="fief" data-id="${esc(x.f.id)}"><span class="hmav fief" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V10l7-5 7 5v11M10 21v-5h4v5"/></svg></span><span class="cmain"><b>Fief · ${esc(x.f.nom)}</b><small>Gestion du fief</small></span><span class="hmxp fief"><b>${x.xp}</b><small>XP du fief</small></span></button>`;}
+/* Nouveautés : dernières fiches et événements visibles, par date de modification */
+const HM_G=new Set(['lieu','org','famille','objet','bete','carte','evenement','chrono','art']);
+function hmNews(){if(typeof fiAll!=='function'||!S.fichesReady)return {L:[],n:0};let seen=hmSeenGet();
+  if(!seen){seen=new Date().toISOString();try{localStorage.setItem('xp.homeSeen',seen);}catch(e){}} /* première visite : point de départ */
+  const A=fiAll().filter(f=>HM_G.has(f.genre)&&fiSee(f)&&f.modif).sort((a,b)=>String(b.modif).localeCompare(String(a.modif)));
+  return {L:A.slice(0,5),n:A.filter(f=>(!seen||String(f.modif)>seen)&&f.par!==ME).length};}
+function hmWhen(iso){const d=String(iso||'').slice(0,10),t=today();if(d===t)return "aujourd'hui";const y=new Date(Date.now()-864e5).toISOString().slice(0,10);if(d===y)return 'hier';return d?d.slice(8,10)+'/'+d.slice(5,7):'';}
+function hmNewsRow(f){const ev=f.genre==='evenement',num=ev&&typeof chNumOf==='function'?chNumOf(f):'',cl=ev&&typeof chCl==='function'?chCl(f):'';
+  const sub=f.type&&!ev?f.type:cap1((FI_G[f.genre]||{}).un||(ev?'événement':'fiche'));
+  return `<button type="button" class="hmnew" ${lnkAttrs({t:'fiche',id:f.id})}><span class="cmain">${num?`<span class="chnum ${cl}">${esc(num)}</span> `:''}<b>${esc(f.nom||'')}</b> <span class="muted">· ${esc(sub)}</span></span><span class="muted small">${esc(hmWhen(f.modif))}</span></button>`;}
+function hmBlk(k,title,badge,sum,body,def,cls){const o=hmOpen(k,def);
+  return `<details class="hmblk${cls?' '+cls:''}" data-hm="${k}"${o?' open':''}><summary><h3>${title}</h3>${badge?`<span class="bdg${cls==='hmat'?'':' g'}">${badge}</span>`:''}<span class="hmsum">${esc(sum||'')}</span><span class="chev" aria-hidden="true">›</span></summary><div class="hmbody">${body}</div></details>`;}
 function viewHome(){
-  const V=validDates()[0],np=openProps().length,nb=unseenProps();
-  /* Lot 3 (24/11/2026) : variante « Deux horloges » : le temps du jeu et le temps réel, puis Univers, Personnages, XP */
-  const hb=typeof chHomeBits==='function'?chHomeBits():null;
-  const game=hb?`<button class="hban hgame" data-act="chHome"><span class="hic">${ICON.sablier}</span><span class="ht"><span class="hlab">Dans le jeu</span><b>${esc(chDateTxt(hb.now).replace(/^./,x=>x.toUpperCase()))}</b>${hb.B.length?`<span class="muted small">${esc(hb.B.join(' · '))}</span>`:''}</span></button>`:'';
-  const plan=`<button class="hban hplan2" data-act="tab" data-v="planning" data-pv="com"><span class="hic" style="position:relative">${ICON.calp}${nb?`<span class="bdg">${nb}</span>`:''}</span><span class="ht"><span class="hlab">${V?'Prochaine partie validée':'Prochaine partie'}</span><b>${V?dLine(V):'Aucune partie validée'}</b>${V?`<span class="muted small">${esc(V.type||'Scénario')}${np?' · '+np+' date'+(np>1?'s':'')+' proposée'+(np>1?'s':'')+' en attente':''}</span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''} en attente</span>`:''}</span></button>`;
-  const ns=propBadge(),last=typeof chLast==='function'?chLast():null;
-  const vc=ids().map(i=>S.chars[i]).filter(c=>actif(c)),npj=vc.filter(c=>c.type==='PJ').length,npnj=vc.filter(c=>c.type==='PNJ').length;
-  const mine=ME?pjIds().map(i=>S.chars[i]).find(c=>actif(c)&&owners(c).some(p=>p.id===ME)):null,sl=sessList()[0];
-  const tile=(v,ic,l,lines,bdg)=>`<button class="htile2" data-act="tab" data-v="${v}"><span class="hic">${ICON[ic]}</span><span class="ht"><span class="hnm">${l}${bdg?` <span class="bdg">${bdg}</span>`:''}</span>${lines.filter(Boolean).map(x=>`<span class="muted small">${esc(x)}</span>`).join('')}</span></button>`;
-  return `<div class="home-in">
-  ${typeof plTodo==='function'?plTodo():''}<div class="hbans${game?'':' one'}">${game}${plan}</div>
-  <div class="htiles">${tile('univers','livre','Univers',[last?'Dernier : '+chEvLab(last):'Chronique · Secrets · Races · Lieux…'],ns)}${tile('team','masque','Personnages',[npj+' PJ · '+npnj+' PNJ','Fiches, relations, journaux'])}${tile('gains','medaille','XP',[mine?(mine.court||mine.nom)+' : '+summary(mine,S.events).dispo+' XP à dépenser':'Journal d\'XP',sl&&sl.date?'Dernière session : '+fmtDate(sl.date):''])}</div>
-  <div class="hfoot"><p>La belle appli aide à gérer les éléments ludiques des Héritiers : personnages, XP, univers et organisation des parties.</p></div></div>`;
+  const V=validDates()[0],np=openProps().length,nb=unseenProps(),hb=typeof chHomeBits==='function'?chHomeBits():null,U=isUser();
+  const game=hb?`<button type="button" class="hmt hgame" data-act="chHome"><span class="hic">${ICON.sablier}</span><span class="ht"><span class="hlab">Dans le jeu</span><b>${esc(chDateTxt(hb.now).replace(/^./,x=>x.toUpperCase()))}</b>${hb.B.length?`<span class="muted small">${esc(hb.B.join(' · '))}</span>`:''}</span><span class="chev" aria-hidden="true">›</span></button>`:'';
+  let plan;
+  if(V){const dd=Math.round((new Date(V.date+'T12:00')-new Date(today()+'T12:00'))/864e5);
+    plan=`<button type="button" class="hmt hplan" data-act="tab" data-v="planning" data-pv="com"><span class="hic">${ICON.calp}</span><span class="ht"><span class="hlab">Prochaine partie</span><b>${dLine(V)}</b><span class="muted small">${esc(V.type||'Scénario')}${dd>1?' · dans '+dd+' jours':dd===1?' · demain':dd===0?" · aujourd'hui":''}${nb?' · '+nb+' date'+(nb>1?'s':'')+' à répondre':''}</span></span><span class="chev" aria-hidden="true">›</span></button>`;}
+  else plan=`<div class="hmt hplan"><span class="hic">${ICON.calp}</span><span class="ht"><span class="hlab">Prochaine partie</span><b>Rien de prévu</b>${U?`<span class="hmbtns">${nb?`<button type="button" class="btn pri" data-act="tab" data-v="planning" data-pv="com">Répondre (${nb})</button>`:''}<button type="button" class="btn ghost" data-act="dPropose">Proposer une date</button></span>`:np?`<span class="muted small">${np} date${np>1?'s':''} proposée${np>1?'s':''}</span>`:''}</span></div>`;
+  let h=`<div class="home-in"><section class="hmtime" aria-label="Temps">${game}${plan}</section>`;
+  const A=atItems();
+  if(A.length){const sum=[...new Set(A.map(x=>(AT_RUB.find(r=>r[0]===x.rub)||[,''])[1].toLowerCase()))].join(', ');
+    h+=hmBlk('at','À traiter',A.length,sum,A.slice(0,3).map(atRowH).join('')+`<button type="button" class="hmall" data-act="tab" data-v="todo">Tout voir (${A.length}) ›</button>`,false,'hmat');}
+  const M=hmMine();
+  if(M.length){const n=M.filter(x=>x.k!=='feal').length;h+=hmBlk('me',n>1?'Mes personnages':'Mon personnage','','',M.map(hmMineRow).join(''),true);}
+  const N=hmNews();
+  if(N.L.length)h+=hmBlk('nv','Nouveautés',N.n||'',N.n?(N.n>1?'depuis ta dernière visite':'depuis ta dernière visite'):'',N.L.map(hmNewsRow).join('')+`<button type="button" class="hmall" data-act="tab" data-v="univers">Tout l'univers ›</button>`,false);
+  const tx=accTxt(),E=canEdit();
+  if(tx.trim()||E)h+=`<div class="hmtxt${E?' ed':''}">${E?`<div class="blkhd"><span class="hlab">Texte d'accueil</span><button type="button" class="ibtn" data-act="hmTxt" aria-label="Modifier le texte d'accueil">${ICON.crayon}</button></div>`:''}${tx.trim()?`<p>${esc(tx).replace(/\n/g,'<br>')}</p>`:'<p class="muted small">Vide : masqué pour la table.</p>'}</div>`;
+  return h+'</div>';
 }
+/* Fenêtre du texte d'accueil (MJ et gestion, mode édition) */
+function hmTxtSheet(g){return `<div class="sheet-bg" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Texte d'accueil"><div class="in"><div class="shd"><h2>Texte d'accueil</h2><button class="x" data-act="closeSheet" aria-label="Fermer">✕</button></div>
+  <label for="hmtx" class="muted small">Affiché en bas de l'accueil, pour toute la table. Vide = masqué.</label><textarea id="hmtx" rows="5" data-hmtx="1">${esc(g.txt)}</textarea>
+  <div class="actions"><button class="btn ghost" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="hmTxtSave">Enregistrer</button></div></div></div>`;}
+/* Page « À traiter » */
+function viewTodo(){if(!isUser())return `<h2>À traiter</h2><div class="card empty">Réservé aux joueurs identifiés.</div>`;
+  const A=atItems(),f=S.atF||'',H=(S.xpHelp||{}).todo;
+  let h=`${crumb(['Accueil','data-act="tab" data-v="home"'],[''])}<div class="pghead"><h2 style="margin:4px 0 0;flex:1">À traiter</h2><button type="button" class="qbtn" data-act="xpHelp" data-k="todo" aria-expanded="${!!H}" aria-label="Aide de la page À traiter">?</button></div>`;
+  if(H)h+=`<div class="qtip2">Chacun voit les points qu'il a le droit de traiter : éléments masqués, brouillons et révélations pour le MJ ; réglages pour le MJ et la gestion ; le reste pour toute la table. Un signalement automatique disparaît quand le champ est rempli ; un signalement posé à la main se ferme avec « Résolu ».</div>`;
+  const R=AT_RUB.filter(([k])=>A.some(x=>x.rub===k));
+  if(R.length>1)h+=`<div class="chips atchips">${[['','Tout · '+A.length],...R.map(([k,l])=>[k,l+' · '+A.filter(x=>x.rub===k).length])].map(([k,l])=>`<button type="button" class="chip" data-act="atF" data-v="${k}" aria-pressed="${f===k}">${esc(l)}</button>`).join('')}</div>`;
+  if(!A.length)h+=`<div class="card empty">Rien à traiter pour l'instant.</div>`;
+  for(const [k,l] of AT_RUB){if(f&&f!==k)continue;const L=A.filter(x=>x.rub===k);if(!L.length)continue;
+    const who=k==='rev'||k==='perso'?'MJ':k==='sess'?'toute la table':'selon l\'élément';
+    let body;
+    if(k==='rev')body=`<div class="atrow"><span class="cmain"><b>${L[0].lot} élément${L[0].lot>1?'s':''} en attente</b><small>Invisibles des joueurs jusqu'à la validation · une seule notification</small></span></div><div class="actions"><button type="button" class="btn pri" data-act="lotOpen">Valider le lot</button><button type="button" class="btn ghost" data-act="atSec">Ouvrir les secrets</button></div>`;
+    else if(k==='sig'){const T=isTech(),sf=S.sigF=S.sigF||{st:'',t:'',res:false},Lf=L.filter(x=>(!sf.st||x.sg.statut===sf.st)&&(!sf.t||x.sg.obj.t===sf.t));
+      body=`<details class="atflt"${sf.st||sf.t?' open':''}><summary class="btn ghost">Filtres ▾</summary><div class="flt">${[['','Tous'],...Object.entries(SIG_ST)].map(([q,l2])=>`<button data-act="sigF" data-k="st" data-v="${q}" aria-pressed="${sf.st===q}">${l2}</button>`).join('')}</div><div class="flt">${[['','Tous objets'],...Object.entries(SIG_OBJ).filter(([q])=>q!=='brouillon')].map(([q,l2])=>`<button data-act="sigF" data-k="t" data-v="${q}" aria-pressed="${sf.t===q}">${l2}</button>`).join('')}</div></details>`
+        +Lf.map(x=>`<div class="atsig">${atRowH(x)}${x.sg.auto?'':`<button class="btn ghost ui-xs" data-act="sigOk" data-id="${esc(x.sg.id)}">Résolu</button>`}</div>`).join('')+(Lf.length?'':'<div class="muted small">Aucun signalement pour ce filtre.</div>');
+      if(T&&typeof sigForm==='function')body+=sigForm();
+      const res=sigStored().filter(s=>s.ok&&atSigSee(s));if(T&&res.length)body+=`<details class="atres"><summary class="muted small">Résolus · ${res.length}</summary>${res.map(s=>`<div class="atsig"><div class="atrow"><span class="cmain"><b>${esc((SIG_OBJ[s.obj.t]||'')+' · '+sigObjName(s.obj)+' › '+s.champ)}</b><small>résolu le ${fmtDate(s.okDate||'')}</small></span></div><button class="btn ghost ui-xs" data-act="sigOk" data-id="${esc(s.id)}">Rouvrir</button></div>`).join('')}</details>`;}
+    else body=L.filter(x=>!x.r6).map(atRowH).join('')+(k==='sess'&&L.some(x=>x.r6)&&typeof fi6RattView==='function'?fi6RattView():'');
+    h+=`<section class="card atsec"><div class="blkhd"><h3>${esc(l)}</h3><span class="tag2">${esc(who)}</span>${k==='sig'?`<span class="muted small">${L.length} ouvert${L.length>1?'s':''}</span>`:''}</div>${body}</section>`;}
+  return h;}
+function homeAct(a,d){
+  if(a==='hmGo'){if(d.k==='fief'){S.fiTab='gest';if(navGo({t:'fiche',id:d.id}))render();return true;}
+    if(d.k==='prog'){if(navGo({t:'perso',id:d.id})){S.shTab='prog';render();}return true;}return true;}
+  if(a==='hmTxt'){if(!canEdit())return true;S.dlg={kind:'hmTxt',txt:accTxt()};render();return true;}
+  if(a==='hmTxtSave'){const g=S.dlg;if(!canEdit()||!g||g.kind!=='hmTxt')return true;S.accueil={txt:String(g.txt||'').trim()};persist('meta/accueil',S.accueil);S.dlg=null;render();toast('Enregistré');return true;}
+  if(a==='atF'){S.atF=d.v||'';if(S.view!=='todo'){S.view='todo';}render();return true;}
+  if(a==='atSec'){if(!isGest())return true;S.view='univers';S.uni='secrets';S.fi=null;S.sec=null;window.scrollTo(0,0);render();return true;}
+  if(a==='atRatt'){if(!isUser())return true;S.view='univers';S.uni='chronique';S.fi=null;S.chPage='ratt';S.chRat=null;window.scrollTo(0,0);render();return true;}
+  return false;}
+document.addEventListener('toggle',ev=>{const t=ev.target;if(!t||!t.dataset||!t.dataset.hm||isWide())return;const o=hmOpenGet();o[t.dataset.hm]=t.open;try{localStorage.setItem('xp.homeOpen',JSON.stringify(o));}catch(e){}
+  if(t.dataset.hm==='nv'&&t.open){try{localStorage.setItem('xp.homeSeen',new Date().toISOString());}catch(e){}}},true);
+document.addEventListener('input',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.hmtx!==undefined&&S.dlg&&S.dlg.kind==='hmTxt')S.dlg.txt=t.value;});
 /* ---------- Qui es-tu ? ---------- */
 function whoGate(){return idGate();
   const pl=planPlayers();
@@ -94,6 +186,7 @@ function renderSheet0(){
     if(g.kind==='cons'){const html=consSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='elEdit'||g.kind==='pwPick'){const html=g.kind==='elEdit'?elEditSheet(g):pwPickSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='cwPP'||g.kind==='cwVal'||g.kind==='cwQuit'||g.kind==='cwDel'){const html=g.kind==='cwPP'?cwPPSheet(g):g.kind==='cwVal'?cwValSheet(g):cwDlgSheet(g);if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;} /* lot C */
+    if(g.kind==='hmTxt'){root.innerHTML=hmTxtSheet(g);return;} /* UX3 : texte d'accueil */
     if(g.kind==='pl'||g.kind==='pc'||g.kind==='newp'){const html=g.kind==='pl'?plSheet(g):g.kind==='pc'?pcSheet(g):newPSheet();if(!html){S.dlg=null;root.innerHTML='';return;}root.innerHTML=html;return;}
     if(g.kind==='ne'){const e=sessById(g.id);if(!e){S.dlg=null;root.innerHTML='';return;}
       let body;
@@ -244,7 +337,7 @@ function render(){
   if(ae&&ae.closest&&ae.closest('#app')&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&!S._force){S.dirty=true;renderSheet();return;}
   S._force=false;S.dirty=false;navSave();
   const v=S.view,app=document.getElementById('app');
-  app.innerHTML=idBanners()+socleBanner()+navBar()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():v==='crea'?viewCrea():v==='srch'?viewSrch():viewRules());
+  app.innerHTML=idBanners()+socleBanner()+navBar()+(S.asPlayer?`<div class="asplayer"><span>Vous voyez l'appli <b>comme un joueur</b></span><button class="btn ghost" data-act="asPlayerOff">Revenir</button></div>`:'')+(v==='home'?viewHome():v==='todo'?viewTodo():v==='team'?viewTeam():v==='sheet'?viewSheet():v==='gains'?viewGains():v==='univers'?viewUnivers():v==='players'?viewPlayers():v==='planning'?viewPlanning():v==='ref'?viewUnivers():v==='params'?viewParams():v==='crea'?viewCrea():v==='srch'?viewSrch():viewRules());
   renderSheet();
   hxTrack(); /* historique : une étape par écran (core.js) */
   {let q=document.getElementById('edqRoot');if(!q){q=document.createElement('div');q.id='edqRoot';document.body.appendChild(q);}const qh=S.edQuit?edQuitSheet():'';if(q.innerHTML!==qh)q.innerHTML=qh;}

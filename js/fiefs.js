@@ -10,7 +10,8 @@ const FG_DEF={cc:4,cr:16,max:10,nt:2,
   tailles:[['Manoir / Domaine',0],['Village',0],['Petite ville',1],['Ville',2],['Grande ville',3],['Région',4],['Territoire majeur',5]].map(([n,m])=>({n,m})),
   etats:[['Très déficitaire',-2],['Fragile',-1],['Équilibre',0],['Prospère',1],['Florissant',2]].map(([n,m])=>({n,m})),
   pop:[['0 à 2',-1],['3 à 5',-1],['6 à 9',-1],['10 à 14',0],['15 à 25',0],['26 à 60',1],['61 à 150',1],['151 à 400',2],['401 à 1 000',2],['1 001 à 3 000',3],['plus de 3 000',3]].map(([n,m])=>({n,m}))};
-function fgCfg(){const x=S.fgCfg||{},o=clone(FG_DEF);for(const k of ['cc','cr','max','nt'])if(x[k]!=null&&x[k]!==''&&!isNaN(+x[k]))o[k]=+x[k];
+function fgCfg(){const x=S.fgCfg||{},o=clone(FG_DEF);for(const k of ['max','nt'])if(x[k]!=null&&x[k]!==''&&!isNaN(+x[k]))o[k]=+x[k];
+  /* UX3 : coûts datés dans meta/params (fgCc, fgCr) */for(const [k,p] of [['cc','fgCc'],['cr','fgCr']]){const v=typeof PRM!=='undefined'?PRM[p]:null;if(v!=null&&v!==''&&!isNaN(+v))o[k]=+v;else if(x[k]!=null&&x[k]!==''&&!isNaN(+x[k]))o[k]=+x[k];}
   for(const k of ['tailles','etats','pop'])if(Array.isArray(x[k])&&x[k].length)o[k]=clone(x[k]);return o;}
 const fgSg=m=>{m=+m||0;return m>0?'+'+m:m<0?'−'+(-m):'0';};
 const fgMod=(L,n)=>{const x=L.find(y=>y.n===n);return x?+x.m||0:null;};
@@ -169,24 +170,24 @@ function fgRules(){const C=fgCfg(),E=canEdit(),ts=C.tailles.map(x=>`${x.n} ${fgS
   const MOD=[['Relais et délégation','Relais −1 ; peu fiable −2 ; contesté −3 ; aucun relais local −4 ; relais parfaitement adapté : annule le malus.'],['Personnalités notables','Soutien +1 ; figure dominante +2 ; opposition −2 ; opposition d\'une figure majeure −3.'],['Position des interlocuteurs','Vassaux, alliés +1 ; neutres 0 ; rivaux −1 à −2 ; ennemi −3 à −5.'],['Intensité de la situation','Favorable ou maîtrisée +1 à +2 ; enjeu important −1 ; tendue −2 ; crise ouverte −3 ; crise majeure −5 ; désespérée −6.'],['Cohérence avec le fief','Dans ses intérêts +1 ; le renforce clairement +2 ; risquée pour l\'équilibre −2 ; met le fief en danger : au jugement du MJ.']];
   const DIF=[['Souveraineté','10 impressionner des voisins, affirmer sa présence ; 15 faire respecter une décision impopulaire, mater des troubles ; 20 écraser une révolte de vassaux ; 25 mener une guerre locale ; 30 imposer une domination totale.'],['Organisation','10 gérer une crise locale ; 15 une crise économique touchant une partie du fief ; 20 une opération financière d\'ampleur ; 25 réorganiser toutes les structures ; 30 restaurer l\'ordre après une catastrophe majeure.'],['Influence','10 obtenir une faveur dans un cercle social ; 15 négocier une alliance ; 20 imposer un compromis ; 25 un traité d\'alliance durable ; 30 un traité de loyauté éternelle.'],['Féerie','10 recherches occultes simples ; 15 faire appel à des druides ou des spirites reconnus ; 20 à des sorciers illégaux, exploiter un lieu surnaturel ; 25 gérer une crise magique d\'ampleur ; 30 transformer durablement un lieu, altérer le réel.'],['Lecture rapide','10 action locale significative ; 15 enjeu réel pour le fief ; 20 crise ou pratique risquée ; 25 transformation majeure ; 30 événement.']];
   const ev=(a,b)=>`<div class="ev"><div class="t" style="min-width:120px">${esc(a)}</div><div class="muted" style="text-align:right">${esc(b)}</div></div>`;
-  let h=`<h2>Gestion de fief</h2><div class="card">${rows.map(r=>ev(r[0],r[1])).join('')}</div>`;
+  /* UX3 : section des Règles (sans titre ni réglages) ; libellé au-dessus du texte */
+  let h=`<div class="rgl">${rows.map(r=>rgLine(r[0],r[1])).join('')}</div>`;
   h+=cBlk('fg-pop','Population féerique',C.pop.length+' niveaux',`<div class="fgpop"><b>Score</b><b>Fées</b><b>Modif.</b>${C.pop.map((x,i)=>`<span>${i}</span><span>${esc(x.n)}</span><span>${fgSg(x.m)}</span>`).join('')}</div>`);
-  h+=cBlk('fg-mod','Modificateurs','5 rubriques',MOD.map(r=>ev(r[0],r[1])).join(''));
-  h+=cBlk('fg-dif','Exemples de difficultés','10 à 30',DIF.map(r=>ev(r[0],r[1])).join(''));
-  if(E)h+=fgParams();
+  h+=cBlk('fg-mod','Modificateurs','5 rubriques',`<div class="rgl">${MOD.map(r=>rgLine(r[0],r[1])).join('')}</div>`);
+  h+=cBlk('fg-dif','Exemples de difficultés','10 à 30',`<div class="rgl">${DIF.map(r=>rgLine(r[0],r[1])).join('')}</div>`);
   return h;}
 /* Réglages des fiefs (gestion, mode édition) : brouillon S.fgPd, enregistré dans meta/fiefs */
 function fgParams(){if(!S.fgPd)S.fgPd=fgCfg();const P=S.fgPd;
-  const num=(k,l,dsc)=>`<div class="frow" style="align-items:center"><label for="fgp-${k}" style="flex:1"><b>${l}</b><span class="muted small"> · ${dsc}</span></label><input id="fgp-${k}" type="number" inputmode="numeric" min="0" data-fgp="${k}" value="${esc(String(P[k]))}" style="width:80px"></div>`;
-  const list=(k,t,add)=>`<div class="fimg">${t}</div>`+P[k].map((x,i)=>`<div class="frow fgpl" style="align-items:center"><input type="text" aria-label="Libellé" data-fgp="${k}" data-i="${i}" data-f="n" value="${esc(x.n)}" style="flex:1"><input type="number" aria-label="Modificateur" data-fgp="${k}" data-i="${i}" data-f="m" value="${esc(String(x.m))}" style="width:70px">${add?`<button type="button" class="ibtn" data-act="fgPDel" data-k="${k}" data-i="${i}" aria-label="Retirer ${esc(x.n)}">✕</button>`:''}</div>`).join('')+(add?`<div class="radd"><button class="btn" data-act="fgPAdd" data-k="${k}">+ Ajouter</button></div>`:'');
-  return cBlk('fg-par','Réglages des fiefs','mode édition',num('cc','Caractéristique','XP = nouveau score × ce nombre')+num('cr','Ressource','XP pour créer une ressource')+num('max','Score maximum','caractéristiques et population')+num('nt','Traits','nombre de traits par fief')+
-    list('tailles','Tailles',1)+list('etats','États économiques',1)+list('pop','Population féerique (score 0 à '+(P.pop.length-1)+' : fées, modificateur)',0)+
-    `<div class="actions"><button class="btn" data-act="fgPReset">Annuler les changements</button><button class="btn pri" data-act="fgPSave">Enregistrer</button></div>`);}
+  const num=(k,l,dsc)=>`<div class="pr3"><label class="l" for="fgp-${k}"><b>${l}</b><small>${dsc}</small></label><span class="v"><input id="fgp-${k}" type="number" inputmode="numeric" min="0" data-fgp="${k}" value="${esc(String(P[k]))}"><span class="u"></span></span></div>`;
+  const list=(k,add)=>P[k].map((x,i)=>`<div class="fgpl">${k==='pop'?`<span class="fgpi">${i}</span>`:''}<input type="text" aria-label="Libellé" data-fgp="${k}" data-i="${i}" data-f="n" value="${esc(x.n)}"><input type="number" aria-label="Modificateur" data-fgp="${k}" data-i="${i}" data-f="m" value="${esc(String(x.m))}">${add?`<button type="button" class="ibtn" data-act="fgPDel" data-k="${k}" data-i="${i}" aria-label="Retirer ${esc(x.n)}">✕</button>`:''}</div>`).join('')+(add?`<div class="radd"><button class="btn" data-act="fgPAdd" data-k="${k}">+ Ajouter</button></div>`:'');
+  return cBlk('pu-fr','Fiefs',`score maximum ${P.max} · ${P.nt} traits`,num('max','Score maximum','caractéristiques et population')+num('nt','Traits','nombre de traits par fief'))
+    +cBlk('pu-ft','Tailles',P.tailles.length+' tailles',list('tailles',1))+cBlk('pu-fe','États économiques',P.etats.length+' états',list('etats',1))
+    +cBlk('pu-fp','Population féerique',P.pop.length+' niveaux (score : fées, modificateur)',list('pop',0));}
 function fgParamAct(a,d){if(!canEdit())return true;const P=S.fgPd||(S.fgPd=fgCfg());
-  if(a==='fgPAdd')P[d.k].push({n:'',m:0});else if(a==='fgPDel')P[d.k].splice(+d.i,1);else if(a==='fgPReset')S.fgPd=null;
-  else if(a==='fgPSave'){const o={cc:Math.max(0,Math.floor(+P.cc||0)),cr:Math.max(0,Math.floor(+P.cr||0)),max:Math.max(1,Math.floor(+P.max||10)),nt:Math.max(0,Math.floor(+P.nt||0))};
+  if(a==='fgPAdd'){P[d.k].push({n:'',m:0});S.pDirty=true;}else if(a==='fgPDel'){P[d.k].splice(+d.i,1);S.pDirty=true;}else if(a==='fgPReset')S.fgPd=null;
+  else if(a==='fgPSave'){const o={...(S.fgCfg&&S.fgCfg.cc!=null?{cc:S.fgCfg.cc}:{}),...(S.fgCfg&&S.fgCfg.cr!=null?{cr:S.fgCfg.cr}:{}),max:Math.max(1,Math.floor(+P.max||10)),nt:Math.max(0,Math.floor(+P.nt||0))};
     for(const k of ['tailles','etats','pop'])o[k]=P[k].filter(x=>(x.n||'').trim()||k==='pop').map(x=>({n:(x.n||'').trim(),m:Math.round(+x.m||0)}));
-    S.fgCfg=o;S.fgPd=null;persist('meta/fiefs',o);}
+    S.fgCfg=o;S.fgPd=null;persist('meta/fiefs',o);return true;}
   render();return true;}
 document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.fgp===undefined||!S.fgPd)return;const P=S.fgPd,k=t.dataset.fgp;
-  if(t.dataset.i===undefined)P[k]=t.value;else{const x=P[k][+t.dataset.i];if(x)x[t.dataset.f]=t.dataset.f==='m'?t.value:t.value;}});
+  if(t.dataset.i===undefined)P[k]=t.value;else{const x=P[k][+t.dataset.i];if(x)x[t.dataset.f]=t.value;}if(typeof pDirtyOn==='function')pDirtyOn();});

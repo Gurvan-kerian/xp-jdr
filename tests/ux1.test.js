@@ -95,8 +95,8 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
       await E(page,()=>{S.plan.view='dispo';S.plan.y=2027;S.plan.m=1;S._force=true;render();});await page.click('.pdays2 [data-act="plWho"]');await wait(page);
       ok(/Libres/.test(await sheet(page))&&/Pas libres/.test(await sheet(page)),'fenêtre « Qui est libre »');
       t=await E(page,()=>{S.dlg=null;S.view='home';S._force=true;render();return document.getElementById('app').innerText;});
-      ok(/À traiter/i.test(t)&&/est passée/.test(t),'rappel « Créer la session » pour une date validée passée');
-      await page.click('[data-act="plEcart"]');await wait(page,300);ok(!/est passée/.test(await txt(page))&&(db.get('meta/planning').ecartes||[]).includes('dpast'),'« Écarter » mémorisé');
+      ok(/À traiter/i.test(t)&&await E(page,()=>atItems().some(x=>x.plan)),'rappel « Créer la session » pour une date validée passée (UX3 : bloc « À traiter »)');
+      await E(page,()=>{S.view='todo';S._force=true;render();});await page.click('[data-act="plEcart"]');await wait(page,300);ok(!/Créer la session/.test(await txt(page))&&(db.get('meta/planning').ecartes||[]).includes('dpast'),'« Écarter » mémorisé');
       console.log('4. Personnages');
       t=await E(page,()=>{S.view='team';S._force=true;render();return document.getElementById('app').innerText;});
       ok(/Rang d'héritage 6/.test(t)&&/★ 2 \/ 30/.test(t),'ligne Rang d\'héritage (score, étoiles)');

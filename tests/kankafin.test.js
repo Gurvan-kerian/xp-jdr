@@ -79,11 +79,12 @@ const SHOTS=process.env.SHOTS;
     if(!docsPath){
       console.log('1. Joueur : onglet Règles');
       {const {page,errs,ctx}=await open(browser,base,db,'anne');
-        let t=await rules(page,'');ok(/Règles en images/.test(t)&&/Féerie/.test(t),'2 sous-onglets ; Règles par défaut');
-        ok(/Rang PJ : éligibilité[\s\S]*Arts obscurs[\s\S]*compétences débloquées par le MJ sur prérequis de compétences/.test(t),'ligne Arts obscurs après « Rang PJ : éligibilité »');
-        await click(page,'[data-act="rgTab"][data-v="img"]');await wait(page);t=await txt(page);
+        /* UX3 : une page à sections ; « Pages du livre » remplace le sous-onglet Règles en images */
+        let t=await page.evaluate(()=>{S.view='rules';S.rgNote=null;S.shFold={'rg-b':false};S._force=true;render();return document.getElementById('app').innerText;});ok(/Pages du livre/i.test(t)&&/Féerie/.test(t),'section Pages du livre ; barèmes');
+        ok(/Compétences comptées pour les paliers[\s\S]*Arts obscurs[\s\S]*Débloqués par le MJ/.test(t),'ligne Arts obscurs dans les barèmes');
+        await page.evaluate(()=>{S.shFold={'rg-l':false};S._force=true;render();});await wait(page);t=await txt(page);
         ok(/La Fortune[\s\S]*1 image[\s\S]*Manœuvres de combat[\s\S]*2 images/.test(t),'Règles en images : notes dans l\'ordre, nombre d\'images');
-        ok(!/\+ Une note/.test(t),'joueur : pas de création');
+        ok(!/\+ Page du livre/.test(t),'joueur : pas de création');
         await click(page,'[data-act="rgOpen"][data-id="rg1"]');await wait(page);t=await txt(page);ok(/Manœuvres de combat/.test(t)&&/2 images/.test(t)&&!/Ajouter une image/.test(t),'page de la note (lecture)');
         ok(await page.evaluate(()=>document.querySelectorAll('.rggrid .rgimg').length)===2,'2 vignettes');
         await click(page,'.rgimg[data-i="0"]');await wait(page);let v=await vw(page);ok(/1 \/ 2/.test(v)&&/\|01$/.test(v),'visionneuse : image 1, suivante active');
@@ -117,7 +118,7 @@ const SHOTS=process.env.SHOTS;
       console.log('3. Gestion : édition');
       {const {page,errs,ctx}=await open(browser,base,db,'lorenzo');
         await page.evaluate(()=>{S.edit=true;});
-        let t=await rules(page,'img');ok(/\+ Une note/.test(t),'gestion : + Une note');
+        let t=await page.evaluate(()=>{S.view='rules';S.rgNote=null;S.shFold={'rg-l':false};S._force=true;render();return document.getElementById('app').innerText;});ok(/\+ Page du livre/.test(t),'gestion : + Page du livre');
         await click(page,'[data-act="rgNoteEd"][data-id=""]');await wait(page);await page.fill('#rgNm','Tableaux de PP');await click(page,'[data-act="rgNoteSave"]');await wait(page,300);
         const nid=await page.evaluate(()=>S.rgNote);ok(!!nid&&db.get('fiches/'+nid).genre==='regle'&&db.get('fiches/'+nid).nom==='Tableaux de PP','note créée et ouverte');
         ok(/Ajouter une image/.test(await txt(page)),'bouton Ajouter une image');

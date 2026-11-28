@@ -238,7 +238,7 @@ function fiFicheView(f){
       else comp.push(['À révéler','fiItem',' data-i="" data-h="1"']);}}
   if(['lieu','org','objet'].includes(f.genre)&&pres)h+=caOnMap('fiche',f.id); /* lot Cartes */
   if(f.genre==='bete')h+=fiSpecBlk(f,ed,G); /* lot 8 b : spécimens connus */
-  if(f.genre==='art')h+=aoBlocks(f,ed,G); /* arts obscurs */
+  if(f.genre==='art'){h+=aoBlocks(f,ed,G);if(canEdit())h+=aoParams(f);} /* arts obscurs ; UX3 : réglages sur la fiche */
   if(f.genre==='chrono')h+=ctBlocks(f,ed,G); /* chronologies */
   h+=fi6Blocks(f); /* lot 6 : blocs propres aux lieux et objets */
   if(OT)h+=ogBlocks(f,OT); /* lot 5 a */
@@ -1830,7 +1830,7 @@ function caHeadFields(g){const L=fiSort(fiAll().filter(x=>x.genre==='lieu'&&fiSe
    et textes (descriptions, « Ce que l'on sait », spécimens, Notes MJ pour la gestion, Portrait des PNJ, journaux, pouvoirs).
    Sans tenir compte des accents ni des majuscules ; résultats dès 2 lettres. Filtre par genre gardé pendant la session.
    Recherches récentes et fiches ouvertes depuis la recherche : propres à ce navigateur (localStorage xp.srch). */
-const SR_G=[['perso','Personnages'],['lieu','Lieux'],['org','Organisations'],['famille','Familles'],['objet','Objets'],['bete','Bestiaire'],['carte','Cartes'],['evenement','Chronique'],['chrono','Histoire'],['jour','Journaux et quêtes'],['race','Races'],['pw','Pouvoirs et capacités'],['art','Arts obscurs'],['secret','Secrets']];
+const SR_G=[['perso','Personnages'],['lieu','Lieux'],['org','Organisations'],['famille','Familles'],['objet','Objets'],['bete','Bestiaire'],['carte','Cartes'],['evenement','Chronique'],['chrono','Histoire'],['jour','Journaux et quêtes'],['race','Races'],['pw','Pouvoirs et capacités'],['art','Arts obscurs'],['secret','Secrets'],['regle','Règles']];
 const SR_LAB=Object.fromEntries(SR_G);
 const cap1=t=>t?t[0].toUpperCase()+t.slice(1):t;
 const srState=()=>S.srch||(S.srch={q:'',g:'all',more:false});
@@ -1871,9 +1871,11 @@ function srRun(q0){const q=srQ(q0),N=[],T=[],G=isGest();if(q.length<2)return {N,
   for(const J of jrAll()){if(!jrCanRead(J))continue;const h=jrHost(J),o={t:'jour',id:J.id},sub=(J.genre==='quete'?'Quête':'Journal')+(h?' · '+(h.court||h.nom):'');
     nm('jour',o,[J.nom],sub);if(!tx('jour',o,J.nom,sub,'Description',J.desc))for(const e of J.ent||[])if(tx('jour',{t:'jour',id:J.id,i:e.id},J.nom,sub,'« '+(e.nom||'Entrée')+' »',e.txt))break;}
   for(const s of S.secrets||[]){const o={t:'secret',n:s.n};if(!lnkOk(o))continue;const lab=secLabel(s,G);nm('secret',o,[lab],'Secret');}
+  /* UX3 : Règles (lignes des sections ; les pages du livre sont des fiches « regle ») */
+  if(typeof rgData==='function'){const D=rgData();for(const [k,t] of RG_SEC)for(const [lab,txt] of D[k]||[]){const o={t:'regles',k,l:lab};if(!nm('regle',o,[lab],'Règles · '+t))tx('regle',o,lab,'Règles · '+t,'',txt);}}
   N.sort((a,b)=>a.st-b.st||a.nom.localeCompare(b.nom,'fr',{sensitivity:'base'}));
-  const seen=new Set(N.map(x=>x.g+':'+(x.o.id||x.o.n)));
-  return {N,T:T.filter(x=>!seen.has(x.g+':'+(x.o.id||x.o.n))).sort((a,b)=>a.nom.localeCompare(b.nom,'fr',{sensitivity:'base'}))};}
+  const sk=x=>x.g+':'+(x.o.id||x.o.n||(x.o.k+'|'+x.o.l));const seen=new Set(N.map(sk));
+  return {N,T:T.filter(x=>!seen.has(sk(x))).sort((a,b)=>a.nom.localeCompare(b.nom,'fr',{sensitivity:'base'}))};}
 const SR_IC='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>';
 const srThumb=(img,g)=>`<span class="srth${g==='perso'?' r':''}"${img?'':' aria-hidden="true"'}>${img?`<img src="${img}" alt="">`:''}</span>`;
 function srRow(x){return `<button type="button" class="srrow" ${lnkAttrs(x.o)} data-srch="1">${srThumb(x.img,x.g)}<span class="srtx"><b>${x.hi||esc(x.nom)}</b><small>${x.alt||''}${esc(x.sub||'')}${x.where?' · '+esc(x.where):''}</small>${x.ex?`<span class="srex">${x.ex}</span>`:''}</span>${x.prep?'<span class="srprep">préparée</span>':''}</button>`;}
@@ -1939,7 +1941,9 @@ const aoArts=()=>fiSort(fiAll().filter(f=>f.genre==='art'));
 const aoNivOf=r=>r<=0?0:r<=2?1:r<=4?2:r<=6?3:4;
 const aoNivName=(f,i)=>i<1?'':((f&&f.niv&&f.niv[i-1])||'').trim()||AO_NIV[i-1];
 const aoNivLab=(f,i)=>{const p=aoNivName(f,i);return p===AO_NIV[i-1]?p:p+' · '+AO_NIV[i-1];};
-const aoMax=f=>+(f&&f.max)||7,aoCSort=f=>f&&f.cSort!=null&&f.cSort!==''?+f.cSort:5,aoReq=f=>f&&f.nReq!=null&&f.nReq!==''?+f.nReq:2;
+/* UX3 : chiffres des arts obscurs datés dans Paramètres › Coûts et gains d'XP (champs max, cSort, nReq des fiches plus lus) */
+const aoPrm=(k,d)=>{const v=typeof PRM!=='undefined'?PRM[k]:null;return v!=null&&v!==''&&!isNaN(+v)?+v:d;};
+const aoMax=f=>aoPrm('aoMax',7),aoCSort=f=>aoPrm('aoSort',5),aoReq=f=>aoPrm('aoReq',2);
 const aoSorts=f=>(f&&f.sorts)||[];
 const aoSortOf=(f,id)=>aoSorts(f).find(x=>x.id===id)||null;
 const aoOwn=(c,id)=>(c&&c.arts&&c.arts[id])||null;
@@ -1975,7 +1979,7 @@ function aoProgBlock(c,s,ir){if(!c||c.type!=='PJ')return '';const U=Object.keys(
 /* ---------- Fiche d'art : sous-titre et blocs ---------- */
 function aoSub(f){const o=f.org&&S.fiches[f.org];return [aoComp(f)?'compétence cachée':'sans compétence',o?(fiSee(o)?lk({t:'fiche',id:o.id},o.nom):''):''].filter(Boolean);}
 function aoBlocks(f,ed,G){if(!aoComp(f))return '';const e=fiEyeOf(f),E=canEdit();let h='';
-  if(fiBlkSee(f,'pre')){const P=f.pre||[];h+=fiBlk('aopre','Prérequis',String(P.length||''),(P.length?P.map(p=>`<div class="fiml">${esc(aoPreLab(p))}</div>`).join(''):'<div class="muted small">Aucun prérequis saisi.</div>')+`<div class="muted small" style="margin-top:6px">Un PJ qui remplit les prérequis peut être débloqué par le MJ (onglet Progrès).${E?' Réglage : Paramètres › Référentiel › Arts obscurs.':''}</div>`,{hid:G&&!e.pre,eye:G?eyeBtn('fiEye','data-k="pre"',!!e.pre,'Prérequis'):''});}
+  if(fiBlkSee(f,'pre')){const P=f.pre||[];h+=fiBlk('aopre','Prérequis',String(P.length||''),(P.length?P.map(p=>`<div class="fiml">${esc(aoPreLab(p))}</div>`).join(''):'<div class="muted small">Aucun prérequis saisi.</div>')+`<div class="muted small" style="margin-top:6px">Un PJ qui remplit les prérequis peut être débloqué par le MJ (onglet Progrès).${E?' Réglage : bloc « Réglages de l\'art », en mode édition.':''}</div>`,{hid:G&&!e.pre,eye:G?eyeBtn('fiEye','data-k="pre"',!!e.pre,'Prérequis'):''});}
   if(fiBlkSee(f,'niv'))h+=fiBlk('aoniv','Niveaux','',[1,2,3,4].map(i=>`<div class="srow"><span><span class="pill">${AO_RG[i-1]}</span> <b>${esc(aoNivName(f,i))}</b>${aoNivName(f,i)!==AO_NIV[i-1]?` <span class="muted small">${AO_NIV[i-1]}</span>`:''}</span></div>`).join('')+`<div class="muted small" style="margin-top:6px">Passer au niveau suivant : ${aoReq(f)} sorts du niveau en dessous. Rang maximum : ${aoMax(f)}.</div>`,{edit:ed?'aoNiv':'',hid:G&&!e.niv,eye:G?eyeBtn('fiEye','data-k="niv"',!!e.niv,'Niveaux'):''});
   if(fiBlkSee(f,'sorts')){const S0=aoSorts(f);let b='';
     for(let i=1;i<=4;i++){const L=S0.filter(x=>+x.niv===i).sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));b+=`<div class="fimg">${esc(aoNivLab(f,i))} · rangs ${AO_RG[i-1]}</div>`+(L.map(x=>`<div class="lrw">${illOf('sort',x.id)?illThumb('sort',x.id,32):`<span class="illslot" style="width:32px;height:32px"></span>`}<button class="lrow" data-act="aoSortOpen" data-f="${esc(f.id)}" data-s="${esc(x.id)}"><span class="lm"><span class="lt">${esc(x.nom)}</span><span class="ls">${esc([x.type==='actif'?'Actif':x.type==='passif'?'Passif':'',x.act].filter(Boolean).join(' · '))}</span></span><span class="muted small">${aoCSort(f)} XP</span></button></div>`).join('')||'<div class="muted small">Aucun sort.</div>');}
@@ -2043,13 +2047,14 @@ function aoAct(a,d){const g=S.dlg;
   return false;}
 document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.aoe===undefined)return;const g=S.dlg;if(g&&/^ao/.test(g.kind))g[t.dataset.aoe]=t.value;});
 /* ---------- Paramètres › Référentiel › Arts obscurs ---------- */
-function aoParams(){const G=canEdit(),L=aoArts();if(!L.length)return `<div class="card"><div class="muted">Aucun art obscur : crée d'abord les fiches (Univers › Arts obscurs) ou importe-les depuis Kanka.</div></div>`;
-  const cur=L.find(f=>f.id===S.aoTab)||L.find(aoComp)||L[0];S.aoTab=cur.id;
+/* UX3 : réglages d'un art sur sa fiche (mode édition) ; les chiffres sont dans Paramètres › Coûts et gains d'XP */
+function aoParams(one){const G=canEdit(),L=aoArts();if(!one)return '';
+  const cur=one;S.aoTab=cur.id;
   if(!S.aoPd||S.aoPd.id!==cur.id)S.aoPd={id:cur.id,comp:cur.comp!==false,org:cur.org||'',pre:clone(cur.pre||[]),max:aoMax(cur),cSort:aoCSort(cur),nReq:aoReq(cur),niv:[0,1,2,3].map(i=>(cur.niv||[])[i]||'')};
   const P=S.aoPd,dis=G?'':' disabled',orgs=fiSort(fiAll().filter(x=>x.genre==='org'));
   const inp=(k,v,lab,ty)=>`<label class="aopf"><span>${lab}</span><input type="${ty||'number'}" data-aop="${k}" value="${esc(String(v))}"${dis}></label>`;
-  let h=`${G?'':'<div class="rolock">Lecture seule : réservé à la gestion, en mode édition.</div>'}<div class="chips" style="margin-bottom:10px">${L.map(f=>`<button class="chip" data-act="aoTab" data-v="${esc(f.id)}" aria-pressed="${f.id===cur.id}">${esc(f.nom)}</button>`).join('')}</div>`;
-  h+=cBlk('ao-g','Art',esc(cur.nom),`<div class="optrow2"><span><b>Compétence cachée</b><br><span class="muted small">non : art descriptif seulement (Spiritisme)</span></span><button class="tgb" data-act="aoPComp" role="switch" aria-checked="${P.comp}"${dis} aria-label="Compétence cachée"><span class="tg${P.comp?' on':''}"></span></button></div>
+  let h='';
+  h+=cBlk('ao-g','Réglages de l\'art','compétence cachée · organisation liée',`<div class="optrow2"><span><b>Compétence cachée</b><br><span class="muted small">non : art descriptif seulement (Spiritisme)</span></span><button class="tgb" data-act="aoPComp" role="switch" aria-checked="${P.comp}"${dis} aria-label="Compétence cachée"><span class="tg${P.comp?' on':''}"></span></button></div>
     <label class="aopf"><span>Organisation liée</span><select data-aop="org"${dis}><option value="">— aucune —</option>${orgs.map(o=>`<option value="${esc(o.id)}"${o.id===P.org?' selected':''}>${esc(o.nom)}</option>`).join('')}</select></label>`);
   if(P.comp){
     h+=cBlk('ao-p','Prérequis',String(P.pre.length),P.pre.map((p,i)=>`<div class="aopr"><select data-aop="pt" data-i="${i}" aria-label="Sorte de prérequis"${dis}>${AO_PT.map(([v,l])=>`<option value="${v}"${p.t===v?' selected':''}>${l}</option>`).join('')}</select>
@@ -2060,10 +2065,9 @@ function aoParams(){const G=canEdit(),L=aoArts();if(!L.length)return `<div class
       ${p.t!=='race'?`<input type="number" min="0" max="12" data-aop="pr" data-i="${i}" value="${esc(String(p.r||''))}" placeholder="rang" aria-label="Rang minimum" style="width:64px"${dis}>`:''}
       ${p.t==='comp'?`<input type="text" data-aop="psp" data-i="${i}" value="${esc(p.sp||'')}" placeholder="spécialité (facultatif)" aria-label="Spécialité exigée"${dis}>`:''}
       ${G?`<button class="ibtn" data-act="aoPDel" data-i="${i}" aria-label="Retirer le prérequis">✕</button>`:''}</div>`).join('')+(G?`<div class="radd"><button class="btn" data-act="aoPAdd">+ Prérequis</button></div>`:'')+'<div class="muted small" style="margin-top:6px">Compétence (rang minimum, spécialité facultative), caractéristique, race, autre art obscur.</div>');
-    h+=cBlk('ao-c','Compétence et sorts','',`<div class="aopg">${inp('max',P.max,'Rang maximum')}${inp('cSort',P.cSort,'Coût d\'un sort (XP)')}${inp('nReq',P.nReq,'Sorts requis pour monter')}</div><div class="muted small">Coût d'un rang : comme une compétence (${RULES.comp} × rang). Sorts requis : du niveau inférieur, pour atteindre les rangs 3, 5 et 7.</div>`);
-    h+=cBlk('ao-n','Niveaux','noms propres',[0,1,2,3].map(i=>`<label class="aopf"><span>${AO_NIV[i]} · rangs ${AO_RG[i]}</span><input type="text" data-aop="niv" data-i="${i}" value="${esc(P.niv[i])}" placeholder="${AO_NIV[i]}"${dis}></label>`).join(''));}
+    h+=cBlk('ao-n','Noms des niveaux','noms propres',[0,1,2,3].map(i=>`<label class="aopf"><span>${AO_NIV[i]} · rangs ${AO_RG[i]}</span><input type="text" data-aop="niv" data-i="${i}" value="${esc(P.niv[i])}" placeholder="${AO_NIV[i]}"${dis}></label>`).join(''));}
   if(G)h+=`<div class="actions"><button class="btn ghost" data-act="aoPReset">Annuler</button><button class="btn pri" data-act="aoPSave">Enregistrer</button></div>`;
-  return h;}
+  return `<div class="aoreg">${h}</div>`;}
 function aoParamAct(a,d){
   if(a==='aoTab'){S.aoTab=d.v;S.aoPd=null;return true;}
   if(!canEdit()||!S.aoPd)return true;const P=S.aoPd;
@@ -2072,7 +2076,7 @@ function aoParamAct(a,d){
   else if(a==='aoPDel')P.pre.splice(+d.i,1);
   else if(a==='aoPReset')S.aoPd=null;
   else if(a==='aoPSave'){const f=S.fiches[P.id];if(!f)return true;const n=clone(f);n.comp=!!P.comp;n.org=P.org||'';n.pre=P.pre.filter(p=>(p.n||'').trim()).map(p=>({t:p.t,n:(p.n||'').trim(),r:+p.r||0,sp:p.t==='comp'?(p.sp||'').trim():''}));
-    n.max=Math.max(1,Math.min(12,+P.max||7));n.cSort=Math.max(0,+P.cSort||0);n.nReq=Math.max(0,+P.nReq||0);n.niv=P.niv.map(x=>(x||'').trim());fiSave(n,true);S.aoPd=null;setTimeout(()=>toast('Enregistré'),0);}
+    n.niv=P.niv.map(x=>(x||'').trim());fiSave(n,true);S.aoPd=null;setTimeout(()=>toast('Enregistré'),0);}
   return true;}
 document.addEventListener('input',ev=>{const t=ev.target;if(!t||!t.dataset||t.dataset.aop===undefined||!S.aoPd)return;const P=S.aoPd,k=t.dataset.aop,i=+t.dataset.i;
   if(k==='pt'){P.pre[i].t=t.value;P.pre[i].n='';P.pre[i].sp='';S._force=true;render();return;}
@@ -2095,11 +2099,11 @@ function rgPane(){const E=canEdit(),f=S.rgNote&&S.fiches[S.rgNote];
   if(!S.fichesReady)return `<div class="card empty">Chargement…</div>`;
   h+=L.length?`<div class="plst rglst">${L.map(n=>{const K=rgImgs(n),im=K.length&&S.ptr[K[0]];
     return `<button type="button" class="pli rgli" data-act="rgOpen" data-id="${esc(n.id)}"><span class="rgth">${im?`<img src="${im}" alt="">`:''}</span><span class="ptx"><b>${esc(n.nom)}</b><small>${rgNb(K.length)}</small></span><span aria-hidden="true" class="pch">›</span></button>`;}).join('')}</div>`
-    :`<div class="card empty">Aucune règle en images pour l'instant.${E?' Crée la première avec le bouton ci-dessous.':''}</div>`;
-  if(E)h+=`<div class="radd"><button class="btn" data-act="rgNoteEd" data-id="">+ Une note</button></div>`;
+    :`<div class="muted small">Aucune page du livre pour l'instant.</div>`;
+  if(E)h+=`<div class="radd"><button class="btn" data-act="rgNoteEd" data-id="">+ Page du livre</button></div>`;
   return h;}
 function rgNoteView(f){const E=canEdit(),K=rgImgs(f);
-  let h=`<button class="back" data-act="rgBack">${FI_BACK}Règles en images</button><h2 style="margin-top:2px">${esc(f.nom)}</h2><div class="muted small">${rgNb(K.length)}${K.length?' · toucher pour agrandir':''}</div>`;
+  let h=`<h2 style="margin-top:2px">${esc(f.nom)}</h2><div class="muted small">${rgNb(K.length)}${K.length?' · toucher pour agrandir':''}</div>`;
   if(E)h+=`<div style="margin:8px 0"><button type="button" class="edl" data-act="rgNoteEd" data-id="${esc(f.id)}">${ICON.crayon} Renommer, supprimer</button></div>`;
   h+=K.length?`<div class="rggrid">${K.map((k,i)=>`<div class="rgcell"><button type="button" class="rgimg" data-act="rgView" data-id="${esc(f.id)}" data-i="${i}" aria-label="Agrandir l'image ${i+1} sur ${K.length}"><img src="${S.ptr[k]}" alt=""></button>${E?`<div class="rgtools"><button type="button" class="ibtn" data-act="rgMv" data-k="${esc(k)}" data-v="-1" aria-label="Avancer l'image ${i+1}"${i?'':' disabled'}>‹</button><button type="button" class="ibtn" data-act="rgMv" data-k="${esc(k)}" data-v="1" aria-label="Reculer l'image ${i+1}"${i<K.length-1?'':' disabled'}>›</button>${S.confirm==='rgd:'+k?`<button type="button" class="ibtn rgko" data-act="rgDelOk" data-k="${esc(k)}" aria-label="Confirmer le retrait de l'image ${i+1}">Retirer ?</button>`:`<button type="button" class="ibtn" data-act="rgDel" data-k="${esc(k)}" aria-label="Retirer l'image ${i+1}">✕</button>`}</div>`:''}</div>`).join('')}</div>`
     :'<div class="card empty">Aucune image pour l\'instant.</div>';
@@ -2113,10 +2117,10 @@ function rgSheet(g){if(g.kind!=='rgNote'||!canEdit())return null;const f=g.id&&S
     ${g.err?`<div class="small" role="alert" style="color:var(--bad)">${esc(g.err)}</div>`:''}
     <div class="actions"><button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="rgNoteSave">${f?'Enregistrer':'Créer'}</button></div>
     ${f?`<div class="fidel">${g.confirm?`<div class="muted small">Supprimer « ${esc(f.nom)} » et ses ${rgNb(rgImgs(f).length)} ?</div><div class="actions"><button class="btn ghost" data-act="rgNoteNo">Garder</button><button class="btn" style="color:var(--bad)" data-act="rgNoteDelOk">Supprimer</button></div>`:`<button class="btn ghost" style="color:var(--bad)" data-act="rgNoteDel">Supprimer la note</button>`}</div>`:''}`);}
-function rgAct(a,d){const g=S.dlg;
+function rgAct(a,d){const g=S.dlg;if(typeof rgPageAct==='function'&&rgPageAct(a,d))return true; /* UX3 */
   if(a==='rgTab'){S.rgTab=d.v==='img'?'img':'';S.rgNote=null;S.confirm=null;window.scrollTo(0,0);render();return true;}
-  if(a==='rgOpen'){const f=S.fiches[d.id];if(!f||f.genre!=='regle')return true;S.rgTab='img';S.rgNote=f.id;S.confirm=null;window.scrollTo(0,0);render();return true;}
-  if(a==='rgBack'){S.rgNote=null;S.confirm=null;window.scrollTo(0,0);render();return true;}
+  if(a==='rgOpen'){const f=S.fiches[d.id];if(!f||f.genre!=='regle')return true;S.rgTab='img';S.rgNote=f.id;S.shFold={...(S.shFold||{}),'rg-l':false};S.confirm=null;window.scrollTo(0,0);render();return true;}
+  if(a==='rgBack'){S.rgNote=null;S.confirm=null;S.shFold={...(S.shFold||{}),'rg-l':false};render();requestAnimationFrame(()=>{const el=document.getElementById('sec-rg-l');if(el)el.scrollIntoView({block:'start'});});return true;}
   if(a==='rgView'){const f=S.fiches[d.id];if(!f)return true;const K=rgImgs(f),L=K.map((k,i)=>({k,lab:f.nom+' · '+(i+1)+' / '+K.length})),i=+d.i||0;if(!L[i])return true;fiViewer(S.ptr[L[i].k],L[i].k,L[i].lab,{L,i});return true;}
   if(!canEdit())return true;
   if(a==='rgNoteEd'){const f=d.id&&S.fiches[d.id];fiOpenDlg({kind:'rgNote',id:f?f.id:'',nom:f?f.nom:'',ord:f?(f.ord||''):(rgNotes().length+1)});render();return true;}

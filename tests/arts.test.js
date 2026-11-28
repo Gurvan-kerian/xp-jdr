@@ -1,7 +1,7 @@
 /* Arts obscurs (26/11/2026).
    Usage : node tests/arts.test.js [docs.json] [import-arts.json] — sans argument, données inventées construites ici.
    Navigateur : fiche d'art (blocs, sorts, niveaux), onglet Progrès (section invisible par défaut, déblocage par la gestion, rangs, montée bloquée sans sorts,
-   apprendre un sort, annulation), Paramètres › Référentiel › Arts obscurs, recherche ; import Kanka des arts (fichier réel). */
+   apprendre un sort, annulation), réglages de l'art (fiche, UX3), recherche ; import Kanka des arts (fichier réel). */
 const fs=require('fs'),path=require('path'),http=require('http');
 const {loadApp}=require('./harness.js');
 let chromium;try{({chromium}=require('playwright'));}catch(e){({chromium}=require('/opt/npm-tools/node_modules/playwright'));}
@@ -79,10 +79,13 @@ const SHOTS=process.env.SHOTS;
         let t=await prog(page);ok(/Arts obscurs/i.test(t)&&/Druidisme : prérequis atteints/.test(t)&&!/Nécromancie : prérequis/.test(t),'gestion : encart pour Druidisme seulement (prérequis atteints)');
         await click(page,'[data-act="aoUnlock"][data-f="dru"]');await wait(page,400);
         ok(!!db.get('chars/sloan').arts&&db.get('chars/sloan').arts.dru.cur===0,'déblocage enregistré (rang 0)');
-        await page.evaluate(()=>{S.edit=true;S.view='params';S.ptab='arts';S._force=true;render();});t=await txt(page);
-        ok(/Compétence cachée/.test(t)&&/Prérequis/.test(t)&&/Rang maximum/.test(t)&&/Sorts requis pour monter/.test(t),'Paramètres › Référentiel › Arts obscurs');
-        await page.evaluate(()=>{S.aoPd.cSort=6;aoParamAct('aoPSave',{});});await wait(page,300);ok(db.get('fiches/dru').cSort===6,'réglage enregistré (coût d\'un sort)');
-        await page.evaluate(()=>{S.aoPd=null;aoParams();S.aoPd.cSort=5;aoParamAct('aoPSave',{});});await wait(page,300);
+        /* UX3 : réglages de l'art sur sa fiche (mode édition) ; chiffres dans Paramètres › Coûts et gains d'XP */
+        await page.evaluate(()=>{S.edit=true;S.view='univers';S.uni='art';S.fi='dru';S._force=true;render();});t=await txt(page);
+        ok(/Compétence cachée/.test(t)&&/Prérequis/i.test(t)&&/Réglages de l'art/i.test(t),'réglages de l\'art sur sa fiche');
+        await page.evaluate(()=>{S.aoPd.org='';aoParamAct('aoPSave',{});});await wait(page,300);ok(db.get('fiches/dru').org==='','réglage enregistré (organisation liée)');
+        await page.evaluate(()=>{S.aoPd=null;S._force=true;render();S.aoPd.org='org';aoParamAct('aoPSave',{});});await wait(page,300);
+        t=await page.evaluate(()=>{S.view='params';S.ptab='couts';S.shFold={'pu-a':false};S._force=true;render();return document.getElementById('app').innerText;});
+        ok(/coût d'un sort/i.test(t)&&/rang maximum/i.test(t)&&/sorts requis/i.test(t),'Paramètres › Coûts et gains d\'XP : arts obscurs');
         await page.evaluate(()=>{S.view='univers';S.uni='art';S.fi='dru';S._force=true;render();});
         await click(page,'[data-act="aoSortEd"][data-s=""]');await wait(page);
         await page.evaluate(()=>{const g=S.dlg;g.nom='Amulette de Lugnasad';g.niv=3;aoAct('aoSortSave',{});});await wait(page,300);

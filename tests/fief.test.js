@@ -100,9 +100,9 @@ const fill=async(page,sel,v)=>{await page.fill(sel,String(v));await page.dispatc
       ok(!db.get('fiches/vda').gest.res.some(r=>r.id==='r1'),'ressource supprimée (sans XP)');
 
       console.log('6. Règles › Gestion de fief');
-      t=await page.evaluate(()=>{S.view='rules';S.rgTab='';S._force=true;render();return document.getElementById('app').innerText;});
-      ok(/Gestion de fief/i.test(t)&&/nouveau score × 4 XP/.test(t)&&/Effort du fief/.test(t)&&/Réglages des fiefs/i.test(t),'règles et réglages (mode édition)');
-      await fill(page,'#fgp-cc',5);await page.click('[data-act="fgPSave"]');await wait(page,400);ok(db.get('meta/fiefs')&&db.get('meta/fiefs').cc===5,'réglage enregistré (meta/fiefs)');
+      t=await page.evaluate(()=>{S.view='rules';S.rgTab='';S.shFold={'rg-f':false};S._force=true;render();return document.getElementById('app').innerText;});
+      ok(/Gestion de fief/i.test(t)&&/nouveau score × 4 XP/.test(t)&&/Effort du fief/.test(t)&&!/Réglages des fiefs/i.test(t),'règles (UX3 : réglages dans Paramètres › Fief)');
+      await page.evaluate(()=>{S.view='params';S.ptab='fief';S.shFold={'pu-f':false};S._force=true;render();});await fill(page,'[data-pv="fgCc"]',5);await page.click('.psave [data-act="pSave"]');await wait(page,400);ok((db.get('meta/params').versions||[]).some(v=>v.v.fgCc===5),'réglage enregistré (version datée de meta/params)');
       t=await gest(page,'vda');ok(/\+\s*25/.test(await page.$eval('[data-act="fgBuy"][data-k="car:inf"]',e=>e.innerText.replace(/\s+/g,' '))),'coût recalculé : 5 × 5 = 25');
 
       console.log('7. Nature « Fief » dans une session');

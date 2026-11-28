@@ -126,7 +126,7 @@ function chUniView(){
     if(!f){if(S.fichesReady){S.fi=null;S.uni='chron';}else return `<div class="card empty">Chargement…</div>`;}
     else return f.genre==='agenda'?chAgView(f):chEvView(f);}
   if(S.chPage==='fetes')return chFetesView();
-  if(S.chPage==='ratt'&&canEdit())return chRattView();
+  if(S.chPage==='ratt'&&chRatCan())return chRattView();
   S.chPage=null;return chView();}
 function chNowLine(){const n=chNow(),E=canEdit();
   return `<div class="chnow ux2now"><span>${n?`Nous sommes le <b>${esc(chDateTxt(n))}</b>`:E?'<span class="muted">Date du jeu pas encore réglée</span>':''}</span>${E?`<button type="button" class="ibtn sm" data-act="chNowEd" aria-label="Régler la date du jeu">${ICON.crayon}</button>`:''}<span class="ux2sp"></span><button type="button" class="lnk" data-act="chPage" data-v="fetes">Fêtes ›</button></div>`;}
@@ -134,7 +134,7 @@ function chView(){
   let h=fiUniBack()+`<div class="pghead"><h2>Chronique</h2>${chCanEv()?`<button type="button" class="pbtn big" data-act="chEvNew" aria-label="Ajouter à la Chronique">+</button>`:''}</div>`;
   if(!S.fichesReady)return h+`<div class="card empty">Chargement…</div>`;
   h+=chNowLine();
-  if(canEdit()){const n=chRattProps().filter(r=>r.ev).length;if(n)h+=`<button type="button" class="chratt" data-act="chPage" data-v="ratt">Rattachements à vérifier <span class="bdg">${n}</span></button>`;}
+  if(chRatCan()){const n=chRattProps().filter(r=>r.ev).length;if(n)h+=`<button type="button" class="chratt" data-act="chPage" data-v="ratt">Rattachements à vérifier <span class="bdg">${n}</span></button>`;}
   const T=S.chTs||[],P=S.chPj||[],nf=T.length+P.length;
   const nEv=chItems({nodate:true}).filter(it=>it.k==='ev'||it.k==='ag').length;
   h+=`<div class="ux2tb chbar"><div class="seg chsw" role="group" aria-label="Affichage">${[['liste','Liste'],['mois','Mois']].map(([v,l])=>`<button type="button" data-act="chV" data-v="${v}" aria-pressed="${S.chV===v}">${l}</button>`).join('')}</div>
@@ -234,6 +234,8 @@ function chSessNum(e){{const f=e.evt&&S.fiches&&S.fiches[e.evt];const x=f&&chEvN
 function chEvNum(f){if(f&&f.n>0&&CH_TCL[f.type])return {type:f.type,n:+f.n}; /* UX1 : numéro entier par type */
   const t=(f.num||'').trim();let m=t.match(/^\[\s*0*(\d+)\s*\]/);if(m)return {type:'Interscénario',n:+m[1]};m=t.match(/^\(\s*0*(\d+)\s*\)/);if(m)return {type:'Vie du fief',n:+m[1]};m=t.match(/^0*(\d+)\s*\.?$/);if(m)return {type:'Scénario',n:+m[1]};return null;}
 const chBare=t=>nrm(String(t||'').replace(CH_RE_I,'').replace(CH_RE_S,'').replace(/^\s*\.\s*/,'').replace(/\s*[—–-]\s*[ée]pilogue.*$/i,'').replace(/\s*part\.?\s*\d+\s*$/i,'').replace(/[^\p{L}\p{N} ]/gu,' ').replace(/\s+/g,' ').trim());
+/* UX3 : rattacher une session est ouvert à tout joueur identifié (les joueurs créent les sessions) */
+const chRatCan=()=>isUser()&&!S.visit;
 function chRattProps(){const E=chEvs(),out=[];
   for(const e of S.events){if(!e.session||e.rattrapage)continue;if(e.evt&&S.fiches[e.evt])continue;
     const sn=chSessNum(e);let ev=null;
@@ -345,7 +347,7 @@ function chSheet(g){
         :`${chDateFields(g,'n','Date de naissance <span class="muted">— jour et mois facultatifs</span>','')}${chSeg('env',g.env?'1':'',[['','Exacte'],['1','Environ (« vers »)']],'Précision')}${chNow()?'':'<div class="muted small">Date du jeu pas encore réglée : l\'âge s\'affichera quand elle le sera.</div>'}`}
       ${chErr(g)}
       <div class="actions">${c.naiss||c.ageLib?`<button class="btn ghost" style="margin-right:auto" data-act="chNaDel">Effacer</button>`:''}<button class="btn" data-act="closeSheet">Annuler</button><button class="btn pri" data-act="chNaSave">Enregistrer</button></div>`);}
-  if(g.kind==='chRatS'){if(!canEdit())return null;const e=S.events.find(x=>x.id===g.sid);if(!e)return null;const E=chEvs().slice().sort((a,b)=>(chKey(a.debut)||0)-(chKey(b.debut)||0));
+  if(g.kind==='chRatS'){if(!chRatCan())return null;const e=S.events.find(x=>x.id===g.sid);if(!e)return null;const E=chEvs().slice().sort((a,b)=>(chKey(a.debut)||0)-(chKey(b.debut)||0));
     return fiShell(g,'Rattacher la session',`<h2>Rattacher la session</h2><div class="muted small">${esc(e.titre)}</div>
       <div class="field"><label for="chRe">Événement</label><select id="chRe" data-fin="evt"><option value="">— aucun —</option>${E.map(f=>`<option value="${esc(f.id)}"${f.id===g.evt?' selected':''}>${esc(chEvLab(f))}</option>`).join('')}</select></div>
       <div class="muted small">Plusieurs sessions peuvent être rattachées au même événement (épilogue, Part.1 / Part.2).</div>
@@ -449,10 +451,10 @@ function chAct(a,d){
     S.dlg=null;saveChar(n);setTimeout(()=>toast('Enregistré'),0);return true;}
   if(a==='chNaDel'){if(!g||g.kind!=='chNa')return true;const c=S.chars[g.cid];if(!canEditC(c))return true;const n=clone(c);delete n.naiss;delete n.ageLib;S.dlg=null;saveChar(n);return true;}
   /* Rattachements */
-  if(a==='chRat'){if(!canEdit())return true;const e=S.events.find(x=>x.id===d.id);if(!e)return true;fiOpenDlg({kind:'chRatS',sid:e.id,evt:e.evt&&S.fiches[e.evt]?e.evt:''});render();return true;}
-  if(a==='chRatSave'){if(!g||g.kind!=='chRatS'||!canEdit())return true;const v=g.evt&&S.fiches[g.evt]?g.evt:'';S.dlg=null;
+  if(a==='chRat'){if(!chRatCan())return true;const e=S.events.find(x=>x.id===d.id);if(!e)return true;fiOpenDlg({kind:'chRatS',sid:e.id,evt:e.evt&&S.fiches[e.evt]?e.evt:''});render();return true;}
+  if(a==='chRatSave'){if(!g||g.kind!=='chRatS'||!chRatCan())return true;const v=g.evt&&S.fiches[g.evt]?g.evt:'';S.dlg=null;
     saveEvents(S.events.map(e=>{if(e.id!==g.sid)return e;const n={...e};if(v)n.evt=v;else delete n.evt;return n;}));setTimeout(()=>toast(v?'Session rattachée':'Rattachement retiré'),0);return true;}
-  if(a==='chRatOk'){if(!canEdit()||!S.chRat)return true;const st=S.chRat,R=chRattProps(),m={};
+  if(a==='chRatOk'){if(!chRatCan()||!S.chRat)return true;const st=S.chRat,R=chRattProps(),m={};
     for(const r of R){const id=r.e.id,sel=id in st.sel?st.sel[id]:(r.ev?r.ev.id:''),chk=id in st.chk?st.chk[id]:!!r.ev;if(chk&&sel&&S.fiches[sel])m[id]=sel;}
     const n=Object.keys(m).length;if(!n)return true;S.chRat=null;S.chPage=null;saveEvents(S.events.map(e=>m[e.id]?{...e,evt:m[e.id]}:e));setTimeout(()=>toast(n+' session'+(n>1?'s':'')+' rattachée'+(n>1?'s':'')),0);return true;}
   return true;}
